@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"dxlib/v3/api"
 	"dxlib/v3/databases"
@@ -59,9 +60,9 @@ func (tm *DXTableManager) NewTableWithCodeAndNameId(databaseNameId, tableNameId,
 }
 
 func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (err error) {
-	n := utils.NowAsString()
+	//n := utils.NowAsString()
 	newKeyValues["is_deleted"] = false
-	newKeyValues["created_at"] = n
+	//newKeyValues["created_at"] = n
 	_, ok := newKeyValues["created_by_user_id"]
 	if !ok {
 		if aepr.CurrentUser.ID != "" {
@@ -71,7 +72,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 			newKeyValues["created_by_user_id"] = "0"
 			newKeyValues["created_by_user_nameid"] = "SYSTEM"
 		}
-		newKeyValues["last_modified_at"] = n
+		//newKeyValues["last_modified_at"] = n
 		if aepr.CurrentUser.ID != "" {
 			newKeyValues["last_modified_by_user_id"] = aepr.CurrentUser.ID
 			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.Name
@@ -173,6 +174,15 @@ func (t *DXTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database
 
 func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
 	n := utils.NowAsString()
+	if t.Database.DatabaseType.String() == "sqlserver" {
+		t, err := time.Parse(time.RFC3339, n)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return 0, err
+		}
+		// Format the time.Time value back into a string without the timezone offset
+		n = t.Format("2006-01-02 15:04:05")
+	}
 	newKeyValues["is_deleted"] = false
 	newKeyValues["created_at"] = n
 	_, ok := newKeyValues["created_by_user_id"]

@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"
 	_ "github.com/lib/pq"
+	_ "github.com/microsoft/go-mssqldb"
 
 	"dxlib/v3/databases/sqlfile"
 

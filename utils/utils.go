@@ -15,7 +15,7 @@ import (
 type JSON = map[string]any
 
 func NowAsString() string {
-	return time.Now().Format(time.RFC3339Nano)
+	return time.Now().Format(time.RFC3339)
 }
 
 func IfFloatIsInt(f float64) bool {

@@ -210,7 +210,17 @@ func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 
 func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, keyValues utils.JSON) (id int64, err error) {
 	fn, fv := db.SQLPartInsertFieldNamesFieldValues(keyValues)
-	s := `insert into ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
+	s := ``
+	switch tx.DriverName() {
+	case "postgres":
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
+	case "sqlserver":
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.id VALUES (` + fv + `)`
+	default:
+		fmt.Println("Unknown database type. Using Postgresql Dialect")
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
+	}
+	//s := `insert into ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
 	kv := db.ExcludeSQLExpression(keyValues)
 	id, err = TxNamedQueryIdBigMustExist(log, autoRollback, tx, s, kv)
 	return id, err

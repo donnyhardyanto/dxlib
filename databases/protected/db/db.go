@@ -3,9 +3,9 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"strconv"
-
+	"fmt"
 	"github.com/jmoiron/sqlx"
+	"strconv"
 
 	"dxlib/v3/utils"
 )
@@ -434,7 +434,16 @@ func UpdateWhereKeyValues(db *sqlx.DB, tableName string, setKeyValues utils.JSON
 
 func Insert(db *sqlx.DB, tableName string, keyValues utils.JSON) (id int64, err error) {
 	fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
-	s := `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
+	s := ``
+	switch db.DriverName() {
+	case "postgres":
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
+	case "sqlserver":
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.id VALUES (` + fv + `)`
+	default:
+		fmt.Println("Unknown database type. Using Postgresql Dialect")
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
+	}
 	kv := ExcludeSQLExpression(keyValues)
 	id, err = NamedQueryIdMustExist(db, s, kv)
 	return id, err
