@@ -310,20 +310,45 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 	}
 
 	totalRows = summaryRows[`_total_rows`].(int64)
-	effectiveLimitQueryPart := ``
-	if rowsPerPage == 0 {
-		totalPage = 1
-	} else {
-		totalPage = ((totalRows - 1) / rowsPerPage) + 1
-		effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+
+	query := ``
+	switch dbAppInstance.DriverName() {
+	case "sqlserver":
+		effectiveLimitQueryPart := ``
+		if rowsPerPage == 0 {
+			totalPage = 1
+		} else {
+			totalPage = ((totalRows - 1) / rowsPerPage) + 1
+			effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
+		}
+
+		effectiveOrderByQueryPart := ``
+		if orderByQueryPart == `` {
+			orderByQueryPart = `1`
+		}
+		if orderByQueryPart != `` {
+			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
+		}
+
+		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
+	case "postgres":
+	default:
+		effectiveLimitQueryPart := ``
+		if rowsPerPage == 0 {
+			totalPage = 1
+		} else {
+			totalPage = ((totalRows - 1) / rowsPerPage) + 1
+			effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+		}
+
+		effectiveOrderByQueryPart := ``
+		if orderByQueryPart != `` {
+			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
+		}
+
+		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	}
 
-	effectiveOrderByQueryPart := ``
-	if orderByQueryPart != `` {
-		effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-	}
-
-	query := `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	rows, err = NamedQueryRows(dbAppInstance, query, arg)
 	if err != nil {
 		return nil, 0, 0, summaryRows, err

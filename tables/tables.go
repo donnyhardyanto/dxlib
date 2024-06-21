@@ -433,7 +433,14 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 		filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
 	}
 
-	filterWhere = filterWhere + "(is_deleted=false)"
+	switch t.Database.DatabaseType.String() {
+	case "sqlserver":
+		filterWhere = filterWhere + "(is_deleted=0)"
+	case "postgres":
+		filterWhere = filterWhere + "(is_deleted=false)"
+	default:
+		filterWhere = filterWhere + "(is_deleted=false)"
+	}
 
 	if !t.Database.Connected {
 		err := t.Database.Connect()
