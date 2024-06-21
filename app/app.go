@@ -181,7 +181,7 @@ func (a *DXApp) execute() (err error) {
 			if err2 != nil {
 				log.Log.Infof("Error in Stopping: (%v)", err2)
 			}
-			log.Log.Info("Stopped")
+			//log.Log.Info("Stopped")
 		}()
 	}
 	log.Log.Info("Starting")
