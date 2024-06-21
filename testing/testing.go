@@ -187,8 +187,10 @@ func Style1HTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url,
 }
 
 func THTTPClient(t *testing.T, mustStatusCode int, method string, url string, contentType string, body string) (responseBodyAsString string) {
+	t.Logf("== Testing %s %s\n START ==\n ContentType: %s\n%s\n", method, url, contentType, body)
 	statusCode, responseBodyAsString, err := client.HTTPClient(method, url, contentType, body)
 	assert.Nil(t, err)
 	assert.Equal(t, mustStatusCode, statusCode)
+	t.Logf("== Testing %s %s\n DONE ==\n Response: %s\n", method, url, responseBodyAsString)
 	return responseBodyAsString
 }
