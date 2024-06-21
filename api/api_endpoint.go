@@ -28,18 +28,22 @@ type DXAPIEndPointParameter struct {
 }
 
 func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
-	r := ""
-	if aep.IsMustExist {
-		r = "mandatory"
-	} else {
-		r = "optional"
-	}
-	s += fmt.Sprintf("%*s%s (%s) %s %s\n", leftIndent, "", aep.NameId, aep.Type, r, aep.Description)
-	if len(aep.Children) > 0 {
-		for _, c := range aep.Children {
-			s += c.PrintSpec(leftIndent + 2)
+	switch SpecFormat {
+	case "MarkDown":
+		r := ""
+		if aep.IsMustExist {
+			r = "mandatory"
+		} else {
+			r = "optional"
+		}
+		s += fmt.Sprintf("%*s - %s (%s) %s %s\n", leftIndent, "", aep.NameId, aep.Type, r, aep.Description)
+		if len(aep.Children) > 0 {
+			for _, c := range aep.Children {
+				s += c.PrintSpec(leftIndent + 2)
+			}
 		}
 	}
+
 	return s
 }
 
@@ -68,42 +72,45 @@ type DXAPIEndPoint struct {
 }
 
 func (aep *DXAPIEndPoint) PrintSpec() (s string) {
-	s = fmt.Sprintf("%s\n", aep.Title)
-	s += fmt.Sprintf("  Description: %s\n", aep.Description)
-	s += fmt.Sprintf("  URI: %s\n", aep.Uri)
-	s += fmt.Sprintf("  Method: %s\n", aep.Method)
-	s += fmt.Sprintf("  Request Content Type: %s\n", aep.RequestContentType)
-	s += "  Parameters:\n"
-	for _, p := range aep.Parameters {
-		s += p.PrintSpec(4)
-	}
-	s += "  Response Possibilities:\n"
-	keys := make([]string, 0, len(aep.ResponsePossibilities))
-
-	// Add the keys to the slice
-	for k := range aep.ResponsePossibilities {
-		keys = append(keys, k)
-	}
-
-	// Sort the keys based on StatusCode
-	sort.Slice(keys, func(i, j int) bool {
-		return aep.ResponsePossibilities[keys[i]].StatusCode < aep.ResponsePossibilities[keys[j]].StatusCode
-	})
-
-	// Now you can range over the keys slice and use it to access the map
-	for _, k := range keys {
-		v := aep.ResponsePossibilities[k]
-		fmt.Println("Key:", k, "StatusCode:", aep.ResponsePossibilities[k].StatusCode)
-		s += fmt.Sprintf("    %s\n", k)
-		s += fmt.Sprintf("      Status Code: %d\n", v.StatusCode)
-		s += fmt.Sprintf("      Description: %s\n", v.Description)
-		s += "      Headers:\n"
-		for hk, hv := range v.Headers {
-			s += fmt.Sprintf("        %s: %s\n", hk, hv)
+	switch SpecFormat {
+	case "MarkDown":
+		s = fmt.Sprintf("## %s\n", aep.Title)
+		s += fmt.Sprintf("####  Description: %s\n", aep.Description)
+		s += fmt.Sprintf("####  URI: %s\n", aep.Uri)
+		s += fmt.Sprintf("####  Method: %s\n", aep.Method)
+		s += fmt.Sprintf("####  Request Content Type: %s\n", aep.RequestContentType)
+		s += "####  Parameters:\n"
+		for _, p := range aep.Parameters {
+			s += p.PrintSpec(4)
 		}
-		s += "      Data Template:\n"
-		for _, p := range v.DataTemplate {
-			s += p.PrintSpec(8)
+		s += "####  Response Possibilities:\n"
+		keys := make([]string, 0, len(aep.ResponsePossibilities))
+
+		// Add the keys to the slice
+		for k := range aep.ResponsePossibilities {
+			keys = append(keys, k)
+		}
+
+		// Sort the keys based on StatusCode
+		sort.Slice(keys, func(i, j int) bool {
+			return aep.ResponsePossibilities[keys[i]].StatusCode < aep.ResponsePossibilities[keys[j]].StatusCode
+		})
+
+		// Now you can range over the keys slice and use it to access the map
+		for _, k := range keys {
+			v := aep.ResponsePossibilities[k]
+			fmt.Println("Key:", k, "StatusCode:", aep.ResponsePossibilities[k].StatusCode)
+			s += fmt.Sprintf("    %s\n", k)
+			s += fmt.Sprintf("      Status Code: %d\n", v.StatusCode)
+			s += fmt.Sprintf("      Description: %s\n", v.Description)
+			s += "      Headers:\n"
+			for hk, hv := range v.Headers {
+				s += fmt.Sprintf("        %s: %s\n", hk, hv)
+			}
+			s += "      Data Template:\n"
+			for _, p := range v.DataTemplate {
+				s += p.PrintSpec(8)
+			}
 		}
 	}
 

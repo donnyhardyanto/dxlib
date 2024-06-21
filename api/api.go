@@ -37,6 +37,8 @@ type DXAPI struct {
 	Cancel          context.CancelFunc
 }
 
+var SpecFormat = "MarkDown"
+
 func (a *DXAPI) PrintSpec() (s string) {
 	s = ""
 	for _, v := range a.EndPoints {
