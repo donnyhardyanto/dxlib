@@ -40,13 +40,13 @@ type DXAPI struct {
 var SpecFormat = "MarkDown"
 
 func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
-	aepr.FiberContext.Response().Header.SetContentType(`text/markdown`)
-	aepr.FiberContext.Response().SetBody([]byte(a.PrintSpec()))
+	aepr.FiberContext.Response().Header.SetContentType("text/markdown")
+	aepr.FiberContext.SendString(a.PrintSpec())
 	return nil
 }
 
 func (a *DXAPI) PrintSpec() (s string) {
-	s = "## " + a.NameId + "\n"
+	s = "# API: " + a.NameId + "\n\n\n"
 	for _, v := range a.EndPoints {
 		s += v.PrintSpec() + "\n"
 	}
@@ -175,7 +175,11 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 
 						} else {
 							if aepr.ResponseStatusCode < 300 {
-								aepr.FiberContext.Response().Header.Set(`Content-Type`, `application/json; charset=utf-8`)
+								x := aepr.FiberContext.Response().Header
+								y := x.ContentType()
+								if y == nil {
+									x.Set(`Content-Type`, `application/octet; charset=utf-8`)
+								}
 							}
 						}
 						contentLengthBytes := len(aepr.ResponseBodyAsBytes)

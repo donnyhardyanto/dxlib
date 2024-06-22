@@ -205,6 +205,7 @@ func (aepr *DXAPIEndPointRequest) ResponseSetFromJSON(v utils.JSON) (err error) 
 	if err != nil {
 		return err
 	}
+	aepr.FiberContext.Response().Header.Set(`Content-Type`, `application/json; charset=utf-8`)
 	aepr.ResponseBodyAsBytes = vAsBytes
 	return nil
 }
