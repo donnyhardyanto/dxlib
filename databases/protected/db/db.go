@@ -139,52 +139,105 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON) (fieldNames 
 	return fieldNames, fieldValues
 }
 
-func SQLPartConstructSelect(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func SQLPartConstructSelect(driverName string, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, limit any, forUpdatePart any) (s string, err error) {
-	f := SQLPartFieldNames(fieldNames)
-	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
-	effectiveWhere := ``
-	if w != `` {
-		effectiveWhere = ` where ` + w
-	}
-	j := ``
-	if joinSQLPart != nil {
-		j = ` ` + joinSQLPart.(string)
-	}
-	o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections)
-	effectiveOrderBy := ``
-	if o != `` {
-		effectiveOrderBy = ` order by ` + o
-	}
-	effectiveLimitAsString := ``
-	if limit != nil {
-		var limitAsInt64 int64
-		switch limit.(type) {
-		case int:
-			limitAsInt64 = int64(limit.(int))
-		case int16:
-			limitAsInt64 = int64(limit.(int16))
-		case int32:
-			limitAsInt64 = int64(limit.(int32))
-		case int64:
-			limitAsInt64 = limit.(int64)
-		default:
-			err := errors.New(`LimitCannotConvertToInt64`)
-			return ``, err
+	switch driverName {
+	case "sqlserver":
+		f := SQLPartFieldNames(fieldNames)
+		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
+		effectiveWhere := ``
+		if w != `` {
+			effectiveWhere = ` where ` + w
 		}
-		if limitAsInt64 > 0 {
-			effectiveLimitAsString = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
+		j := ``
+		if joinSQLPart != nil {
+			j = ` ` + joinSQLPart.(string)
 		}
+		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections)
+		effectiveOrderBy := ``
+		if o != `` {
+			effectiveOrderBy = ` order by ` + o
+		}
+		effectiveLimitAsString := ``
+		if limit != nil {
+			var limitAsInt64 int64
+			switch limit.(type) {
+			case int:
+				limitAsInt64 = int64(limit.(int))
+			case int16:
+				limitAsInt64 = int64(limit.(int16))
+			case int32:
+				limitAsInt64 = int64(limit.(int32))
+			case int64:
+				limitAsInt64 = limit.(int64)
+			default:
+				err := errors.New(`LimitCannotConvertToInt64`)
+				return ``, err
+			}
+			if limitAsInt64 > 0 {
+				//effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
+				effectiveLimitAsString = ` top ` + strconv.FormatInt(limitAsInt64, 10)
+				//effectiveLimitAsString = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
+			}
+		}
+		u := ``
+		if forUpdatePart == nil {
+			forUpdatePart = false
+		}
+		if forUpdatePart == true {
+			u = ` for update `
+		}
+		s = `select ` + effectiveLimitAsString + ` ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + u
+		return s, nil
+	case "postgres":
+		f := SQLPartFieldNames(fieldNames)
+		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
+		effectiveWhere := ``
+		if w != `` {
+			effectiveWhere = ` where ` + w
+		}
+		j := ``
+		if joinSQLPart != nil {
+			j = ` ` + joinSQLPart.(string)
+		}
+		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections)
+		effectiveOrderBy := ``
+		if o != `` {
+			effectiveOrderBy = ` order by ` + o
+		}
+		effectiveLimitAsString := ``
+		if limit != nil {
+			var limitAsInt64 int64
+			switch limit.(type) {
+			case int:
+				limitAsInt64 = int64(limit.(int))
+			case int16:
+				limitAsInt64 = int64(limit.(int16))
+			case int32:
+				limitAsInt64 = int64(limit.(int32))
+			case int64:
+				limitAsInt64 = limit.(int64)
+			default:
+				err := errors.New(`LimitCannotConvertToInt64`)
+				return ``, err
+			}
+			if limitAsInt64 > 0 {
+				effectiveLimitAsString = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
+			}
+		}
+		u := ``
+		if forUpdatePart == nil {
+			forUpdatePart = false
+		}
+		if forUpdatePart == true {
+			u = ` for update `
+		}
+		s = `select ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
+		return s, nil
+	default:
+		err := errors.New(`UnknownDatabaseType`)
+		return ``, err
 	}
-	u := ``
-	if forUpdatePart == nil {
-		forUpdatePart = false
-	}
-	if forUpdatePart == true {
-		u = ` for update `
-	}
-	s = `select ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
-	return s, nil
 }
 
 func NamedQueryRow(db *sqlx.DB, query string, arg any) (r utils.JSON, err error) {
@@ -407,7 +460,7 @@ func SelectWhereIdMustExist(db *sqlx.DB, tableName string, idValue int64) (r uti
 
 func SelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
-	s, err := SQLPartConstructSelect(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
+	s, err := SQLPartConstructSelect(db.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -431,7 +484,7 @@ func SelectOneMustExist(db *sqlx.DB, tableName string, fieldNames []string, wher
 
 func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string,
 	limit any) (r []utils.JSON, err error) {
-	s, err := SQLPartConstructSelect(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, nil)
+	s, err := SQLPartConstructSelect(db.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, nil)
 	if err != nil {
 		return nil, err
 	}

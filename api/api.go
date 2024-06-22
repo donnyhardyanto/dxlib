@@ -39,8 +39,14 @@ type DXAPI struct {
 
 var SpecFormat = "MarkDown"
 
+func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
+	aepr.FiberContext.Response().Header.SetContentType(`text/markdown`)
+	aepr.FiberContext.Response().SetBody([]byte(a.PrintSpec()))
+	return nil
+}
+
 func (a *DXAPI) PrintSpec() (s string) {
-	s = ""
+	s = "## " + a.NameId + "\n"
 	for _, v := range a.EndPoints {
 		s += v.PrintSpec() + "\n"
 	}

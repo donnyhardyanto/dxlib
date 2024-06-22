@@ -172,7 +172,7 @@ func TxNamedQueryRowMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, qu
 
 func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (r []utils.JSON, err error) {
-	s, err := db.SQLPartConstructSelect(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, nil, forUpdatePart)
+	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, nil, forUpdatePart)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, 
 
 func TxSelectOneMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string, forUpdatePart any) (r utils.JSON,
 	err error) {
-	s, err := db.SQLPartConstructSelect(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
+	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
 		err := fmt.Errorf(`%s:%s`, err, tableName)
 		return nil, err
@@ -199,7 +199,7 @@ func TxSelectOneMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableN
 
 func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (r utils.JSON, err error) {
-	s, err := db.SQLPartConstructSelect(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
+	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
 		return nil, err
 	}

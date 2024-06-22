@@ -60,9 +60,9 @@ func (tm *DXTableManager) NewTableWithCodeAndNameId(databaseNameId, tableNameId,
 }
 
 func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (err error) {
-	//n := utils.NowAsString()
+	n := utils.NowAsString()
 	newKeyValues["is_deleted"] = false
-	//newKeyValues["created_at"] = n
+	newKeyValues["created_at"] = n
 	_, ok := newKeyValues["created_by_user_id"]
 	if !ok {
 		if aepr.CurrentUser.ID != "" {

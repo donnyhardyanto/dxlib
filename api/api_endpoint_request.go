@@ -55,16 +55,19 @@ type DXAPIEndPointRequest struct {
 func (aeprpv *DXAPIEndPointRequestParameterValue) NewChild(aepp DXAPIEndPointParameter) *DXAPIEndPointRequestParameterValue {
 	child := DXAPIEndPointRequestParameterValue{Owner: aeprpv.Owner, Metadata: aepp}
 	child.Parent = aeprpv
+	if aeprpv.Children == nil {
+		aeprpv.Children = make(map[string]*DXAPIEndPointRequestParameterValue)
+	}
 	aeprpv.Children[aepp.NameId] = &child
 	return &child
 }
 
-func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(v any) (err error) {
-	aeprpv.RawValue = v
+func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any) (err error) {
+	aeprpv.RawValue = rv
 	if aeprpv.Metadata.Type == "json" {
-		jsonValue, ok := v.(map[string]interface{})
+		jsonValue, ok := rv.(map[string]interface{})
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("Invalid type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(v), v)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf("Invalid type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
 		}
 		for _, v := range aeprpv.Metadata.Children {
 			{
