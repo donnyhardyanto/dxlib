@@ -303,9 +303,12 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string) (isExist b
 	return true, val, nil
 }
 
-func getParameterValue[A any](aepr *DXAPIEndPointRequest, k string) (isExist bool, val A, err error) {
+func getParameterValue[A any](aepr *DXAPIEndPointRequest, k string, defaultValue ...A) (isExist bool, val A, err error) {
 	isExist, valAsAny, err := aepr.GetParameterValueAsAny(k)
 	if !isExist {
+		if len(defaultValue) > 0 {
+			return false, defaultValue[0], nil
+		}
 		return isExist, val, err
 	}
 	val, ok := valAsAny.(A)
@@ -317,8 +320,8 @@ func getParameterValue[A any](aepr *DXAPIEndPointRequest, k string) (isExist boo
 	return true, val, nil
 }
 
-func (aepr *DXAPIEndPointRequest) GetParameterValueAsBool(k string) (isExist bool, val bool, err error) {
-	return getParameterValue[bool](aepr, k)
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsBool(k string, defaultValue ...bool) (isExist bool, val bool, err error) {
+	return getParameterValue[bool](aepr, k, defaultValue...)
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValueAsInt64(k string) (isExist bool, val int64, err error) {

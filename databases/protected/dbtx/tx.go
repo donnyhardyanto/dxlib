@@ -227,7 +227,7 @@ func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 }
 
 func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
-	u := db.SQLPartSetFieldNameValues(setKeyValues)
+	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues)
 	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w
@@ -237,7 +237,7 @@ func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tabl
 }
 
 func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result utils.JSON, err error) {
-	u := db.SQLPartSetFieldNameValues(setKeyValues)
+	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues)
 	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w + ` returning *`

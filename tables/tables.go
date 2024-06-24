@@ -329,6 +329,9 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldName
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
 		}
+		if t.Database.DatabaseType.String() == "sqlserver" {
+			whereAndFieldNameValues["is_deleted"] = 0
+		}
 	}
 
 	r, err = t.Database.Select(t.ListViewNameId, *fieldNames,
@@ -429,17 +432,24 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	if filterWhere != "" {
-		filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
+	_, isDeletedIncluded, err := aepr.GetParameterValueAsBool("is_deleted", false)
+	if err != nil {
+		return err
 	}
 
-	switch t.Database.DatabaseType.String() {
-	case "sqlserver":
-		filterWhere = filterWhere + "(is_deleted=0)"
-	case "postgres":
-		filterWhere = filterWhere + "(is_deleted=false)"
-	default:
-		filterWhere = filterWhere + "(is_deleted=false)"
+	if !isDeletedIncluded {
+		if filterWhere != "" {
+			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
+		}
+
+		switch t.Database.DatabaseType.String() {
+		case "sqlserver":
+			filterWhere = filterWhere + "(is_deleted=0)"
+		case "postgres":
+			filterWhere = filterWhere + "(is_deleted=false)"
+		default:
+			filterWhere = filterWhere + "(is_deleted=false)"
+		}
 	}
 
 	if !t.Database.Connected {

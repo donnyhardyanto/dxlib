@@ -104,8 +104,9 @@ func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string) (s st
 	return orderbyFieldNameDirections
 }
 
-func SQLPartSetFieldNameValues(setKeyValues utils.JSON) (s string) {
+func SQLPartSetFieldNameValues(setKeyValues utils.JSON) (newSetKeyValues utils.JSON, s string) {
 	setFieldNameValues := ``
+	newSetKeyValues = utils.JSON{}
 	for k, v := range setKeyValues {
 		if setFieldNameValues != `` {
 			setFieldNameValues = setFieldNameValues + `,`
@@ -113,11 +114,13 @@ func SQLPartSetFieldNameValues(setKeyValues utils.JSON) (s string) {
 		switch v.(type) {
 		case SQLExpression:
 			setFieldNameValues = setFieldNameValues + v.(SQLExpression).String()
+			newSetKeyValues[k] = v
 		default:
-			setFieldNameValues = setFieldNameValues + k + `=:` + k
+			setFieldNameValues = setFieldNameValues + k + `=:NEW_` + k
+			newSetKeyValues[`NEW_`+k] = v
 		}
 	}
-	return setFieldNameValues
+	return newSetKeyValues, setFieldNameValues
 }
 
 func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON) (fieldNames string, fieldValues string) {
@@ -502,7 +505,7 @@ func DeleteWhereKeyValues(db *sqlx.DB, tableName string, whereAndFieldNameValues
 }
 
 func UpdateWhereKeyValues(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
-	u := SQLPartSetFieldNameValues(setKeyValues)
+	setKeyValues, u := SQLPartSetFieldNameValues(setKeyValues)
 	w := SQLPartWhereAndFieldNameValues(whereKeyValues)
 	joinedKeyValues := MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w
