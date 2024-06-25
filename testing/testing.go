@@ -15,6 +15,8 @@ import (
 	json2 "dxlib/v3/utils/json"
 )
 
+var Counter = 0
+
 func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, contentType string, body []byte) *http.Response {
 	defer func() {
 		t.Logf("== Testing %s\n DONE ==", testName)
@@ -187,10 +189,17 @@ func Style1HTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url,
 }
 
 func THTTPClient(t *testing.T, mustStatusCode int, method string, url string, contentType string, body string) (responseBodyAsString string) {
-	t.Logf("== Testing %s %s\n START ==\n ContentType: %s\n%s\n", method, url, contentType, body)
+	Counter++
+	v := Counter
+	t.Logf("%d: ==== TEST START ====\nREQUEST ===\n%s %s\nContentType: %s\nBody:\n%s\n==\n\n", v, method, url, contentType, body)
 	statusCode, responseBodyAsString, err := client.HTTPClient(method, url, contentType, body)
-	assert.Nil(t, err)
+	if err != nil {
+		t.Logf("EXECUTE ERROR === Error in making HTTP request %v\n", err)
+		t.FailNow()
+		assert.Nil(t, err)
+	}
+	t.Logf("RESPONSE ===\n%d\nBody:\n%s\n===\n\n", statusCode, responseBodyAsString)
 	assert.Equal(t, mustStatusCode, statusCode)
-	t.Logf("== Testing %s %s\n DONE ==\n Response: %s\n", method, url, responseBodyAsString)
+	t.Logf("%d: ==== TEST END   ====\n", v)
 	return responseBodyAsString
 }

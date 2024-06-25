@@ -2,15 +2,13 @@ package tables
 
 import (
 	"database/sql"
-	"fmt"
-	"strings"
-	"time"
-
 	"dxlib/v3/api"
 	"dxlib/v3/databases"
 	"dxlib/v3/databases/protected/db"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
+	"fmt"
+	"strings"
 )
 
 type DXTableManager struct {
@@ -59,7 +57,7 @@ func (tm *DXTableManager) NewTableWithCodeAndNameId(databaseNameId, tableNameId,
 	return &t
 }
 
-func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (err error) {
+func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	n := utils.NowAsString()
 	newKeyValues["is_deleted"] = false
 	newKeyValues["created_at"] = n
@@ -82,19 +80,19 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 		}
 	}
 
-	newId, err := t.Database.Insert(t.NameId, newKeyValues)
+	newId, err = t.Database.Insert(t.NameId, newKeyValues)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			aepr.ResponseStatusCode = 409
 		}
 		aepr.Log.Errorf("error at inserting new %s, %v ", t.NameId, err)
-		return err
+		return 0, err
 	}
 	err = aepr.ResponseSetFromJSON(utils.JSON{
 		"id": newId,
 	})
 
-	return err
+	return newId, err
 }
 
 func (t *DXTable) GetById(log *log.DXLog, id int64) (r utils.JSON, err error) {
@@ -174,7 +172,7 @@ func (t *DXTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database
 
 func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
 	n := utils.NowAsString()
-	if t.Database.DatabaseType.String() == "sqlserver" {
+	/*	if t.Database.DatabaseType.String() == "sqlserver" {
 		t, err := time.Parse(time.RFC3339, n)
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -182,7 +180,7 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 		}
 		// Format the time.Time value back into a string without the timezone offset
 		n = t.Format("2006-01-02 15:04:05")
-	}
+	}*/
 	newKeyValues["is_deleted"] = false
 	newKeyValues["created_at"] = n
 	_, ok := newKeyValues["created_by_user_id"]
