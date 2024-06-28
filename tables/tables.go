@@ -70,7 +70,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 			newKeyValues["created_by_user_id"] = "0"
 			newKeyValues["created_by_user_nameid"] = "SYSTEM"
 		}
-		//newKeyValues["last_modified_at"] = n
+		newKeyValues["last_modified_at"] = n
 		if aepr.CurrentUser.ID != "" {
 			newKeyValues["last_modified_by_user_id"] = aepr.CurrentUser.ID
 			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.Name
