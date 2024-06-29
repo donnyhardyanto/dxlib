@@ -62,18 +62,20 @@ type DXApp struct {
 	OnStartStorageReady      DXAppEvent
 }
 
-func (a *DXApp) Run() {
+func (a *DXApp) Run() error {
 	if a.OnDefine != nil {
 		err := a.OnDefine()
 		if err != nil {
 			log.Log.Error(err.Error())
-			return
+			return err
 		}
 	}
 	err := a.execute()
 	if err != nil {
 		log.Log.Error(err.Error())
+		return err
 	}
+	return nil
 }
 
 func (a *DXApp) start() (err error) {

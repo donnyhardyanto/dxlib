@@ -183,6 +183,7 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 	}*/
 	newKeyValues["is_deleted"] = false
 	newKeyValues["created_at"] = n
+	newKeyValues["last_modified_at"] = n
 	_, ok := newKeyValues["created_by_user_id"]
 	if !ok {
 		newKeyValues["created_by_user_id"] = "0"
