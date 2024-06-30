@@ -7,12 +7,86 @@ import (
 	"fmt"
 	"go/types"
 	"math"
+	"net"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type JSON = map[string]any
+
+func GetAllMachineIP4s() []string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		panic(err)
+	}
+
+	var ips []string
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				ips = append(ips, ipnet.IP.String())
+			}
+		}
+	}
+	return ips
+}
+
+func GetAllActualBindingAddress(configuredBindingAddress string) []string {
+
+	// Split the config value to get the IP and port
+	splitConfig := strings.Split(configuredBindingAddress, ":")
+	configIP := splitConfig[0]
+	port := splitConfig[1]
+
+	// Get all binding IPs
+	ips := GetAllMachineIP4s()
+
+	// Check if the config IP is in the list of binding IPs
+	var validIPs []string
+	for _, ip := range ips {
+		if ip == configIP {
+			validIPs = append(validIPs, ip)
+			break
+		}
+	}
+
+	// If the config IP is not in the list of binding IPs, use all IPs
+	if len(validIPs) == 0 {
+		validIPs = ips
+	}
+
+	var r []string
+	// Append the port to each IP and print
+	for _, ip := range validIPs {
+		r = append(r, ip+":"+port)
+	}
+	return r
+}
+
+func TCPIPPortCanConnect(ip string, port string) bool {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, port), time.Second*3)
+	if err != nil {
+		fmt.Println("Failed to connect:", err)
+		return false
+	}
+	if conn != nil {
+		defer conn.Close()
+	}
+	return true
+}
+
+func TCPAddressCanConnect(address string) bool {
+	conn, err := net.DialTimeout("tcp", address, time.Second*3)
+	if err != nil {
+		fmt.Println("Failed to connect:", err)
+		return false
+	}
+	if conn != nil {
+		defer conn.Close()
+	}
+	return true
+}
 
 func NowAsString() string {
 	return time.Now().UTC().Format(time.RFC3339)
