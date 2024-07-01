@@ -129,10 +129,22 @@ func (a *DXAPI) ApplyConfigurations() (err error) {
 	return err
 }
 
+func (a *DXAPI) FindEndPointByURI(uri string) *DXAPIEndPoint {
+	for _, endPoint := range a.EndPoints {
+		if endPoint.Uri == uri {
+			return &endPoint
+		}
+	}
+	return nil
+}
 func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType DXAPIEndPointType,
 	contentType utilsHttp.RequestContentType, parameters []DXAPIEndPointParameter, onExecute DXAPIEndPointExecuteFunc,
 	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DxAPIEndPointResponsePossibility) *DXAPIEndPoint {
 
+	t := a.FindEndPointByURI(uri)
+	if t != nil {
+		log.Log.Fatalf("Duplicate endpoint uri %s", uri)
+	}
 	ae := DXAPIEndPoint{
 		Owner:                 a,
 		Title:                 title,

@@ -478,6 +478,16 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 	return err
 }
 
+func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
+
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+	whereAndFieldNameValues["is_deleted"] = false
+
+	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
+}
+
 var Manager DXTableManager
 
 func init() {
