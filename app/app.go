@@ -51,15 +51,19 @@ type DXApp struct {
 	IsLoop                   bool
 	RuntimeErrorGroup        *errgroup.Group
 	RuntimeErrorGroupContext context.Context
-	OnDefine                 DXAppCallbackFunc
-	OnExecute                DXAppCallbackFunc
-	IsRedisExist             bool
-	IsStorageExist           bool
-	IsAPIExist               bool
-	IsTaskExist              bool
-	DebugKey                 string
-	IsDebug                  bool
-	OnStartStorageReady      DXAppEvent
+
+	IsRedisExist          bool
+	IsStorageExist        bool
+	IsAPIExist            bool
+	IsTaskExist           bool
+	DebugKey              string
+	IsDebug               bool
+	OnDefine              DXAppEvent
+	OnDefineConfiguration DXAppEvent
+	OnDefineAPI           DXAppEvent
+	OnExecute             DXAppEvent
+	OnStartStorageReady   DXAppEvent
+	OnStopping            DXAppEvent
 }
 
 func (a *DXApp) Run() error {
@@ -70,6 +74,21 @@ func (a *DXApp) Run() error {
 			return err
 		}
 	}
+	if a.OnDefineConfiguration != nil {
+		err := a.OnDefineConfiguration()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+	if a.OnDefineAPI != nil {
+		err := a.OnDefineAPI()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+
 	err := a.execute()
 	if err != nil {
 		log.Log.Error(err.Error())
@@ -142,6 +161,9 @@ func (a *DXApp) start() (err error) {
 
 func (a *DXApp) Stop() (err error) {
 	log.Log.Info("Stopping")
+	if a.OnStopping != nil {
+		a.OnStopping()
+	}
 	if a.IsTaskExist {
 		err = tasks.Manager.StopAll()
 		if err != nil {
