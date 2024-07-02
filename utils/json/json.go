@@ -148,6 +148,14 @@ func GetInt64(kv utils.JSON, k string) (v int64, err error) {
 	return a, err
 }
 
+func MustGetInt64(kv utils.JSON, k string) (v int64) {
+	a, err := GetInt64(kv, k)
+	if err != nil {
+		panic(err)
+	}
+	return a
+}
+
 func GetInt64WithDefault(kv utils.JSON, k string, defaultValue int64) (v int64, err error) {
 	var a int64
 	a = GetNumberWithDefault(kv, k, defaultValue)

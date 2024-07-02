@@ -374,6 +374,13 @@ func ConvertToInterfaceStringFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+func MustConvertToInterfaceStringFromAny(v any) (r any) {
+	r, err := ConvertToInterfaceStringFromAny(v)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
 func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:

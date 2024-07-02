@@ -172,11 +172,11 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
 		})
-		var aepr *DXAPIEndPointRequest
 		for _, v := range a.EndPoints {
 			p := v
 			if p.EndPointType == EndPointTypeHTTP {
 				a.HTTPServer.Add(p.Method, p.Uri, func(c *fiber.Ctx) error {
+					var aepr *DXAPIEndPointRequest
 					var err error
 					defer func() {
 						if err != nil {
@@ -237,6 +237,7 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 			}
 			if p.EndPointType == EndPointTypeWS {
 				a.HTTPServer.Add(p.Method, p.Uri, func(c *fiber.Ctx) error {
+					var aepr *DXAPIEndPointRequest
 					var err error
 					defer func() {
 						if err != nil {
@@ -285,6 +286,7 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 					}
 					return c.Next()
 				}, websocket.New(func(c *websocket.Conn) {
+					var aepr *DXAPIEndPointRequest
 					if p.OnWSLoop != nil {
 						aepr.WSConnection = c
 						err := p.OnWSLoop(aepr)

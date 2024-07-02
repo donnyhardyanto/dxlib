@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -15,7 +16,7 @@ import (
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
 	utilsHttp "dxlib/v3/utils/http"
-	json2 "dxlib/v3/utils/json"
+	utilsJson "dxlib/v3/utils/json"
 	security "dxlib/v3/utils/security"
 )
 
@@ -41,8 +42,6 @@ type DXAPIEndPointRequest struct {
 	Log             log.DXLog
 	FiberContext    *fiber.Ctx
 
-	//	ResponseWriter        http.ResponseWriter
-	//	Request               *http.Request
 	WSConnection          *websocket.Conn
 	RequestBodyAsBytes    []byte
 	ResponseErrorAsString string
@@ -197,6 +196,25 @@ func (aepr *DXAPIEndPointRequest) NewAPIEndPointRequestParameter(aepp DXAPIEndPo
 	return &aerp
 }
 
+func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, reason, reason_message string, data ...any) (err error) {
+	if statusCode != 200 {
+		aepr.Log.Warnf("Status Code: %d %s %s %v", statusCode, reason, reason_message, data)
+	}
+	return aepr.ResponseSetStatusCodeAndBodyJSON(
+		statusCode,
+		utils.JSON{
+			"reason":         reason,
+			"reason_message": reason_message,
+			"data":           data,
+		},
+	)
+}
+
+func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeAndBodyJSON(statusCode int, v utils.JSON) (err error) {
+	aepr.ResponseStatusCode = statusCode
+	return aepr.ResponseSetFromJSON(v)
+}
+
 func (aepr *DXAPIEndPointRequest) ResponseSetFromJSON(v utils.JSON) (err error) {
 	if v == nil {
 		return nil
@@ -210,59 +228,6 @@ func (aepr *DXAPIEndPointRequest) ResponseSetFromJSON(v utils.JSON) (err error) 
 	return nil
 }
 
-/*
-	 func (aepr *DXAPIEndPointRequest) ResponseWriteAsJSON(statusCode int, err error, reasonCode string, messageText string, data interface{}) {
-		aepr.ResponseStatusCode = statusCode
-		code := ""
-		if err != nil {
-			aepr.ResponseErrorAsString = err.Error()
-		}
-		if reasonCode != `` {
-			aepr.ResponseErrorAsString = reasonCode
-		}
-
-		switch statusCode {
-		case 0, http.StatusOK:
-			code = `OK`
-			aepr.ResponseErrorAsString = ""
-		case http.StatusUnauthorized:
-			code = `UNAUTHORIZED`
-			aepr.ResponseErrorAsString = "Unauthorized"
-		default:
-			code = `FAIL`
-			if aepr.ResponseErrorAsString == "" {
-				aepr.ResponseErrorAsString = "Internal error"
-			}
-		}
-
-		reply := map[string]interface{}{
-			`code`:         code,
-			`reason_code`:  aepr.ResponseErrorAsString,
-			`message_text`: messageText,
-			`data`:         data,
-		}
-
-		replyAsBytes, errMarshalResponse := json.Marshal(reply)
-		if errMarshalResponse != nil {
-			aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/errMarshalResponse (%v), reply-data: %v", errMarshalResponse, reply)
-			aepr.ResponseStatusCode = http.StatusInternalServerError
-			aepr.ResponseErrorAsString = errMarshalResponse.Error()
-		}
-		if aepr.ResponseStatusCode < 300 {
-			aepr.ResponseWriter.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
-		}
-		aepr.ResponseWriter.WriteHeader(aepr.ResponseStatusCode)
-		if replyAsBytes != nil {
-			//if aepr.ResponseStatusCode < 300 {
-			_, errWrite := aepr.ResponseWriter.Write(replyAsBytes)
-			if errWrite != nil {
-				aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.ResponseWriter.Write (%v), reply-data: %v", errWrite, reply)
-				aepr.ResponseErrorAsString = errWrite.Error()
-			}
-			//}
-		}
-	}
-*/
 func (aepr *DXAPIEndPointRequest) GetParameterValueEntry(k string) (val *DXAPIEndPointRequestParameterValue, err error) {
 	var ok bool
 	if val, ok = aepr.ParameterValues[k]; !ok {
@@ -658,7 +623,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 		return responseStatusCode, nil, err
 	}
 
-	vAsString, err := json2.PrettyPrint(responseAsJSON)
+	vAsString, err := utilsJson.PrettyPrint(responseAsJSON)
 	if err != nil {
 		aepr.Log.Errorf("Error in make HTTP request (%v)", err)
 		return responseStatusCode, nil, err
@@ -666,4 +631,48 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 	aepr.Log.Debugf("Response data=%s", vAsString)
 
 	return responseStatusCode, responseAsJSON, nil
+}
+
+func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters utils.JSON, headers map[string]string) (_responseStatusCode int, responseAsJSON utils.JSON, err error) {
+	r, err := aepr.HTTPClientDo(method, url, parameters, headers)
+	if err != nil {
+		aepr.ResponseSetStatusCodeError(400, `DIAL_ERROR`, err.Error())
+		if r != nil {
+			return r.StatusCode, nil, err
+		} else {
+			return 0, nil, err
+		}
+	}
+	if r == nil {
+		aepr.Log.PanicAndCreateErrorf("HTTPClient2-1", "r is nil")
+		return 0, nil, err
+	}
+	responseBodyAsBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		return r.StatusCode, nil, err
+	}
+	responseBodyAsString := string(responseBodyAsBytes)
+	if r.StatusCode != 200 {
+		responseStatusCodeAsString := utils.MustConvertToInterfaceStringFromAny(r.StatusCode).(string)
+		err := aepr.ResponseSetStatusCodeError(400, `PROXY_STATUS_`+responseStatusCodeAsString, ``, responseBodyAsString)
+		if err != nil {
+			return 0, nil, err
+		}
+		return r.StatusCode, nil, err
+	}
+
+	responseAsJSON, err = utilsJson.StringToJSON(responseBodyAsString)
+	if err != nil {
+		aepr.Log.Warnf("Error in make HTTP request, cannot be converted to JSON (%v)", err)
+		return r.StatusCode, nil, err
+	}
+
+	vAsString, err := utilsJson.PrettyPrint(responseAsJSON)
+	if err != nil {
+		aepr.Log.Panic("HTTPClient2-2: json2.PrettyPrint(responseAsJSON", err)
+		return r.StatusCode, nil, err
+	}
+	aepr.Log.Debugf("Response data=%s", vAsString)
+
+	return r.StatusCode, responseAsJSON, nil
 }
