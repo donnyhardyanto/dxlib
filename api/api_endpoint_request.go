@@ -254,10 +254,13 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsAny(k string) (isExist bool
 	return true, valAsAny, nil
 }
 
-func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string) (isExist bool, val string, err error) {
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string, defaultValue ...any) (isExist bool, val string, err error) {
 	isExist, valAsAny, err := aepr.GetParameterValueAsAny(k)
 	if !isExist {
-		return isExist, "", err
+		if defaultValue != nil {
+			val = defaultValue[0].(string)
+		}
+		return isExist, val, err
 	}
 	val, ok := valAsAny.(string)
 	if !ok {
@@ -485,6 +488,11 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			if rpv.RawValue == nil {
 				err := aepr.Log.WarnAndCreateErrorf(`Mandatory parameter '%s' is not exist`, v.NameId)
 				aepr.ResponseStatusCode = http.StatusUnprocessableEntity
+				if aepr.EndPoint.Owner.IsDebug {
+					aepr.ResponseSetFromJSON(utils.JSON{
+						"reason_message": err.Error(),
+					})
+				}
 				return err
 			}
 		}
@@ -492,6 +500,11 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			if !rpv.Validate() {
 				err := aepr.Log.WarnAndCreateErrorf(`Parameter '%s' validation fail`, v.NameId)
 				aepr.ResponseStatusCode = http.StatusUnprocessableEntity
+				if aepr.EndPoint.Owner.IsDebug {
+					aepr.ResponseSetFromJSON(utils.JSON{
+						"reason_message": err.Error(),
+					})
+				}
 				return err
 			}
 		}
@@ -653,8 +666,8 @@ func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters uti
 	}
 	responseBodyAsString := string(responseBodyAsBytes)
 	if r.StatusCode != 200 {
-		responseStatusCodeAsString := utils.MustConvertToInterfaceStringFromAny(r.StatusCode).(string)
-		err := aepr.ResponseSetStatusCodeError(400, `PROXY_STATUS_`+responseStatusCodeAsString, ``, responseBodyAsString)
+		responseStatusCodeAsString := fmt.Sprintf("%v", r.StatusCode)
+		err := aepr.ResponseSetStatusCodeError(400, `PROXY_STATUS_`+responseStatusCodeAsString, responseBodyAsString)
 		if err != nil {
 			return 0, nil, err
 		}
