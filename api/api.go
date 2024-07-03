@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"net/http"
 	"strconv"
 	"time"
@@ -173,6 +174,11 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
 		})
+		a.HTTPServer.Use(cors.New(cors.Config{
+			AllowOrigins: "*",                                   // Allows all origins
+			AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH",      // Specify what methods to allow
+			AllowHeaders: "Origin, Content-Type, Accept, x-ijt", // Specify what headers can be sent
+		}))
 		for _, v := range a.EndPoints {
 			p := v
 			if p.EndPointType == EndPointTypeHTTP {
