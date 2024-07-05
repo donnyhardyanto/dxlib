@@ -23,8 +23,8 @@ const (
 var DXLogLevelAsString = map[DXLogLevel]string{
 	DXLogLevelTrace: "TRACE",
 	DXLogLevelDebug: "DEBUG",
-	DXLogLevelInfo:  "INFO ",
-	DXLogLevelWarn:  "WARN ",
+	DXLogLevelInfo:  "INFO",
+	DXLogLevelWarn:  "WARN",
 	DXLogLevelError: "ERROR",
 	DXLogLevelFatal: "FATAL",
 	DXLogLevelPanic: "PANIC",
