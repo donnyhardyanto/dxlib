@@ -95,36 +95,36 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	return newId, err
 }
 
-func (t *DXTable) GetById(log *log.DXLog, id int64) (r utils.JSON, err error) {
-	r, err = t.SelectOneMustExist(log, utils.JSON{
+func (t *DXTable) GetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.SelectOneMustExist(log, utils.JSON{
 		"id":         id,
 		"is_deleted": false,
 	}, map[string]string{"id": "asc"})
-	return r, err
+	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxGetById(log *log.DXLog, tx *databases.DXDatabaseTx, id int64) (r utils.JSON, err error) {
-	r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
+func (t *DXTable) TxGetById(log *log.DXLog, tx *databases.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
 		"id":         id,
 		"is_deleted": false,
 	}, nil, nil, nil)
-	return r, err
+	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxGetByCode(log *log.DXLog, tx *databases.DXDatabaseTx, code string) (r utils.JSON, err error) {
-	r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
+func (t *DXTable) TxGetByCode(log *log.DXLog, tx *databases.DXDatabaseTx, code string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
 		t.FieldNameForRowCode: code,
 		"is_deleted":          false,
 	}, nil, nil, nil)
-	return r, err
+	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxGetByNameId(log *log.DXLog, tx *databases.DXDatabaseTx, nameId string) (r utils.JSON, err error) {
-	r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
+func (t *DXTable) TxGetByNameId(log *log.DXLog, tx *databases.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
 		t.FieldNameForRowNameId: nameId,
 		"is_deleted":            false,
 	}, nil, nil, nil)
-	return r, err
+	return rowsInfo, r, err
 }
 
 func (t *DXTable) TxInsert(log *log.DXLog, tx *databases.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
@@ -244,7 +244,7 @@ func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	d, err := t.Database.SelectOne(t.ListViewNameId, nil, utils.JSON{
+	rowsInfo, d, err := t.Database.SelectOne(t.ListViewNameId, nil, utils.JSON{
 		"id":         id,
 		"is_deleted": false,
 	}, nil, nil)
@@ -252,7 +252,7 @@ func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	err = aepr.ResponseSetFromJSON(utils.JSON{t.ResultObjectName: d})
+	err = aepr.ResponseSetFromJSON(utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
 
 	return err
 }
@@ -318,7 +318,7 @@ func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 }
 
 func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string, limit any) (r []utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
 		fieldNames = &[]string{"*"}
@@ -333,17 +333,17 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldName
 		}
 	}
 
-	r, err = t.Database.Select(t.ListViewNameId, *fieldNames,
+	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, *fieldNames,
 		whereAndFieldNameValues, orderbyFieldNameDirections, limit)
 	if err != nil {
-		return nil, err
+		return rowsInfo, nil, err
 	}
 
-	return r, err
+	return rowsInfo, r, err
 }
 
 func (t *DXTable) SelectOneMustExist(log *log.DXLog, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -355,7 +355,7 @@ func (t *DXTable) SelectOneMustExist(log *log.DXLog, whereAndFieldNameValues uti
 }
 
 func (t *DXTable) TxSelectOneMustExist(log *log.DXLog, tx *databases.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -366,7 +366,7 @@ func (t *DXTable) TxSelectOneMustExist(log *log.DXLog, tx *databases.DXDatabaseT
 }
 
 func (t *DXTable) TxSelectOne(log *log.DXLog, tx *databases.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -377,7 +377,7 @@ func (t *DXTable) TxSelectOne(log *log.DXLog, tx *databases.DXDatabaseTx, whereA
 }
 
 func (t *DXTable) TxSelectOneForUpdate(log *log.DXLog, tx *databases.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -459,7 +459,7 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 		}
 	}
 
-	list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
+	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
 		aepr.Log.Errorf("Error at paging table %s (%s) ", t.NameId, err)
@@ -471,6 +471,7 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 			"rows":       list,
 			"total_rows": totalRows,
 			"total_page": totalPage,
+			"rows_info":  rowsInfo,
 		},
 	}
 	err = aepr.ResponseSetFromJSON(data)
@@ -478,7 +479,8 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 	return err
 }
 
-func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
+func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
+	rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}

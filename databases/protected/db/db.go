@@ -10,6 +10,11 @@ import (
 	"dxlib/v3/utils"
 )
 
+type RowsInfo struct {
+	Columns     []string
+	ColumnTypes []*sql.ColumnType
+}
+
 func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON) (r utils.JSON) {
 	r = utils.JSON{}
 	for k, v := range m1 {
@@ -243,35 +248,45 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	}
 }
 
-func NamedQueryRow(db *sqlx.DB, query string, arg any) (r utils.JSON, err error) {
+func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() {
 		_ = rows.Close()
 	}()
+	rowsInfo = &RowsInfo{}
+	rowsInfo.Columns, err = rows.Columns()
+	if err != nil {
+		return nil, r, err
+	}
+	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	if err != nil {
+		return rowsInfo, r, err
+	}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return rowJSON, nil
+		return rowsInfo, rowJSON, nil
 	}
-	return nil, nil
+
+	return rowsInfo, r, nil
 }
 
-func NamedQueryRowMustExist(db *sqlx.DB, query string, args any) (r utils.JSON, err error) {
-	r, err = NamedQueryRow(db, query, args)
+func NamedQueryRowMustExist(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = NamedQueryRow(db, query, args)
 	if err != nil {
-		return nil, err
+		return rowsInfo, r, err
 	}
 	if r == nil {
 		err = errors.New(`QueryRowMustExist`)
-		return nil, err
+		return rowsInfo, r, err
 	}
-	return r, nil
+	return rowsInfo, r, nil
 }
 
 func NamedQueryIdMustExist(dbAppInstance *sqlx.DB, query string, arg any) (int64, error) {
@@ -296,7 +311,7 @@ func NamedQueryIdMustExist(dbAppInstance *sqlx.DB, query string, arg any) (int64
 	return returningId, nil
 }
 
-func NamedQueryRows(dbAppInstance *sqlx.DB, query string, arg any) (r []utils.JSON, err error) {
+func NamedQueryRows(dbAppInstance *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}
@@ -304,44 +319,62 @@ func NamedQueryRows(dbAppInstance *sqlx.DB, query string, arg any) (r []utils.JS
 
 	rows, err := dbAppInstance.NamedQuery(query, arg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() {
 		_ = rows.Close()
 	}()
+	rowsInfo = &RowsInfo{}
+	rowsInfo.Columns, err = rows.Columns()
+	if err != nil {
+		return nil, r, err
+	}
+	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	if err != nil {
+		return rowsInfo, r, err
+	}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		r = append(r, rowJSON)
 	}
-	return r, nil
+	return rowsInfo, r, nil
 }
 
-func QueryRows(dbAppInstance *sqlx.DB, query string, arg any) (r []utils.JSON, err error) {
+func QueryRows(dbAppInstance *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	rows, err := dbAppInstance.Queryx(query, arg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() {
 		_ = rows.Close()
 	}()
+	rowsInfo = &RowsInfo{}
+	rowsInfo.Columns, err = rows.Columns()
+	if err != nil {
+		return nil, r, err
+	}
+	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	if err != nil {
+		return rowsInfo, r, err
+	}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		r = append(r, rowJSON)
 	}
-	return r, nil
+	return rowsInfo, r, nil
 }
 
 func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
-	arg any) (rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
+	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
 	if returnFieldsQueryPart == `` {
 		returnFieldsQueryPart = `*`
 	}
@@ -360,9 +393,9 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 		summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 	}
 	countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-	summaryRows, err = NamedQueryRowMustExist(dbAppInstance, countSQL, arg)
+	_, summaryRows, err = NamedQueryRowMustExist(dbAppInstance, countSQL, arg)
 	if err != nil {
-		return nil, 0, 0, nil, err
+		return nil, nil, 0, 0, nil, err
 	}
 
 	totalRows = summaryRows[`_total_rows`].(int64)
@@ -405,15 +438,15 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	}
 
-	rows, err = NamedQueryRows(dbAppInstance, query, arg)
+	rowsInfo, rows, err = NamedQueryRows(dbAppInstance, query, arg)
 	if err != nil {
-		return nil, 0, 0, summaryRows, err
+		return rowsInfo, rows, 0, 0, summaryRows, err
 	}
-	return rows, totalRows, totalPage, summaryRows, err
+	return rowsInfo, rows, totalRows, totalPage, summaryRows, err
 }
 
 func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
-	arg any) (rows []utils.JSON, totalRows int64, totalPage int64, err error) {
+	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, err error) {
 	if returnFieldsQueryPart == `` {
 		returnFieldsQueryPart = `*`
 	}
@@ -430,7 +463,7 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 	countSQL := `SELECT COUNT(*) FROM ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
 	totalRows, err = NamedQueryIdMustExist(dbAppInstance, countSQL, arg)
 	if err != nil {
-		return nil, 0, 0, err
+		return nil, nil, 0, 0, err
 	}
 
 	effectiveLimitQueryPart := ``
@@ -447,53 +480,53 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 	}
 
 	query := `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
-	rows, err = QueryRows(dbAppInstance, query, arg)
+	rowsInfo, rows, err = QueryRows(dbAppInstance, query, arg)
 	if err != nil {
-		return nil, 0, 0, err
+		return rowsInfo, rows, 0, 0, err
 	}
-	return rows, totalRows, totalPage, err
+	return rowsInfo, rows, totalRows, totalPage, err
 }
 
-func SelectWhereIdMustExist(db *sqlx.DB, tableName string, idValue int64) (r utils.JSON, err error) {
-	r, err = NamedQueryRowMustExist(db, `SELECT * FROM `+tableName+` where id=:id`, utils.JSON{
+func SelectWhereIdMustExist(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = NamedQueryRowMustExist(db, `SELECT * FROM `+tableName+` where id=:id`, utils.JSON{
 		`id`: idValue,
 	})
-	return r, err
+	return rowsInfo, r, err
 }
 
 func SelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	s, err := SQLPartConstructSelect(db.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	wKV := ExcludeSQLExpression(whereAndFieldNameValues)
-	r, err = NamedQueryRow(db, s, wKV)
-	return r, err
+	rowsInfo, r, err = NamedQueryRow(db, s, wKV)
+	return rowsInfo, r, err
 }
 
 func SelectOneMustExist(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
-	r, err = SelectOne(db, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
+	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = SelectOne(db, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 	if err != nil {
-		return nil, err
+		return rowsInfo, r, err
 	}
 	if r == nil {
 		err = errors.New("RowNotFoundIn:" + tableName)
-		return nil, err
+		return rowsInfo, nil, err
 	}
-	return r, err
+	return rowsInfo, r, nil
 }
 
 func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string,
-	limit any) (r []utils.JSON, err error) {
+	limit any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	s, err := SQLPartConstructSelect(db.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	wKV := ExcludeSQLExpression(whereAndFieldNameValues)
-	r, err = NamedQueryRows(db, s, wKV)
-	return r, err
+	rowsInfo, r, err = NamedQueryRows(db, s, wKV)
+	return rowsInfo, r, err
 }
 
 func DeleteWhereKeyValues(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {

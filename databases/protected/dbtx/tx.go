@@ -102,7 +102,7 @@ func TxNamedQueryIdBigMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, 
 	return returningId, nil
 }
 
-func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (r []utils.JSON, err error) {
+func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 	rows, err := tx.NamedQuery(query, arg)
 	if err != nil {
 		if autoRollback {
@@ -111,11 +111,20 @@ func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query stri
 				log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
 			}
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() {
 		_ = rows.Close()
 	}()
+	rowsInfo = &db.RowsInfo{}
+	rowsInfo.Columns, err = rows.Columns()
+	if err != nil {
+		return nil, r, err
+	}
+	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	if err != nil {
+		return rowsInfo, r, err
+	}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
@@ -124,21 +133,31 @@ func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query stri
 			if errTx != nil {
 				log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
 			}
-			return nil, err
+			return nil, nil, err
 		}
 		r = append(r, rowJSON)
 	}
-	return r, nil
+
+	return rowsInfo, r, nil
 }
 
-func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (r utils.JSON, err error) {
+func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rows, err := TxNamedQuery(log, autoRollback, tx, query, arg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() {
 		_ = rows.Close()
 	}()
+	rowsInfo = &db.RowsInfo{}
+	rowsInfo.Columns, err = rows.Columns()
+	if err != nil {
+		return nil, r, err
+	}
+	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	if err != nil {
+		return rowsInfo, r, err
+	}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
@@ -147,17 +166,18 @@ func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query strin
 			if errTx != nil {
 				log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
 			}
-			return nil, err
+			return rowsInfo, nil, err
 		}
-		return rowJSON, nil
+		return rowsInfo, rowJSON, nil
 	}
-	return nil, nil
+
+	return rowsInfo, nil, nil
 }
 
-func TxNamedQueryRowMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (r utils.JSON, err error) {
-	row, err := TxNamedQueryRow(log, autoRollback, tx, query, arg)
+func TxNamedQueryRowMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, row, err := TxNamedQueryRow(log, autoRollback, tx, query, arg)
 	if err != nil {
-		return nil, err
+		return rowsInfo, row, err
 	}
 	if row == nil {
 		err := errors.New(`QueryRowResultMustExist`)
@@ -165,47 +185,47 @@ func TxNamedQueryRowMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, qu
 		if errTx != nil {
 			log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
 		}
-		return nil, err
+		return rowsInfo, nil, err
 	}
-	return row, err
+	return rowsInfo, row, err
 }
 
 func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (r []utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, nil, forUpdatePart)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues)
-	r, err = TxNamedQueryRows(log, autoRollback, tx, s, wKV)
-	return r, err
+	rowsInfo, r, err = TxNamedQueryRows(log, autoRollback, tx, s, wKV)
+	return rowsInfo, r, err
 }
 
-func TxSelectOneMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string, forUpdatePart any) (r utils.JSON,
-	err error) {
+func TxSelectOneMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
 		err := fmt.Errorf(`%s:%s`, err, tableName)
-		return nil, err
+		return rowsInfo, nil, err
 	}
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues)
-	r, err = TxNamedQueryRowMustExist(log, autoRollback, tx, s, wKV)
+	rowsInfo, r, err = TxNamedQueryRowMustExist(log, autoRollback, tx, s, wKV)
 	if err != nil {
 		err := fmt.Errorf(`%s:%s`, err, tableName)
-		return nil, err
+		return rowsInfo, nil, err
 	}
-	return r, err
+	return rowsInfo, r, err
 }
 
 func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (r utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues)
-	r, err = TxNamedQueryRow(log, autoRollback, tx, s, wKV)
-	return r, err
+	rowsInfo, r, err = TxNamedQueryRow(log, autoRollback, tx, s, wKV)
+	return rowsInfo, r, err
 }
 
 func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, keyValues utils.JSON) (id int64, err error) {
@@ -236,13 +256,14 @@ func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tabl
 	return result, err
 }
 
-func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result utils.JSON, err error) {
+func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (
+	result utils.JSON, err error) {
 	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues)
 	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w + ` returning *`
 
-	result, err = TxNamedQueryRow(log, autoRollback, tx, s, joinedKeyValues)
+	_, result, err = TxNamedQueryRow(log, autoRollback, tx, s, joinedKeyValues)
 	return result, err
 }
 

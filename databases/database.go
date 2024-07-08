@@ -310,10 +310,10 @@ func (d *DXDatabase) Disconnect() (err error) {
 }
 
 func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return nil, err
-	}
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return nil, err
+	//}
 	isDDL := utilsSql.IsDDL(statement)
 	if !isDDL {
 		query := pq.NewNamedParameterQuery(statement)
@@ -342,11 +342,11 @@ func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, er
 }
 
 func (d *DXDatabase) PropertyValue(key string) (value string, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return "", err
-	}
-	resultData, err := db.SelectOneMustExist(d.Connection, "properties", nil, utils.JSON{
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return "", err
+	//}
+	_, resultData, err := db.SelectOneMustExist(d.Connection, "properties", nil, utils.JSON{
 		"key": key,
 	}, nil, nil)
 	if err != nil {
@@ -357,53 +357,54 @@ func (d *DXDatabase) PropertyValue(key string) (value string, err error) {
 }
 
 func (d *DXDatabase) Insert(tableName string, keyValues utils.JSON) (id int64, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return 0, err
-	}
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return 0, err
+	//}
 	return db.Insert(d.Connection, tableName, keyValues)
 }
 
 func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return nil, err
-	}
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return nil, err
+	//}
 	return db.UpdateWhereKeyValues(d.Connection, tableName, setKeyValues, whereKeyValues)
 }
 
-func (d *DXDatabase) SelectOneMustExist(tableName string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (resultData utils.JSON, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return nil, err
-	}
-	resultData, err = db.SelectOneMustExist(d.Connection, tableName, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
-	return resultData, err
+func (d *DXDatabase) SelectOneMustExist(tableName string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
+	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+	rowsInfo, resultData, err = db.SelectOneMustExist(d.Connection, tableName, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
+	return rowsInfo, resultData, err
 }
 
 func (d *DXDatabase) Select(tableName string, showFieldNames []string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string,
-	limit any) (resultData []utils.JSON, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return nil, err
-	}
+	limit any) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return nil, nil, err
+	//}
 	return db.Select(d.Connection, tableName, showFieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit)
 }
 
 func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string) (r utils.JSON, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return nil, err
-	}
+	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return nil, nil, err
+	//}
 	return db.SelectOne(d.Connection, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 }
 
 func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return nil, err
-	}
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return nil, err
+	//}
 	log.Log.Infof("Executing SQL file %s... start", filename)
 	fs := sqlfile.SqlFile{}
 	err = fs.File(filename)
@@ -421,10 +422,10 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 }
 
 func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return nil, err
-	}
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return nil, err
+	//}
 	rs = []sql.Result{}
 	for k, v := range d.CreateScriptFiles {
 		r, err := d.ExecuteFile(v)
@@ -438,10 +439,10 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 }
 
 func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callback DXDatabaseTxCallback) (err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return err
-	}
+	//err = d.CheckConnectionAndReconnect()
+	//if err != nil {
+	//	return err
+	//}
 	tx, err := d.Connection.BeginTxx(log.Context, &sql.TxOptions{
 		Isolation: isolationLevel,
 		ReadOnly:  false,
@@ -474,12 +475,12 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 }
 
 func (dtx *DXDatabaseTx) SelectOne(log *log.DXLog, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (r utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	return dbtx.TxSelectOne(log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
 }
 
 func (dtx *DXDatabaseTx) SelectOneMustExist(log *log.DXLog, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (r utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	return dbtx.TxSelectOneMustExist(log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
 }
 func (dtx *DXDatabaseTx) Insert(log *log.DXLog, tableName string, keyValues utils.JSON) (id int64, err error) {
