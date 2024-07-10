@@ -196,15 +196,15 @@ func (aepr *DXAPIEndPointRequest) NewAPIEndPointRequestParameter(aepp DXAPIEndPo
 	return &aerp
 }
 
-func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, reason, reason_message string, data ...any) (err error) {
+func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, reason, reasonMessage string, data ...any) (err error) {
 	if statusCode != 200 {
-		aepr.Log.Warnf("Status Code: %d %s %s %v", statusCode, reason, reason_message, data)
+		aepr.Log.Warnf("Status Code: %d %s %s %v", statusCode, reason, reasonMessage, data)
 	}
 	return aepr.ResponseSetStatusCodeAndBodyJSON(
 		statusCode,
 		utils.JSON{
 			"reason":         reason,
-			"reason_message": reason_message,
+			"reason_message": reasonMessage,
 			"data":           data,
 		},
 	)
@@ -453,6 +453,17 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsRaw() (err error) {
 	return nil
 }
 
+func (aepr *DXAPIEndPointRequest) responseSetStatusCodeAsErrorf(statusCode int, reasonMessage string, data ...any) (err error) {
+	err = aepr.Log.WarnAndCreateErrorf(reasonMessage, data)
+	aepr.ResponseStatusCode = statusCode
+	if aepr.EndPoint.Owner.IsDebug {
+		aepr.ResponseSetFromJSON(utils.JSON{
+			"reason_message": err.Error(),
+		})
+	}
+	return err
+}
+
 func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err error) {
 
 	actualContentType := aepr.FiberContext.Get("Content-Type")
@@ -486,26 +497,12 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		}
 		if rpv.Metadata.IsMustExist {
 			if rpv.RawValue == nil {
-				err := aepr.Log.WarnAndCreateErrorf(`Mandatory parameter '%s' is not exist`, v.NameId)
-				aepr.ResponseStatusCode = http.StatusUnprocessableEntity
-				if aepr.EndPoint.Owner.IsDebug {
-					aepr.ResponseSetFromJSON(utils.JSON{
-						"reason_message": err.Error(),
-					})
-				}
-				return err
+				return aepr.responseSetStatusCodeAsErrorf(http.StatusUnprocessableEntity, `Mandatory parameter '%s' is not exist`, v.NameId)
 			}
 		}
 		if rpv.RawValue != nil {
 			if !rpv.Validate() {
-				err := aepr.Log.WarnAndCreateErrorf(`Parameter '%s' validation fail`, v.NameId)
-				aepr.ResponseStatusCode = http.StatusUnprocessableEntity
-				if aepr.EndPoint.Owner.IsDebug {
-					aepr.ResponseSetFromJSON(utils.JSON{
-						"reason_message": err.Error(),
-					})
-				}
-				return err
+				return aepr.responseSetStatusCodeAsErrorf(http.StatusUnprocessableEntity, `Parameter '%s' validation fail`, v.NameId)
 			}
 		}
 	}
