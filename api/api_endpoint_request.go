@@ -107,7 +107,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 				aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Invalid type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 				return false
 			}
-		case "protected-string", "protected-sql-string", "iso8601":
+		case "protected-string", "protected-sql-string":
 			if rawValueType != "string" {
 				return false
 			}
@@ -120,10 +120,10 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 					return false
 				}
 			}
-			/*		case "iso8601":
-					if rawValueType != "string" {
-						return false
-					}*/
+		case "iso8601":
+			if rawValueType != "string" {
+				return false
+			}
 		case "array":
 			if rawValueType != "[]interface {}" {
 				return false
