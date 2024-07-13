@@ -139,7 +139,6 @@ func (a *DXApp) start() (err error) {
 			if err != nil {
 				return err
 			}
-
 		}
 	}
 	if a.IsAPIExist {

@@ -69,6 +69,7 @@ type DXAPIEndPoint struct {
 	OnExecute             DXAPIEndPointExecuteFunc
 	OnWSLoop              DXAPIEndPointExecuteFunc
 	ResponsePossibilities map[string]*DxAPIEndPointResponsePossibility
+	Middlewares           []DXAPIEndPointExecuteFunc
 }
 
 func (aep *DXAPIEndPoint) PrintSpec() (s string) {

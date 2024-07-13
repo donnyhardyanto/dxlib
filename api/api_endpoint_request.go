@@ -35,13 +35,12 @@ type DXAPIUser struct {
 	Name string `json:"name"`
 }
 type DXAPIEndPointRequest struct {
-	Id              string
-	Context         context.Context
-	EndPoint        *DXAPIEndPoint
-	ParameterValues map[string]*DXAPIEndPointRequestParameterValue
-	Log             log.DXLog
-	FiberContext    *fiber.Ctx
-
+	Id                    string
+	Context               context.Context
+	EndPoint              *DXAPIEndPoint
+	ParameterValues       map[string]*DXAPIEndPointRequestParameterValue
+	Log                   log.DXLog
+	FiberContext          *fiber.Ctx
 	WSConnection          *websocket.Conn
 	RequestBodyAsBytes    []byte
 	ResponseErrorAsString string
@@ -49,6 +48,7 @@ type DXAPIEndPointRequest struct {
 	ResponseBodyAsBytes   []byte
 	ErrorMessage          []string
 	CurrentUser           DXAPIUser
+	LocalData             map[string]any
 }
 
 func (aeprpv *DXAPIEndPointRequestParameterValue) NewChild(aepp DXAPIEndPointParameter) *DXAPIEndPointRequestParameterValue {

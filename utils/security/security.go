@@ -1,6 +1,8 @@
 package sql
 
 import (
+	"crypto/sha512"
+	"encoding/hex"
 	"strings"
 )
 
@@ -67,4 +69,14 @@ func PartSQLStringCheckPossibleSQLInjection(s string) bool {
 		return true
 	}
 	return false
+}
+
+func HashPassword(password string) []byte {
+	hashed := sha512.Sum512([]byte(password))
+	return hashed[:]
+}
+
+func HashPasswordToHexString(password string) string {
+	hashed := HashPassword(password)
+	return hex.EncodeToString(hashed)
 }

@@ -113,6 +113,8 @@ func GetString(kv utils.JSON, k string) (v string, err error) {
 func GetNumber[A Number](kv utils.JSON, k string) (v A, err error) {
 	var z float64
 	switch kv[k].(type) {
+	case A:
+		return kv[k].(A), nil
 	case []uint8:
 		s := string(kv[k].([]uint8))
 		z, err = strconv.ParseFloat(s, 64)

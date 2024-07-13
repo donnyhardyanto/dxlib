@@ -154,7 +154,7 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		r.DatabaseIndex, err = json2.GetInt(redisConfiguration, `database_index`)
 		if err != nil {
 			if r.MustConnected {
-				err := log.Log.PanicAndCreateErrorf("Mandatory database_index field in Redis %s configuration not exist", r.NameId)
+				err := log.Log.PanicAndCreateErrorf("Mandatory database_index field in Redis %s configuration not exist, check configuration and make sure it was integer not a string", r.NameId)
 				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in Redis %s configuration not exist", r.NameId)

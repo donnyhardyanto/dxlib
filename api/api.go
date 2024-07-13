@@ -164,68 +164,81 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	return &ae
 }
 
-func (a *DXAPI) endPointTypeHTTPAddHandler(p *DXAPIEndPoint) {
-	a.HTTPServer.Add(p.Method, p.Uri, func(c *fiber.Ctx) error {
-		var aepr *DXAPIEndPointRequest
-		var err error
-		defer func() {
-			if err != nil {
-				if aepr.ResponseStatusCode == http.StatusOK {
-					aepr.ResponseStatusCode = http.StatusInternalServerError
-				}
-				aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
+func (a *DXAPI) doFiberHTTPHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
+	var aepr *DXAPIEndPointRequest
+	var err error
+	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "RequestHandler|"+p.Uri)
+	defer span.End()
 
-			} else {
-				if aepr.ResponseStatusCode < 300 {
-					x := aepr.FiberContext.Response().Header
-					y := x.ContentType()
-					if y == nil {
-						x.Set(`Content-Type`, `application/octet; charset=utf-8`)
-					}
-				}
+	defer func() {
+		if err != nil {
+			if aepr.ResponseStatusCode == http.StatusOK {
+				aepr.ResponseStatusCode = http.StatusInternalServerError
 			}
+			aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
+
+		}
+
+		aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
+
+		if aepr.ResponseBodyAsBytes != nil {
+			x := aepr.FiberContext.Response().Header
+			y := x.ContentType()
+			if y == nil {
+				x.Set(`Content-Type`, `application/octet; charset=utf-8`)
+			}
+
 			contentLengthBytes := len(aepr.ResponseBodyAsBytes)
 			contentLengthBytesAsString := strconv.FormatInt(int64(contentLengthBytes), 10)
+
 			aepr.FiberContext.Response().Header.Set(`Content-Length`, contentLengthBytesAsString)
-			aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
 
-			if aepr.ResponseBodyAsBytes != nil {
-				errWrite := aepr.FiberContext.Send(aepr.ResponseBodyAsBytes)
-				if errWrite != nil {
-					aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.FiiberContext.Send (%v), reply-data: %v", errWrite, aepr.FiberContext.Response().Body())
-					aepr.ResponseErrorAsString = errWrite.Error()
-				}
+			errWrite := aepr.FiberContext.Send(aepr.ResponseBodyAsBytes)
+			if errWrite != nil {
+				aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.FiiberContext.Send (%v), reply-data: %v", errWrite, aepr.FiberContext.Response().Body())
+				aepr.ResponseErrorAsString = errWrite.Error()
 			}
-		}()
-		requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "RequestHandler|"+p.Uri)
-		defer span.End()
+		}
+	}()
 
-		aepr = p.NewEndPointRequest(requestContext, c)
-		defer func() {
-			aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
-		}()
+	aepr = p.NewEndPointRequest(requestContext, c)
+	defer func() {
+		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
+	}()
 
-		err = aepr.PreProcessRequest()
+	err = aepr.PreProcessRequest()
+	if err != nil {
+		aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
+		aepr.ResponseStatusCode = 422
+		return nil
+	}
+
+	for _, middleware := range p.Middlewares {
+		err = middleware(aepr)
 		if err != nil {
-			aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
-			aepr.ResponseStatusCode = 422
+			aepr.Log.Errorf("Error at Middleware (%s) ", err)
+			if aepr.ResponseStatusCode == 200 {
+				aepr.ResponseStatusCode = 500
+			}
+			return err
+		}
+	}
+
+	if p.OnExecute != nil {
+		err = p.OnExecute(aepr)
+		if err != nil {
+			aepr.Log.Errorf("Error at OnExecute (%s) ", err)
+			if aepr.ResponseStatusCode == 200 {
+				aepr.ResponseStatusCode = 500
+			}
 			return nil
 		}
-
-		if p.OnExecute != nil {
-			err = p.OnExecute(aepr)
-			if err != nil {
-				aepr.Log.Errorf("Error at OnExecute (%s) ", err)
-				if aepr.ResponseStatusCode == 200 {
-					aepr.ResponseStatusCode = 500
-				}
-				return nil
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
+
 func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
+
 	if !a.RuntimeIsActive {
 		err := a.ApplyConfigurations()
 		if err != nil {
@@ -242,70 +255,27 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		}))
 		for _, v := range a.EndPoints {
 			p := v
+
+			fiberHttpHandler := func(c *fiber.Ctx) error {
+				return a.doFiberHTTPHandler(&p, c)
+			}
+
 			if p.EndPointType == EndPointTypeHTTP {
-				a.endPointTypeHTTPAddHandler(&p)
+				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpHandler)
 			}
 			if p.EndPointType == EndPointTypeWS {
-				a.HTTPServer.Add(p.Method, p.Uri, func(c *fiber.Ctx) error {
-					var aepr *DXAPIEndPointRequest
-					var err error
-					defer func() {
-						if err != nil {
-							if aepr.ResponseStatusCode == http.StatusOK {
-								aepr.ResponseStatusCode = http.StatusInternalServerError
-							}
-							aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
-							contentLengthBytes := len(aepr.ResponseBodyAsBytes)
-							contentLengthBytesAsString := strconv.FormatInt(int64(contentLengthBytes), 10)
-							aepr.FiberContext.Response().Header.Set(`Content-Length`, contentLengthBytesAsString)
-							aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
-
-							if aepr.ResponseBodyAsBytes != nil {
-								errWrite := aepr.FiberContext.Send(aepr.ResponseBodyAsBytes)
-								if errWrite != nil {
-									aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.FiiberContext.Send (%v), reply-data: %v", errWrite, aepr.FiberContext.Response().Body())
-									aepr.ResponseErrorAsString = errWrite.Error()
-								}
+				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpHandler,
+					websocket.New(func(c *websocket.Conn) {
+						var aepr *DXAPIEndPointRequest
+						if p.OnWSLoop != nil {
+							aepr.WSConnection = c
+							err := p.OnWSLoop(aepr)
+							if err != nil {
+								return
 							}
 						}
-					}()
-					requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "RequestHandler|"+p.Uri)
-					defer span.End()
-
-					aepr = p.NewEndPointRequest(requestContext, c)
-					defer func() {
-						aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
-					}()
-
-					err = aepr.PreProcessRequest()
-					if err != nil {
-						aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
-						aepr.ResponseStatusCode = 422
-						return nil
-					}
-
-					if p.OnExecute != nil {
-						err = p.OnExecute(aepr)
-						if err != nil {
-							aepr.Log.Errorf("Error at OnExecute (%s) ", err)
-							if aepr.ResponseStatusCode == 200 {
-								aepr.ResponseStatusCode = 500
-							}
-							return nil
-						}
-					}
-					return c.Next()
-				}, websocket.New(func(c *websocket.Conn) {
-					var aepr *DXAPIEndPointRequest
-					if p.OnWSLoop != nil {
-						aepr.WSConnection = c
-						err := p.OnWSLoop(aepr)
-						if err != nil {
-							return
-						}
-					}
-
-				}))
+					}),
+				)
 			}
 
 		}

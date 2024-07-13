@@ -1,6 +1,9 @@
 package os
 
-import "os"
+import (
+	"os"
+	"strconv"
+)
 
 import (
 	"bufio"
@@ -53,4 +56,16 @@ func GetEnvDefaultValue(key string, defaultValue string) string {
 		value = defaultValue
 	}
 	return value
+}
+
+func GetEnvDefaultValueAsInt(key string, defaultValue int) int {
+	value, isPresent := os.LookupEnv(key)
+	if !isPresent {
+		return defaultValue
+	}
+	valueInt, err := strconv.Atoi(value)
+	if err != nil {
+		panic(err)
+	}
+	return valueInt
 }
