@@ -13,6 +13,7 @@ import (
 	"dxlib/v3/core"
 	"dxlib/v3/databases"
 	"dxlib/v3/log"
+	"dxlib/v3/module"
 	"dxlib/v3/redis"
 	"dxlib/v3/tables"
 	"dxlib/v3/tasks"
@@ -64,9 +65,108 @@ type DXApp struct {
 	OnExecute             DXAppEvent
 	OnStartStorageReady   DXAppEvent
 	OnStopping            DXAppEvent
+	InitModules           []module.DXModuleInterface
+	Modules               []module.DXModuleInterface
+}
+
+func (a *DXApp) AddInitModule(m module.DXModuleInterface) {
+	a.InitModules = append(a.InitModules, m)
+}
+
+func (a *DXApp) AddModule(m module.DXModuleInterface) {
+	a.Modules = append(a.Modules, m)
+}
+
+func (a *DXApp) handleInitModules() (err error) {
+	for _, m := range a.InitModules {
+		err := m.DefineConfiguration()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+
+	for _, m := range a.InitModules {
+		err := m.DefineAPI()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+
+	for _, m := range a.InitModules {
+		err := m.Start()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *DXApp) handleModules() (err error) {
+	for _, m := range a.Modules {
+		err := m.DefineConfiguration()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+
+	for _, m := range a.Modules {
+		err := m.DefineAPI()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+
+	for _, m := range a.Modules {
+		err := m.Start()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+	return nil
 }
 
 func (a *DXApp) Run() error {
+
+	err := a.handleInitModules()
+	if err != nil {
+		return err
+	}
+
+	defer func() (err error) {
+		for i := len(a.InitModules) - 1; i >= 0; i-- {
+			m := a.Modules[i]
+			err := m.Stop()
+			if err != nil {
+				log.Log.Error(err.Error())
+				return err
+			}
+		}
+		return nil
+	}()
+
+	err = a.handleModules()
+	if err != nil {
+		return err
+	}
+
+	defer func() (err error) {
+		for i := len(a.Modules) - 1; i >= 0; i-- {
+			m := a.Modules[i]
+			err := m.Stop()
+			if err != nil {
+				log.Log.Error(err.Error())
+				return err
+			}
+		}
+		return nil
+	}()
+
 	if a.OnDefine != nil {
 		err := a.OnDefine()
 		if err != nil {
@@ -89,7 +189,7 @@ func (a *DXApp) Run() error {
 		}
 	}
 
-	err := a.execute()
+	err = a.execute()
 	if err != nil {
 		log.Log.Error(err.Error())
 		return err

@@ -50,6 +50,17 @@ func (cm *DXConfigurationManager) NewConfiguration(nameId string, filename strin
 	return &d
 }
 
+func (cm *DXConfigurationManager) NewIfNotExistConfiguration(nnameId string, filename string, fileFormat string, mustExist bool, mustLoadFile bool, data utils.JSON, sensitiveDataKey []string) *DXConfiguration {
+	if _, ok := cm.Configurations[nnameId]; ok {
+		c := cm.Configurations[nnameId]
+		for k, v := range data {
+			(*c.Data)[k] = v
+		}
+		return c
+	}
+	return cm.NewConfiguration(nnameId, filename, fileFormat, mustExist, mustLoadFile, data, sensitiveDataKey)
+}
+
 func (c *DXConfiguration) ByteArrayJSONToJSON(v []byte) (r utils.JSON, err error) {
 	err = json.Unmarshal(v, &r)
 	return r, err
