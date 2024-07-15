@@ -5,6 +5,7 @@ type DXModuleInterface interface {
 	DefineAPI() (err error)
 	Start() (err error)
 	Stop() (err error)
+	DoAfterConfigurationStartAll() (err error)
 }
 
 type DXModule struct {

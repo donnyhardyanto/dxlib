@@ -53,20 +53,22 @@ type DXApp struct {
 	RuntimeErrorGroup        *errgroup.Group
 	RuntimeErrorGroupContext context.Context
 
-	IsRedisExist          bool
-	IsStorageExist        bool
-	IsAPIExist            bool
-	IsTaskExist           bool
-	DebugKey              string
-	IsDebug               bool
-	OnDefine              DXAppEvent
-	OnDefineConfiguration DXAppEvent
-	OnDefineAPI           DXAppEvent
-	OnExecute             DXAppEvent
-	OnStartStorageReady   DXAppEvent
-	OnStopping            DXAppEvent
-	InitModules           []module.DXModuleInterface
-	Modules               []module.DXModuleInterface
+	IsRedisExist                 bool
+	IsStorageExist               bool
+	IsAPIExist                   bool
+	IsTaskExist                  bool
+	DebugKey                     string
+	IsDebug                      bool
+	OnDefine                     DXAppEvent
+	OnDefineConfiguration        DXAppEvent
+	OnDefineSetVariables         DXAppEvent
+	OnDefineAPI                  DXAppEvent
+	OnAfterConfigurationStartAll DXAppEvent
+	OnExecute                    DXAppEvent
+	OnStartStorageReady          DXAppEvent
+	OnStopping                   DXAppEvent
+	InitModules                  []module.DXModuleInterface
+	Modules                      []module.DXModuleInterface
 }
 
 func (a *DXApp) AddInitModule(m module.DXModuleInterface) {
@@ -77,7 +79,7 @@ func (a *DXApp) AddModule(m module.DXModuleInterface) {
 	a.Modules = append(a.Modules, m)
 }
 
-func (a *DXApp) handleInitModules() (err error) {
+func (a *DXApp) handleDefineInitModules() (err error) {
 	for _, m := range a.InitModules {
 		err := m.DefineConfiguration()
 		if err != nil {
@@ -94,6 +96,10 @@ func (a *DXApp) handleInitModules() (err error) {
 		}
 	}
 
+	return nil
+}
+
+func (a *DXApp) handleStartInitModules() (err error) {
 	for _, m := range a.InitModules {
 		err := m.Start()
 		if err != nil {
@@ -104,7 +110,30 @@ func (a *DXApp) handleInitModules() (err error) {
 	return nil
 }
 
-func (a *DXApp) handleModules() (err error) {
+func (a *DXApp) handleOnConfigurationStartAllInitModules() (err error) {
+	for _, m := range a.InitModules {
+		err := m.DoAfterConfigurationStartAll()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *DXApp) handleStopInitModules() (err error) {
+	for i := len(a.InitModules) - 1; i >= 0; i-- {
+		m := a.Modules[i]
+		err := m.Stop()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *DXApp) handleDefineModules() (err error) {
 	for _, m := range a.Modules {
 		err := m.DefineConfiguration()
 		if err != nil {
@@ -121,6 +150,10 @@ func (a *DXApp) handleModules() (err error) {
 		}
 	}
 
+	return nil
+}
+
+func (a *DXApp) handleStartModules() (err error) {
 	for _, m := range a.Modules {
 		err := m.Start()
 		if err != nil {
@@ -131,41 +164,40 @@ func (a *DXApp) handleModules() (err error) {
 	return nil
 }
 
-func (a *DXApp) Run() (err error) {
+func (a *DXApp) handleOnConfigurationStartAllModules() (err error) {
+	for _, m := range a.Modules {
+		err := m.DoAfterConfigurationStartAll()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+	return nil
+}
 
-	err = a.handleInitModules()
+func (a *DXApp) handleStopModules() (err error) {
+	for i := len(a.Modules) - 1; i >= 0; i-- {
+		m := a.Modules[i]
+			err := m.Stop()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *DXApp) Run() error {
+
+	err := a.handleDefineInitModules()
 	if err != nil {
 		return err
 	}
 
-	defer func() {
-		for i := len(a.InitModules) - 1; i >= 0; i-- {
-			m := a.Modules[i]
-			err = m.Stop()
-			if err != nil {
-				log.Log.Error(err.Error())
-				return
-			}
-		}
-		return
-	}()
-
-	err = a.handleModules()
+	err = a.handleDefineModules()
 	if err != nil {
 		return err
 	}
-
-	defer func() {
-		for i := len(a.Modules) - 1; i >= 0; i-- {
-			m := a.Modules[i]
-			err = m.Stop()
-			if err != nil {
-				log.Log.Error(err.Error())
-				return
-			}
-		}
-		return
-	}()
 
 	if a.OnDefine != nil {
 		err := a.OnDefine()
@@ -181,6 +213,7 @@ func (a *DXApp) Run() (err error) {
 			return err
 		}
 	}
+
 	if a.OnDefineAPI != nil {
 		err := a.OnDefineAPI()
 		if err != nil {
@@ -255,13 +288,31 @@ func (a *DXApp) start() (err error) {
 			return err
 		}
 	}
+
+	err = a.handleOnConfigurationStartAllInitModules()
+	if err != nil {
+		return err
+	}
+
+	err = a.handleOnConfigurationStartAllModules()
+	if err != nil {
+		return err
+	}
+
+	if a.OnAfterConfigurationStartAll != nil {
+		err = a.OnAfterConfigurationStartAll()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (a *DXApp) Stop() (err error) {
 	log.Log.Info("Stopping")
 	if a.OnStopping != nil {
-		err = a.OnStopping()
+		err := a.OnStopping()
 		if err != nil {
 			return err
 		}
@@ -305,12 +356,32 @@ func (a *DXApp) execute() (err error) {
 		defer func() {
 			err2 := a.Stop()
 			if err2 != nil {
-				log.Log.Infof("Error in Stopping: (%v)", err2)
+				log.Log.Infof("Error in Stopping.Stop(): (%v)", err2)
+			}
+
+			err2 = a.handleStopModules()
+			if err2 != nil {
+				log.Log.Infof("Error in Stopping.StopModules(): (%v)", err2)
+			}
+
+			err2 = a.handleStopInitModules()
+			if err2 != nil {
+				log.Log.Infof("Error in Stopping.StopInitModules(): (%v)", err2)
 			}
 			//log.Log.Info("Stopped")
 		}()
 	}
 	log.Log.Info("Starting")
+
+	err = a.handleStartInitModules()
+	if err != nil {
+		return err
+	}
+
+	err = a.handleStartModules()
+	if err != nil {
+		return err
+	}
 
 	if a.OnExecute != nil {
 		err = a.OnExecute()
