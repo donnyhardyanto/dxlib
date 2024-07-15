@@ -2,7 +2,7 @@ package testing
 
 import (
 	"bytes"
-	"dxlib/v3/utils/http/client"
+	dxlibv3HttpClient "dxlib/v3/utils/http/client"
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -192,11 +192,10 @@ func THTTPClient(t *testing.T, mustStatusCode int, method string, url string, co
 	Counter++
 	v := Counter
 	t.Logf("%d: ==== TEST START ====\nREQUEST ===\n%s %s\nContentType: %s\nBody:\n%s\n==\n\n", v, method, url, contentType, body)
-	statusCode, responseBodyAsString, err := client.HTTPClient(method, url, contentType, body)
+	statusCode, responseBodyAsString, err := dxlibv3HttpClient.HTTPClient(method, url, contentType, body)
 	if err != nil {
 		t.Logf("EXECUTE ERROR === Error in making HTTP request %v\n", err)
 		t.FailNow()
-		assert.Nil(t, err)
 	}
 	t.Logf("RESPONSE ===\n%d\nBody:\n%s\n===\n\n", statusCode, responseBodyAsString)
 	assert.Equal(t, mustStatusCode, statusCode)

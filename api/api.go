@@ -183,7 +183,7 @@ func (a *DXAPI) doFiberHTTPHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 		aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
 
 		if aepr.ResponseBodyAsBytes != nil {
-			x := aepr.FiberContext.Response().Header
+			x := &aepr.FiberContext.Response().Header
 			y := x.ContentType()
 			if y == nil {
 				x.Set(`Content-Type`, `application/octet; charset=utf-8`)

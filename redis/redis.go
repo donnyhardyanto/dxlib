@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -171,7 +172,7 @@ func (r *DXRedis) Connect() (err error) {
 	if !r.Connected {
 		err := r.ApplyFromConfiguration()
 		if err != nil {
-			log.Log.Errorf("Cannot configure to Redis %s to connect (s)", r.NameId, err)
+			log.Log.Errorf("Cannot configure to Redis %s to connect (%s)", r.NameId, err.Error())
 			return err
 		}
 		log.Log.Infof("Connecting to Redis %s at %s/%d... start", r.NameId, r.Address, r.DatabaseIndex)
@@ -232,15 +233,15 @@ func (r *DXRedis) Set(key string, value utils.JSON, expirationDuration time.Dura
 func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
 	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return nil, nil
 		}
-		log.Log.Errorf("Cannot get to Redis %s k/v (%v) %s/%v (%s)", r.NameId, err, key)
+		log.Log.Errorf("Cannot get to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
 		return nil, err
 	}
 	err = json.Unmarshal(valueAsBytes, &value)
 	if err != nil {
-		log.Log.Errorf("Cannot unmarshall from bytes in Redis %s k/v (%v) %s/%v (%s)", r.NameId, err, key, valueAsBytes)
+		log.Log.Errorf("Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
 		return nil, err
 	}
 	return value, nil
@@ -249,17 +250,17 @@ func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
 func (r *DXRedis) GetMustExist(key string) (value utils.JSON, err error) {
 	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
 	if err != nil {
-		if err == redis.Nil {
-			log.Log.Errorf("Cannot find key %s in Redis %s (%v)", key, r.NameId, err, key)
+		if errors.Is(err, redis.Nil) {
+			log.Log.Errorf("Cannot find keyin Redis %s (%s) %s", r.NameId, err.Error(), key)
 			return nil, err
 		} else {
-			log.Log.Errorf("Cannot get k/v to Redis%s k/v (%v) %s/%v (%s)", r.NameId, err, key)
+			log.Log.Errorf("Cannot get k/v to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
 			return nil, err
 		}
 	}
 	err = json.Unmarshal(valueAsBytes, &value)
 	if err != nil {
-		log.Log.Errorf("Cannot unmarshall from bytes in Redis %s k/v (%v) %s/%v (%s)", r.NameId, err, key, valueAsBytes)
+		log.Log.Errorf("Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
 		return nil, err
 	}
 	return value, nil

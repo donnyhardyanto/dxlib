@@ -141,7 +141,7 @@ func (a *DXApp) Run() error {
 	defer func() (err error) {
 		for i := len(a.InitModules) - 1; i >= 0; i-- {
 			m := a.Modules[i]
-			err := m.Stop()
+			err = m.Stop()
 			if err != nil {
 				log.Log.Error(err.Error())
 				return err
@@ -158,7 +158,7 @@ func (a *DXApp) Run() error {
 	defer func() (err error) {
 		for i := len(a.Modules) - 1; i >= 0; i-- {
 			m := a.Modules[i]
-			err := m.Stop()
+			err = m.Stop()
 			if err != nil {
 				log.Log.Error(err.Error())
 				return err
@@ -261,7 +261,10 @@ func (a *DXApp) start() (err error) {
 func (a *DXApp) Stop() (err error) {
 	log.Log.Info("Stopping")
 	if a.OnStopping != nil {
-		a.OnStopping()
+		err = a.OnStopping()
+		if err != nil {
+			return err
+		}
 	}
 	if a.IsTaskExist {
 		err = tasks.Manager.StopAll()

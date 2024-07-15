@@ -71,7 +71,9 @@ func TCPIPPortCanConnect(ip string, port string) bool {
 		return false
 	}
 	if conn != nil {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 	}
 	return true
 }
@@ -83,7 +85,9 @@ func TCPAddressCanConnect(address string) bool {
 		return false
 	}
 	if conn != nil {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 	}
 	return true
 }
@@ -122,7 +126,7 @@ func GetValueFromNestedMap(data map[string]interface{}, key string) (interface{}
 	return value, nil
 }
 
-func SetValueInNestedMap(data map[string]interface{}, key string, value interface{}) error {
+func SetValueInNestedMap(data map[string]interface{}, key string, value interface{}) {
 	keys := strings.Split(key, ".")
 	lastKeyIndex := len(keys) - 1
 
@@ -138,7 +142,7 @@ func SetValueInNestedMap(data map[string]interface{}, key string, value interfac
 			data = nextMap
 		}
 	}
-	return nil
+	return
 }
 
 func IfStringInSlice(str string, list []string) bool {

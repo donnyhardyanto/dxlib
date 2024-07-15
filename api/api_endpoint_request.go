@@ -455,6 +455,10 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsRaw() (err error) {
 
 func (aepr *DXAPIEndPointRequest) responseSetStatusCodeAsErrorf(statusCode int, reasonMessage string, data ...any) (err error) {
 	err = aepr.Log.WarnAndCreateErrorf(reasonMessage, data)
+	if err == nil {
+		err2 := aepr.Log.WarnAndCreateErrorf(`Error at set status code %d`, statusCode)
+		return err2
+	}
 	aepr.ResponseStatusCode = statusCode
 	if aepr.EndPoint.Owner.IsDebug {
 		aepr.ResponseSetFromJSON(utils.JSON{
@@ -617,11 +621,15 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters utils.JSON, headers map[string]string) (responseStatusCode int, responseAsJSON utils.JSON, err error) {
 	responseStatusCode = 0
 	r, err := aepr.HTTPClientDo(method, url, parameters, headers)
-	if r != nil {
-		responseStatusCode = r.StatusCode
-	}
 	if err != nil {
 		return responseStatusCode, nil, err
+	}
+	if r == nil {
+		aepr.Log.PanicAndCreateErrorf("HTTPClient: r is nil", "")
+		return responseStatusCode, nil, err
+	}
+	if r != nil {
+		responseStatusCode = r.StatusCode
 	}
 	if r.StatusCode != 200 {
 		err = aepr.Log.ErrorAndCreateErrorf("response status code is not 200 (%v)", r.StatusCode)
