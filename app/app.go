@@ -131,23 +131,23 @@ func (a *DXApp) handleModules() (err error) {
 	return nil
 }
 
-func (a *DXApp) Run() error {
+func (a *DXApp) Run() (err error) {
 
-	err := a.handleInitModules()
+	err = a.handleInitModules()
 	if err != nil {
 		return err
 	}
 
-	defer func() (err error) {
+	defer func() {
 		for i := len(a.InitModules) - 1; i >= 0; i-- {
 			m := a.Modules[i]
 			err = m.Stop()
 			if err != nil {
 				log.Log.Error(err.Error())
-				return err
+				return
 			}
 		}
-		return nil
+		return
 	}()
 
 	err = a.handleModules()
@@ -155,16 +155,16 @@ func (a *DXApp) Run() error {
 		return err
 	}
 
-	defer func() (err error) {
+	defer func() {
 		for i := len(a.Modules) - 1; i >= 0; i-- {
 			m := a.Modules[i]
 			err = m.Stop()
 			if err != nil {
 				log.Log.Error(err.Error())
-				return err
+				return
 			}
 		}
-		return nil
+		return
 	}()
 
 	if a.OnDefine != nil {

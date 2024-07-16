@@ -200,13 +200,23 @@ func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, rea
 	if statusCode != 200 {
 		aepr.Log.Warnf("Status Code: %d %s %s %v", statusCode, reason, reasonMessage, data)
 	}
+	d := utils.JSON{
+		"reason":         reason,
+		"reason_message": reasonMessage,
+	}
+	if len(data) > 0 {
+		for _, item := range data {
+			jsonData, ok := item.(utils.JSON)
+			if !ok {
+				// Assuming item is convertible to JSON; otherwise, log an error or handle accordingly
+				jsonData = utils.JSON{"data": item} // Simplified conversion; adjust based on actual requirements
+			}
+			d = utilsJson.DeepMerge(d, jsonData)
+		}
+	}
 	return aepr.ResponseSetStatusCodeAndBodyJSON(
 		statusCode,
-		utils.JSON{
-			"reason":         reason,
-			"reason_message": reasonMessage,
-			"data":           data,
-		},
+		d,
 	)
 }
 
@@ -461,9 +471,12 @@ func (aepr *DXAPIEndPointRequest) responseSetStatusCodeAsErrorf(statusCode int, 
 	}
 	aepr.ResponseStatusCode = statusCode
 	if aepr.EndPoint.Owner.IsDebug {
-		aepr.ResponseSetFromJSON(utils.JSON{
+		err2 := aepr.ResponseSetFromJSON(utils.JSON{
 			"reason_message": err.Error(),
 		})
+		if err2 != nil {
+			return err2
+		}
 	}
 	return err
 }
@@ -625,12 +638,12 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 		return responseStatusCode, nil, err
 	}
 	if r == nil {
-		aepr.Log.PanicAndCreateErrorf("HTTPClient: r is nil", "")
+		err = aepr.Log.PanicAndCreateErrorf("HTTPClient: r is nil", "")
 		return responseStatusCode, nil, err
 	}
-	if r != nil {
-		responseStatusCode = r.StatusCode
-	}
+
+	responseStatusCode = r.StatusCode
+
 	if r.StatusCode != 200 {
 		err = aepr.Log.ErrorAndCreateErrorf("response status code is not 200 (%v)", r.StatusCode)
 		return responseStatusCode, nil, err
@@ -654,7 +667,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters utils.JSON, headers map[string]string) (_responseStatusCode int, responseAsJSON utils.JSON, err error) {
 	r, err := aepr.HTTPClientDo(method, url, parameters, headers)
 	if err != nil {
-		aepr.ResponseSetStatusCodeError(400, `DIAL_ERROR`, err.Error())
+		_ = aepr.ResponseSetStatusCodeError(400, `DIAL_ERROR`, err.Error())
 		if r != nil {
 			return r.StatusCode, nil, err
 		} else {
@@ -662,7 +675,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters uti
 		}
 	}
 	if r == nil {
-		aepr.Log.PanicAndCreateErrorf("HTTPClient2-1", "r is nil")
+		err = aepr.Log.PanicAndCreateErrorf("HTTPClient2-1", "r is nil")
 		return 0, nil, err
 	}
 	responseBodyAsBytes, err := io.ReadAll(r.Body)

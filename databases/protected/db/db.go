@@ -415,9 +415,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 		if orderByQueryPart == `` {
 			orderByQueryPart = `1`
 		}
-		if orderByQueryPart != `` {
-			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-		}
+		effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	case "postgres":
