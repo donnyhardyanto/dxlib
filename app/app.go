@@ -81,18 +81,12 @@ func (a *DXApp) AddModule(m module.DXModuleInterface) {
 
 func (a *DXApp) handleDefineInitModules() (err error) {
 	for _, m := range a.InitModules {
-		err := m.DefineConfiguration()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
-		}
-	}
-
-	for _, m := range a.InitModules {
-		err := m.DefineAPI()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
+		if m.DefineConfiguration != nil {
+			err := m.DefineConfiguration()
+			if err != nil {
+				log.Log.Error(err.Error())
+				return err
+			}
 		}
 	}
 
@@ -112,10 +106,12 @@ func (a *DXApp) handleStartInitModules() (err error) {
 
 func (a *DXApp) handleOnConfigurationStartAllInitModules() (err error) {
 	for _, m := range a.InitModules {
-		err := m.DoAfterConfigurationStartAll()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
+		if m.DoAfterConfigurationStartAll != nil {
+			err := m.DoAfterConfigurationStartAll()
+			if err != nil {
+				log.Log.Error(err.Error())
+				return err
+			}
 		}
 	}
 	return nil
@@ -135,18 +131,12 @@ func (a *DXApp) handleStopInitModules() (err error) {
 
 func (a *DXApp) handleDefineModules() (err error) {
 	for _, m := range a.Modules {
-		err := m.DefineConfiguration()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
-		}
-	}
-
-	for _, m := range a.Modules {
-		err := m.DefineAPI()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
+		if m.DefineConfiguration != nil {
+			err := m.DefineConfiguration()
+			if err != nil {
+				log.Log.Error(err.Error())
+				return err
+			}
 		}
 	}
 
@@ -166,10 +156,12 @@ func (a *DXApp) handleStartModules() (err error) {
 
 func (a *DXApp) handleOnConfigurationStartAllModules() (err error) {
 	for _, m := range a.Modules {
-		err := m.DoAfterConfigurationStartAll()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
+		if m.DoAfterConfigurationStartAll != nil {
+			err := m.DoAfterConfigurationStartAll()
+			if err != nil {
+				log.Log.Error(err.Error())
+				return err
+			}
 		}
 	}
 	return nil
@@ -178,7 +170,7 @@ func (a *DXApp) handleOnConfigurationStartAllModules() (err error) {
 func (a *DXApp) handleStopModules() (err error) {
 	for i := len(a.Modules) - 1; i >= 0; i-- {
 		m := a.Modules[i]
-			err := m.Stop()
+		err := m.Stop()
 		if err != nil {
 			log.Log.Error(err.Error())
 			return err
@@ -214,14 +206,6 @@ func (a *DXApp) Run() error {
 		}
 	}
 
-	if a.OnDefineAPI != nil {
-		err := a.OnDefineAPI()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
-		}
-	}
-
 	err = a.execute()
 	if err != nil {
 		log.Log.Error(err.Error())
@@ -230,8 +214,7 @@ func (a *DXApp) Run() error {
 	return nil
 }
 
-func (a *DXApp) start() (err error) {
-	log.Log.Info(fmt.Sprintf("%v %v %v", a.Title, a.Version, a.Description))
+func (a *DXApp) loadConfiguration() (err error) {
 	err = configurations.Manager.Load()
 	if err != nil {
 		return err
@@ -251,6 +234,48 @@ func (a *DXApp) start() (err error) {
 		}
 	}
 	_, a.IsAPIExist = configurations.Manager.Configurations["api"]
+	if a.IsAPIExist {
+		err = api.Manager.LoadFromConfiguration("api")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (a *DXApp) start() (err error) {
+	log.Log.Info(fmt.Sprintf("%v %v %v", a.Title, a.Version, a.Description))
+	err = a.loadConfiguration()
+	if err != nil {
+		return err
+	}
+
+	for _, m := range a.InitModules {
+		if m.DefineAPI != nil {
+			err := m.DefineAPI()
+			if err != nil {
+				log.Log.Error(err.Error())
+				return err
+			}
+		}
+	}
+
+	for _, m := range a.Modules {
+		if m.DefineAPI != nil {
+			err := m.DefineAPI()
+			if err != nil {
+				log.Log.Error(err.Error())
+				return err
+			}
+		}
+	}
+
+	if a.OnDefineAPI != nil {
+		err := a.OnDefineAPI()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
 
 	if a.IsRedisExist {
 		err = redis.Manager.ConnectAllAtStart()

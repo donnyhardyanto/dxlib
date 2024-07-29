@@ -76,6 +76,28 @@ func (am *DXAPIManager) NewAPI(nameId string) (*DXAPI, error) {
 	return &a, nil
 }
 
+func (am *DXAPIManager) LoadFromConfiguration(configurationNameId string) (err error) {
+	configuration, ok := configurations.Manager.Configurations[configurationNameId]
+	if !ok {
+		return log.Log.FatalAndCreateErrorf("configuration '%s' not found", configurationNameId)
+	}
+	for k, v := range *configuration.Data {
+		_, ok := v.(utils.JSON)
+		if !ok {
+			return log.Log.FatalAndCreateErrorf("Cannot read %s as JSON", k)
+		}
+		apiObject, err := am.NewAPI(k)
+		if err != nil {
+			return err
+		}
+		err = apiObject.ApplyConfigurations(configurationNameId)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
 func (am *DXAPIManager) StartAll(errorGroup *errgroup.Group, errorGroupContext context.Context) error {
 	am.ErrorGroup = errorGroup
 	am.ErrorGroupContext = errorGroupContext
@@ -108,22 +130,22 @@ func (am *DXAPIManager) StopAll() (err error) {
 	return err
 }
 
-func (a *DXAPI) ApplyConfigurations() (err error) {
-	configuration, ok := configurations.Manager.Configurations["api"]
+func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
+	configuration, ok := configurations.Manager.Configurations[configurationNameId]
 	if !ok {
-		err := log.Log.FatalAndCreateErrorf("Can not find configuration 'api' needed to configure the API")
+		err := log.Log.FatalAndCreateErrorf("Can not find configuration '%s' needed to configure the API", configurationNameId)
 		return err
 	}
 	c := *configuration.Data
 	c1, ok := c[a.NameId].(utils.JSON)
 	if !ok {
-		err := log.Log.FatalAndCreateErrorf("Can not find configuration 'api.%s' needed to configure the API", a.NameId)
+		err := log.Log.FatalAndCreateErrorf("Can not find configuration '%s.%s' needed to configure the API", configurationNameId, a.NameId)
 		return err
 	}
 
 	a.Address, ok = c1[`address`].(string)
 	if !ok {
-		err := log.Log.FatalAndCreateErrorf("Can not find configuration 'api.%s/address' needed to configure the API", a.NameId)
+		err := log.Log.FatalAndCreateErrorf("Can not find configuration '%s.%s/address' needed to configure the API", configurationNameId, a.NameId)
 		return err
 	}
 	a.WriteTimeoutSec = json.GetNumberWithDefault(c1, `writetimeout-sec`, DXAPIDefaultWriteTimeoutSec)
@@ -241,10 +263,10 @@ func (a *DXAPI) doFiberHTTPHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 
 	if !a.RuntimeIsActive {
-		err := a.ApplyConfigurations()
-		if err != nil {
-			return err
-		}
+		/*		err := a.ApplyConfigurations()
+				if err != nil {
+					return err
+				}*/
 		a.HTTPServer = fiber.New(fiber.Config{
 			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,

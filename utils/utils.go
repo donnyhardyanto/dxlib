@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,16 +18,16 @@ import (
 type JSON = map[string]any
 
 func GetAllMachineIP4s() []string {
-	addrs, err := net.InterfaceAddrs()
+	address, err := net.InterfaceAddrs()
 	if err != nil {
 		panic(err)
 	}
 
 	var ips []string
-	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				ips = append(ips, ipnet.IP.String())
+	for _, addr := range address {
+		if ipNetwork, ok := addr.(*net.IPNet); ok && !ipNetwork.IP.IsLoopback() {
+			if ipNetwork.IP.To4() != nil {
+				ips = append(ips, ipNetwork.IP.String())
 			}
 		}
 	}
@@ -412,4 +414,45 @@ func JSONToMapStringString(kv JSON) (r map[string]string, err error) {
 		}
 	}
 	return r, nil
+}
+
+func AnyToBytes(data interface{}) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	switch v := data.(type) {
+	case int:
+		err := binary.Write(buf, binary.BigEndian, int64(v))
+		if err != nil {
+			return nil, err
+		}
+	case int64:
+		err := binary.Write(buf, binary.BigEndian, v)
+		if err != nil {
+			return nil, err
+		}
+	case float64:
+		err := binary.Write(buf, binary.BigEndian, v)
+		if err != nil {
+			return nil, err
+		}
+	case string:
+		err := binary.Write(buf, binary.BigEndian, []byte(v))
+		if err != nil {
+			return nil, err
+		}
+	case []byte:
+		err := binary.Write(buf, binary.BigEndian, v)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("unsupported type")
+	}
+	return buf.Bytes(), nil
+}
+
+func BytesToInt64(b []byte) int64 {
+	if len(b) < 8 {
+		return 0 // or handle the error as needed
+	}
+	return int64(binary.BigEndian.Uint64(b))
 }

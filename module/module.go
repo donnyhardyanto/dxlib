@@ -27,3 +27,7 @@ func (m *DXModule) Start() (err error) {
 func (m *DXModule) Stop() (err error) {
 	return nil
 }
+
+func (m *DXModule) DoAfterConfigurationStartAll() (err error) {
+	return nil
+}

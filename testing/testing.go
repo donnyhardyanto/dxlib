@@ -1,7 +1,6 @@
 package testing
 
 import (
-	"bytes"
 	dxlibv3HttpClient "dxlib/v3/utils/http/client"
 	"encoding/json"
 	"fmt"
@@ -24,39 +23,17 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 
 	t.Logf("== Testing %s\n START ==", testName)
 
-	bodyReader := &bytes.Reader{}
-	switch contentType {
-	case "application/json":
-		bodyReader = bytes.NewReader(body)
+	request, response, err := dxlibv3HttpClient.HTTPClient(method, url, dxlibv3HttpClient.HTTPHeader{
+		"Content-Type":  contentType,
+		"Cache-Control": "no-cache",
+	}, body)
 
-	default:
-		t.Logf("Not supported content-type (%v) in testing.", contentType)
-		t.FailNow()
-		return nil
-	}
-
-	var client = &http.Client{}
-	request, err := http.NewRequest(method, url, bodyReader)
-	if err != nil {
-		t.Logf("%v\n", err)
-		t.FailNow()
-		return nil
-	}
-	request.Header.Set(`content-type`, `application/json`)
-	request.Header.Set(`Cache-Control`, `no-cache`)
 	requestDump, err := httputil.DumpRequest(request, true)
 	if err != nil {
 		t.Logf(`Error in DumpRequest (%v)`, err)
 		return nil
 	}
 	t.Logf("\nRaw Request :\n%v\n", string(requestDump))
-
-	response, err := client.Do(request)
-	if err != nil {
-		t.Logf("error making http request: %s\n", err)
-		t.FailNow()
-		return nil
-	}
 
 	responseDump, err := httputil.DumpResponse(response, true)
 	if err != nil {
@@ -192,7 +169,7 @@ func THTTPClient(t *testing.T, mustStatusCode int, method string, url string, co
 	Counter++
 	v := Counter
 	t.Logf("%d: ==== TEST START ====\nREQUEST ===\n%s %s\nContentType: %s\nBody:\n%s\n==\n\n", v, method, url, contentType, body)
-	statusCode, responseBodyAsString, err := dxlibv3HttpClient.HTTPClient(method, url, contentType, body)
+	statusCode, responseBodyAsString, err := dxlibv3HttpClient.HTTPClientReadAll(method, url, map[string]string{"Content-Type": contentType}, body)
 	if err != nil {
 		t.Logf("EXECUTE ERROR === Error in making HTTP request %v\n", err)
 		t.FailNow()

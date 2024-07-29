@@ -1,27 +1,99 @@
 package client
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
 )
 
-func HTTPClient(method string, url string, contentType string, body string) (statusCode int, responseBodyAsString string, err error) {
-	agent := fiber.AcquireAgent()
-	req := agent.Request()
-	req.Header.SetMethod(method)
-	req.SetRequestURI(url)
-	req.Header.SetContentType(contentType)
-	req.SetBodyString(body)
-	err = agent.Parse()
+type HTTPHeader = map[string]string
+
+type HTTPResponse struct {
+	StatusCode int
+	Body       []byte
+	Headers    map[string][]string
+}
+
+func (hr *HTTPResponse) BodyAsString() string {
+	return string(hr.Body)
+}
+
+func (hr *HTTPResponse) BodyAsJSON() (map[string]any, error) {
+	var v map[string]any
+	err := json.Unmarshal(hr.Body, &v)
 	if err != nil {
-		return 0, "", err
+		return nil, err
 	}
-	statusCode, responseBody, errs := agent.Bytes()
-	if len(errs) > 0 {
-		for _, err := range errs {
-			log.Error(err)
+	return v, nil
+}
+
+func HTTPClient(method string, url string, headers map[string]string, body any) (request *http.Request, response *http.Response, err error) {
+	var bodyAsBytes []byte
+	contentType := ``
+
+	switch body.(type) {
+	case string:
+		bodyAsBytes = []byte(body.(string))
+		break
+	case []byte:
+		bodyAsBytes = body.([]byte)
+		break
+	case map[string]any:
+		bodyAsBytes, err = json.Marshal(body)
+		if err != nil {
+			return nil, nil, err
 		}
-		panic(errs)
+		contentType = `application/json`
+		break
+	default:
+		err = errors.New(`TypeIsNotConvertableToBytes` + fmt.Sprint(body))
+		return nil, nil, err
 	}
-	return statusCode, string(responseBody), nil
+
+	request, err = http.NewRequest(method, url, bytes.NewBuffer(bodyAsBytes))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if contentType != `` {
+		request.Header.Set("Content-Type", contentType)
+	}
+	request.Header.Set("Content-Length", fmt.Sprint(len(bodyAsBytes)))
+
+	// Set request headers
+	for key, value := range headers {
+		request.Header.Set(key, value)
+	}
+
+	// Create an HTTP client and send the request
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	if err != nil {
+		return nil, nil, err
+	}
+	return request, resp, nil
+}
+
+func HTTPClientReadAll(method string, url string, headers map[string]string, body any) (request *http.Request, response *HTTPResponse, err error) {
+	request, resp, err := HTTPClient(method, url, headers, body)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	responseBodyAsBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	response = &HTTPResponse{
+		StatusCode: resp.StatusCode,
+		Body:       responseBodyAsBytes,
+		Headers:    resp.Header,
+	}
+	return request, response, nil
 }

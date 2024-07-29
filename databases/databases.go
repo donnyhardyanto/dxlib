@@ -15,6 +15,9 @@ type DXDatabaseManager struct {
 }
 
 func (dm *DXDatabaseManager) NewDatabase(nameId string, isConnectAtStart, mustBeConnected bool) *DXDatabase {
+	if dm.Databases[nameId] != nil {
+		return dm.Databases[nameId]
+	}
 	d := DXDatabase{
 		NameId:           nameId,
 		IsConfigured:     false,
