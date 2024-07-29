@@ -136,6 +136,7 @@ func (aep *DXAPIEndPoint) NewEndPointRequest(context context.Context, c *fiber.C
 		ResponseStatusCode:    http.StatusOK,
 		ResponseErrorAsString: "",
 		ResponseBodyAsBytes:   nil,
+		LocalData:             map[string]any{},
 	}
 	er.Id = fmt.Sprintf("%p", er)
 	er.Log = log.NewLog(&aep.Owner.Log, context, aep.Title+" | "+er.Id)

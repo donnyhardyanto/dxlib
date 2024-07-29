@@ -3,6 +3,7 @@ package sql
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"golang.org/x/crypto/bcrypt"
 	"strings"
 )
 
@@ -79,4 +80,14 @@ func HashPassword(password string) []byte {
 func HashPasswordToHexString(password string) string {
 	hashed := HashPassword(password)
 	return hex.EncodeToString(hashed)
+}
+
+func HashSHA512(data []byte) []byte {
+	hashed := sha512.Sum512(data)
+	return hashed[:]
+}
+
+func HashBcrypt(data []byte) ([]byte, error) {
+	hashed, err := bcrypt.GenerateFromPassword(data, bcrypt.MaxCost)
+	return hashed, err
 }

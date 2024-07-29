@@ -5,7 +5,10 @@ import (
 	"dxlib/v3/utils"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 )
+
+var MAX_SIZE int64 = 2147483647
 
 type LV struct {
 	Length int64
@@ -113,6 +116,9 @@ func (lv *LV) UnmarshalBinaryFromReader(r *bytes.Reader) error {
 	err := binary.Read(r, binary.BigEndian, &lv.Length)
 	if err != nil {
 		return err
+	}
+	if lv.Length >= MAX_SIZE {
+		return errors.New("LV.UnmarshalBinaryFromReader:ARRAY_SIZE_TOO_LARGE")
 	}
 	lv.Value = make([]byte, lv.Length)
 	err = binary.Read(r, binary.BigEndian, &lv.Value)
