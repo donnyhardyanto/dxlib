@@ -18,7 +18,6 @@ func Pad(data []byte, blocksize int) []byte {
 	return append(data, padtext...)
 }
 
-// RemovePad removes padding from data
 func RemovePad(data []byte) ([]byte, error) {
 	length := len(data)
 	unpadding := int(data[length-1])
