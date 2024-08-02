@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 )
@@ -82,7 +83,12 @@ func HTTPClientReadAll(method string, url string, headers map[string]string, bod
 	if err != nil {
 		return nil, nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err2 := resp.Body.Close()
+		if err2 != nil {
+			log.Println(err2)
+		}
+	}()
 
 	// Read the response body
 	responseBodyAsBytes, err := io.ReadAll(resp.Body)

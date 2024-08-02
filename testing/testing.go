@@ -169,11 +169,14 @@ func THTTPClient(t *testing.T, mustStatusCode int, method string, url string, co
 	Counter++
 	v := Counter
 	t.Logf("%d: ==== TEST START ====\nREQUEST ===\n%s %s\nContentType: %s\nBody:\n%s\n==\n\n", v, method, url, contentType, body)
-	statusCode, responseBodyAsString, err := dxlibv3HttpClient.HTTPClientReadAll(method, url, map[string]string{"Content-Type": contentType}, body)
+	_, response, err := dxlibv3HttpClient.HTTPClientReadAll(method, url, map[string]string{"Content-Type": contentType}, body)
 	if err != nil {
 		t.Logf("EXECUTE ERROR === Error in making HTTP request %v\n", err)
 		t.FailNow()
 	}
+	statusCode := response.StatusCode
+	responseBodyAsString = response.BodyAsString()
+
 	t.Logf("RESPONSE ===\n%d\nBody:\n%s\n===\n\n", statusCode, responseBodyAsString)
 	assert.Equal(t, mustStatusCode, statusCode)
 	t.Logf("%d: ==== TEST END   ====\n", v)

@@ -22,7 +22,7 @@ func RemovePad(data []byte) ([]byte, error) {
 	length := len(data)
 	unpadding := int(data[length-1])
 	if unpadding > length || unpadding > aes.BlockSize {
-		return nil, errors.New("Invalid Padding/2")
+		return nil, errors.New("INVALID_PADDING")
 	}
 	return data[:(length - unpadding)], nil
 }
@@ -62,7 +62,7 @@ func DecryptAES(key, data []byte) ([]byte, error) {
 	// Verify the padding before using it
 	padding := plainText[len(plainText)-1]
 	if int(padding) > aes.BlockSize || int(padding) < 1 {
-		return nil, errors.New("Invalid Padding/1")
+		return nil, errors.New("INVALID_DATA_SIZE")
 	}
 	plainText, err = RemovePad(plainText)
 	if err != nil {

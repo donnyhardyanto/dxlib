@@ -21,7 +21,7 @@ type DataBlock struct {
 	DataHash lv.LV
 }
 
-func NewDataBlock(data []byte) *DataBlock {
+func NewDataBlock(data []byte) (*DataBlock, error) {
 	b := &DataBlock{
 		Time:     lv.LV{},
 		Nonce:    lv.LV{},
@@ -29,29 +29,57 @@ func NewDataBlock(data []byte) *DataBlock {
 		Data:     lv.LV{},
 		DataHash: lv.LV{},
 	}
-	b.SetTimeNow()
-	b.GenerateNonce()
-	b.SetDataValue(data)
-	return b
+	err := b.SetTimeNow()
+	if err != nil {
+		return nil, err
+	}
+	err = b.GenerateNonce()
+	if err != nil {
+		return nil, err
+	}
+	err = b.SetDataValue(data)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
-func (db *DataBlock) SetTimeNow() {
-	db.Time.SetValue(time.Now().UnixNano())
+func (db *DataBlock) SetTimeNow() error {
+	err := db.Time.SetValue(time.Now().UnixNano())
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (db *DataBlock) GenerateNonce() {
-	db.Nonce.SetValue(utils.RandomData(32))
+func (db *DataBlock) GenerateNonce() (err error) {
+	err = db.Nonce.SetValue(utils.RandomData(32))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (db *DataBlock) SetDataValue(data any) {
-	db.Data.SetValue(data)
-	db.GenerateDataHash()
+func (db *DataBlock) SetDataValue(data any) (err error) {
+	err = db.Data.SetValue(data)
+	if err != nil {
+		return err
+	}
+	err = db.GenerateDataHash()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (db *DataBlock) GenerateDataHash() {
+func (db *DataBlock) GenerateDataHash() (err error) {
 	dataAsBytes := db.Data.Value
 	x := sha512.Sum512(dataAsBytes)
-	db.DataHash.SetValue(x[:])
+	err = db.DataHash.SetValue(x[:])
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (db *DataBlock) CheckDataHash() bool {
@@ -164,8 +192,14 @@ func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byt
 		return "", err
 	}
 
-	dataBlock := NewDataBlock(lvPackedPayloadAsBytes)
-	dataBlock.PreKey.SetValue(preKeyIndex)
+	dataBlock, err := NewDataBlock(lvPackedPayloadAsBytes)
+	if err != nil {
+		return "", err
+	}
+	err = dataBlock.PreKey.SetValue(preKeyIndex)
+	if err != nil {
+		return "", err
+	}
 	dataBlockAsBytes, err := dataBlock.MarshalBinary()
 	if err != nil {
 		return "", err
@@ -224,6 +258,14 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 	lvDataElements, err := lv.SeparateLV(&lvData)
 	if err != nil {
 		return nil, err
+	}
+
+	if lvDataElements == nil {
+		return nil, errors.New("INVALID_DATA")
+	}
+
+	if len(lvDataElements) < 2 {
+		return nil, errors.New("INVALID_DATA")
 	}
 
 	lvEncryptedData := lvDataElements[0]
