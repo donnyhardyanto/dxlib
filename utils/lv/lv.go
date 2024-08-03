@@ -8,10 +8,10 @@ import (
 	"errors"
 )
 
-var MAX_SIZE int64 = 2147483647
+var MAX_SIZE uint32 = 2147483647
 
 type LV struct {
-	Length int64
+	Length uint32
 	Value  []byte
 }
 
@@ -86,7 +86,7 @@ func (lv *LV) SetValue(data any) error {
 		return err
 	}
 	lv.Value = d
-	lv.Length = int64(len(d))
+	lv.Length = uint32(len(d))
 	return nil
 }
 
