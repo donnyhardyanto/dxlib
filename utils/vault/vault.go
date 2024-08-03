@@ -40,7 +40,7 @@ func (v *VaultServer) VaultMapping(path string, texts ...string) []string {
 		if err != nil {
 			log.Fatalf("Unable to read credentials from Vault Mapping: %v", err)
 		}
-		results := []string{}
+		var results []string
 		data := secret.Data["data"].(map[string]any)
 		for _, text := range texts {
 			if strings.Contains(text, "__VAULT__") {
