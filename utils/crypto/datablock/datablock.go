@@ -297,7 +297,7 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 	dataBlockTime := time.Unix(0, timeUnixNano)
 
 	if time.Now().Sub(dataBlockTime) > UNPACK_TTL {
-		return nil, errors.New(`TIME_EXPIRED`)
+		//		return nil, errors.New(`TIME_EXPIRED`)
 	}
 
 	dataBlockPreKeyIndex := string(dataBlock.PreKey.Value)
