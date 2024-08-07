@@ -296,11 +296,14 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 		return nil, err
 	}
 
-	timeUnixNano := utils.BytesToInt64(dataBlock.Time.Value)
-	dataBlockTime := time.Unix(0, timeUnixNano)
+	timestamp := dataBlock.Time.GetValueAsString()
+	parsedTimestamp, err := time.Parse(time.RFC3339, timestamp)
+	if err != nil {
+		return nil, err
+	}
 
-	if time.Now().Sub(dataBlockTime) > UNPACK_TTL {
-		//		return nil, errors.New(`TIME_EXPIRED`)
+	if time.Now().Sub(parsedTimestamp) > UNPACK_TTL {
+		return nil, errors.New(`TIME_EXPIRED`)
 	}
 
 	dataBlockPreKeyIndex := string(dataBlock.PreKey.Value)

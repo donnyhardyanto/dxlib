@@ -272,9 +272,10 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
 		})
 		a.HTTPServer.Use(cors.New(cors.Config{
-			AllowOrigins: "*",                                   // Allows all origins
-			AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH",      // Specify what methods to allow
-			AllowHeaders: "Origin, Content-Type, Accept, x-ijt", // Specify what headers can be sent
+			AllowOrigins: "*",                              // Allows all origins
+			AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH", // Specify what methods to allow
+			AllowHeaders: "*",                              // Specify what headers can be sent
+			//	AllowHeaders: "Origin, Content-Type, Accept, Authorization, x-ijt", // Specify what headers can be sent
 		}))
 		for _, v := range a.EndPoints {
 			p := v

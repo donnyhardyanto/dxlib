@@ -90,6 +90,10 @@ func (lv *LV) SetValue(data any) error {
 	return nil
 }
 
+func (lv *LV) GetValueAsString() string {
+	return string(lv.Value)
+}
+
 func (lv *LV) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, lv.Length)
