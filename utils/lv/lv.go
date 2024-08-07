@@ -76,8 +76,8 @@ func SeparateLV(data *LV) ([]*LV, error) {
 	return lvs, nil
 }
 
-func (lv *LV) len() int64 {
-	return int64(8 + len(lv.Value))
+func (lv *LV) len() int32 {
+	return int32(4 + len(lv.Value))
 }
 
 func (lv *LV) SetValue(data any) error {

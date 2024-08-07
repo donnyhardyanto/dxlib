@@ -45,7 +45,10 @@ func NewDataBlock(data []byte) (*DataBlock, error) {
 }
 
 func (db *DataBlock) SetTimeNow() error {
-	err := db.Time.SetValue(time.Now().UnixNano())
+	t := time.Now().UTC()
+	tAsString := t.Format(time.RFC3339)
+	tAsBytes := []byte(tAsString)
+	err := db.Time.SetValue(tAsBytes)
 	if err != nil {
 		return err
 	}
