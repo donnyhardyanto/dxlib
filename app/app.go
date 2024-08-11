@@ -259,6 +259,11 @@ func (a *DXApp) start() (err error) {
 		}
 	}
 
+	err = a.handleStartInitModules()
+	if err != nil {
+		return err
+	}
+
 	for _, m := range a.Modules {
 		if m.DefineAPI != nil {
 			err := m.DefineAPI()
@@ -397,11 +402,6 @@ func (a *DXApp) execute() (err error) {
 		}()
 	}
 	log.Log.Info("Starting")
-
-	err = a.handleStartInitModules()
-	if err != nil {
-		return err
-	}
 
 	err = a.handleStartModules()
 	if err != nil {

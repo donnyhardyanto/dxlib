@@ -7,7 +7,6 @@ import (
 	"dxlib/v3/utils"
 	"dxlib/v3/utils/crypto/aes"
 	"dxlib/v3/utils/lv"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"time"
@@ -44,6 +43,20 @@ func NewDataBlock(data []byte) (*DataBlock, error) {
 	return b, nil
 }
 
+func NewDataBlockFromLV(aLV *lv.LV) (*DataBlock, error) {
+	lvs, err := aLV.Expand()
+	if err != nil {
+		return nil, err
+	}
+	b := &DataBlock{
+		Time:     *lvs[0],
+		Nonce:    *lvs[1],
+		PreKey:   *lvs[2],
+		Data:     *lvs[3],
+		DataHash: *lvs[4],
+	}
+	return b, nil
+}
 func (db *DataBlock) SetTimeNow() error {
 	t := time.Now().UTC()
 	tAsString := t.Format(time.RFC3339)
@@ -92,16 +105,15 @@ func (db *DataBlock) CheckDataHash() bool {
 	return bytes.Equal(dataHashAsBytes, x[:])
 }
 
-/*
-	func (db *DataBlock) AsLV() (r *lv.LV, err error) {
-		r, err = lv.CombineLV(&db.Time, &db.Nonce, &db.PreKey, &db.Data, &db.DataHash)
-		if err != nil {
-			return nil, err
-		}
-		return r, nil
+func (db *DataBlock) AsLV() (r *lv.LV, err error) {
+	r, err = lv.CombineLV(&db.Time, &db.Nonce, &db.PreKey, &db.Data, &db.DataHash)
+	if err != nil {
+		return nil, err
 	}
-*/
-func (db *DataBlock) MarshalBinary() (b []byte, err error) {
+	return r, nil
+}
+
+/*func (db *DataBlock) MarshalBinary() (b []byte, err error) {
 	valueAsBuffer := new(bytes.Buffer)
 
 	timeAsBytes, err := db.Time.MarshalBinary()
@@ -150,9 +162,9 @@ func (db *DataBlock) MarshalBinary() (b []byte, err error) {
 	}
 
 	return valueAsBuffer.Bytes(), nil
-}
+}*/
 
-func (db *DataBlock) UnmarshalBinaryFromReader(r *bytes.Reader) (err error) {
+/*func (db *DataBlock) UnmarshalBinaryFromReader(r *bytes.Reader) (err error) {
 	err = db.Time.UnmarshalBinaryFromReader(r)
 	if err != nil {
 		return err
@@ -183,7 +195,7 @@ func (db *DataBlock) UnmarshalBinary(data []byte) (err error) {
 		return err
 	}
 	return nil
-}
+}*/
 
 func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byte, payloads ...*lv.LV) (r string, err error) {
 	lvPackedPayload, err := lv.CombineLV(payloads...)
@@ -203,11 +215,13 @@ func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byt
 	if err != nil {
 		return "", err
 	}
-	dataBlockAsBytes, err := dataBlock.MarshalBinary()
+	/*dataBlockAsBytes, err := dataBlock.MarshalBinary()
 	if err != nil {
 		return "", err
 	}
 	lvDataBlock, err := lv.NewLV(dataBlockAsBytes)
+	*/
+	lvDataBlock, err := dataBlock.AsLV()
 	if err != nil {
 		return "", err
 	}
@@ -258,7 +272,7 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 		return nil, err
 	}
 
-	lvDataElements, err := lv.SeparateLV(&lvData)
+	lvDataElements, err := lvData.Expand()
 	if err != nil {
 		return nil, err
 	}
@@ -284,14 +298,12 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 		return nil, err
 	}
 
-	lvDecryptedLVDataBlock := lv.LV{}
-	err = lvDecryptedLVDataBlock.UnmarshalBinary(decryptedData)
+	lvDecryptedLVDataBlock, err := lv.NewLVFromBinary(decryptedData)
 	if err != nil {
 		return nil, err
 	}
 
-	dataBlock := DataBlock{}
-	err = dataBlock.UnmarshalBinary(lvDecryptedLVDataBlock.Value)
+	dataBlock, err := NewDataBlockFromLV(lvDecryptedLVDataBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +334,7 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 	if err != nil {
 		return nil, err
 	}
-	lvPtrDataPayload, err := lv.SeparateLV(&lvCombinedPayload)
+	lvPtrDataPayload, err := lvCombinedPayload.Expand()
 	if err != nil {
 		return nil, err
 	}

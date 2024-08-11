@@ -5,10 +5,9 @@ import (
 	"dxlib/v3/utils"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 )
 
-var MAX_SIZE uint32 = 2147483647
+//var MAX_SIZE uint32 = 2147483647
 
 type LV struct {
 	Length uint32
@@ -24,8 +23,18 @@ func NewLV(data []byte) (*LV, error) {
 	return b, nil
 }
 
+func NewLVFromBinary(data []byte) (*LV, error) {
+	b := &LV{}
+	err := b.UnmarshalBinary(data)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
 func CombineLV(data ...*LV) (*LV, error) {
-	buf := new(bytes.Buffer)
+	return CombineLVs(data)
+
+	/*buf := new(bytes.Buffer)
 	for _, v := range data {
 		b, err := v.MarshalBinary()
 		if err != nil {
@@ -41,6 +50,7 @@ func CombineLV(data ...*LV) (*LV, error) {
 		return nil, err
 	}
 	return lv, nil
+	*/
 }
 
 func CombineLVs(data []*LV) (*LV, error) {
@@ -62,8 +72,8 @@ func CombineLVs(data []*LV) (*LV, error) {
 	return lv, nil
 }
 
-func SeparateLV(data *LV) ([]*LV, error) {
-	r := bytes.NewReader(data.Value)
+func (lv *LV) Expand() ([]*LV, error) {
+	r := bytes.NewReader(lv.Value)
 	var lvs []*LV
 	for r.Len() > 0 {
 		lv := &LV{}
@@ -76,10 +86,11 @@ func SeparateLV(data *LV) ([]*LV, error) {
 	return lvs, nil
 }
 
-func (lv *LV) len() int32 {
-	return int32(4 + len(lv.Value))
-}
-
+/*
+	func (lv *LV) len() int32 {
+		return int32(4 + len(lv.Value))
+	}
+*/
 func (lv *LV) SetValue(data any) error {
 	d, err := utils.AnyToBytes(data)
 	if err != nil {
@@ -121,9 +132,9 @@ func (lv *LV) UnmarshalBinaryFromReader(r *bytes.Reader) error {
 	if err != nil {
 		return err
 	}
-	if lv.Length >= MAX_SIZE {
+	/*	if lv.Length >= MAX_SIZE {
 		return errors.New("LV.UnmarshalBinaryFromReader:ARRAY_SIZE_TOO_LARGE")
-	}
+	}*/
 	lv.Value = make([]byte, lv.Length)
 	err = binary.Read(r, binary.BigEndian, &lv.Value)
 	if err != nil {
