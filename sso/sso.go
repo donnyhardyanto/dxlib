@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
-	"dxlib/v3/databases"
+	"dxlib/v3/database"
 	"dxlib/v3/log"
 	"dxlib/v3/redis"
 	"dxlib/v3/utils"
@@ -62,7 +62,7 @@ type DXOrganization struct {
 	RedisNameId                           string
 	AccessTokenTimeoutDurationSec         int64
 	Applications                          utils.JSON
-	Database                              *databases.DXDatabase
+	Database                              *database.DXDatabase
 	Redis                                 *redis.DXRedis
 }
 
@@ -125,7 +125,7 @@ func (o *DXOrganization) ApplyData(d utils.JSON) (err error) {
 	}
 
 	o.Applications = d[`applications`].(utils.JSON)
-	o.Database = databases.Manager.Databases[o.DatabaseNameId]
+	o.Database = database.Manager.Databases[o.DatabaseNameId]
 	o.Redis = redis.Manager.Redises[o.RedisNameId]
 	o.AccessTokenTimeoutDurationSec, err = json2.GetInt64(d, `access_token_timeout_duration_sec`)
 	if err != nil {

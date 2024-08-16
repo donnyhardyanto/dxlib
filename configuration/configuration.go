@@ -1,4 +1,4 @@
-package configurations
+package configuration
 
 import (
 	"encoding/json"
@@ -21,6 +21,8 @@ type DXConfiguration struct {
 	Data             *utils.JSON
 	SensitiveDataKey []string
 }
+
+type DXConfigurationPrefixKeywordResolver = func(text string) (err error)
 
 type DXConfigurationManager struct {
 	Configurations map[string]*DXConfiguration
@@ -50,15 +52,15 @@ func (cm *DXConfigurationManager) NewConfiguration(nameId string, filename strin
 	return &d
 }
 
-func (cm *DXConfigurationManager) NewIfNotExistConfiguration(nnameId string, filename string, fileFormat string, mustExist bool, mustLoadFile bool, data utils.JSON, sensitiveDataKey []string) *DXConfiguration {
-	if _, ok := cm.Configurations[nnameId]; ok {
-		c := cm.Configurations[nnameId]
+func (cm *DXConfigurationManager) NewIfNotExistConfiguration(nameId string, filename string, fileFormat string, mustExist bool, mustLoadFile bool, data utils.JSON, sensitiveDataKey []string) *DXConfiguration {
+	if _, ok := cm.Configurations[nameId]; ok {
+		c := cm.Configurations[nameId]
 		for k, v := range data {
 			(*c.Data)[k] = v
 		}
 		return c
 	}
-	return cm.NewConfiguration(nnameId, filename, fileFormat, mustExist, mustLoadFile, data, sensitiveDataKey)
+	return cm.NewConfiguration(nameId, filename, fileFormat, mustExist, mustLoadFile, data, sensitiveDataKey)
 }
 
 func (c *DXConfiguration) ByteArrayJSONToJSON(v []byte) (r utils.JSON, err error) {
@@ -183,5 +185,7 @@ func (cm *DXConfigurationManager) Load() (err error) {
 var Manager DXConfigurationManager
 
 func init() {
-	Manager = DXConfigurationManager{Configurations: map[string]*DXConfiguration{}}
+	Manager = DXConfigurationManager{
+		Configurations: map[string]*DXConfiguration{},
+	}
 }

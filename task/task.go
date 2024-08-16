@@ -1,4 +1,4 @@
-package tasks
+package task
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"dxlib/v3/configurations"
+	"dxlib/v3/configuration"
 	"dxlib/v3/core"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
@@ -84,7 +84,7 @@ func (am *DXTaskManager) StopAll() (err error) {
 }
 
 func (a *DXTask) ApplyConfigurations() (err error) {
-	configuration, ok := configurations.Manager.Configurations["tasks"]
+	configuration, ok := configuration.Manager.Configurations["tasks"]
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("Can not find configuration 'tasks' needed to configure the tasks")
 		return err

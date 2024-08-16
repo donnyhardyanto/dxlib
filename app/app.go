@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"dxlib/v3/vault"
 	"fmt"
 	"os"
 
@@ -9,14 +10,14 @@ import (
 
 	v3 "dxlib/v3"
 	"dxlib/v3/api"
-	"dxlib/v3/configurations"
+	"dxlib/v3/configuration"
 	"dxlib/v3/core"
-	"dxlib/v3/databases"
+	"dxlib/v3/database"
 	"dxlib/v3/log"
 	"dxlib/v3/module"
 	"dxlib/v3/redis"
-	"dxlib/v3/tables"
-	"dxlib/v3/tasks"
+	"dxlib/v3/table"
+	"dxlib/v3/task"
 )
 
 type DXAppArgCommandFunc func(s *DXApp, ac *DXAppArgCommand, T any) (err error)
@@ -67,11 +68,12 @@ type DXApp struct {
 	OnExecute                    DXAppEvent
 	OnStartStorageReady          DXAppEvent
 	OnStopping                   DXAppEvent
-	InitModules                  []module.DXModuleInterface
+	InitModules                  []module.DXInitModuleInterface
 	Modules                      []module.DXModuleInterface
+	InitVault                    vault.DXVaultInterface
 }
 
-func (a *DXApp) AddInitModule(m module.DXModuleInterface) {
+func (a *DXApp) AddInitModule(m module.DXInitModuleInterface) {
 	a.InitModules = append(a.InitModules, m)
 }
 
@@ -95,6 +97,7 @@ func (a *DXApp) handleDefineInitModules() (err error) {
 
 func (a *DXApp) handleStartInitModules() (err error) {
 	for _, m := range a.InitModules {
+		m.RegisterPrefixedKeyword()
 		err := m.Start()
 		if err != nil {
 			log.Log.Error(err.Error())
@@ -181,6 +184,10 @@ func (a *DXApp) handleStopModules() (err error) {
 
 func (a *DXApp) Run() error {
 
+	if a.InitVault != nil {
+		a.InitVault.Start()
+	}
+
 	err := a.handleDefineInitModules()
 	if err != nil {
 		return err
@@ -215,25 +222,25 @@ func (a *DXApp) Run() error {
 }
 
 func (a *DXApp) loadConfiguration() (err error) {
-	err = configurations.Manager.Load()
+	err = configuration.Manager.Load()
 	if err != nil {
 		return err
 	}
-	_, a.IsRedisExist = configurations.Manager.Configurations["redis"]
+	_, a.IsRedisExist = configuration.Manager.Configurations["redis"]
 	if a.IsRedisExist {
 		err = redis.Manager.LoadFromConfiguration("redis")
 		if err != nil {
 			return err
 		}
 	}
-	_, a.IsStorageExist = configurations.Manager.Configurations["storage"]
+	_, a.IsStorageExist = configuration.Manager.Configurations["storage"]
 	if a.IsStorageExist {
-		err = databases.Manager.LoadFromConfiguration("storage")
+		err = database.Manager.LoadFromConfiguration("storage")
 		if err != nil {
 			return err
 		}
 	}
-	_, a.IsAPIExist = configurations.Manager.Configurations["api"]
+	_, a.IsAPIExist = configuration.Manager.Configurations["api"]
 	if a.IsAPIExist {
 		err = api.Manager.LoadFromConfiguration("api")
 		if err != nil {
@@ -289,11 +296,11 @@ func (a *DXApp) start() (err error) {
 		}
 	}
 	if a.IsStorageExist {
-		err = databases.Manager.ConnectAllAtStart(`storage`)
+		err = database.Manager.ConnectAllAtStart(`storage`)
 		if err != nil {
 			return err
 		}
-		err := tables.Manager.ConnectAll()
+		err := table.Manager.ConnectAll()
 		if err != nil {
 			return err
 		}
@@ -310,10 +317,10 @@ func (a *DXApp) start() (err error) {
 			return err
 		}
 	}
-	_, a.IsTaskExist = configurations.Manager.Configurations["tasks"]
+	_, a.IsTaskExist = configuration.Manager.Configurations["tasks"]
 
 	if a.IsTaskExist {
-		err = tasks.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
+		err = task.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
 		if err != nil {
 			return err
 		}
@@ -348,7 +355,7 @@ func (a *DXApp) Stop() (err error) {
 		}
 	}
 	if a.IsTaskExist {
-		err = tasks.Manager.StopAll()
+		err = task.Manager.StopAll()
 		if err != nil {
 			return err
 		}
@@ -366,7 +373,7 @@ func (a *DXApp) Stop() (err error) {
 		}
 	}
 	if a.IsStorageExist {
-		err = databases.Manager.DisconnectAll()
+		err = database.Manager.DisconnectAll()
 		if err != nil {
 			return err
 		}

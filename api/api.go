@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 
-	"dxlib/v3/configurations"
+	"dxlib/v3/configuration"
 	"dxlib/v3/core"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
@@ -77,7 +77,7 @@ func (am *DXAPIManager) NewAPI(nameId string) (*DXAPI, error) {
 }
 
 func (am *DXAPIManager) LoadFromConfiguration(configurationNameId string) (err error) {
-	configuration, ok := configurations.Manager.Configurations[configurationNameId]
+	configuration, ok := configuration.Manager.Configurations[configurationNameId]
 	if !ok {
 		return log.Log.FatalAndCreateErrorf("configuration '%s' not found", configurationNameId)
 	}
@@ -131,7 +131,7 @@ func (am *DXAPIManager) StopAll() (err error) {
 }
 
 func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
-	configuration, ok := configurations.Manager.Configurations[configurationNameId]
+	configuration, ok := configuration.Manager.Configurations[configurationNameId]
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("Can not find configuration '%s' needed to configure the API", configurationNameId)
 		return err

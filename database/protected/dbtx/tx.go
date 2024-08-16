@@ -7,7 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"dxlib/v3/databases/protected/db"
+	"dxlib/v3/database/protected/db"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
 )

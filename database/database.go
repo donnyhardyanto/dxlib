@@ -1,4 +1,4 @@
-package databases
+package database
 
 import (
 	"context"
@@ -15,12 +15,12 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/microsoft/go-mssqldb"
 
-	"dxlib/v3/databases/sqlfile"
+	"dxlib/v3/database/sqlfile"
 
-	"dxlib/v3/configurations"
-	"dxlib/v3/databases/database_type"
-	"dxlib/v3/databases/protected/db"
-	"dxlib/v3/databases/protected/dbtx"
+	"dxlib/v3/configuration"
+	"dxlib/v3/database/database_type"
+	"dxlib/v3/database/protected/db"
+	"dxlib/v3/database/protected/dbtx"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
 	utilsSql "dxlib/v3/utils/security"
@@ -142,7 +142,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 func (d *DXDatabase) ApplyFromConfiguration(configurationNameId string) (err error) {
 	if !d.IsConfigured {
 		log.Log.Infof("Configuring to Database %s... start", d.NameId)
-		configurationData, ok := configurations.Manager.Configurations[configurationNameId]
+		configurationData, ok := configuration.Manager.Configurations[configurationNameId]
 		if !ok {
 			err = log.Log.PanicAndCreateErrorf("DXDatabase/ApplyFromConfiguration/1", "Storage configuration not found")
 			return err

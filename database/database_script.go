@@ -1,9 +1,9 @@
-package databases
+package database
 
 import (
 	"database/sql"
 
-	"dxlib/v3/databases/sqlfile"
+	"dxlib/v3/database/sqlfile"
 	"dxlib/v3/log"
 )
 

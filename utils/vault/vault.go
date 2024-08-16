@@ -10,6 +10,7 @@ import (
 type VaultServer struct {
 	Address string
 	Token   string
+	Prefix  string
 	Client  *vault.Client
 }
 
@@ -28,9 +29,9 @@ func (v *VaultServer) Setup() *vault.Client {
 
 func (v *VaultServer) VaultMapping(path string, texts ...string) []string {
 	check := false
-	prefix := "__VAULT__"
+	//prefix := "__VAULT__"
 	for _, text := range texts {
-		if strings.Contains(text, prefix) {
+		if strings.Contains(text, v.Prefix) {
 			check = true
 			break
 		}
@@ -43,8 +44,8 @@ func (v *VaultServer) VaultMapping(path string, texts ...string) []string {
 		var results []string
 		data := secret.Data["data"].(map[string]any)
 		for _, text := range texts {
-			if strings.Contains(text, "__VAULT__") {
-				key := strings.TrimPrefix(text, prefix)
+			if strings.Contains(text, v.Prefix) {
+				key := strings.TrimPrefix(text, v.Prefix)
 				results = append(results, data[key].(string))
 			} else {
 				results = append(results, text)
@@ -56,7 +57,7 @@ func (v *VaultServer) VaultMapping(path string, texts ...string) []string {
 }
 
 func (v *VaultServer) VaultMapString(path string, text string) string {
-	if strings.Contains(text, "__VAULT__") {
+	if strings.Contains(text, v.Prefix) {
 		mapString := text
 		secret, err := v.Client.Logical().Read(path)
 		if err != nil {
@@ -64,7 +65,7 @@ func (v *VaultServer) VaultMapString(path string, text string) string {
 		}
 		data := secret.Data["data"].(map[string]any)
 		for key, value := range data {
-			placeholder := "__VAULT__" + key
+			placeholder := v.Prefix + key
 			mapString = strings.Replace(mapString, placeholder, value.(string), -1)
 		}
 		return mapString
