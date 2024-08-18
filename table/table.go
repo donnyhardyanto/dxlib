@@ -43,6 +43,7 @@ func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName
 		tableListViewNameId = tableNameId
 	}
 	t := DXTable{DatabaseNameId: databaseNameId, NameId: tableNameId, ResultObjectName: resultObjectName, ListViewNameId: tableListViewNameId}
+	t.Database = database.Manager.Databases[databaseNameId]
 	tm.Tables[tableNameId] = &t
 	return &t
 }
@@ -53,6 +54,7 @@ func (tm *DXTableManager) NewTableWithCodeAndNameId(databaseNameId, tableNameId,
 	}
 	t := DXTable{DatabaseNameId: databaseNameId, NameId: tableNameId, ResultObjectName: resultObjectName, ListViewNameId: tableListViewNameId, FieldNameForRowCode: tableFieldNameForRowCode,
 		FieldNameForRowNameId: tableFieldNameForRowNameId}
+	t.Database = database.Manager.Databases[databaseNameId]
 	tm.Tables[tableNameId] = &t
 	return &t
 }
@@ -486,6 +488,13 @@ func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, 
 		whereAndFieldNameValues = utils.JSON{}
 	}
 	whereAndFieldNameValues["is_deleted"] = false
+
+	if t.Database == nil {
+		err = t.Database.Connect()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 
 	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 }

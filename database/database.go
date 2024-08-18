@@ -393,11 +393,19 @@ func (d *DXDatabase) Select(tableName string, showFieldNames []string, whereAndF
 
 func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	//err = d.CheckConnectionAndReconnect()
-	//if err != nil {
-	//	return nil, nil, err
-	//}
-	return db.SelectOne(d.Connection, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
+
+	for {
+		rowsInfo, r, err = db.SelectOne(d.Connection, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
+		if err == nil {
+			return rowsInfo, r, nil
+		}
+		if err != nil {
+			err = d.CheckConnectionAndReconnect()
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+	}
 }
 
 func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
