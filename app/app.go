@@ -164,8 +164,16 @@ func (a *DXApp) start() (err error) {
 		}
 	}
 
+	if a.OnDefineSetVariables != nil {
+		err = a.OnDefineSetVariables()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+
 	if a.OnDefineAPIEndPoints != nil {
-		err := a.OnDefineAPIEndPoints()
+		err = a.OnDefineAPIEndPoints()
 		if err != nil {
 			log.Log.Error(err.Error())
 			return err

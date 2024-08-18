@@ -1,11 +1,13 @@
 package vault
 
 import (
-	dxlibv3Valult "dxlib/v3/utils/vault"
+	"dxlib/v3/log"
+	vault "github.com/hashicorp/vault/api"
+	"strings"
 )
 
 type DXVaultInterface interface {
-	Start()
+	Start() (err error)
 	ResolveAsString(v string) string
 }
 
@@ -32,7 +34,7 @@ func NewVaultVendor(vendor string, address string, token string, prefix string, 
 
 type DXHashicorpVault struct {
 	DXVault
-	Client dxlibv3Valult.VaultServer
+	Client *vault.Client
 }
 
 func NewHashiCorpVault(address string, token string, prefix string, path string) *DXHashicorpVault {
@@ -48,14 +50,72 @@ func NewHashiCorpVault(address string, token string, prefix string, path string)
 	return v
 }
 
-func (hv *DXHashicorpVault) Start() {
-	hv.Client = dxlibv3Valult.VaultServer{
-		Address: hv.Address,
-		Token:   hv.Token,
+func (hv *DXHashicorpVault) Start() (err error) {
+	config := vault.DefaultConfig()
+	config.Address = hv.Address
+	hv.Client, err = vault.NewClient(config)
+	if err != nil {
+		return err
 	}
-	hv.Client.Setup()
+	hv.Client.SetToken(hv.Token)
+	return nil
 }
 
 func (hv *DXHashicorpVault) ResolveAsString(v string) string {
-	return hv.Client.VaultMapString(hv.Path, v)
+	return hv.VaultMapString(&log.Log, v)
+}
+
+func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []string, err error) {
+	check := false
+	for _, text := range texts {
+		if strings.Contains(text, hv.Prefix) {
+			check = true
+			break
+		}
+	}
+	if check {
+		secret, err := hv.Client.Logical().Read(hv.Path)
+		if err != nil {
+			log.Errorf("Unable to read credentials from Vault: %v", err)
+			return nil, err
+		}
+		var results []string
+		data, ok := secret.Data["data"].(map[string]any)
+		if !ok {
+			err = log.ErrorAndCreateErrorf("unable to read path from Vault")
+			return nil, err
+		}
+		for _, text := range texts {
+			if strings.Contains(text, hv.Prefix) {
+				key := strings.TrimPrefix(text, hv.Prefix)
+				results = append(results, data[key].(string))
+			} else {
+				results = append(results, text)
+			}
+		}
+		return results, nil
+	}
+	return texts, nil
+}
+
+func (hv *DXHashicorpVault) VaultMapString(log *log.DXLog, text string) string {
+	if strings.Contains(text, hv.Prefix) {
+		mapString := text
+		secret, err := hv.Client.Logical().Read(hv.Path)
+		if err != nil {
+			log.Fatalf("Unable to read credentials from Vault: %v", err)
+			return ""
+		}
+		data, ok := secret.Data["data"].(map[string]any)
+		if !ok {
+			log.Fatalf("unable to read path from Vault")
+			return ""
+		}
+		for key, value := range data {
+			placeholder := hv.Prefix + key
+			mapString = strings.Replace(mapString, placeholder, value.(string), -1)
+		}
+		return mapString
+	}
+	return text
 }
