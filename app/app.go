@@ -62,7 +62,7 @@ type DXApp struct {
 	OnDefine                     DXAppEvent
 	OnDefineConfiguration        DXAppEvent
 	OnDefineSetVariables         DXAppEvent
-	OnDefineAPI                  DXAppEvent
+	OnDefineAPIEndPoints         DXAppEvent
 	OnAfterConfigurationStartAll DXAppEvent
 	OnExecute                    DXAppEvent
 	OnStartStorageReady          DXAppEvent
@@ -280,13 +280,6 @@ func (a *DXApp) start() (err error) {
 			}
 		}
 	*/
-	if a.OnDefineAPI != nil {
-		err := a.OnDefineAPI()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
-		}
-	}
 
 	if a.IsRedisExist {
 		err = redis.Manager.ConnectAllAtStart()
@@ -310,12 +303,22 @@ func (a *DXApp) start() (err error) {
 			}
 		}
 	}
+
 	if a.IsAPIExist {
 		err = api.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
 		if err != nil {
 			return err
 		}
 	}
+
+	if a.OnDefineAPIEndPoints != nil {
+		err := a.OnDefineAPIEndPoints()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
+	}
+
 	_, a.IsTaskExist = configuration.Manager.Configurations["tasks"]
 
 	if a.IsTaskExist {
