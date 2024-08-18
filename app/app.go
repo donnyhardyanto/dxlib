@@ -67,135 +67,14 @@ type DXApp struct {
 	OnExecute                    DXAppEvent
 	OnStartStorageReady          DXAppEvent
 	OnStopping                   DXAppEvent
-	//InitModules                  []module.DXInitModuleInterface
-	//Modules                      []module.DXModuleInterface
-	InitVault vault.DXVaultInterface
+	InitVault                    vault.DXVaultInterface
 }
-
-/*func (a *DXApp) AddInitModule(m module.DXInitModuleInterface) {
-	a.InitModules = append(a.InitModules, m)
-}
-
-func (a *DXApp) AddModule(m module.DXModuleInterface) {
-	a.Modules = append(a.Modules, m)
-}
-
-func (a *DXApp) handleDefineInitModules() (err error) {
-	for _, m := range a.InitModules {
-		if m.DefineConfiguration != nil {
-			err := m.DefineConfiguration()
-			if err != nil {
-				log.Log.Error(err.Error())
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (a *DXApp) handleStartInitModules() (err error) {
-	for _, m := range a.InitModules {
-		m.RegisterPrefixedKeyword()
-		err := m.Start()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
-		}
-	}
-	return nil
-}
-
-func (a *DXApp) handleOnConfigurationStartAllInitModules() (err error) {
-	for _, m := range a.InitModules {
-		if m.DoAfterConfigurationStartAll != nil {
-			err := m.DoAfterConfigurationStartAll()
-			if err != nil {
-				log.Log.Error(err.Error())
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (a *DXApp) handleStopInitModules() (err error) {
-	for i := len(a.InitModules) - 1; i >= 0; i-- {
-		m := a.Modules[i]
-		err := m.Stop()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
-		}
-	}
-	return nil
-}
-
-func (a *DXApp) handleDefineModules() (err error) {
-	for _, m := range a.Modules {
-		if m.DefineConfiguration != nil {
-			err := m.DefineConfiguration()
-			if err != nil {
-				log.Log.Error(err.Error())
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (a *DXApp) handleStartModules() (err error) {
-	for _, m := range a.Modules {
-		err := m.Start()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
-		}
-	}
-	return nil
-}
-
-func (a *DXApp) handleOnConfigurationStartAllModules() (err error) {
-	for _, m := range a.Modules {
-		if m.DoAfterConfigurationStartAll != nil {
-			err := m.DoAfterConfigurationStartAll()
-			if err != nil {
-				log.Log.Error(err.Error())
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (a *DXApp) handleStopModules() (err error) {
-	for i := len(a.Modules) - 1; i >= 0; i-- {
-		m := a.Modules[i]
-		err := m.Stop()
-		if err != nil {
-			log.Log.Error(err.Error())
-			return err
-		}
-	}
-	return nil
-}*/
 
 func (a *DXApp) Run() (err error) {
 
 	if a.InitVault != nil {
 		a.InitVault.Start()
 	}
-
-	/*	err := a.handleDefineInitModules()
-		if err != nil {
-			return err
-		}
-
-		err = a.handleDefineModules()
-		if err != nil {
-			return err
-		}*/
 
 	if a.OnDefine != nil {
 		err := a.OnDefine()
@@ -255,32 +134,6 @@ func (a *DXApp) start() (err error) {
 		return err
 	}
 
-	/*	for _, m := range a.InitModules {
-			if m.DefineAPI != nil {
-				err := m.DefineAPI()
-				if err != nil {
-					log.Log.Error(err.Error())
-					return err
-				}
-			}
-		}
-
-		err = a.handleStartInitModules()
-		if err != nil {
-			return err
-		}
-
-		for _, m := range a.Modules {
-			if m.DefineAPI != nil {
-				err := m.DefineAPI()
-				if err != nil {
-					log.Log.Error(err.Error())
-					return err
-				}
-			}
-		}
-	*/
-
 	if a.IsRedisExist {
 		err = redis.Manager.ConnectAllAtStart()
 		if err != nil {
@@ -327,16 +180,6 @@ func (a *DXApp) start() (err error) {
 			return err
 		}
 	}
-
-	/*	err = a.handleOnConfigurationStartAllInitModules()
-		if err != nil {
-			return err
-		}
-
-		err = a.handleOnConfigurationStartAllModules()
-		if err != nil {
-			return err
-		}*/
 
 	if a.OnAfterConfigurationStartAll != nil {
 		err = a.OnAfterConfigurationStartAll()
@@ -398,25 +241,11 @@ func (a *DXApp) execute() (err error) {
 				log.Log.Infof("Error in Stopping.Stop(): (%v)", err2)
 			}
 
-			/*			err2 = a.handleStopModules()
-						if err2 != nil {
-							log.Log.Infof("Error in Stopping.StopModules(): (%v)", err2)
-						}
-
-						err2 = a.handleStopInitModules()
-						if err2 != nil {
-							log.Log.Infof("Error in Stopping.StopInitModules(): (%v)", err2)
-						}*/
 			//log.Log.Info("Stopped")
 		}()
 	}
 	log.Log.Info("Starting")
 
-	/*	err = a.handleStartModules()
-		if err != nil {
-			return err
-		}
-	*/
 	if a.OnExecute != nil {
 		err = a.OnExecute()
 		if err != nil {
