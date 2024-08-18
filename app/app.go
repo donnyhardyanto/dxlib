@@ -14,7 +14,6 @@ import (
 	"dxlib/v3/core"
 	"dxlib/v3/database"
 	"dxlib/v3/log"
-	"dxlib/v3/module"
 	"dxlib/v3/redis"
 	"dxlib/v3/table"
 	"dxlib/v3/task"
@@ -68,12 +67,12 @@ type DXApp struct {
 	OnExecute                    DXAppEvent
 	OnStartStorageReady          DXAppEvent
 	OnStopping                   DXAppEvent
-	InitModules                  []module.DXInitModuleInterface
-	Modules                      []module.DXModuleInterface
-	InitVault                    vault.DXVaultInterface
+	//InitModules                  []module.DXInitModuleInterface
+	//Modules                      []module.DXModuleInterface
+	InitVault vault.DXVaultInterface
 }
 
-func (a *DXApp) AddInitModule(m module.DXInitModuleInterface) {
+/*func (a *DXApp) AddInitModule(m module.DXInitModuleInterface) {
 	a.InitModules = append(a.InitModules, m)
 }
 
@@ -180,23 +179,23 @@ func (a *DXApp) handleStopModules() (err error) {
 		}
 	}
 	return nil
-}
+}*/
 
-func (a *DXApp) Run() error {
+func (a *DXApp) Run() (err error) {
 
 	if a.InitVault != nil {
 		a.InitVault.Start()
 	}
 
-	err := a.handleDefineInitModules()
-	if err != nil {
-		return err
-	}
+	/*	err := a.handleDefineInitModules()
+		if err != nil {
+			return err
+		}
 
-	err = a.handleDefineModules()
-	if err != nil {
-		return err
-	}
+		err = a.handleDefineModules()
+		if err != nil {
+			return err
+		}*/
 
 	if a.OnDefine != nil {
 		err := a.OnDefine()
@@ -256,31 +255,31 @@ func (a *DXApp) start() (err error) {
 		return err
 	}
 
-	for _, m := range a.InitModules {
-		if m.DefineAPI != nil {
-			err := m.DefineAPI()
-			if err != nil {
-				log.Log.Error(err.Error())
-				return err
+	/*	for _, m := range a.InitModules {
+			if m.DefineAPI != nil {
+				err := m.DefineAPI()
+				if err != nil {
+					log.Log.Error(err.Error())
+					return err
+				}
 			}
 		}
-	}
 
-	err = a.handleStartInitModules()
-	if err != nil {
-		return err
-	}
+		err = a.handleStartInitModules()
+		if err != nil {
+			return err
+		}
 
-	for _, m := range a.Modules {
-		if m.DefineAPI != nil {
-			err := m.DefineAPI()
-			if err != nil {
-				log.Log.Error(err.Error())
-				return err
+		for _, m := range a.Modules {
+			if m.DefineAPI != nil {
+				err := m.DefineAPI()
+				if err != nil {
+					log.Log.Error(err.Error())
+					return err
+				}
 			}
 		}
-	}
-
+	*/
 	if a.OnDefineAPI != nil {
 		err := a.OnDefineAPI()
 		if err != nil {
@@ -326,15 +325,15 @@ func (a *DXApp) start() (err error) {
 		}
 	}
 
-	err = a.handleOnConfigurationStartAllInitModules()
-	if err != nil {
-		return err
-	}
+	/*	err = a.handleOnConfigurationStartAllInitModules()
+		if err != nil {
+			return err
+		}
 
-	err = a.handleOnConfigurationStartAllModules()
-	if err != nil {
-		return err
-	}
+		err = a.handleOnConfigurationStartAllModules()
+		if err != nil {
+			return err
+		}*/
 
 	if a.OnAfterConfigurationStartAll != nil {
 		err = a.OnAfterConfigurationStartAll()
@@ -396,25 +395,25 @@ func (a *DXApp) execute() (err error) {
 				log.Log.Infof("Error in Stopping.Stop(): (%v)", err2)
 			}
 
-			err2 = a.handleStopModules()
-			if err2 != nil {
-				log.Log.Infof("Error in Stopping.StopModules(): (%v)", err2)
-			}
+			/*			err2 = a.handleStopModules()
+						if err2 != nil {
+							log.Log.Infof("Error in Stopping.StopModules(): (%v)", err2)
+						}
 
-			err2 = a.handleStopInitModules()
-			if err2 != nil {
-				log.Log.Infof("Error in Stopping.StopInitModules(): (%v)", err2)
-			}
+						err2 = a.handleStopInitModules()
+						if err2 != nil {
+							log.Log.Infof("Error in Stopping.StopInitModules(): (%v)", err2)
+						}*/
 			//log.Log.Info("Stopped")
 		}()
 	}
 	log.Log.Info("Starting")
 
-	err = a.handleStartModules()
-	if err != nil {
-		return err
-	}
-
+	/*	err = a.handleStartModules()
+		if err != nil {
+			return err
+		}
+	*/
 	if a.OnExecute != nil {
 		err = a.OnExecute()
 		if err != nil {

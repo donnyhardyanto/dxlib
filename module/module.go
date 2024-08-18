@@ -1,30 +1,32 @@
 package module
 
 type DXModuleInterface interface {
-	DefineConfiguration() (err error)
-	DefineAPI() (err error)
-	Start() (err error)
-	Stop() (err error)
-	DoAfterConfigurationStartAll() (err error)
+	/*	DefineConfiguration() (err error)
+		DefineAPI() (err error)
+		Start() (err error)
+		Stop() (err error)
+		DoAfterConfigurationStartAll() (err error)*/
 }
 
-type DXInitModuleInterface interface {
-	DXModuleInterface
-	RegisterPrefixedKeyword()
-	ResolvePrefixKeyword(text string) (err error)
-}
+/*
+	type DXInitModuleInterface interface {
+		DXModuleInterface
+		RegisterPrefixedKeyword()
+		ResolvePrefixKeyword(text string) (err error)
+	}
+*/
 type DXModule struct {
 	DXModuleInterface
 	NameId string
 }
 
-type DXInitModule struct {
+/*type DXInitModule struct {
 	DXInitModuleInterface
 	NameId        string
 	PrefixKeyword string
 }
-
-func (m *DXModule) DefineConfiguration() (err error) {
+*/
+/*func (m *DXModule) DefineConfiguration() (err error) {
 	return nil
 }
 
@@ -66,3 +68,4 @@ func (m *DXInitModule) Stop() (err error) {
 func (m *DXInitModule) DoAfterConfigurationStartAll() (err error) {
 	return nil
 }
+*/
