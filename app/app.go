@@ -156,14 +156,6 @@ func (a *DXApp) start() (err error) {
 			}
 		}
 	}
-
-	if a.IsAPIExist {
-		err = api.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
-		if err != nil {
-			return err
-		}
-	}
-
 	if a.OnDefineSetVariables != nil {
 		err = a.OnDefineSetVariables()
 		if err != nil {
@@ -176,6 +168,13 @@ func (a *DXApp) start() (err error) {
 		err = a.OnDefineAPIEndPoints()
 		if err != nil {
 			log.Log.Error(err.Error())
+			return err
+		}
+	}
+
+	if a.IsAPIExist {
+		err = api.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
+		if err != nil {
 			return err
 		}
 	}
