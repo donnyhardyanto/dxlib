@@ -17,6 +17,15 @@ import (
 
 type JSON = map[string]any
 
+func ArrayOfStringIsContains(arr []string, str string) bool {
+	for _, a := range arr {
+		if a == str {
+			return true
+		}
+	}
+	return false
+}
+
 func GetAllMachineIP4s() []string {
 	address, err := net.InterfaceAddrs()
 	if err != nil {
