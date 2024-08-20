@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"dxlib/v3/configuration"
+	dxlibv3Configuration "dxlib/v3/configuration"
 	"dxlib/v3/core"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
@@ -55,7 +55,7 @@ func (rs *DXRedisManager) NewRedis(nameId string, isConnectAtStart, mustConnecte
 }
 
 func (rs *DXRedisManager) LoadFromConfiguration(configurationNameId string) (err error) {
-	configuration, ok := configuration.Manager.Configurations[configurationNameId]
+	configuration, ok := dxlibv3Configuration.Manager.Configurations[configurationNameId]
 	if !ok {
 		return fmt.Errorf("configuration '%s' not found", configurationNameId)
 	}
@@ -124,7 +124,7 @@ func (rs *DXRedisManager) DisconnectAll() (err error) {
 func (r *DXRedis) ApplyFromConfiguration() (err error) {
 	if !r.IsConfigured {
 		log.Log.Infof("Configuring to Redis %s... start", r.NameId)
-		configurationData, ok := configuration.Manager.Configurations[`redis`]
+		configurationData, ok := dxlibv3Configuration.Manager.Configurations[`redis`]
 		if !ok {
 			err = log.Log.PanicAndCreateErrorf("DXRedis/ApplyFromConfiguration/1", "Redises configuration not found")
 			return err

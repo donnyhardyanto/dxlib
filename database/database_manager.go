@@ -1,7 +1,7 @@
 package database
 
 import (
-	"dxlib/v3/configuration"
+	dxlibv3Configuration "dxlib/v3/configuration"
 	"dxlib/v3/database/protected/db"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
@@ -31,7 +31,7 @@ func (dm *DXDatabaseManager) NewDatabase(nameId string, isConnectAtStart, mustBe
 }
 
 func (dm *DXDatabaseManager) LoadFromConfiguration(configurationNameId string) (err error) {
-	configuration := configuration.Manager.Configurations[configurationNameId]
+	configuration := dxlibv3Configuration.Manager.Configurations[configurationNameId]
 	isConnectAtStart := false
 	mustConnected := false
 	for k, v := range *configuration.Data {

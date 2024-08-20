@@ -73,7 +73,11 @@ type DXApp struct {
 func (a *DXApp) Run() (err error) {
 
 	if a.InitVault != nil {
-		a.InitVault.Start()
+		err = a.InitVault.Start()
+		if err != nil {
+			log.Log.Error(err.Error())
+			return err
+		}
 	}
 
 	if a.OnDefine != nil {

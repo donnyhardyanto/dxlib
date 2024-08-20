@@ -84,12 +84,12 @@ func (am *DXTaskManager) StopAll() (err error) {
 }
 
 func (a *DXTask) ApplyConfigurations() (err error) {
-	configuration, ok := configuration.Manager.Configurations["tasks"]
+	configurationTasks, ok := configuration.Manager.Configurations["tasks"]
 	if !ok {
-		err := log.Log.FatalAndCreateErrorf("Can not find configuration 'tasks' needed to configure the tasks")
+		err := log.Log.FatalAndCreateErrorf("Can not find configurationTasks 'tasks' needed to configure the tasks")
 		return err
 	}
-	c := *configuration.Data
+	c := *configurationTasks.Data
 	c1, ok := c[a.NameId].(utils.JSON)
 	if !ok {
 		return nil

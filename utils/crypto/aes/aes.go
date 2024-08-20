@@ -65,8 +65,8 @@ func DecryptAES(key, data []byte) ([]byte, error) {
 			return nil, errors.New("INVALID_DATA_SIZE")
 		}
 		plainText, err = RemovePad(plainText)*/
-	if err != nil {
+	/*if err != nil {
 		return nil, err
-	}
+	}*/
 	return plainText, nil
 }
