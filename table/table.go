@@ -301,6 +301,19 @@ func (t *DXTable) Edit(aepr *api.DXAPIEndPointRequest) (err error) {
 	return err
 }
 
+func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
+	_, err = db.DeleteWhereKeyValues(t.Database.Connection, t.NameId, utils.JSON{
+		"id": id,
+	})
+	if err != nil {
+		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", t.NameId, err)
+		return err
+	}
+	err = aepr.ResponseSetFromJSON(nil)
+
+	return err
+}
+
 func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64("id")
 	if err != nil {
@@ -314,6 +327,20 @@ func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	err = t.DoEdit(aepr, id, newFieldValues)
 	if err != nil {
 		aepr.Log.Errorf("Error at %s.SoftDelete (%s) ", t.NameId, err)
+		return err
+	}
+	return err
+}
+
+func (t *DXTable) HardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
+	_, id, err := aepr.GetParameterValueAsInt64("id")
+	if err != nil {
+		return err
+	}
+
+	err = t.DoDelete(aepr, id)
+	if err != nil {
+		aepr.Log.Errorf("Error at %s.HardDelete (%s) ", t.NameId, err)
 		return err
 	}
 	return err
