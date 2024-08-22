@@ -187,10 +187,10 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	return &ae
 }
 
-func (a *DXAPI) doFiberHTTPHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
+func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 	var aepr *DXAPIEndPointRequest
 	var err error
-	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "RequestHandler|"+p.Uri)
+	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "doFiberHTTPJSONHandler|"+p.Uri)
 	defer span.End()
 
 	defer func() {
@@ -260,13 +260,24 @@ func (a *DXAPI) doFiberHTTPHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 	return nil
 }
 
+func (a *DXAPI) doFiberHTTPUploadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
+	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "doFiberHTTPUploadStreamHandler|"+p.Uri)
+	defer span.End()
+
+	var aepr *DXAPIEndPointRequest
+	aepr = p.NewEndPointRequest(requestContext, c)
+	defer func() {
+		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
+	}()
+
+	// get param from headers
+	// do handle upload
+	return nil
+}
+
 func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 
 	if !a.RuntimeIsActive {
-		/*		err := a.ApplyConfigurations()
-				if err != nil {
-					return err
-				}*/
 		a.HTTPServer = fiber.New(fiber.Config{
 			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
@@ -275,20 +286,25 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 			AllowOrigins: "*",                              // Allows all origins
 			AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH", // Specify what methods to allow
 			AllowHeaders: "*",                              // Specify what headers can be sent
-			//	AllowHeaders: "Origin, Content-Type, Accept, Authorization, x-ijt", // Specify what headers can be sent
 		}))
 		for _, v := range a.EndPoints {
 			p := v
 
-			fiberHttpHandler := func(c *fiber.Ctx) error {
-				return a.doFiberHTTPHandler(&p, c)
+			fiberHttpJsonHandler := func(c *fiber.Ctx) error {
+				return a.doFiberHTTPJSONHandler(&p, c)
 			}
 
-			if p.EndPointType == EndPointTypeHTTP {
-				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpHandler)
+			fiberHttpUploadStream := func(c *fiber.Ctx) error {
+				return a.doFiberHTTPUploadStreamHandler(&p, c)
+			}
+			if p.EndPointType == EndPointTypeHTTPJSON {
+				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpJsonHandler)
+			}
+			if p.EndPointType == EndPointTypeHTTPUploadStream {
+				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpUploadStream)
 			}
 			if p.EndPointType == EndPointTypeWS {
-				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpHandler,
+				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpJsonHandler,
 					websocket.New(func(c *websocket.Conn) {
 						var aepr *DXAPIEndPointRequest
 						if p.OnWSLoop != nil {

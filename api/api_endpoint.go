@@ -13,7 +13,8 @@ import (
 type DXAPIEndPointType int
 
 const (
-	EndPointTypeHTTP DXAPIEndPointType = iota
+	EndPointTypeHTTPJSON DXAPIEndPointType = iota
+	EndPointTypeHTTPUploadStream
 	EndPointTypeWS
 )
 
