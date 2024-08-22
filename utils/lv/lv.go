@@ -33,24 +33,6 @@ func NewLVFromBinary(data []byte) (*LV, error) {
 }
 func CombineLV(data ...*LV) (*LV, error) {
 	return CombineLVs(data)
-
-	/*buf := new(bytes.Buffer)
-	for _, v := range data {
-		b, err := v.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		err = binary.Write(buf, binary.BigEndian, b)
-		if err != nil {
-			return nil, err
-		}
-	}
-	lv, err := NewLV(buf.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	return lv, nil
-	*/
 }
 
 func CombineLVs(data []*LV) (*LV, error) {
@@ -86,11 +68,6 @@ func (lv *LV) Expand() ([]*LV, error) {
 	return lvs, nil
 }
 
-/*
-	func (lv *LV) len() int32 {
-		return int32(4 + len(lv.Value))
-	}
-*/
 func (lv *LV) SetValue(data any) error {
 	d, err := utils.AnyToBytes(data)
 	if err != nil {
@@ -132,9 +109,7 @@ func (lv *LV) UnmarshalBinaryFromReader(r *bytes.Reader) error {
 	if err != nil {
 		return err
 	}
-	/*	if lv.Length >= MAX_SIZE {
-		return errors.New("LV.UnmarshalBinaryFromReader:ARRAY_SIZE_TOO_LARGE")
-	}*/
+
 	lv.Value = make([]byte, lv.Length)
 	err = binary.Read(r, binary.BigEndian, &lv.Value)
 	if err != nil {

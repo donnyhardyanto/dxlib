@@ -59,14 +59,5 @@ func DecryptAES(key, data []byte) ([]byte, error) {
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(plainText, cipherText)
 
-	/*	// Verify the padding before using it
-		padding := plainText[len(plainText)-1]
-		if int(padding) > aes.BlockSize || int(padding) < 1 {
-			return nil, errors.New("INVALID_DATA_SIZE")
-		}
-		plainText, err = RemovePad(plainText)*/
-	/*if err != nil {
-		return nil, err
-	}*/
 	return plainText, nil
 }

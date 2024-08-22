@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var PayloadUnpackTTL = 5 * time.Minute
+
 type DataBlock struct {
 	Time     lv.LV
 	Nonce    lv.LV
@@ -113,90 +115,6 @@ func (db *DataBlock) AsLV() (r *lv.LV, err error) {
 	return r, nil
 }
 
-/*func (db *DataBlock) MarshalBinary() (b []byte, err error) {
-	valueAsBuffer := new(bytes.Buffer)
-
-	timeAsBytes, err := db.Time.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	err = binary.Write(valueAsBuffer, binary.BigEndian, timeAsBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	nonceAsBytes, err := db.Nonce.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	err = binary.Write(valueAsBuffer, binary.BigEndian, nonceAsBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	preKeyAsBytes, err := db.PreKey.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	err = binary.Write(valueAsBuffer, binary.BigEndian, preKeyAsBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	dataAsBytes, err := db.Data.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	err = binary.Write(valueAsBuffer, binary.BigEndian, dataAsBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	dataHashAsBytes, err := db.DataHash.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	err = binary.Write(valueAsBuffer, binary.BigEndian, dataHashAsBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return valueAsBuffer.Bytes(), nil
-}*/
-
-/*func (db *DataBlock) UnmarshalBinaryFromReader(r *bytes.Reader) (err error) {
-	err = db.Time.UnmarshalBinaryFromReader(r)
-	if err != nil {
-		return err
-	}
-	err = db.Nonce.UnmarshalBinaryFromReader(r)
-	if err != nil {
-		return err
-	}
-	err = db.PreKey.UnmarshalBinaryFromReader(r)
-	if err != nil {
-		return err
-	}
-	err = db.Data.UnmarshalBinaryFromReader(r)
-	if err != nil {
-		return err
-	}
-	err = db.DataHash.UnmarshalBinaryFromReader(r)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *DataBlock) UnmarshalBinary(data []byte) (err error) {
-	r := bytes.NewReader(data)
-	err = db.UnmarshalBinaryFromReader(r)
-	if err != nil {
-		return err
-	}
-	return nil
-}*/
-
 func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byte, payloads ...*lv.LV) (r string, err error) {
 	lvPackedPayload, err := lv.CombineLV(payloads...)
 	if err != nil {
@@ -215,12 +133,7 @@ func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byt
 	if err != nil {
 		return "", err
 	}
-	/*dataBlockAsBytes, err := dataBlock.MarshalBinary()
-	if err != nil {
-		return "", err
-	}
-	lvDataBlock, err := lv.NewLV(dataBlockAsBytes)
-	*/
+
 	lvDataBlock, err := dataBlock.AsLV()
 	if err != nil {
 		return "", err
@@ -257,8 +170,6 @@ func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byt
 	}
 	return r, nil
 }
-
-var UNPACK_TTL = 5 * time.Minute
 
 func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte, dataAsHexString string) (r []*lv.LV, err error) {
 	dataAsBytes, err := hex.DecodeString(dataAsHexString)
@@ -314,7 +225,7 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 		return nil, err
 	}
 
-	if time.Now().Sub(parsedTimestamp) > UNPACK_TTL {
+	if time.Now().Sub(parsedTimestamp) > PayloadUnpackTTL {
 		return nil, errors.New(`TIME_EXPIRED`)
 	}
 

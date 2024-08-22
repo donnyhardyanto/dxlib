@@ -51,17 +51,10 @@ func NewLog(parentLog *DXLog, context context.Context, prefix string) DXLog {
 		}
 	}
 	l := DXLog{Context: context, Prefix: prefix}
-	/*if parentLog != nil {
-		l.OnLogged = parentLog.OnLogged
-	}*/
 	return l
 }
 
 func (l *DXLog) LogText(severity DXLogLevel, location string, text string) {
-	//severityAsString := DXLogLevelAsString[severity]
-	/*	switch Format {
-		case DXLogFormatJSON:
-	*/
 	stack := ``
 	a := log.WithFields(log.Fields{"prefix": l.Prefix, "location": location})
 	switch severity {
@@ -84,30 +77,6 @@ func (l *DXLog) LogText(severity DXLogLevel, location string, text string) {
 	default:
 		a.Printf("%s", text)
 	}
-	/*if l.OnLogged != nil {
-		l.OnLogged(l, severity, location, text, stack)
-	}*/
-	/*	default:
-		switch severity {
-		case DXLogLevelTrace:
-			log.Printf("[%s] %s| %s\n", l.Prefix, severityAsString, text)
-		case DXLogLevelDebug:
-			log.Printf("[%s] %s| %s\n", l.Prefix, severityAsString, text)
-		case DXLogLevelInfo:
-			log.Printf("[%s] %s| %s\n", l.Prefix, severityAsString, text)
-		case DXLogLevelWarn:
-			log.Printf("[%s] %s| %s\n", l.Prefix, severityAsString, text)
-		case DXLogLevelError:
-			log.Printf("[%s] %s| %s\n", l.Prefix, severityAsString, text)
-		case DXLogLevelFatal:
-			log.Fatalf("[%s] %s| Terminating... %s\n", l.Prefix, severityAsString, text)
-		case DXLogLevelPanic:
-			stack := string(debug.Stack())
-			log.Fatalf("[%s] %s| %s\n%v", l.Prefix, severityAsString, text, stack)
-		default:
-			log.Printf("[%s] %s| %s\n", l.Prefix, severityAsString, text)
-		}
-	}*/
 }
 
 func (l *DXLog) Trace(text string) {
