@@ -4,19 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	go_ora "github.com/sijms/go-ora/v2"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
+	"dxlib/v3/database/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"
 	_ "github.com/lib/pq"
 	_ "github.com/microsoft/go-mssqldb"
-
-	"dxlib/v3/database/sqlfile"
+	_ "github.com/sijms/go-ora/v2"
 
 	"dxlib/v3/configuration"
 	"dxlib/v3/database/database_type"
@@ -135,7 +136,16 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 		}
 		s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;encrypt=disable", host, port, d.UserName, d.UserPassword, d.DatabaseName)
 	case database_type.Oracle:
-		s = fmt.Sprintf("%s/%s@%s/%s", d.UserName, d.UserPassword, d.Address, d.DatabaseName)
+		host, port, err := net.SplitHostPort(d.Address)
+		if err != nil {
+			return "", err
+		}
+		portInt, err := strconv.Atoi(port)
+		if err != nil {
+			return "", err
+		}
+		s = go_ora.BuildUrl(host, portInt, d.DatabaseName, d.UserName, d.UserPassword, nil)
+		/*s = fmt.Sprintf("%s/%s@%s/%s", d.UserName, d.UserPassword, d.Address, d.DatabaseName)
 		/*host, port, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
@@ -153,7 +163,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	return s, err
 }
 
-func (d *DXDatabase) ApplyFromConfiguration( /*configurationNameId string*/ ) (err error) {
+func (d *DXDatabase) ApplyFromConfiguration( /*configurationNameId string*/) (err error) {
 	if !d.IsConfigured {
 		log.Log.Infof("Configuring to Database %s... start", d.NameId)
 		configurationData, ok := configuration.Manager.Configurations["storage"]
