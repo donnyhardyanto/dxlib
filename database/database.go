@@ -10,6 +10,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/godror/godror"
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"
 	_ "github.com/lib/pq"
@@ -133,6 +134,19 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 			return "", err
 		}
 		s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;encrypt=disable", host, port, d.UserName, d.UserPassword, d.DatabaseName)
+	case database_type.Oracle:
+		s = fmt.Sprintf("%s/%s@%s/%s", d.UserName, d.UserPassword, d.Address, d.DatabaseName)
+		/*host, port, err := net.SplitHostPort(d.Address)
+		if err != nil {
+			return "", err
+		}
+		s = fmt.Sprintf(`user="%s" password="%s" connectString="(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=%s)(PORT=%s))(CONNECT_DATA=(SERVICE_NAME=%s)))"`,
+			d.UserName,
+			d.UserPassword,
+			host,
+			port,
+			d.DatabaseName,
+		)*/
 	default:
 		err = log.Log.ErrorAndCreateErrorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
 	}
@@ -264,7 +278,7 @@ func (d *DXDatabase) CheckIsErrorBecauseDbNotExist(err error) bool {
 func (d *DXDatabase) Connect() (err error) {
 	if !d.Connected {
 		log.Log.Infof("Connecting to database %s/%s... start", d.NameId, d.NonSensitiveConnectionString)
-		connection, err := sqlx.Open(d.DatabaseType.String(), d.ConnectionString)
+		connection, err := sqlx.Open(d.DatabaseType.Driver(), d.ConnectionString)
 		if err != nil {
 			if d.MustConnected {
 				log.Log.Fatalf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err)

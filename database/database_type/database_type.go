@@ -26,6 +26,21 @@ func (t DXDatabaseType) String() string {
 	}
 }
 
+func (t DXDatabaseType) Driver() string {
+	switch t {
+	case PostgreSQL:
+		return "postgres"
+	case MySQL:
+		return "mysql"
+	case Oracle:
+		return "godror"
+	case SQLServer:
+		return "sqlserver"
+	default:
+
+		return "unknown"
+	}
+}
 func StringToDXDatabaseType(v string) DXDatabaseType {
 	switch v {
 	case "postgres", "postgresql":
