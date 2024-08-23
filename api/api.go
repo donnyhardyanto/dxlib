@@ -262,7 +262,7 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 	return nil
 }
 
-func (a *DXAPI) doFiberHTTPUploadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
+func (a *DXAPI) doFiberHTTPUploadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err error) {
 	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "doFiberHTTPUploadStreamHandler|"+p.Uri)
 	defer span.End()
 
@@ -274,6 +274,30 @@ func (a *DXAPI) doFiberHTTPUploadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) e
 
 	// get param from headers
 	// do handle upload
+	for _, middleware := range p.Middlewares {
+		err = middleware(aepr)
+		if err != nil {
+			aepr.Log.Errorf("Error at Middleware (%s) ", err)
+			if aepr.ResponseStatusCode == 200 {
+				aepr.ResponseStatusCode = 500
+			}
+			aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
+			return err
+		}
+	}
+
+	if p.OnExecute != nil {
+		err = p.OnExecute(aepr)
+		if err != nil {
+			aepr.Log.Errorf("Error at OnExecute (%s) ", err)
+			if aepr.ResponseStatusCode == 200 {
+				aepr.ResponseStatusCode = 500
+			}
+			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, err.Error(), err.Error())
+			return nil
+		}
+	}
+	return nil
 	return nil
 }
 

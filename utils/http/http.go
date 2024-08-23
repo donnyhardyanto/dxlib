@@ -12,7 +12,7 @@ type RequestContentType int
 
 const (
 	ContentTypeNone RequestContentType = iota
-	ContentTypeRaw
+	ContentTypeApplicationOctetStream
 	ContentTypeTextPlain
 	ContentTypeApplicationJSON
 	ContentTypeApplicationXWwwFormUrlEncoded
@@ -29,10 +29,10 @@ func (t RequestContentType) String() string {
 		return "multipart/form-data"
 	case ContentTypeTextPlain:
 		return "text/plain"
+	case ContentTypeApplicationOctetStream: // Map to application/octet-stream
+		return "application/octet-stream"
 	case ContentTypeNone:
 		return ""
-	case ContentTypeRaw:
-		return "raw"
 	default:
 		return ""
 	}

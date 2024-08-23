@@ -367,12 +367,42 @@ func (aepr *DXAPIEndPointRequest) ProxyHTTPAPIClient(method string, url string, 
 }
 
 func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
+	xVar := aepr.FiberContext.Get("X-Var")
+	var xVarJSON map[string]interface{}
+	if xVar == `` {
+		err := json.Unmarshal([]byte(xVar), &xVarJSON)
+		if err != nil {
+			aepr.Log.Errorf("Error parsing X-Var header as JSON: %v", err)
+			aepr.ResponseStatusCode = http.StatusBadRequest
+			return fmt.Errorf("Error parsing X-Var header as JSON: %v", err)
+		}
+	}
+	for _, v := range aepr.EndPoint.Parameters {
+		rpv := aepr.NewAPIEndPointRequestParameter(v)
+		aepr.ParameterValues[v.NameId] = rpv
+		err := rpv.SetRawValue(xVarJSON[v.NameId])
+		if err != nil {
+			aepr.Log.Errorf("`Error at processing parameter %s to string (%v)", v.NameId, err)
+			aepr.ResponseStatusCode = http.StatusUnprocessableEntity
+			return err
+		}
+		if rpv.Metadata.IsMustExist {
+			if rpv.RawValue == nil {
+				return aepr.responseSetStatusCodeAsErrorf(http.StatusUnprocessableEntity, `Mandatory parameter '%s' is not exist`, v.NameId)
+			}
+		}
+		if rpv.RawValue != nil {
+			if !rpv.Validate() {
+				return aepr.responseSetStatusCodeAsErrorf(http.StatusUnprocessableEntity, `Parameter '%s' validation fail`, v.NameId)
+			}
+		}
+	}
 	switch aepr.EndPoint.Method {
 	case "GET", "DELETE":
 	case "POST", "PUT":
 		switch aepr.EndPoint.RequestContentType {
-		case utilsHttp.ContentTypeRaw:
-			err = aepr.preProcessRequestAsRaw()
+		case utilsHttp.ContentTypeApplicationOctetStream:
+			err = aepr.preProcessRequestAsApplicationOctetStream()
 		case utilsHttp.ContentTypeApplicationJSON:
 			err = aepr.preProcessRequestAsApplicationJSON()
 		default:
@@ -387,8 +417,14 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 	return err
 }
 
-func (aepr *DXAPIEndPointRequest) preProcessRequestAsRaw() (err error) {
-	aepr.RequestBodyAsBytes = aepr.FiberContext.Body()
+func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (err error) {
+	switch aepr.EndPoint.EndPointType {
+	case EndPointTypeHTTPUploadStream:
+		return nil
+	default:
+
+		aepr.RequestBodyAsBytes = aepr.FiberContext.Body()
+	}
 	return nil
 }
 
@@ -411,7 +447,6 @@ func (aepr *DXAPIEndPointRequest) responseSetStatusCodeAsErrorf(statusCode int, 
 }
 
 func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err error) {
-
 	actualContentType := aepr.FiberContext.Get("Content-Type")
 	if actualContentType != "" {
 		if !strings.Contains(actualContentType, "application/json") {
