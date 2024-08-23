@@ -184,7 +184,7 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 		}
 		r.UserName, r.HasUserName = ObjectStorageConfiguration[`user_name`].(string)
 		r.Password, r.HasPassword = ObjectStorageConfiguration[`password`].(string)
-		r.BucketName, ok = ObjectStorageConfiguration[`password`].(string)
+		r.BucketName, ok = ObjectStorageConfiguration[`bucket_name`].(string)
 		if !ok {
 			err := log.Log.ErrorAndCreateErrorf("Mandatory bucket_name field in object storage ObjectStorage %s configuration not exist.", r.NameId)
 			return err

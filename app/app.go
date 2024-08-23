@@ -127,7 +127,7 @@ func (a *DXApp) loadConfiguration() (err error) {
 	}
 	_, a.IsObjectStorageExist = configuration.Manager.Configurations["object_storage"]
 	if a.IsObjectStorageExist {
-		err = database.Manager.LoadFromConfiguration("object_storage")
+		err = object_storage.Manager.LoadFromConfiguration("object_storage")
 		if err != nil {
 			return err
 		}
