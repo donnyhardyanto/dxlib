@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"dxlib/v3/object_storage"
 	"dxlib/v3/vault"
 	"fmt"
 	"os"
@@ -53,10 +54,12 @@ type DXApp struct {
 	RuntimeErrorGroup        *errgroup.Group
 	RuntimeErrorGroupContext context.Context
 
-	IsRedisExist                 bool
-	IsStorageExist               bool
-	IsAPIExist                   bool
-	IsTaskExist                  bool
+	IsRedisExist         bool
+	IsStorageExist       bool
+	IsObjectStorageExist bool
+	IsAPIExist           bool
+	IsTaskExist          bool
+
 	DebugKey                     string
 	IsDebug                      bool
 	OnDefine                     DXAppEvent
@@ -122,6 +125,13 @@ func (a *DXApp) loadConfiguration() (err error) {
 			return err
 		}
 	}
+	_, a.IsObjectStorageExist = configuration.Manager.Configurations["object_storage"]
+	if a.IsObjectStorageExist {
+		err = database.Manager.LoadFromConfiguration("object_storage")
+		if err != nil {
+			return err
+		}
+	}
 	_, a.IsAPIExist = configuration.Manager.Configurations["api"]
 	if a.IsAPIExist {
 		err = api.Manager.LoadFromConfiguration("api")
@@ -145,7 +155,7 @@ func (a *DXApp) start() (err error) {
 		}
 	}
 	if a.IsStorageExist {
-		err = database.Manager.ConnectAllAtStart(`storage`)
+		err = database.Manager.ConnectAllAtStart()
 		if err != nil {
 			return err
 		}
@@ -160,6 +170,13 @@ func (a *DXApp) start() (err error) {
 			}
 		}
 	}
+	if a.IsObjectStorageExist {
+		err = object_storage.Manager.ConnectAllAtStart()
+		if err != nil {
+			return err
+		}
+	}
+
 	if a.OnDefineSetVariables != nil {
 		err = a.OnDefineSetVariables()
 		if err != nil {
@@ -230,6 +247,12 @@ func (a *DXApp) Stop() (err error) {
 	}
 	if a.IsStorageExist {
 		err = database.Manager.DisconnectAll()
+		if err != nil {
+			return err
+		}
+	}
+	if a.IsObjectStorageExist {
+		err = object_storage.Manager.DisconnectAll()
 		if err != nil {
 			return err
 		}

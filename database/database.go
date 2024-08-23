@@ -153,10 +153,10 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	return s, err
 }
 
-func (d *DXDatabase) ApplyFromConfiguration(configurationNameId string) (err error) {
+func (d *DXDatabase) ApplyFromConfiguration( /*configurationNameId string*/ ) (err error) {
 	if !d.IsConfigured {
 		log.Log.Infof("Configuring to Database %s... start", d.NameId)
-		configurationData, ok := configuration.Manager.Configurations[configurationNameId]
+		configurationData, ok := configuration.Manager.Configurations["storage"]
 		if !ok {
 			err = log.Log.PanicAndCreateErrorf("DXDatabase/ApplyFromConfiguration/1", "Storage configuration not found")
 			return err
