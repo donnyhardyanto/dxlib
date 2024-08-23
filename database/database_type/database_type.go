@@ -33,7 +33,7 @@ func (t DXDatabaseType) Driver() string {
 	case MySQL:
 		return "mysql"
 	case Oracle:
-		return "godror"
+		return "oracle"
 	case SQLServer:
 		return "sqlserver"
 	default:

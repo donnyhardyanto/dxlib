@@ -12,7 +12,6 @@ import (
 
 	"dxlib/v3/database/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/godror/godror"
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"
 	_ "github.com/lib/pq"
