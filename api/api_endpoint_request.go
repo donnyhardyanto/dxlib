@@ -87,6 +87,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 			return false
 		}
 	}
+	if aeprpv.RawValue == nil {
+		return true
+	}
 	rawValueType := utils.TypeAsString(aeprpv.RawValue)
 	if aeprpv.Metadata.Type != rawValueType {
 		switch aeprpv.Metadata.Type {
@@ -117,6 +120,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 			}
 			for _, v := range aeprpv.Children {
 				if v.Validate() != true {
+					childRawValueType := utils.TypeAsString(aeprpv.RawValue)
+					aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Invalid type [%s].(%v) but receive (%s)=%v ", v.Metadata.NameId, v.Metadata.Type, childRawValueType, v.RawValue)
 					return false
 				}
 			}
@@ -197,8 +202,9 @@ func (aepr *DXAPIEndPointRequest) NewAPIEndPointRequestParameter(aepp DXAPIEndPo
 }
 
 func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, reason, reasonMessage string, data ...any) (err error) {
-	if statusCode != 200 {
-		aepr.Log.Warnf("Status Code: %d %s %s %v", statusCode, reason, reasonMessage, data)
+	aepr.ResponseStatusCode = statusCode
+	if aepr.ResponseStatusCode != 200 {
+		aepr.Log.Warnf("Status Code: %d %s %s %v", aepr.ResponseStatusCode, reason, reasonMessage, data)
 	}
 	d := utils.JSON{
 		"reason":         reason,
@@ -215,7 +221,7 @@ func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, rea
 		}
 	}
 	return aepr.ResponseSetStatusCodeAndBodyJSON(
-		statusCode,
+		aepr.ResponseStatusCode,
 		d,
 	)
 }

@@ -232,7 +232,7 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 	err = aepr.PreProcessRequest()
 	if err != nil {
 		aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
-		aepr.ResponseStatusCode = 422
+		aepr.ResponseSetStatusCodeError(422, "PREPROCESS_REQUEST_ERROR", err.Error())
 		return nil
 	}
 
@@ -243,6 +243,7 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 			if aepr.ResponseStatusCode == 200 {
 				aepr.ResponseStatusCode = 500
 			}
+			aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
 			return err
 		}
 	}
@@ -254,6 +255,7 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 			if aepr.ResponseStatusCode == 200 {
 				aepr.ResponseStatusCode = 500
 			}
+			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, err.Error(), err.Error())
 			return nil
 		}
 	}
