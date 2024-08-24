@@ -133,19 +133,19 @@ func (am *DXAPIManager) StopAll() (err error) {
 func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	configuration, ok := dxlibv3Configuration.Manager.Configurations[configurationNameId]
 	if !ok {
-		err := log.Log.FatalAndCreateErrorf("Can not find configuration '%s' needed to configure the API", configurationNameId)
+		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
 		return err
 	}
 	c := *configuration.Data
 	c1, ok := c[a.NameId].(utils.JSON)
 	if !ok {
-		err := log.Log.FatalAndCreateErrorf("Can not find configuration '%s.%s' needed to configure the API", configurationNameId, a.NameId)
+		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s.%s", configurationNameId, a.NameId)
 		return err
 	}
 
 	a.Address, ok = c1[`address`].(string)
 	if !ok {
-		err := log.Log.FatalAndCreateErrorf("Can not find configuration '%s.%s/address' needed to configure the API", configurationNameId, a.NameId)
+		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s.%s/address", configurationNameId, a.NameId)
 		return err
 	}
 	a.WriteTimeoutSec = json.GetNumberWithDefault(c1, `writetimeout-sec`, DXAPIDefaultWriteTimeoutSec)
@@ -414,6 +414,7 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 
 	if !a.RuntimeIsActive {
 		a.HTTPServer = fiber.New(fiber.Config{
+			BodyLimit:    20 * 1024 * 1024,
 			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
 		})

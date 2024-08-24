@@ -31,7 +31,7 @@ type DXConfigurationManager struct {
 func (cm *DXConfigurationManager) GetConfigurationData(nameId string) (data *utils.JSON, err error) {
 	c, ok := cm.Configurations[nameId]
 	if !ok {
-		err := log.Log.PanicAndCreateErrorf("DXConfigurationManager/GetConfigurationData", "Error at get configuration '%s'", nameId)
+		err := log.Log.PanicAndCreateErrorf("DXConfigurationManager/GetConfigurationData", "CONFIGURATION_NOT_FOUND:%s", nameId)
 		return nil, err
 	}
 	return c.Data, nil

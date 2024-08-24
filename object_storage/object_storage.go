@@ -1,7 +1,9 @@
 package object_storage
 
 import (
+	"bytes"
 	"context"
+	"dxlib/v3/api"
 	dxlibv3Configuration "dxlib/v3/configuration"
 	"dxlib/v3/core"
 	"dxlib/v3/log"
@@ -10,6 +12,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"io"
+	"net/http"
 )
 
 type DXObjectStorageType int64
@@ -80,7 +83,7 @@ func (osm *DXObjectStorageManager) NewObjectStorage(nameId string, isConnectAtSt
 func (osm *DXObjectStorageManager) LoadFromConfiguration(configurationNameId string) (err error) {
 	configuration, ok := dxlibv3Configuration.Manager.Configurations[configurationNameId]
 	if !ok {
-		return fmt.Errorf("configuration '%s' not found", configurationNameId)
+		return fmt.Errorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
 	}
 	isConnectAtStart := false
 	mustConnected := false
@@ -153,12 +156,42 @@ func (osm *DXObjectStorageManager) DisconnectAll() (err error) {
 	return err
 }
 
+func (osm *DXObjectStorageManager) FindObjectStorageAndReceiveObject(aepr *api.DXAPIEndPointRequest, nameid string, filename string) (err error) {
+	// Get the object storage objectStorage using the bucket_nameid
+	objectStorage, exists := osm.ObjectStorages[nameid]
+	if !exists {
+		aepr.ResponseStatusCode = http.StatusNotFound
+		return aepr.Log.ErrorAndCreateErrorf("OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
+	}
+
+	err = objectStorage.ReceiveStreamObject(aepr, filename)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (osm *DXObjectStorageManager) FindObjectStorageAndSendObject(aepr *api.DXAPIEndPointRequest, nameid string, filename string) (err error) {
+	// Get the object storage objectStorage using the bucket_nameid
+	objectStorage, exists := osm.ObjectStorages[nameid]
+	if !exists {
+		aepr.ResponseStatusCode = http.StatusNotFound
+		return aepr.Log.ErrorAndCreateErrorf("OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
+	}
+
+	err = objectStorage.SendStreamObject(aepr, filename)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 	if !r.IsConfigured {
 		log.Log.Infof("Configuring to ObjectStorage %s... start", r.NameId)
 		configurationData, ok := dxlibv3Configuration.Manager.Configurations[`object_storage`]
 		if !ok {
-			err = log.Log.PanicAndCreateErrorf("DXObjectStorage/ApplyFromConfiguration/1", "ObjectStoragees configuration not found")
+			err = log.Log.PanicAndCreateErrorf("DXObjectStorage/ApplyFromConfiguration/1", "ObjectStorage configuration not found")
 			return err
 		}
 		m := *(configurationData.Data)
@@ -253,6 +286,28 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 	return &info, nil
 }
 
+func (r *DXObjectStorage) ReceiveStreamObject(aepr *api.DXAPIEndPointRequest, filename string) (err error) {
+	bodyLen := aepr.FiberContext.Context().Request.Header.ContentLength()
+	aepr.Log.Infof("Request body length: %d", bodyLen)
+	c := aepr.FiberContext.Context()
+	s := c.Request.BodyStream()
+	if s == nil {
+		// Fallback to using the body as an io.Reader
+		body := c.Request.Body()
+		if body == nil {
+			aepr.ResponseStatusCode = http.StatusBadRequest
+			return aepr.Log.ErrorAndCreateErrorf("BAD_REQUEST:%s", r.NameId)
+		}
+		s = io.NopCloser(bytes.NewReader(body))
+	}
+	uploadInfo, err := r.UploadStream(s, filename, filename, "application/octet-stream")
+	if err != nil {
+		return err
+	}
+	aepr.Log.Infof("Upload info result: %v", uploadInfo)
+	return nil
+}
+
 func (r *DXObjectStorage) DownloadStream(objectName string) (*minio.Object, error) {
 	if r.Client == nil {
 		return nil, log.Log.ErrorAndCreateErrorf("CLIENT_IS_NIL")
@@ -266,6 +321,57 @@ func (r *DXObjectStorage) DownloadStream(objectName string) (*minio.Object, erro
 
 	// Return the reader
 	return object, nil
+}
+
+func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filename string) (err error) {
+	// Get the object storage bucket using the bucket_name
+	object, err := r.DownloadStream(filename)
+	if err != nil {
+		aepr.ResponseStatusCode = http.StatusInternalServerError
+		return err
+	}
+	if object == nil {
+		aepr.ResponseStatusCode = http.StatusInternalServerError
+		return aepr.Log.ErrorAndCreateErrorf("OBJECT_IS_NIL:%s", r.NameId)
+	}
+
+	objectInfo, err := object.Stat()
+	if err != nil {
+		return err
+	}
+
+	originalFilename, ok := objectInfo.UserMetadata["filename"]
+	if !ok {
+		originalFilename = filename
+	}
+	response := aepr.FiberContext.Response()
+	response.Header.Set("Content-Type", "application/octet-stream")
+	response.Header.Set("Content-Length", fmt.Sprintf("%d", objectInfo.Size))
+	if originalFilename != "" {
+		response.Header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalFilename))
+	}
+
+	// Use io.Pipe to stream the object, the thread will exist until it send all the content, even after the handler return to web server
+	reader, writer := io.Pipe()
+	go func() {
+		defer func() {
+			_ = writer.Close()
+		}()
+		_, err := io.Copy(writer, object)
+		if err != nil {
+			aepr.Log.Errorf("PIPE_COPY_ERROR: %s", err.Error())
+		}
+		_ = object.Close()
+	}()
+
+	// Send the object stream
+	err = aepr.FiberContext.SendStream(reader)
+	if err != nil {
+		aepr.ResponseStatusCode = http.StatusInternalServerError
+		return aepr.Log.ErrorAndCreateErrorf("SEND_STREAM_ERROR: %v", err)
+	}
+
+	return nil
 }
 
 var Manager DXObjectStorageManager

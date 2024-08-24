@@ -57,7 +57,7 @@ func (rs *DXRedisManager) NewRedis(nameId string, isConnectAtStart, mustConnecte
 func (rs *DXRedisManager) LoadFromConfiguration(configurationNameId string) (err error) {
 	configuration, ok := dxlibv3Configuration.Manager.Configurations[configurationNameId]
 	if !ok {
-		return fmt.Errorf("configuration '%s' not found", configurationNameId)
+		return fmt.Errorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
 	}
 	isConnectAtStart := false
 	mustConnected := false
