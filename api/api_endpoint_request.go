@@ -386,11 +386,6 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			aepr.ResponseStatusCode = http.StatusUnprocessableEntity
 			return err
 		}
-		if rpv.Metadata.IsMustExist {
-			if rpv.RawValue == nil {
-				return aepr.responseSetStatusCodeAsErrorf(http.StatusUnprocessableEntity, `Mandatory parameter '%s' is not exist`, v.NameId)
-			}
-		}
 		if rpv.RawValue != nil {
 			if !rpv.Validate() {
 				return aepr.responseSetStatusCodeAsErrorf(http.StatusUnprocessableEntity, `Parameter '%s' validation fail`, v.NameId)
@@ -402,6 +397,14 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 	case "POST", "PUT":
 		switch aepr.EndPoint.RequestContentType {
 		case utilsHttp.ContentTypeApplicationOctetStream:
+			for _, v := range aepr.EndPoint.Parameters {
+				rpv := aepr.NewAPIEndPointRequestParameter(v)
+				if rpv.Metadata.IsMustExist {
+					if rpv.RawValue == nil {
+						return aepr.responseSetStatusCodeAsErrorf(http.StatusUnprocessableEntity, `Mandatory parameter '%s' is not exist`, v.NameId)
+					}
+				}
+			}
 			err = aepr.preProcessRequestAsApplicationOctetStream()
 		case utilsHttp.ContentTypeApplicationJSON:
 			err = aepr.preProcessRequestAsApplicationJSON()
