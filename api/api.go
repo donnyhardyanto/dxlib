@@ -161,6 +161,7 @@ func (a *DXAPI) FindEndPointByURI(uri string) *DXAPIEndPoint {
 	}
 	return nil
 }
+
 func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType DXAPIEndPointType,
 	contentType utilsHttp.RequestContentType, parameters []DXAPIEndPointParameter, onExecute DXAPIEndPointExecuteFunc,
 	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DxAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc) *DXAPIEndPoint {
@@ -187,11 +188,11 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	return &ae
 }
 
-func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
-	var aepr *DXAPIEndPointRequest
-	var err error
+func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err error) {
 	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "doFiberHTTPJSONHandler|"+p.Uri)
 	defer span.End()
+
+	var aepr *DXAPIEndPointRequest
 
 	defer func() {
 		if err != nil {
@@ -199,7 +200,6 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 				aepr.ResponseStatusCode = http.StatusInternalServerError
 			}
 			aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
-
 		}
 
 		aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
@@ -208,7 +208,7 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) error {
 			x := &aepr.FiberContext.Response().Header
 			y := x.ContentType()
 			if y == nil {
-				x.Set(`Content-Type`, `application/octet; charset=utf-8`)
+				x.Set(`Content-Type`, `application/octet-stream; charset=utf-8`)
 			}
 
 			contentLengthBytes := len(aepr.ResponseBodyAsBytes)
@@ -267,13 +267,49 @@ func (a *DXAPI) doFiberHTTPUploadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) (
 	defer span.End()
 
 	var aepr *DXAPIEndPointRequest
+
+	defer func() {
+		if err != nil {
+			if aepr.ResponseStatusCode == http.StatusOK {
+				aepr.ResponseStatusCode = http.StatusInternalServerError
+			}
+			aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
+		}
+
+		aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
+
+		if aepr.ResponseBodyAsBytes != nil {
+			x := &aepr.FiberContext.Response().Header
+			y := x.ContentType()
+			if y == nil {
+				x.Set(`Content-Type`, `application/octet;-stream charset=utf-8`)
+			}
+
+			contentLengthBytes := len(aepr.ResponseBodyAsBytes)
+			contentLengthBytesAsString := strconv.FormatInt(int64(contentLengthBytes), 10)
+
+			aepr.FiberContext.Response().Header.Set(`Content-Length`, contentLengthBytesAsString)
+
+			errWrite := aepr.FiberContext.Send(aepr.ResponseBodyAsBytes)
+			if errWrite != nil {
+				aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.FiiberContext.Send (%v), reply-data: %v", errWrite, aepr.FiberContext.Response().Body())
+				aepr.ResponseErrorAsString = errWrite.Error()
+			}
+		}
+	}()
+
 	aepr = p.NewEndPointRequest(requestContext, c)
 	defer func() {
 		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
 	}()
 
-	// get param from headers
-	// do handle upload
+	err = aepr.PreProcessRequest()
+	if err != nil {
+		aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
+		aepr.ResponseSetStatusCodeError(422, "PREPROCESS_REQUEST_ERROR", err.Error())
+		return nil
+	}
+
 	for _, middleware := range p.Middlewares {
 		err = middleware(aepr)
 		if err != nil {
@@ -298,6 +334,79 @@ func (a *DXAPI) doFiberHTTPUploadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) (
 		}
 	}
 	return nil
+}
+
+func (a *DXAPI) doFiberHTTPDownloadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err error) {
+	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "doFiberHTTPDownloadStreamHandler|"+p.Uri)
+	defer span.End()
+
+	var aepr *DXAPIEndPointRequest
+
+	defer func() {
+		if err != nil {
+			if aepr.ResponseStatusCode == http.StatusOK {
+				aepr.ResponseStatusCode = http.StatusInternalServerError
+			}
+			aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
+		}
+
+		aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
+
+		if aepr.ResponseBodyAsBytes != nil {
+			x := &aepr.FiberContext.Response().Header
+			y := x.ContentType()
+			if y == nil {
+				x.Set(`Content-Type`, `application/octet-stream; charset=utf-8`)
+			}
+
+			contentLengthBytes := len(aepr.ResponseBodyAsBytes)
+			contentLengthBytesAsString := strconv.FormatInt(int64(contentLengthBytes), 10)
+
+			aepr.FiberContext.Response().Header.Set(`Content-Length`, contentLengthBytesAsString)
+
+			errWrite := aepr.FiberContext.Send(aepr.ResponseBodyAsBytes)
+			if errWrite != nil {
+				aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.FiiberContext.Send (%v), reply-data: %v", errWrite, aepr.FiberContext.Response().Body())
+				aepr.ResponseErrorAsString = errWrite.Error()
+			}
+		}
+	}()
+
+	aepr = p.NewEndPointRequest(requestContext, c)
+	defer func() {
+		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
+	}()
+
+	err = aepr.PreProcessRequest()
+	if err != nil {
+		aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
+		aepr.ResponseSetStatusCodeError(422, "PREPROCESS_REQUEST_ERROR", err.Error())
+		return nil
+	}
+
+	for _, middleware := range p.Middlewares {
+		err = middleware(aepr)
+		if err != nil {
+			aepr.Log.Errorf("Error at Middleware (%s) ", err)
+			if aepr.ResponseStatusCode == 200 {
+				aepr.ResponseStatusCode = 500
+			}
+			aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
+			return err
+		}
+	}
+
+	if p.OnExecute != nil {
+		err = p.OnExecute(aepr)
+		if err != nil {
+			aepr.Log.Errorf("Error at OnExecute (%s) ", err)
+			if aepr.ResponseStatusCode == 200 {
+				aepr.ResponseStatusCode = 500
+			}
+			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, err.Error(), err.Error())
+			return nil
+		}
+	}
 	return nil
 }
 
@@ -320,14 +429,20 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 				return a.doFiberHTTPJSONHandler(&p, c)
 			}
 
-			fiberHttpUploadStream := func(c *fiber.Ctx) error {
-				return a.doFiberHTTPUploadStreamHandler(&p, c)
-			}
 			if p.EndPointType == EndPointTypeHTTPJSON {
 				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpJsonHandler)
 			}
 			if p.EndPointType == EndPointTypeHTTPUploadStream {
+				fiberHttpUploadStream := func(c *fiber.Ctx) error {
+					return a.doFiberHTTPUploadStreamHandler(&p, c)
+				}
 				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpUploadStream)
+			}
+			if p.EndPointType == EndPointTypeHTTPDownloadStream {
+				fiberHttpDownloadStream := func(c *fiber.Ctx) error {
+					return a.doFiberHTTPDownloadStreamHandler(&p, c)
+				}
+				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpDownloadStream)
 			}
 			if p.EndPointType == EndPointTypeWS {
 				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpJsonHandler,

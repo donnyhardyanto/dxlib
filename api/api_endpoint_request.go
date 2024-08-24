@@ -369,7 +369,7 @@ func (aepr *DXAPIEndPointRequest) ProxyHTTPAPIClient(method string, url string, 
 func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 	xVar := aepr.FiberContext.Get("X-Var")
 	var xVarJSON map[string]interface{}
-	if xVar == `` {
+	if xVar != `` {
 		err := json.Unmarshal([]byte(xVar), &xVarJSON)
 		if err != nil {
 			aepr.Log.Errorf("Error parsing X-Var header as JSON: %v", err)
@@ -422,7 +422,6 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (e
 	case EndPointTypeHTTPUploadStream:
 		return nil
 	default:
-
 		aepr.RequestBodyAsBytes = aepr.FiberContext.Body()
 	}
 	return nil

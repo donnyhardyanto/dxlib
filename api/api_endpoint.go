@@ -15,6 +15,7 @@ type DXAPIEndPointType int
 const (
 	EndPointTypeHTTPJSON DXAPIEndPointType = iota
 	EndPointTypeHTTPUploadStream
+	EndPointTypeHTTPDownloadStream
 	EndPointTypeWS
 )
 
