@@ -204,7 +204,7 @@ func (r *DXObjectStorage) Connect() (err error) {
 			log.Log.Errorf("Cannot configure to Object Storage %s to connect (%s)", r.NameId, err.Error())
 			return err
 		}
-		log.Log.Infof("Connecting to Object Storage  %s at %s/%d... start", r.NameId, r.Address, r.BucketName)
+		log.Log.Infof("Connecting to Object Storage  %s at %s/%s... start", r.NameId, r.Address, r.BucketName)
 
 		minioClient, err := minio.New(
 			r.Address,
@@ -224,10 +224,10 @@ func (r *DXObjectStorage) Connect() (err error) {
 
 func (r *DXObjectStorage) Disconnect() (err error) {
 	if r.Connected {
-		log.Log.Infof("Disconnecting to Object Storage   %s at %s/%d... start", r.NameId, r.Address, r.BucketName)
+		log.Log.Infof("Disconnecting to Object Storage   %s at %s/%s... start", r.NameId, r.Address, r.BucketName)
 		r.Client = nil
 		r.Connected = false
-		log.Log.Infof("Disconnecting to Object Storage   %s at %s/%d... done DISCONNECTED", r.NameId, r.Address, r.BucketName)
+		log.Log.Infof("Disconnecting to Object Storage   %s at %s/%s... done DISCONNECTED", r.NameId, r.Address, r.BucketName)
 	}
 	return nil
 }
@@ -243,12 +243,29 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 		objectName,
 		reader,
 		-1,
-		minio.PutObjectOptions{ContentType: contentType},
+		minio.PutObjectOptions{ContentType: contentType, UserMetadata: map[string]string{
+			"original_filename": originalFilename,
+		}},
 	)
 	if err != nil {
 		return nil, err
 	}
 	return &info, nil
+}
+
+func (r *DXObjectStorage) DownloadStream(objectName string) (*minio.Object, error) {
+	if r.Client == nil {
+		return nil, log.Log.ErrorAndCreateErrorf("CLIENT_IS_NIL")
+	}
+
+	// Get the object from the bucket
+	object, err := r.Client.GetObject(context.Background(), r.BucketName, objectName, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the reader
+	return object, nil
 }
 
 var Manager DXObjectStorageManager
