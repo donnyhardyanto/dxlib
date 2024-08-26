@@ -247,7 +247,7 @@ func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
 	return value, nil
 }
 
-func (r *DXRedis) GetMustExist(key string) (value utils.JSON, err error) {
+func (r *DXRedis) MustGet(key string) (value utils.JSON, err error) {
 	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {

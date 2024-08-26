@@ -29,7 +29,7 @@ import (
 
 type DXDatabaseEventFunc func(dm *DXDatabase, err error)
 
-type DXDatabaseTxCallback func(log *log.DXLog, dtx *DXDatabaseTx) (err error)
+type DXDatabaseTxCallback func(dtx *DXDatabaseTx) (err error)
 
 type DXDatabaseTxIsolationLevel = sql.IsolationLevel
 
@@ -46,6 +46,7 @@ const (
 
 type DXDatabaseTx struct {
 	*sqlx.Tx
+	Log *log.DXLog
 }
 
 type DXDatabase struct {
@@ -165,7 +166,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	return s, err
 }
 
-func (d *DXDatabase) ApplyFromConfiguration( /*configurationNameId string*/ ) (err error) {
+func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 	if !d.IsConfigured {
 		log.Log.Infof("Configuring to Database %s... start", d.NameId)
 		configurationData, ok := configuration.Manager.Configurations["storage"]
@@ -372,7 +373,7 @@ func (d *DXDatabase) PropertyValue(key string) (value string, err error) {
 	//if err != nil {
 	//	return "", err
 	//}
-	_, resultData, err := db.SelectOneMustExist(d.Connection, "properties", nil, utils.JSON{
+	_, resultData, err := db.MustSelectOne(d.Connection, "properties", nil, utils.JSON{
 		"key": key,
 	}, nil, nil)
 	if err != nil {
@@ -398,13 +399,13 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 	return db.UpdateWhereKeyValues(d.Connection, tableName, setKeyValues, whereKeyValues)
 }
 
-func (d *DXDatabase) SelectOneMustExist(tableName string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
+func (d *DXDatabase) MustSelectOne(tableName string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
 	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
 	//err = d.CheckConnectionAndReconnect()
 	//if err != nil {
 	//	return nil, nil, err
 	//}
-	rowsInfo, resultData, err = db.SelectOneMustExist(d.Connection, tableName, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
+	rowsInfo, resultData, err = db.MustSelectOne(d.Connection, tableName, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 	return rowsInfo, resultData, err
 }
 
@@ -485,13 +486,16 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		log.Error(err.Error())
 		return err
 	}
-	dtx := &DXDatabaseTx{Tx: tx}
-	err = callback(log, dtx)
+	dtx := &DXDatabaseTx{
+		Tx:  tx,
+		Log: log,
+	}
+	err = callback(dtx)
 	if err != nil {
 		log.Errorf(`ErrorInCallback: (%v)`, err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+			log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 		}
 		return err
 	}
@@ -508,19 +512,19 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	return nil
 }
 
-func (dtx *DXDatabaseTx) SelectOne(log *log.DXLog, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	return dbtx.TxSelectOne(log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
+	return dbtx.TxSelectOne(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
 }
 
-func (dtx *DXDatabaseTx) SelectOneMustExist(log *log.DXLog, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func (dtx *DXDatabaseTx) MustSelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	return dbtx.TxSelectOneMustExist(log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
+	return dbtx.TxMustSelectOne(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
 }
-func (dtx *DXDatabaseTx) Insert(log *log.DXLog, tableName string, keyValues utils.JSON) (id int64, err error) {
-	return dbtx.TxInsert(log, false, dtx.Tx, tableName, keyValues)
+func (dtx *DXDatabaseTx) Insert(tableName string, keyValues utils.JSON) (id int64, err error) {
+	return dbtx.TxInsert(dtx.Log, false, dtx.Tx, tableName, keyValues)
 }
 
-func (dtx *DXDatabaseTx) UpdateOne(log *log.DXLog, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result utils.JSON, err error) {
-	return dbtx.TxUpdateOne(log, false, dtx.Tx, tableName, setKeyValues, whereKeyValues)
+func (dtx *DXDatabaseTx) UpdateOne(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result utils.JSON, err error) {
+	return dbtx.TxUpdateOne(dtx.Log, false, dtx.Tx, tableName, setKeyValues, whereKeyValues)
 }

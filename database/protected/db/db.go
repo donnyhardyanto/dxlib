@@ -179,7 +179,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 			case int64:
 				limitAsInt64 = limit.(int64)
 			default:
-				err := errors.New(`LimitCannotConvertToInt64`)
+				err := errors.New(`SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64`)
 				return ``, err
 			}
 			if limitAsInt64 > 0 {
@@ -226,7 +226,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 			case int64:
 				limitAsInt64 = limit.(int64)
 			default:
-				err := errors.New(`LimitCannotConvertToInt64`)
+				err := errors.New(`SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64`)
 				return ``, err
 			}
 			if limitAsInt64 > 0 {
@@ -243,7 +243,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		s = `select ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
 		return s, nil
 	default:
-		err := errors.New(`UnknownDatabaseType`)
+		err := errors.New(`UNKNOWN_DATABASE_TYPE:` + driverName)
 		return ``, err
 	}
 }
@@ -277,19 +277,19 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 	return rowsInfo, r, nil
 }
 
-func NamedQueryRowMustExist(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+func MustNamedQueryRow(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = NamedQueryRow(db, query, args)
 	if err != nil {
 		return rowsInfo, r, err
 	}
 	if r == nil {
-		err = errors.New(`QueryRowMustExist`)
+		err = errors.New(`ROW_MUST_EXIST:` + query)
 		return rowsInfo, r, err
 	}
 	return rowsInfo, r, nil
 }
 
-func NamedQueryIdMustExist(dbAppInstance *sqlx.DB, query string, arg any) (int64, error) {
+func MustNamedQueryId(dbAppInstance *sqlx.DB, query string, arg any) (int64, error) {
 	rows, err := dbAppInstance.NamedQuery(query, arg)
 	if err != nil {
 		return 0, err
@@ -305,7 +305,7 @@ func NamedQueryIdMustExist(dbAppInstance *sqlx.DB, query string, arg any) (int64
 			return 0, err
 		}
 	} else {
-		err := errors.New(`QueryReturnEmpty`)
+		err := errors.New(`NO_ID_RETURNED:` + query)
 		return 0, err
 	}
 	return returningId, nil
@@ -393,7 +393,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 		summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 	}
 	countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-	_, summaryRows, err = NamedQueryRowMustExist(dbAppInstance, countSQL, arg)
+	_, summaryRows, err = MustNamedQueryRow(dbAppInstance, countSQL, arg)
 	if err != nil {
 		return nil, nil, 0, 0, nil, err
 	}
@@ -459,7 +459,7 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 	}
 
 	countSQL := `SELECT COUNT(*) FROM ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-	totalRows, err = NamedQueryIdMustExist(dbAppInstance, countSQL, arg)
+	totalRows, err = MustNamedQueryId(dbAppInstance, countSQL, arg)
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
@@ -485,8 +485,8 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 	return rowsInfo, rows, totalRows, totalPage, err
 }
 
-func SelectWhereIdMustExist(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = NamedQueryRowMustExist(db, `SELECT * FROM `+tableName+` where id=:id`, utils.JSON{
+func MustSelectWhereId(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = MustNamedQueryRow(db, `SELECT * FROM `+tableName+` where id=:id`, utils.JSON{
 		`id`: idValue,
 	})
 	return rowsInfo, r, err
@@ -503,14 +503,14 @@ func SelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndField
 	return rowsInfo, r, err
 }
 
-func SelectOneMustExist(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func MustSelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = SelectOne(db, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 	if err != nil {
 		return rowsInfo, r, err
 	}
 	if r == nil {
-		err = errors.New("RowNotFoundIn:" + tableName)
+		err = errors.New("ROW_MUST_EXIST:" + tableName)
 		return rowsInfo, nil, err
 	}
 	return rowsInfo, r, nil
@@ -557,6 +557,6 @@ func Insert(db *sqlx.DB, tableName string, keyValues utils.JSON) (id int64, err 
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
 	}
 	kv := ExcludeSQLExpression(keyValues)
-	id, err = NamedQueryIdMustExist(db, s, kv)
+	id, err = MustNamedQueryId(db, s, kv)
 	return id, err
 }

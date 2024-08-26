@@ -28,7 +28,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 		log.Errorf(`ErrorInCallback: (%v)`, err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+			log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 		}
 		return err
 	}
@@ -51,7 +51,7 @@ func TxNamedQuery(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, 
 		if autoRollback {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`ErrorInRollback (%v)`, errTx.Error())
+				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 			}
 		}
 		return nil, err
@@ -65,7 +65,7 @@ func TxNamedExec(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, a
 		if autoRollback {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 			}
 		}
 		return nil, err
@@ -73,7 +73,7 @@ func TxNamedExec(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, a
 	return r, nil
 }
 
-func TxNamedQueryIdBigMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, args any) (int64, error) {
+func TxMustNamedQueryIdBig(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, args any) (int64, error) {
 	rows, err := TxNamedQuery(log, autoRollback, tx, query, args)
 	if err != nil {
 		return 0, err
@@ -87,15 +87,15 @@ func TxNamedQueryIdBigMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, 
 		if err != nil {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 			}
 			return 0, err
 		}
 	} else {
-		err := errors.New(`QueryReturnEmpty`)
+		err := errors.New(`NO_ID_RETURNED:` + query)
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+			log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 		}
 		return 0, err
 	}
@@ -108,7 +108,7 @@ func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query stri
 		if autoRollback {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 			}
 		}
 		return nil, nil, err
@@ -131,7 +131,7 @@ func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query stri
 		if err != nil {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 			}
 			return nil, nil, err
 		}
@@ -164,7 +164,7 @@ func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query strin
 		if err != nil {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 			}
 			return rowsInfo, nil, err
 		}
@@ -174,16 +174,16 @@ func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query strin
 	return rowsInfo, nil, nil
 }
 
-func TxNamedQueryRowMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func TxMustNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, row, err := TxNamedQueryRow(log, autoRollback, tx, query, arg)
 	if err != nil {
 		return rowsInfo, row, err
 	}
 	if row == nil {
-		err := errors.New(`QueryRowResultMustExist`)
+		err := errors.New(`ROW_MUST_EXIST:` + query)
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(`ErrorInRollback: (%v)`, errTx.Error())
+			log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 		}
 		return rowsInfo, nil, err
 	}
@@ -201,7 +201,7 @@ func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, 
 	return rowsInfo, r, err
 }
 
-func TxSelectOneMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func TxMustSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
@@ -209,7 +209,7 @@ func TxSelectOneMustExist(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableN
 		return rowsInfo, nil, err
 	}
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues)
-	rowsInfo, r, err = TxNamedQueryRowMustExist(log, autoRollback, tx, s, wKV)
+	rowsInfo, r, err = TxMustNamedQueryRow(log, autoRollback, tx, s, wKV)
 	if err != nil {
 		err := fmt.Errorf(`%s:%s`, err, tableName)
 		return rowsInfo, nil, err
@@ -240,9 +240,8 @@ func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 		fmt.Println("Unknown database type. Using Postgresql Dialect")
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
 	}
-	//s := `insert into ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
 	kv := db.ExcludeSQLExpression(keyValues)
-	id, err = TxNamedQueryIdBigMustExist(log, autoRollback, tx, s, kv)
+	id, err = TxMustNamedQueryIdBig(log, autoRollback, tx, s, kv)
 	return id, err
 }
 

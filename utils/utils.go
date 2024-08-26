@@ -216,7 +216,7 @@ func ConvertToInterfaceBoolFromAny(v any) (r any, err error) {
 		r = v.(float64) != 0
 		break
 	default:
-		err := errors.New(`TypeIsNotConvertableToInt64:` + fmt.Sprint(v))
+		err := errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_INT64:%T`, v))
 		return nil, err
 	}
 	return r, nil
@@ -243,7 +243,7 @@ func ConvertToInterfaceIntFromAny(v any) (r any, err error) {
 	case float32:
 		f := float64(v.(float32))
 		if (math.Ceil(f) - f) != 0 {
-			err := errors.New(`TheFloatNumberIsNotInteger`)
+			err := errors.New(fmt.Sprintf(`FLOAT_NUMBER_IS_NOT_INTEGER:%v`, v))
 			return nil, err
 		}
 		r = int(f)
@@ -251,13 +251,13 @@ func ConvertToInterfaceIntFromAny(v any) (r any, err error) {
 	case float64:
 		f := v.(float64)
 		if (math.Ceil(f) - f) != 0 {
-			err := errors.New(`TheFloatNumberIsNotInteger`)
+			err := errors.New(fmt.Sprintf(`FLOAT_NUMBER_IS_NOT_INTEGER:%v`, v))
 			return nil, err
 		}
 		r = int(f)
 		break
 	default:
-		err := errors.New(`TypeIsNotConvertableToInt:` + fmt.Sprint(v))
+		err := errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_INT:%T`, v))
 		return nil, err
 	}
 	return r, nil
@@ -284,7 +284,7 @@ func ConvertToInterfaceInt64FromAny(v any) (r any, err error) {
 	case float32:
 		f := float64(v.(float32))
 		if (math.Ceil(f) - f) != 0 {
-			err := errors.New(`TheFloatNumberIsNotInteger`)
+			err := errors.New(fmt.Sprintf(`FLOAT_NUMBER_IS_NOT_INTEGER:%v`, v))
 			return nil, err
 		}
 		r = int64(f)
@@ -292,13 +292,13 @@ func ConvertToInterfaceInt64FromAny(v any) (r any, err error) {
 	case float64:
 		f := v.(float64)
 		if (math.Ceil(f) - f) != 0 {
-			err := errors.New(`TheFloatNumberIsNotInteger`)
+			err := errors.New(fmt.Sprintf(`FLOAT_NUMBER_IS_NOT_INTEGER:%v`, v))
 			return nil, err
 		}
 		r = int64(f)
 		break
 	default:
-		err := errors.New(`TypeIsNotConvertableToInt64:` + fmt.Sprint(v))
+		err := errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_INT64:%T`, v))
 		return nil, err
 	}
 	return r, nil
@@ -323,7 +323,7 @@ func ConvertToInterfaceFloat64FromAny(v any) (r any, err error) {
 		r = vs
 		break
 	default:
-		err := errors.New(`TypeIsNotConvertableToFloat64` + fmt.Sprint(v))
+		err := errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_FLOAT64:%T`, v))
 		return nil, err
 	}
 	return r, nil
@@ -333,13 +333,13 @@ func ConvertToInterfaceArrayInterfaceFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
 		r = nil
-		err = errors.New(`ValueCannotBeNil`)
+		err = errors.New(`VALUE_CANNOT_BE_NIL`)
 		return nil, err
 	case types.Array:
 		r = v.([]any)
 		break
 	default:
-		err = errors.New(`TypeIsNotConvertableToArray` + fmt.Sprint(v))
+		err = errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_ARRAY:%T`, v))
 		return nil, err
 	}
 	return r, nil
@@ -349,7 +349,7 @@ func ConvertToInterfaceStringFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
 		r = nil
-		err = errors.New(`ValueCannotBeNil`)
+		err = errors.New(`VALUE_CANNOT_BE_NIL`)
 		return nil, err
 	case int64:
 		r = strconv.FormatInt(v.(int64), 10)
@@ -383,7 +383,7 @@ func ConvertToInterfaceStringFromAny(v any) (r any, err error) {
 		}
 		break
 	default:
-		err = errors.New(`TypeIsNotConvertableToString` + fmt.Sprint(v))
+		err = errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_STRING:%T`, v))
 		return nil, err
 	}
 	return r, nil
@@ -405,7 +405,7 @@ func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 		r = v
 		break
 	default:
-		err := errors.New(`TypeIsNotConvertableToMapStringInterface`)
+		err := errors.New(fmt.Sprint(`TYPE_IS_NOT_CONVERTABLE_TO_MAP[STRING]ANY:%T`, v))
 		return nil, err
 	}
 	return r, nil
@@ -454,7 +454,7 @@ func AnyToBytes(data interface{}) ([]byte, error) {
 			return nil, err
 		}
 	default:
-		return nil, errors.New("unsupported type")
+		return nil, errors.New(fmt.Sprintf("UNSUPPORTED_TYPE:%T", v))
 	}
 	return buf.Bytes(), nil
 }

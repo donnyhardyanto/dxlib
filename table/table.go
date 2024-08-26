@@ -97,39 +97,47 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	return newId, err
 }
 
-func (t *DXTable) GetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = t.SelectOneMustExist(log, utils.JSON{
+func (t *DXTable) MustGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.MustSelectOne(log, utils.JSON{
 		"id":         id,
 		"is_deleted": false,
 	}, map[string]string{"id": "asc"})
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxGetById(log *log.DXLog, tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
+func (t *DXTable) TxMustGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.MustSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
 		"id":         id,
 		"is_deleted": false,
 	}, nil, nil, nil)
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxGetByCode(log *log.DXLog, tx *database.DXDatabaseTx, code string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
+func (t *DXTable) TxMustGetByCode(tx *database.DXDatabaseTx, code string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.MustSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
 		t.FieldNameForRowCode: code,
 		"is_deleted":          false,
 	}, nil, nil, nil)
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxGetByNameId(log *log.DXLog, tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.SelectOneMustExist(log, t.ListViewNameId, []string{`*`}, utils.JSON{
+func (t *DXTable) TxGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.SelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
 		t.FieldNameForRowNameId: nameId,
 		"is_deleted":            false,
 	}, nil, nil, nil)
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxInsert(log *log.DXLog, tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
+func (t *DXTable) TxMustGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.MustSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
+		t.FieldNameForRowNameId: nameId,
+		"is_deleted":            false,
+	}, nil, nil, nil)
+	return rowsInfo, r, err
+}
+
+func (t *DXTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
 	n := utils.NowAsString()
 	newKeyValues["is_deleted"] = false
 	newKeyValues["created_at"] = n
@@ -141,7 +149,7 @@ func (t *DXTable) TxInsert(log *log.DXLog, tx *database.DXDatabaseTx, newKeyValu
 		newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
 	}
 
-	newId, err = tx.Insert(log, t.NameId, newKeyValues)
+	newId, err = tx.Insert(t.NameId, newKeyValues)
 	return newId, err
 }
 
@@ -168,7 +176,7 @@ func (t *DXTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database
 		}
 	}
 
-	newId, err = tx.Insert(&aepr.Log, t.NameId, newKeyValues)
+	newId, err = tx.Insert(t.NameId, newKeyValues)
 	return newId, err
 }
 
@@ -198,7 +206,7 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 	return newId, err
 }
 
-func (t *DXTable) Update(log *log.DXLog, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
+func (t *DXTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
@@ -207,7 +215,7 @@ func (t *DXTable) Update(log *log.DXLog, setKeyValues utils.JSON, whereAndFieldN
 	return t.Database.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
-func (t *DXTable) UpdateOne(log *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
+func (t *DXTable) UpdateOne(FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
 	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
 		"id": FieldValueForId,
 	})
@@ -371,7 +379,7 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldName
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) SelectOneMustExist(log *log.DXLog, whereAndFieldNameValues utils.JSON,
+func (t *DXTable) MustSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -379,11 +387,11 @@ func (t *DXTable) SelectOneMustExist(log *log.DXLog, whereAndFieldNameValues uti
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return t.Database.SelectOneMustExist(t.ListViewNameId,
+	return t.Database.MustSelectOne(t.ListViewNameId,
 		whereAndFieldNameValues, orderbyFieldNameDirections)
 }
 
-func (t *DXTable) TxSelectOneMustExist(log *log.DXLog, tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
+func (t *DXTable) TxMustSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -391,10 +399,10 @@ func (t *DXTable) TxSelectOneMustExist(log *log.DXLog, tx *database.DXDatabaseTx
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.SelectOneMustExist(log, t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
+	return tx.MustSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
 }
 
-func (t *DXTable) TxSelectOne(log *log.DXLog, tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
+func (t *DXTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -402,10 +410,10 @@ func (t *DXTable) TxSelectOne(log *log.DXLog, tx *database.DXDatabaseTx, whereAn
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.SelectOne(log, t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
+	return tx.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
 }
 
-func (t *DXTable) TxSelectOneForUpdate(log *log.DXLog, tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
+func (t *DXTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -413,16 +421,16 @@ func (t *DXTable) TxSelectOneForUpdate(log *log.DXLog, tx *database.DXDatabaseTx
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.SelectOne(log, t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
+	return tx.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
-func (t *DXTable) TxUpdate(log *log.DXLog, tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result utils.JSON, err error) {
+func (t *DXTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result utils.JSON, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.UpdateOne(log, t.ListViewNameId, setKeyValues, whereAndFieldNameValues)
+	return tx.UpdateOne(t.ListViewNameId, setKeyValues, whereAndFieldNameValues)
 }
 
 func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
