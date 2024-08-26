@@ -43,16 +43,21 @@ var SpecFormat = "MarkDown"
 
 func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
 	aepr.FiberContext.Response().Header.SetContentType("text/markdown")
-	err = aepr.FiberContext.SendString(a.PrintSpec())
+	s, err := a.PrintSpec()
+	err = aepr.FiberContext.SendString(s)
 	return err
 }
 
-func (a *DXAPI) PrintSpec() (s string) {
+func (a *DXAPI) PrintSpec() (s string, err error) {
 	s = "# API: " + a.NameId + "\n\n\n"
 	for _, v := range a.EndPoints {
-		s += v.PrintSpec() + "\n"
+		spec, err := v.PrintSpec()
+		if err != nil {
+			return "", err
+		}
+		s += spec + "\n"
 	}
-	return s
+	return s, nil
 }
 
 type DXAPIManager struct {

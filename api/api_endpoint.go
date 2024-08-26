@@ -4,6 +4,7 @@ import (
 	"context"
 	"dxlib/v3/log"
 	utilsHttp "dxlib/v3/utils/http"
+	"encoding/json"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
@@ -44,6 +45,7 @@ func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
 				s += c.PrintSpec(leftIndent + 2)
 			}
 		}
+	case "PostmanCollection":
 	}
 
 	return s
@@ -74,7 +76,7 @@ type DXAPIEndPoint struct {
 	Middlewares           []DXAPIEndPointExecuteFunc
 }
 
-func (aep *DXAPIEndPoint) PrintSpec() (s string) {
+func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 	switch SpecFormat {
 	case "MarkDown":
 		s = fmt.Sprintf("## %s\n", aep.Title)
@@ -115,9 +117,63 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string) {
 				s += p.PrintSpec(8)
 			}
 		}
+	case "PostmanCollection":
+		collection := map[string]any{
+			"info": map[string]any{
+				"name":        aep.Title,
+				"description": aep.Description,
+				"schema":      "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+			},
+			"item": []map[string]any{
+				{
+					"name": aep.Title,
+					"request": map[string]any{
+						"method":      aep.Method,
+						"description": aep.Description,
+						"url": map[string]any{
+							"raw":      aep.Uri,
+							"protocol": "http",
+							"host":     []string{"{{base_url}}"},
+							"path":     []string{aep.Uri},
+						},
+						"body": map[string]any{
+							"mode": "raw",
+							"raw":  "",
+						},
+					},
+					"response": []map[string]any{},
+				},
+			},
+		}
+
+		for _, param := range aep.Parameters {
+			rawBody := collection["item"].([]map[string]any)[0]["request"].(map[string]any)["body"].(map[string]any)["raw"].(string)
+			rawBody += fmt.Sprintf("%s: %s\n", param.NameId, param.Type)
+			collection["item"].([]map[string]any)[0]["request"].(map[string]any)["body"].(map[string]any)["raw"] = rawBody
+		}
+
+		/*for _, param := range aep.Parameters {
+			collection["item"].([]map[string]any)[0]["request"].(map[string]any)["body"].(map[string]any)["raw"] += fmt.Sprintf("%s: %s\n", param.NameId, param.Type)
+		}*/
+
+		for _, resp := range aep.ResponsePossibilities {
+			collection["item"].([]map[string]any)[0]["response"] = append(collection["item"].([]map[string]any)[0]["response"].([]map[string]any), map[string]any{
+				"name":   resp.Description,
+				"status": http.StatusText(resp.StatusCode),
+				"code":   resp.StatusCode,
+				"body":   "",
+			})
+		}
+
+		collectionJSON, err := json.MarshalIndent(collection, "", "  ")
+		if err != nil {
+			return "", err
+		}
+
+		return string(collectionJSON), nil
 	}
 
-	return s
+	return s, nil
 }
 
 func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId, aType, description string, isMustExist bool) *DXAPIEndPointParameter {
