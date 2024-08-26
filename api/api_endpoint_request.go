@@ -376,17 +376,16 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			aepr.ResponseStatusCode = http.StatusBadRequest
 			return fmt.Errorf("Error parsing X-Var header as JSON: %v", err)
 		}
-	}
-	for _, v := range aepr.EndPoint.Parameters {
-		rpv := aepr.NewAPIEndPointRequestParameter(v)
-		aepr.ParameterValues[v.NameId] = rpv
-		err := rpv.SetRawValue(xVarJSON[v.NameId])
-		if err != nil {
-			aepr.Log.Errorf("`Error at processing parameter %s to string (%v)", v.NameId, err)
-			aepr.ResponseStatusCode = http.StatusUnprocessableEntity
-			return err
+		for _, v := range aepr.EndPoint.Parameters {
+			rpv := aepr.NewAPIEndPointRequestParameter(v)
+			aepr.ParameterValues[v.NameId] = rpv
+			err := rpv.SetRawValue(xVarJSON[v.NameId])
+			if err != nil {
+				aepr.Log.Errorf("`Error at processing parameter %s to string (%v)", v.NameId, err)
+				aepr.ResponseStatusCode = http.StatusUnprocessableEntity
+				return err
+			}
 		}
-
 	}
 	switch aepr.EndPoint.Method {
 	case "GET", "DELETE":
