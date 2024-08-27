@@ -549,6 +549,19 @@ func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, 
 	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 }
 
+func (t *DXTable) IsFieldValueExist(log *log.DXLog, fieldName string, fieldValue string) (bool, error) {
+	_, r, err := t.SelectOne(log, utils.JSON{
+		fieldName: fieldValue,
+	}, nil)
+	if err != nil {
+		return false, err
+	}
+	if r == nil {
+		return false, nil
+	}
+	return true, nil
+}
+
 var Manager DXTableManager
 
 func init() {
