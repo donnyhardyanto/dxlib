@@ -22,7 +22,7 @@ type DXTable struct {
 	NameId                string
 	ResultObjectName      string
 	ListViewNameId        string
-	FieldNameForRowCode   string
+	FieldNameForRowId     string
 	FieldNameForRowNameId string
 }
 
@@ -38,22 +38,18 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 	return nil
 }
 
-func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string) *DXTable {
+func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForId string) *DXTable {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
-	t := DXTable{DatabaseNameId: databaseNameId, NameId: tableNameId, ResultObjectName: resultObjectName, ListViewNameId: tableListViewNameId}
-	t.Database = database.Manager.Databases[databaseNameId]
-	tm.Tables[tableNameId] = &t
-	return &t
-}
-
-func (tm *DXTableManager) NewTableWithCodeAndNameId(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowCode string, tableFieldNameForRowNameId string) *DXTable {
-	if tableListViewNameId == "" {
-		tableListViewNameId = tableNameId
+	t := DXTable{
+		DatabaseNameId:        databaseNameId,
+		NameId:                tableNameId,
+		ResultObjectName:      resultObjectName,
+		ListViewNameId:        tableListViewNameId,
+		FieldNameForRowId:     tableFieldNameForId,
+		FieldNameForRowNameId: tableFieldNameForRowNameId,
 	}
-	t := DXTable{DatabaseNameId: databaseNameId, NameId: tableNameId, ResultObjectName: resultObjectName, ListViewNameId: tableListViewNameId, FieldNameForRowCode: tableFieldNameForRowCode,
-		FieldNameForRowNameId: tableFieldNameForRowNameId}
 	t.Database = database.Manager.Databases[databaseNameId]
 	tm.Tables[tableNameId] = &t
 	return &t
@@ -82,7 +78,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 		}
 	}
 
-	newId, err = t.Database.Insert(t.NameId, newKeyValues)
+	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			aepr.ResponseStatusCode = 409
@@ -91,7 +87,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 		return 0, err
 	}
 	err = aepr.ResponseSetFromJSON(utils.JSON{
-		"id": newId,
+		t.FieldNameForRowId: newId,
 	})
 
 	return newId, err
@@ -99,24 +95,24 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 
 func (t *DXTable) MustGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.MustSelectOne(log, utils.JSON{
-		"id":         id,
-		"is_deleted": false,
-	}, map[string]string{"id": "asc"})
+		t.FieldNameForRowId: id,
+		"is_deleted":        false,
+	}, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxMustGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.MustSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
-		"id":         id,
-		"is_deleted": false,
-	}, nil, nil, nil)
+func (t *DXTable) MustGetByNameId(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.MustSelectOne(log, utils.JSON{
+		t.FieldNameForRowNameId: id,
+		"is_deleted":            false,
+	}, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxMustGetByCode(tx *database.DXDatabaseTx, code string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func (t *DXTable) TxMustGetById(tx *database.DXDatabaseTx, code string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.MustSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
-		t.FieldNameForRowCode: code,
-		"is_deleted":          false,
+		t.FieldNameForRowId: code,
+		"is_deleted":        false,
 	}, nil, nil, nil)
 	return rowsInfo, r, err
 }
@@ -202,7 +198,7 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 		newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
 	}
 
-	newId, err = t.Database.Insert(t.NameId, newKeyValues)
+	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	return newId, err
 }
 
@@ -217,7 +213,7 @@ func (t *DXTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.
 
 func (t *DXTable) UpdateOne(FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
 	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
-		"id": FieldValueForId,
+		t.FieldNameForRowId: FieldValueForId,
 	})
 }
 
@@ -244,19 +240,38 @@ func (t *DXTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues u
 		}
 	}
 
-	newId, err = t.Database.Insert(t.NameId, newKeyValues)
+	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	return newId, err
 }
 
 func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
-	_, id, err := aepr.GetParameterValueAsInt64("id")
+	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
 	}
 
 	rowsInfo, d, err := t.Database.SelectOne(t.ListViewNameId, nil, utils.JSON{
-		"id":         id,
-		"is_deleted": false,
+		t.FieldNameForRowId: id,
+		"is_deleted":        false,
+	}, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	err = aepr.ResponseSetFromJSON(utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
+
+	return err
+}
+
+func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
+	_, nameid, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
+	if err != nil {
+		return err
+	}
+
+	rowsInfo, d, err := t.Database.SelectOne(t.ListViewNameId, nil, utils.JSON{
+		t.FieldNameForRowId: nameid,
+		"is_deleted":        false,
 	}, nil, nil)
 	if err != nil {
 		return err
@@ -282,8 +297,8 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 	}
 
 	_, err = db.UpdateWhereKeyValues(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
-		"id":         id,
-		"is_deleted": false,
+		t.FieldNameForRowId: id,
+		"is_deleted":        false,
 	})
 	if err != nil {
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err)
@@ -295,7 +310,7 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 }
 
 func (t *DXTable) Edit(aepr *api.DXAPIEndPointRequest) (err error) {
-	_, id, err := aepr.GetParameterValueAsInt64("id")
+	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
 	}
@@ -311,7 +326,7 @@ func (t *DXTable) Edit(aepr *api.DXAPIEndPointRequest) (err error) {
 
 func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
 	_, err = db.DeleteWhereKeyValues(t.Database.Connection, t.NameId, utils.JSON{
-		"id": id,
+		t.FieldNameForRowId: id,
 	})
 	if err != nil {
 		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", t.NameId, err)
@@ -323,7 +338,7 @@ func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error)
 }
 
 func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
-	_, id, err := aepr.GetParameterValueAsInt64("id")
+	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
 	}
@@ -341,7 +356,7 @@ func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 }
 
 func (t *DXTable) HardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
-	_, id, err := aepr.GetParameterValueAsInt64("id")
+	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
 	}

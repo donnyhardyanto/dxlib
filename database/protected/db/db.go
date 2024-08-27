@@ -544,17 +544,17 @@ func UpdateWhereKeyValues(db *sqlx.DB, tableName string, setKeyValues utils.JSON
 	return result, err
 }
 
-func Insert(db *sqlx.DB, tableName string, keyValues utils.JSON) (id int64, err error) {
+func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
 	fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
 	s := ``
 	switch db.DriverName() {
 	case "postgres":
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
 	case "sqlserver":
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.id VALUES (` + fv + `)`
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.` + fieldNameForRowId + ` VALUES (` + fv + `)`
 	default:
 		fmt.Println("Unknown database type. Using Postgresql Dialect")
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning ` + fieldNameForRowId
 	}
 	kv := ExcludeSQLExpression(keyValues)
 	id, err = MustNamedQueryId(db, s, kv)

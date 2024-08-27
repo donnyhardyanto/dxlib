@@ -383,12 +383,12 @@ func (d *DXDatabase) PropertyValue(key string) (value string, err error) {
 	return value, nil
 }
 
-func (d *DXDatabase) Insert(tableName string, keyValues utils.JSON) (id int64, err error) {
+func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
 	//err = d.CheckConnectionAndReconnect()
 	//if err != nil {
 	//	return 0, err
 	//}
-	return db.Insert(d.Connection, tableName, keyValues)
+	return db.Insert(d.Connection, tableName, fieldNameForRowId, keyValues)
 }
 
 func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
