@@ -211,7 +211,7 @@ func (t *DXTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.
 	return t.Database.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
-func (t *DXTable) UpdateOne(FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
+func (t *DXTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
 	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
 		t.FieldNameForRowId: FieldValueForId,
 	})
