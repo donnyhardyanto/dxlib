@@ -253,7 +253,7 @@ func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 	rowsInfo, d, err := t.Database.SelectOne(t.ListViewNameId, nil, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
-	}, nil, nil)
+	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	if err != nil {
 		return err
 	}
@@ -264,15 +264,15 @@ func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 }
 
 func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
-	_, nameid, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
+	_, nameid, err := aepr.GetParameterValueAsString(t.FieldNameForRowNameId)
 	if err != nil {
 		return err
 	}
 
 	rowsInfo, d, err := t.Database.SelectOne(t.ListViewNameId, nil, utils.JSON{
-		t.FieldNameForRowId: nameid,
-		"is_deleted":        false,
-	}, nil, nil)
+		t.FieldNameForRowNameId: nameid,
+		"is_deleted":            false,
+	}, nil, map[string]string{t.FieldNameForRowNameId: "asc"})
 	if err != nil {
 		return err
 	}
