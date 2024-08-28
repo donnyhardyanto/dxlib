@@ -456,7 +456,6 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 	if !isExistFilterWhere {
 		filterWhere = ""
 	}
-
 	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
 	if err != nil {
 		return err
@@ -549,7 +548,7 @@ func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, 
 	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 }
 
-func (t *DXTable) IsFieldValueExist(log *log.DXLog, fieldName string, fieldValue string) (bool, error) {
+func (t *DXTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fieldValue string) (bool, error) {
 	_, r, err := t.SelectOne(log, utils.JSON{
 		fieldName: fieldValue,
 	}, nil)

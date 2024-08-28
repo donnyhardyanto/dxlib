@@ -270,21 +270,60 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsAny(k string) (isExist bool
 	return true, valAsAny, nil
 }
 
-func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string, defaultValue ...any) (isExist bool, val string, err error) {
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsNullableString(k string, defaultValue ...any) (isExist bool, val *string, err error) {
 	isExist, valAsAny, err := aepr.GetParameterValueAsAny(k)
+	ok := false
 	if !isExist {
 		if defaultValue != nil {
-			val = defaultValue[0].(string)
+			if len(defaultValue) > 0 {
+				if defaultValue[0] == nil {
+					return false, nil, nil
+				} else {
+					v1, ok := defaultValue[0].(string)
+					if !ok {
+						return false, nil, aepr.Log.ErrorAndCreateErrorf(`PARAMETER_DEFAULT_VALUE_IS_NOT_STRING:%s=%v`, k, v1)
+					}
+					return false, &v1, nil
+				}
+			}
+		} else {
+			return isExist, nil, nil
 		}
 		return isExist, val, err
 	}
-	val, ok := valAsAny.(string)
+	v1, ok := valAsAny.(string)
+	if !ok {
+		err = aepr.Log.ErrorAndCreateErrorf(`Requested field '%s' value is not string (%v)`, k, valAsAny)
+		aepr.ResponseStatusCode = http.StatusBadRequest
+		return true, nil, err
+	}
+	return true, &v1, nil
+}
+
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string, defaultValue ...any) (isExist bool, val string, err error) {
+	isExist, valAsAny, err := aepr.GetParameterValueAsAny(k)
+	ok := false
+	if !isExist {
+		if defaultValue != nil {
+			if len(defaultValue) > 0 {
+
+				v1, ok := defaultValue[0].(string)
+				if !ok {
+					return false, ``, aepr.Log.ErrorAndCreateErrorf(`PARAMETER_DEFAULT_VALUE_IS_NOT_STRING:%s=%v`, k, v1)
+				}
+			}
+		} else {
+			return isExist, ``, nil
+		}
+		return isExist, val, err
+	}
+	v1, ok := valAsAny.(string)
 	if !ok {
 		err = aepr.Log.ErrorAndCreateErrorf(`Requested field '%s' value is not string (%v)`, k, valAsAny)
 		aepr.ResponseStatusCode = http.StatusBadRequest
 		return true, "", err
 	}
-	return true, val, nil
+	return true, v1, nil
 }
 
 func getParameterValue[A any](aepr *DXAPIEndPointRequest, k string, defaultValue ...A) (isExist bool, val A, err error) {
