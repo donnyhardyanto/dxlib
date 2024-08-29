@@ -236,15 +236,6 @@ func ResponseBodyToJSON(r *http.Response) (utils.JSON, error) {
 	return v, nil
 }
 
-func StringToJSON(s string) (utils.JSON, error) {
-	v := utils.JSON{}
-	err := json.Unmarshal([]byte(s), &v)
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
 func GetValueWithFieldPathString(fieldPath string, data utils.JSON) (any, error) {
 	path := strings.Split(fieldPath, ".")
 	d := data

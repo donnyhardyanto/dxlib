@@ -697,7 +697,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters uti
 		return r.StatusCode, nil, err
 	}
 
-	responseAsJSON, err = utilsJson.StringToJSON(responseBodyAsString)
+	responseAsJSON, err = utils.StringToJSON(responseBodyAsString)
 	if err != nil {
 		aepr.Log.Warnf("Error in make HTTP request, cannot be converted to JSON (%v)", err)
 		return r.StatusCode, nil, err

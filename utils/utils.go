@@ -17,6 +17,15 @@ import (
 
 type JSON = map[string]any
 
+func StringToJSON(s string) (JSON, error) {
+	v := JSON{}
+	err := json.Unmarshal([]byte(s), &v)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
 func ArrayOfStringIsContains(arr []string, str string) bool {
 	for _, a := range arr {
 		if a == str {

@@ -75,6 +75,7 @@ func (d *DXDatabase) CheckConnection() (err error) {
 		d.Connected = false
 		return err
 	}
+	defer dbConn.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -421,15 +422,20 @@ func (d *DXDatabase) Select(tableName string, showFieldNames []string, whereAndF
 func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
+	tryCount := 0
 	for {
 		rowsInfo, r, err = db.SelectOne(d.Connection, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 		if err == nil {
 			return rowsInfo, r, nil
 		}
 		if err != nil {
-			err = d.CheckConnectionAndReconnect()
-			if err != nil {
-				return nil, nil, err
+			if tryCount < 4 {
+				tryCount++
+				log.Log.Warnf("SELECT_ONE_ERROR:%s=%v", tableName, err.Error())
+				err = d.CheckConnectionAndReconnect()
+				if err != nil {
+					return nil, nil, err
+				}
 			}
 		}
 	}
