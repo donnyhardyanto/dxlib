@@ -61,7 +61,7 @@ type DXApp struct {
 	IsTaskExist          bool
 
 	DebugKey                     string
-	IsDebug                      bool
+	DebugValue                   string
 	OnDefine                     DXAppEvent
 	OnDefineConfiguration        DXAppEvent
 	OnDefineSetVariables         DXAppEvent
@@ -301,14 +301,17 @@ func (a *DXApp) execute() (err error) {
 
 var App DXApp
 
-func Set(nameId, title, description string, isLoop bool, debugKey string) {
-	v3.AppNameId = nameId
+func Set(nameId, title, description string, isLoop bool, debugKey string, debugValue string) {
+	//	v3.AppNameId = nameId
 	App.nameId = nameId
 	App.Title = title
 	App.Description = description
 	App.IsLoop = isLoop
 	App.DebugKey = debugKey
-	App.IsDebug = os.Getenv("DEBUG_KEY") == debugKey
+	App.DebugValue = debugValue
+	if App.DebugKey != "" {
+		v3.IsDebug = os.Getenv(App.DebugKey) == App.DebugValue
+	}
 	log.Log.Prefix = nameId
 }
 
@@ -321,6 +324,5 @@ func init() {
 			Commands: map[string]*DXAppArgCommand{},
 			Options:  map[string]*DXAppArgOption{},
 		},
-		IsDebug: false,
 	}
 }

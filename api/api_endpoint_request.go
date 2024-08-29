@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	v3 "dxlib/v3"
 	"encoding/json"
 	"fmt"
 	"github.com/gofiber/contrib/websocket"
@@ -205,6 +206,9 @@ func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, rea
 	aepr.ResponseStatusCode = statusCode
 	if aepr.ResponseStatusCode != 200 {
 		aepr.Log.Warnf("Status Code: %d %s %s %v", aepr.ResponseStatusCode, reason, reasonMessage, data)
+	}
+	if !v3.IsDebug {
+		return nil
 	}
 	d := utils.JSON{
 		"reason":         reason,
@@ -476,7 +480,7 @@ func (aepr *DXAPIEndPointRequest) responseSetStatusCodeAsErrorf(statusCode int, 
 		return err2
 	}
 	aepr.ResponseStatusCode = statusCode
-	if aepr.EndPoint.Owner.IsDebug {
+	if v3.IsDebug {
 		err2 := aepr.ResponseSetFromJSON(utils.JSON{
 			"reason_message": err.Error(),
 		})

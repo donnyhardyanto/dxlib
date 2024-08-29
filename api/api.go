@@ -36,7 +36,6 @@ type DXAPI struct {
 	Log             log.DXLog
 	Context         context.Context
 	Cancel          context.CancelFunc
-	IsDebug         bool
 }
 
 var SpecFormat = "MarkDown"
