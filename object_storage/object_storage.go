@@ -1,13 +1,13 @@
 package object_storage
 
 import (
-	"bytes"
 	"context"
 	"dxlib/v3/api"
 	dxlibv3Configuration "dxlib/v3/configuration"
 	"dxlib/v3/core"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
+	utilsHttp "dxlib/v3/utils/http"
 	"fmt"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -250,7 +250,7 @@ func (r *DXObjectStorage) Connect() (err error) {
 			})
 		r.Client = minioClient
 		r.Connected = true
-		log.Log.Infof("Connecting to Redis %s at %s/%d... done CONNECTED", r.NameId, r.Address, ObjectStorageMaxFileSizeBytes)
+		log.Log.Infof("Connecting to Object Storage %s at %s/%d... done CONNECTED", r.NameId, r.Address, ObjectStorageMaxFileSizeBytes)
 	}
 	return nil
 }
@@ -289,17 +289,12 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 func (r *DXObjectStorage) ReceiveStreamObject(aepr *api.DXAPIEndPointRequest, filename string) (err error) {
 	bodyLen := aepr.FiberContext.Context().Request.Header.ContentLength()
 	aepr.Log.Infof("Request body length: %d", bodyLen)
-	c := aepr.FiberContext.Context()
-	s := c.Request.BodyStream()
-	if s == nil {
-		// Fallback to using the body as an io.Reader
-		body := c.Request.Body()
-		if body == nil {
-			aepr.ResponseStatusCode = http.StatusBadRequest
-			return aepr.Log.ErrorAndCreateErrorf("BAD_REQUEST:%s", r.NameId)
-		}
-		s = io.NopCloser(bytes.NewReader(body))
+
+	s, err := utilsHttp.GetRequestBodyStream(aepr.FiberContext.Context())
+	if err != nil {
+		return err
 	}
+
 	uploadInfo, err := r.UploadStream(s, filename, filename, "application/octet-stream")
 	if err != nil {
 		return err
