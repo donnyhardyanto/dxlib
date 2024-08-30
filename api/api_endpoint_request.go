@@ -5,6 +5,7 @@ import (
 	"context"
 	v3 "dxlib/v3"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
@@ -206,6 +207,7 @@ func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, rea
 	aepr.ResponseStatusCode = statusCode
 	if aepr.ResponseStatusCode != 200 {
 		aepr.Log.Warnf("Status Code: %d %s %s %v", aepr.ResponseStatusCode, reason, reasonMessage, data)
+		err = errors.New(reason)
 	}
 	if !v3.IsDebug {
 		return nil
@@ -224,10 +226,14 @@ func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, rea
 			d = utilsJson.DeepMerge(d, jsonData)
 		}
 	}
-	return aepr.ResponseSetStatusCodeAndBodyJSON(
+	err2 := aepr.ResponseSetStatusCodeAndBodyJSON(
 		aepr.ResponseStatusCode,
 		d,
 	)
+	if err == nil {
+		return err2
+	}
+	return err
 }
 
 func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeAndBodyJSON(statusCode int, v utils.JSON) (err error) {

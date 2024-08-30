@@ -396,7 +396,7 @@ func (a *DXAPI) doFiberHTTPDownloadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx)
 				aepr.ResponseStatusCode = 500
 			}
 			aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
-			return err
+			return nil
 		}
 	}
 
