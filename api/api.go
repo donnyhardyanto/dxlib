@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -226,7 +227,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	err = aepr.PreProcessRequest()
 	if err != nil {
 		aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
-		aepr.ResponseSetStatusCodeError(422, "PREPROCESS_REQUEST_ERROR", err.Error())
+		_ = aepr.ResponseSetStatusCodeError(422, "PREPROCESS_REQUEST_ERROR", err.Error())
 		return nil
 	}
 
@@ -237,7 +238,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if aepr.ResponseStatusCode == http.StatusOK {
 				aepr.ResponseStatusCode = http.StatusInternalServerError
 			}
-			aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
+			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
 			return err
 		}
 	}
@@ -257,40 +258,50 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 }
 
 func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
+	if a.RuntimeIsActive {
+		return errors.New("server is already active")
+	}
 
-	if !a.RuntimeIsActive {
-		mux := http.NewServeMux()
-		a.HTTPServer = &http.Server{
-			Addr:         a.Address,
-			Handler:      mux,
-			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
-			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
-		}
+	mux := http.NewServeMux()
+	a.HTTPServer = &http.Server{
+		Addr:         a.Address,
+		Handler:      mux,
+		WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
+		ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
+	}
 
-		// CORS middleware
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// CORS middleware
+	corsMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Consider restricting this to specific origins in production
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,HEAD,PUT,DELETE,PATCH")
-			w.Header().Set("Access-Control-Allow-Headers", "*, AUTHORIZATION")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
 				return
 			}
-			for _, v := range a.EndPoints {
-				p := v
-				mux.HandleFunc(p.Uri, func(w http.ResponseWriter, r *http.Request) {
-					a.routeHandler(w, r, &p)
-				})
-			}
+			next.ServeHTTP(w, r)
 		})
+	}
+
+	// Set up routes
+	for _, endpoint := range a.EndPoints {
+		p := endpoint
+		mux.Handle(p.Uri, corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_ = a.routeHandler(w, r, &p)
+		})))
 	}
 
 	errorGroup.Go(func() error {
 		a.RuntimeIsActive = true
 		log.Log.Infof("Listening at %s... start", a.Address)
 		err := a.HTTPServer.ListenAndServe()
+		if (err != nil) && (!errors.Is(err, http.ErrServerClosed)) {
+			log.Log.Errorf("HTTP server error: %v", err)
+		}
 		a.RuntimeIsActive = false
-		log.Log.Infof("Listening at %s... stopped (%v)", a.Address, err)
+		log.Log.Infof("Listening at %s... stopped", a.Address)
 		return err
 	})
 
