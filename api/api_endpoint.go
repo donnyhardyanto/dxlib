@@ -151,10 +151,6 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 			collection["item"].([]map[string]any)[0]["request"].(map[string]any)["body"].(map[string]any)["raw"] = rawBody
 		}
 
-		/*for _, param := range aep.Parameters {
-			collection["item"].([]map[string]any)[0]["request"].(map[string]any)["body"].(map[string]any)["raw"] += fmt.Sprintf("%s: %s\n", param.NameId, param.Type)
-		}*/
-
 		for _, resp := range aep.ResponsePossibilities {
 			collection["item"].([]map[string]any)[0]["response"] = append(collection["item"].([]map[string]any)[0]["response"].([]map[string]any), map[string]any{
 				"name":   resp.Description,
@@ -185,16 +181,11 @@ func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId, a
 func (aep *DXAPIEndPoint) NewEndPointRequest(context context.Context, w http.ResponseWriter, r *http.Request) *DXAPIEndPointRequest {
 	er := &DXAPIEndPointRequest{
 		Context:         context,
-		ResponseWriter:  w,
+		_responseWriter: &w,
 		Request:         r,
 		EndPoint:        aep,
 		ParameterValues: map[string]*DXAPIEndPointRequestParameterValue{},
-		//ResponseWriter:        w,
-		//Request:               r,
-		ResponseStatusCode:    http.StatusOK,
-		ResponseErrorAsString: "",
-		ResponseBodyAsBytes:   nil,
-		LocalData:             map[string]any{},
+		LocalData:       map[string]any{},
 	}
 	er.Id = fmt.Sprintf("%p", er)
 	er.Log = log.NewLog(&aep.Owner.Log, context, aep.Title+" | "+er.Id)

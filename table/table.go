@@ -8,7 +8,7 @@ import (
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
 	"fmt"
-	"strings"
+	"net/http"
 )
 
 type DXTableManager struct {
@@ -80,13 +80,9 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			aepr.ResponseStatusCode = 409
-		}
-		aepr.Log.Errorf("error at inserting new %s, %v ", t.NameId, err)
-		return 0, err
+		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:%s=%s", t.NameId, err)
 	}
-	err = aepr.ResponseSetFromJSON(utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
 		t.FieldNameForRowId: newId,
 	})
 
@@ -258,9 +254,9 @@ func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	err = aepr.ResponseSetFromJSON(utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
 
-	return err
+	return nil
 }
 
 func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -277,9 +273,9 @@ func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	err = aepr.ResponseSetFromJSON(utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
 
-	return err
+	return nil
 }
 
 func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
@@ -304,9 +300,8 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err)
 		return err
 	}
-	err = aepr.ResponseSetFromJSON(nil)
-
-	return err
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
+	return nil
 }
 
 func (t *DXTable) Edit(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -332,9 +327,8 @@ func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error)
 		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", t.NameId, err)
 		return err
 	}
-	err = aepr.ResponseSetFromJSON(nil)
-
-	return err
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
+	return nil
 }
 
 func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -525,9 +519,9 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 			"rows_info":  rowsInfo,
 		},
 	}
-	err = aepr.ResponseSetFromJSON(data)
 
-	return err
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
+	return nil
 }
 
 func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (

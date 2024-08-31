@@ -159,8 +159,7 @@ func (osm *DXObjectStorageManager) FindObjectStorageAndReceiveObject(aepr *api.D
 	// Get the object storage objectStorage using the bucket_nameid
 	objectStorage, exists := osm.ObjectStorages[nameid]
 	if !exists {
-		aepr.ResponseStatusCode = http.StatusNotFound
-		return aepr.Log.ErrorAndCreateErrorf("OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
 	}
 
 	err = objectStorage.ReceiveStreamObject(aepr, filename)
@@ -174,8 +173,7 @@ func (osm *DXObjectStorageManager) FindObjectStorageAndSendObject(aepr *api.DXAP
 	// Get the object storage objectStorage using the bucket_nameid
 	objectStorage, exists := osm.ObjectStorages[nameid]
 	if !exists {
-		aepr.ResponseStatusCode = http.StatusNotFound
-		return aepr.Log.ErrorAndCreateErrorf("OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
 	}
 
 	err = objectStorage.SendStreamObject(aepr, filename)
@@ -318,12 +316,10 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	// Get the object storage bucket using the bucket_name
 	object, err := r.DownloadStream(filename)
 	if err != nil {
-		aepr.ResponseStatusCode = http.StatusInternalServerError
-		return err
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "ERROR_IN_DOWNLOAD_STREAM:%s", err)
 	}
 	if object == nil {
-		aepr.ResponseStatusCode = http.StatusInternalServerError
-		return aepr.Log.ErrorAndCreateErrorf("OBJECT_IS_NIL:%s", r.NameId)
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "OBJECT_IS_NIL:%s", r.NameId)
 	}
 
 	objectInfo, err := object.Stat()
@@ -335,11 +331,11 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	if !ok {
 		originalFilename = filename
 	}
-	response := aepr.ResponseWriter
-	response.Header().Set("Content-Type", "application/octet-stream")
-	response.Header().Set("Content-Length", fmt.Sprintf("%d", objectInfo.Size))
+	responseWriter := *aepr.GetResponseWriter()
+	responseWriter.Header().Set("Content-Type", "application/octet-stream")
+	responseWriter.Header().Set("Content-Length", fmt.Sprintf("%d", objectInfo.Size))
 	if originalFilename != "" {
-		response.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalFilename))
+		responseWriter.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalFilename))
 	}
 
 	// Use io.Pipe to stream the object, the thread will exist until it send all the content, even after the handler return to web server
@@ -356,10 +352,9 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	}()
 
 	// Send the object stream
-	_, err = io.Copy(response, reader)
+	_, err = io.Copy(responseWriter, reader)
 	if err != nil {
-		aepr.ResponseStatusCode = http.StatusInternalServerError
-		return aepr.Log.ErrorAndCreateErrorf("SEND_STREAM_ERROR: %v", err)
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "SEND_STREAM_ERROR:%s", err)
 	}
 
 	return nil

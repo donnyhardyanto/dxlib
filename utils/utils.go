@@ -342,7 +342,7 @@ func ConvertToInterfaceArrayInterfaceFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
 		r = nil
-		err = errors.New(`VALUE_CANNOT_BE_NIL`)
+		err = errors.New(`VALUE_CANT_BE_NIL`)
 		return nil, err
 	case types.Array:
 		r = v.([]any)
@@ -358,7 +358,7 @@ func ConvertToInterfaceStringFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
 		r = nil
-		err = errors.New(`VALUE_CANNOT_BE_NIL`)
+		err = errors.New(`VALUE_CANT_BE_NIL`)
 		return nil, err
 	case int64:
 		r = strconv.FormatInt(v.(int64), 10)

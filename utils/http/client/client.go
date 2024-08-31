@@ -50,7 +50,7 @@ func HTTPClient(method string, url string, headers map[string]string, body any) 
 		contentType = `application/json`
 		break
 	default:
-		err = errors.New(fmt.Sprintf(`SHOULD_NOT_HAPPEN:TYPE_CANNOT_BE_CONVERTED_TO_BYTES:%v`, body))
+		err = errors.New(fmt.Sprintf(`SHOULD_NOT_HAPPEN:TYPE_CANT_BE_CONVERTED_TO_BYTES:%v`, body))
 		return nil, nil, err
 	}
 

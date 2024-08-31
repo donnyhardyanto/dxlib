@@ -37,6 +37,6 @@ func Echo(r *http.Request) (map[string]interface{}, error) {
 func Ping(aepr *api.DXAPIEndPointRequest) (err error) {
 	data, err := Echo(aepr.Request)
 	aepr.Log.Infof("Receive (%v): %v", err, data)
-	err = aepr.ResponseSetFromJSON(data)
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
 	return err
 }

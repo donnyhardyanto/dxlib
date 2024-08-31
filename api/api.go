@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -15,7 +14,7 @@ import (
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
 	utilsHttp "dxlib/v3/utils/http"
-	"dxlib/v3/utils/json"
+	utilsJSON "dxlib/v3/utils/json"
 )
 
 const (
@@ -39,13 +38,11 @@ type DXAPI struct {
 var SpecFormat = "MarkDown"
 
 func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
-	aepr.ResponseWriter.Header().Set("Content-Type", "text/markdown")
 	s, err := a.PrintSpec()
 	if err != nil {
 		return err
 	}
-	aepr.ResponseBodyAsBytes = []byte(s)
-	//_, err = aepr.ResponseWriter.Write([]byte(s))
+	aepr.WriteResponseAsString(http.StatusOK, nil, s)
 	return err
 }
 
@@ -154,8 +151,8 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s.%s/address", configurationNameId, a.NameId)
 		return err
 	}
-	a.WriteTimeoutSec = json.GetNumberWithDefault(c1, `writetimeout-sec`, DXAPIDefaultWriteTimeoutSec)
-	a.ReadTimeoutSec = json.GetNumberWithDefault(c1, `readtimeout-sec`, DXAPIDefaultReadTimeoutSec)
+	a.WriteTimeoutSec = utilsJSON.GetNumberWithDefault(c1, `writetimeout-sec`, DXAPIDefaultWriteTimeoutSec)
+	a.ReadTimeoutSec = utilsJSON.GetNumberWithDefault(c1, `readtimeout-sec`, DXAPIDefaultReadTimeoutSec)
 	return err
 }
 
@@ -194,68 +191,50 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	return &ae
 }
 
-func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEndPoint) (err error) {
+func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEndPoint) {
 	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "routeHandler|"+p.Uri)
 	defer span.End()
 
 	var aepr *DXAPIEndPointRequest
+	var err error
 
 	defer func() {
 		if err != nil {
-			if aepr.ResponseStatusCode == http.StatusOK {
-				aepr.ResponseStatusCode = http.StatusInternalServerError
-			}
-			aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
-		}
-
-		w.WriteHeader(aepr.ResponseStatusCode)
-		if aepr.ResponseBodyAsBytes != nil {
-			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			w.Header().Set("Content-Length", strconv.Itoa(len(aepr.ResponseBodyAsBytes)))
-			_, errWrite := w.Write(aepr.ResponseBodyAsBytes)
-			if errWrite != nil {
-				aepr.Log.Errorf("Error writing response: %v", errWrite)
-				aepr.ResponseErrorAsString = errWrite.Error()
-			}
+			_ = aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "ERROR_AT_AEPR:%s (%s)", aepr.Id, err)
 		}
 	}()
 
 	aepr = p.NewEndPointRequest(requestContext, w, r)
 	defer func() {
-		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, r.URL.Path)
+		aepr.Log.Infof("%d %s %s", aepr._responseStatusCode, aepr._responseErrorAsString, r.URL.Path)
 	}()
 
 	err = aepr.PreProcessRequest()
 	if err != nil {
-		aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
-		_ = aepr.ResponseSetStatusCodeError(422, "PREPROCESS_REQUEST_ERROR", err.Error())
-		return nil
+		err = aepr.Log.WarnAndCreateErrorf("PREPROCESS_REQUEST_ERROR:%s:%w ", err)
+		return
 	}
 
 	for _, middleware := range p.Middlewares {
 		err = middleware(aepr)
 		if err != nil {
-			aepr.Log.Errorf("Error at Middleware (%s) ", err)
-			if aepr.ResponseStatusCode == http.StatusOK {
-				aepr.ResponseStatusCode = http.StatusInternalServerError
-			}
-			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
-			return err
+			err = aepr.Log.WarnAndCreateErrorf("MIDDLEWARE_ERROR:%w ", err)
+			return
 		}
 	}
 
 	if p.OnExecute != nil {
 		err = p.OnExecute(aepr)
 		if err != nil {
-			aepr.Log.Errorf("Error at OnExecute (%s) ", err)
-			if aepr.ResponseStatusCode == http.StatusOK {
-				aepr.ResponseStatusCode = http.StatusInternalServerError
+			err = aepr.Log.WarnAndCreateErrorf("ONEXECUTE_ERROR:%w ", err)
+			return
+		} else {
+			if !aepr.ResponseHeaderSent {
+				aepr.WriteResponseAsString(http.StatusOK, nil, "")
 			}
-			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, err.Error(), err.Error())
-			return nil
 		}
 	}
-	return nil
+	return
 }
 
 func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
@@ -276,8 +255,9 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Consider restricting this to specific origins in production
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,HEAD,PUT,DELETE,PATCH")
-			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,HEAD,PUT,DELETE,PATCH,OPTION")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization,*")
+
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
 				return
@@ -290,7 +270,7 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 	for _, endpoint := range a.EndPoints {
 		p := endpoint
 		mux.Handle(p.Uri, corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_ = a.routeHandler(w, r, &p)
+			a.routeHandler(w, r, &p)
 		})))
 	}
 
