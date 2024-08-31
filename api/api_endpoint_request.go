@@ -249,7 +249,7 @@ func (aepr *DXAPIEndPointRequest) ResponseSetFromJSON(v utils.JSON) (err error) 
 	}
 	aepr.ResponseWriter.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
 	aepr.ResponseBodyAsBytes = vAsBytes
-	_, err = aepr.ResponseWriter.Write(vAsBytes)
+	//_, err = aepr.ResponseWriter.Write(vAsBytes)
 	return nil
 }
 

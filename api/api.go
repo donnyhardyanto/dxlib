@@ -44,7 +44,8 @@ func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
 	if err != nil {
 		return err
 	}
-	_, err = aepr.ResponseWriter.Write([]byte(s))
+	aepr.ResponseBodyAsBytes = []byte(s)
+	//_, err = aepr.ResponseWriter.Write([]byte(s))
 	return err
 }
 
