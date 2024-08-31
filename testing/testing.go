@@ -44,14 +44,14 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 	t.Logf("\nRaw Response: \n%v\n", string(responseDump))
 
 	if mustSuccess {
-		if response.StatusCode != 200 {
+		if response.StatusCode != http.StatusOK {
 			t.Logf(`Error: should be success but not (%v)`, response.StatusCode)
 			t.FailNow()
 			return response
 		}
 		return response
 	}
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		return response
 	}
 	t.Logf(`Error: should be fail but not (%v)`, response.StatusCode)
@@ -60,7 +60,7 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 }
 
 func ResponseBodyToJSON(t *testing.T, r *http.Response) (utils.JSON, error) {
-	if r.StatusCode != 200 {
+	if r.StatusCode != http.StatusOK {
 		err := fmt.Errorf("response status code is not 200 (%v)", r.StatusCode)
 		t.Log(err.Error())
 		t.FailNow()
@@ -114,7 +114,7 @@ func Style0HTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url,
 		}
 		t.Logf("\nResponse(JSON):\n%s\n", vAsString)
 		if mustSuccess {
-			if r1.StatusCode != 200 {
+			if r1.StatusCode != http.StatusOK {
 				t.Logf("StatusCode should be 200 OK, but has value=%v", r1.StatusCode)
 				t.FailNow()
 				return v

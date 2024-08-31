@@ -132,7 +132,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		return
 	}
 	aepr.ResponseBodySent = true
-	if statusCode != 200 {
+	if statusCode != http.StatusOK {
 		if bodyAsBytes != nil {
 			aepr._responseErrorAsString = ""
 		} else {
@@ -694,7 +694,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 
 	responseStatusCode = r.StatusCode
 
-	if r.StatusCode != 200 {
+	if r.StatusCode != http.StatusOK {
 		err = aepr.Log.ErrorAndCreateErrorf("response status code is not 200 (%v)", r.StatusCode)
 		return responseStatusCode, nil, err
 	}
@@ -733,7 +733,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters uti
 		return r.StatusCode, nil, err
 	}
 	responseBodyAsString := string(responseBodyAsBytes)
-	if r.StatusCode != 200 {
+	if r.StatusCode != http.StatusOK {
 		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:PROXY_STATUS_%d:%v", r.StatusCode, err)
 		return r.StatusCode, nil, err
 	}
