@@ -1,10 +1,8 @@
 package http
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/valyala/fasthttp"
 	"io"
 	"net/http"
 
@@ -54,15 +52,9 @@ func ResponseBodyToJSON(response *http.Response) (utils.JSON, error) {
 	return v, nil
 }
 
-func GetRequestBodyStream(c *fasthttp.RequestCtx) (io.Reader, error) {
-	s := c.Request.BodyStream()
-	if s == nil {
-		// Fallback to using the body as an io.Reader => because it was FastHTTP, it doesn't have BodyStream because it was not design for streaming
-		body := c.Request.Body()
-		if body == nil {
-			return nil, errors.New("BAD_REQUEST_BODY_NIL")
-		}
-		s = io.NopCloser(bytes.NewReader(body))
+func GetRequestBodyStream(r *http.Request) (io.Reader, error) {
+	if r.Body == nil {
+		return nil, errors.New("BAD_REQUEST_BODY_NIL")
 	}
-	return s, nil
+	return r.Body, nil
 }

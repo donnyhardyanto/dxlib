@@ -2,9 +2,6 @@ package api
 
 import (
 	"context"
-	"github.com/gofiber/contrib/websocket"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"net/http"
 	"strconv"
 	"time"
@@ -32,7 +29,7 @@ type DXAPI struct {
 	ReadTimeoutSec  int
 	EndPoints       []DXAPIEndPoint
 	RuntimeIsActive bool
-	HTTPServer      *fiber.App
+	HTTPServer      *http.Server
 	Log             log.DXLog
 	Context         context.Context
 	Cancel          context.CancelFunc
@@ -41,9 +38,12 @@ type DXAPI struct {
 var SpecFormat = "MarkDown"
 
 func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
-	aepr.FiberContext.Response().Header.SetContentType("text/markdown")
+	aepr.ResponseWriter.Header().Set("Content-Type", "text/markdown")
 	s, err := a.PrintSpec()
-	err = aepr.FiberContext.SendString(s)
+	if err != nil {
+		return err
+	}
+	_, err = aepr.ResponseWriter.Write([]byte(s))
 	return err
 }
 
@@ -168,7 +168,7 @@ func (a *DXAPI) FindEndPointByURI(uri string) *DXAPIEndPoint {
 
 func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType DXAPIEndPointType,
 	contentType utilsHttp.RequestContentType, parameters []DXAPIEndPointParameter, onExecute DXAPIEndPointExecuteFunc,
-	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DxAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc) *DXAPIEndPoint {
+	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DXAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc) *DXAPIEndPoint {
 
 	t := a.FindEndPointByURI(uri)
 	if t != nil {
@@ -192,8 +192,8 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	return &ae
 }
 
-func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err error) {
-	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "doFiberHTTPJSONHandler|"+p.Uri)
+func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEndPoint) (err error) {
+	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "routeHandler|"+p.Uri)
 	defer span.End()
 
 	var aepr *DXAPIEndPointRequest
@@ -206,31 +206,21 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err erro
 			aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
 		}
 
-		aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
-
+		w.WriteHeader(aepr.ResponseStatusCode)
 		if aepr.ResponseBodyAsBytes != nil {
-			x := &aepr.FiberContext.Response().Header
-			y := x.ContentType()
-			if y == nil {
-				x.Set(`Content-Type`, `application/octet-stream; charset=utf-8`)
-			}
-
-			contentLengthBytes := len(aepr.ResponseBodyAsBytes)
-			contentLengthBytesAsString := strconv.FormatInt(int64(contentLengthBytes), 10)
-
-			aepr.FiberContext.Response().Header.Set(`Content-Length`, contentLengthBytesAsString)
-
-			errWrite := aepr.FiberContext.Send(aepr.ResponseBodyAsBytes)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.Header().Set("Content-Length", strconv.Itoa(len(aepr.ResponseBodyAsBytes)))
+			_, errWrite := w.Write(aepr.ResponseBodyAsBytes)
 			if errWrite != nil {
-				aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.FiiberContext.Send (%v), reply-data: %v", errWrite, aepr.FiberContext.Response().Body())
+				aepr.Log.Errorf("Error writing response: %v", errWrite)
 				aepr.ResponseErrorAsString = errWrite.Error()
 			}
 		}
 	}()
 
-	aepr = p.NewEndPointRequest(requestContext, c)
+	aepr = p.NewEndPointRequest(requestContext, w, r)
 	defer func() {
-		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
+		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, r.URL.Path)
 	}()
 
 	err = aepr.PreProcessRequest()
@@ -244,8 +234,8 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err erro
 		err = middleware(aepr)
 		if err != nil {
 			aepr.Log.Errorf("Error at Middleware (%s) ", err)
-			if aepr.ResponseStatusCode == 200 {
-				aepr.ResponseStatusCode = 500
+			if aepr.ResponseStatusCode == http.StatusOK {
+				aepr.ResponseStatusCode = http.StatusInternalServerError
 			}
 			aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
 			return err
@@ -256,156 +246,8 @@ func (a *DXAPI) doFiberHTTPJSONHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err erro
 		err = p.OnExecute(aepr)
 		if err != nil {
 			aepr.Log.Errorf("Error at OnExecute (%s) ", err)
-			if aepr.ResponseStatusCode == 200 {
-				aepr.ResponseStatusCode = 500
-			}
-			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, err.Error(), err.Error())
-			return nil
-		}
-	}
-	return nil
-}
-
-func (a *DXAPI) doFiberHTTPUploadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err error) {
-	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "doFiberHTTPUploadStreamHandler|"+p.Uri)
-	defer span.End()
-
-	var aepr *DXAPIEndPointRequest
-
-	defer func() {
-		if err != nil {
 			if aepr.ResponseStatusCode == http.StatusOK {
 				aepr.ResponseStatusCode = http.StatusInternalServerError
-			}
-			aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
-		}
-
-		aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
-
-		if aepr.ResponseBodyAsBytes != nil {
-			x := &aepr.FiberContext.Response().Header
-			y := x.ContentType()
-			if y == nil {
-				x.Set(`Content-Type`, `application/octet;-stream charset=utf-8`)
-			}
-
-			contentLengthBytes := len(aepr.ResponseBodyAsBytes)
-			contentLengthBytesAsString := strconv.FormatInt(int64(contentLengthBytes), 10)
-
-			aepr.FiberContext.Response().Header.Set(`Content-Length`, contentLengthBytesAsString)
-
-			errWrite := aepr.FiberContext.Send(aepr.ResponseBodyAsBytes)
-			if errWrite != nil {
-				aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.FiiberContext.Send (%v), reply-data: %v", errWrite, aepr.FiberContext.Response().Body())
-				aepr.ResponseErrorAsString = errWrite.Error()
-			}
-		}
-	}()
-
-	aepr = p.NewEndPointRequest(requestContext, c)
-	defer func() {
-		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
-	}()
-
-	err = aepr.PreProcessRequest()
-	if err != nil {
-		aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
-		aepr.ResponseSetStatusCodeError(422, "PREPROCESS_REQUEST_ERROR", err.Error())
-		return nil
-	}
-
-	for _, middleware := range p.Middlewares {
-		err = middleware(aepr)
-		if err != nil {
-			aepr.Log.Errorf("Error at Middleware (%s) ", err)
-			if aepr.ResponseStatusCode == 200 {
-				aepr.ResponseStatusCode = 500
-			}
-			aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
-			return err
-		}
-	}
-
-	if p.OnExecute != nil {
-		err = p.OnExecute(aepr)
-		if err != nil {
-			aepr.Log.Errorf("Error at OnExecute (%s) ", err)
-			if aepr.ResponseStatusCode == 200 {
-				aepr.ResponseStatusCode = 500
-			}
-			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, err.Error(), err.Error())
-			return nil
-		}
-	}
-	return nil
-}
-
-func (a *DXAPI) doFiberHTTPDownloadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx) (err error) {
-	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "doFiberHTTPDownloadStreamHandler|"+p.Uri)
-	defer span.End()
-
-	var aepr *DXAPIEndPointRequest
-
-	defer func() {
-		if err != nil {
-			if aepr.ResponseStatusCode == http.StatusOK {
-				aepr.ResponseStatusCode = http.StatusInternalServerError
-			}
-			aepr.Log.Errorf("Error at %s (%s) ", aepr.Id, err)
-		}
-
-		aepr.FiberContext.Response().SetStatusCode(aepr.ResponseStatusCode)
-
-		if aepr.ResponseBodyAsBytes != nil {
-			x := &aepr.FiberContext.Response().Header
-			y := x.ContentType()
-			if y == nil {
-				x.Set(`Content-Type`, `application/octet-stream; charset=utf-8`)
-			}
-
-			contentLengthBytes := len(aepr.ResponseBodyAsBytes)
-			contentLengthBytesAsString := strconv.FormatInt(int64(contentLengthBytes), 10)
-
-			aepr.FiberContext.Response().Header.Set(`Content-Length`, contentLengthBytesAsString)
-
-			errWrite := aepr.FiberContext.Send(aepr.ResponseBodyAsBytes)
-			if errWrite != nil {
-				aepr.Log.Errorf("DXAPIEndPoint/DXAPIEndPoint/aepr.FiiberContext.Send (%v), reply-data: %v", errWrite, aepr.FiberContext.Response().Body())
-				aepr.ResponseErrorAsString = errWrite.Error()
-			}
-		}
-	}()
-
-	aepr = p.NewEndPointRequest(requestContext, c)
-	defer func() {
-		aepr.Log.Infof("%d %s %s", aepr.ResponseStatusCode, aepr.ResponseErrorAsString, aepr.FiberContext.OriginalURL())
-	}()
-
-	err = aepr.PreProcessRequest()
-	if err != nil {
-		aepr.Log.Errorf("Error at PreProcessRequest (%s) ", err)
-		aepr.ResponseSetStatusCodeError(422, "PREPROCESS_REQUEST_ERROR", err.Error())
-		return nil
-	}
-
-	for _, middleware := range p.Middlewares {
-		err = middleware(aepr)
-		if err != nil {
-			aepr.Log.Errorf("Error at Middleware (%s) ", err)
-			if aepr.ResponseStatusCode == 200 {
-				aepr.ResponseStatusCode = 500
-			}
-			aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, "MIDDLEWARE_ERROR", err.Error())
-			return nil
-		}
-	}
-
-	if p.OnExecute != nil {
-		err = p.OnExecute(aepr)
-		if err != nil {
-			aepr.Log.Errorf("Error at OnExecute (%s) ", err)
-			if aepr.ResponseStatusCode == 200 {
-				aepr.ResponseStatusCode = 500
 			}
 			_ = aepr.ResponseSetStatusCodeError(aepr.ResponseStatusCode, err.Error(), err.Error())
 			return nil
@@ -417,70 +259,36 @@ func (a *DXAPI) doFiberHTTPDownloadStreamHandler(p *DXAPIEndPoint, c *fiber.Ctx)
 func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 
 	if !a.RuntimeIsActive {
-		a.HTTPServer = fiber.New(fiber.Config{
-			BodyLimit:    20 * 1024 * 1024,
-			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
+		mux := http.NewServeMux()
+		a.HTTPServer = &http.Server{
+			Addr:         a.Address,
+			Handler:      mux,
 			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
-		})
-		a.HTTPServer.Use(cors.New(cors.Config{
-			AllowOrigins: "*",                              // Allows all origins
-			AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH", // Specify what methods to allow
-			AllowHeaders: "*",                              // Specify what headers can be sent
-		}))
-		for _, v := range a.EndPoints {
-			p := v
-
-			fiberHttpJsonHandler := func(c *fiber.Ctx) error {
-				return a.doFiberHTTPJSONHandler(&p, c)
-			}
-
-			if p.EndPointType == EndPointTypeHTTPJSON {
-				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpJsonHandler)
-			}
-			if p.EndPointType == EndPointTypeHTTPUploadStream {
-				fiberHttpUploadStream := func(c *fiber.Ctx) error {
-					return a.doFiberHTTPUploadStreamHandler(&p, c)
-				}
-				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpUploadStream)
-			}
-			if p.EndPointType == EndPointTypeHTTPDownloadStream {
-				fiberHttpDownloadStream := func(c *fiber.Ctx) error {
-					return a.doFiberHTTPDownloadStreamHandler(&p, c)
-				}
-				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpDownloadStream)
-			}
-			if p.EndPointType == EndPointTypeWS {
-				a.HTTPServer.Add(p.Method, p.Uri, fiberHttpJsonHandler,
-					websocket.New(func(c *websocket.Conn) {
-						var aepr *DXAPIEndPointRequest
-						if p.OnWSLoop != nil {
-							aepr.WSConnection = c
-							err := p.OnWSLoop(aepr)
-							if err != nil {
-								return
-							}
-						}
-					}),
-				)
-			}
-
+			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 		}
 
-		/*a.RuntimeServer = &http.Server{
-			Handler:      r,
-			Addr:         a.Address,
-			WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
-			ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
-			BaseContext: func(_ net.Listener) context.Context {
-				return a.Context
-			},
-		}*/
+		// CORS middleware
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,HEAD,PUT,DELETE,PATCH")
+			w.Header().Set("Access-Control-Allow-Headers", "*, AUTHORIZATION")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			for _, v := range a.EndPoints {
+				p := v
+				mux.HandleFunc(p.Uri, func(w http.ResponseWriter, r *http.Request) {
+					a.routeHandler(w, r, &p)
+				})
+			}
+		})
 	}
+
 	errorGroup.Go(func() error {
 		a.RuntimeIsActive = true
 		log.Log.Infof("Listening at %s... start", a.Address)
-		//err := a.RuntimeServer.ListenAndServe()
-		err := a.HTTPServer.Listen(a.Address)
+		err := a.HTTPServer.ListenAndServe()
 		a.RuntimeIsActive = false
 		log.Log.Infof("Listening at %s... stopped (%v)", a.Address, err)
 		return err
@@ -492,7 +300,7 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 func (a *DXAPI) StartShutdown() (err error) {
 	if a.RuntimeIsActive {
 		log.Log.Infof("Shutdown api %s start...", a.NameId)
-		err = a.HTTPServer.ShutdownWithContext(core.RootContext)
+		err = a.HTTPServer.Shutdown(core.RootContext)
 		return err
 	}
 	return nil

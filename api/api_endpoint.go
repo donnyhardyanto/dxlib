@@ -6,7 +6,6 @@ import (
 	utilsHttp "dxlib/v3/utils/http"
 	"encoding/json"
 	"fmt"
-	"github.com/gofiber/fiber/v2"
 	"net/http"
 	"sort"
 )
@@ -51,7 +50,7 @@ func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
 	return s
 }
 
-type DxAPIEndPointResponsePossibility struct {
+type DXAPIEndPointResponsePossibility struct {
 	Owner        *DXAPIEndPoint
 	StatusCode   int
 	Description  string
@@ -72,7 +71,7 @@ type DXAPIEndPoint struct {
 	Parameters            []DXAPIEndPointParameter
 	OnExecute             DXAPIEndPointExecuteFunc
 	OnWSLoop              DXAPIEndPointExecuteFunc
-	ResponsePossibilities map[string]*DxAPIEndPointResponsePossibility
+	ResponsePossibilities map[string]*DXAPIEndPointResponsePossibility
 	Middlewares           []DXAPIEndPointExecuteFunc
 }
 
@@ -183,10 +182,11 @@ func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId, a
 	return &p
 }
 
-func (aep *DXAPIEndPoint) NewEndPointRequest(context context.Context, c *fiber.Ctx) *DXAPIEndPointRequest {
+func (aep *DXAPIEndPoint) NewEndPointRequest(context context.Context, w http.ResponseWriter, r *http.Request) *DXAPIEndPointRequest {
 	er := &DXAPIEndPointRequest{
 		Context:         context,
-		FiberContext:    c,
+		ResponseWriter:  w,
+		Request:         r,
 		EndPoint:        aep,
 		ParameterValues: map[string]*DXAPIEndPointRequestParameterValue{},
 		//ResponseWriter:        w,

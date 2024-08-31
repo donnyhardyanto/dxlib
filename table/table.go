@@ -13,7 +13,7 @@ import (
 
 type DXTableManager struct {
 	Tables                               map[string]*DXTable
-	StandardOperationResponsePossibility map[string]map[string]*api.DxAPIEndPointResponsePossibility
+	StandardOperationResponsePossibility map[string]map[string]*api.DXAPIEndPointResponsePossibility
 }
 
 type DXTable struct {
@@ -564,111 +564,111 @@ func (t *DXTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fi
 var Manager DXTableManager
 
 func init() {
-	Manager = DXTableManager{Tables: map[string]*DXTable{}, StandardOperationResponsePossibility: map[string]map[string]*api.DxAPIEndPointResponsePossibility{
+	Manager = DXTableManager{Tables: map[string]*DXTable{}, StandardOperationResponsePossibility: map[string]map[string]*api.DXAPIEndPointResponsePossibility{
 		"create": {
-			"success": &api.DxAPIEndPointResponsePossibility{
+			"success": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:  200,
 				Description: "Success - 200",
 				DataTemplate: []*api.DXAPIEndPointParameter{
 					{NameId: "id", Type: "int64", Description: "", IsMustExist: true},
 				},
 			},
-			"invalid_request": &api.DxAPIEndPointResponsePossibility{
+			"invalid_request": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   400,
 				Description:  "Invalid request - 400",
 				DataTemplate: nil,
 			},
-			"invalid_credential": &api.DxAPIEndPointResponsePossibility{
+			"invalid_credential": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   409,
 				Description:  "Invalid credential - 409",
 				DataTemplate: nil,
 			},
-			"unprocessable_entity": &api.DxAPIEndPointResponsePossibility{
+			"unprocessable_entity": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   422,
 				Description:  "Unprocessable entity - 422",
 				DataTemplate: nil,
 			},
-			"internal_error": &api.DxAPIEndPointResponsePossibility{
+			"internal_error": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:  500,
 				Description: "Internal error - 500",
 			}},
 		"read": {
-			"success": &api.DxAPIEndPointResponsePossibility{
+			"success": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   200,
 				Description:  "Success - 200",
 				DataTemplate: []*api.DXAPIEndPointParameter{},
 			},
-			"invalid_request": &api.DxAPIEndPointResponsePossibility{
+			"invalid_request": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   400,
 				Description:  "Invalid request - 400",
 				DataTemplate: nil,
 			},
-			"invalid_credential": &api.DxAPIEndPointResponsePossibility{
+			"invalid_credential": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   409,
 				Description:  "Invalid credential - 409",
 				DataTemplate: nil,
 			},
-			"unprocessable_entity": &api.DxAPIEndPointResponsePossibility{
+			"unprocessable_entity": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   422,
 				Description:  "Unprocessable entity - 422",
 				DataTemplate: nil,
 			},
-			"internal_error": &api.DxAPIEndPointResponsePossibility{
+			"internal_error": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:  500,
 				Description: "Internal error - 500",
 			}},
 		"edit": {
-			"success": &api.DxAPIEndPointResponsePossibility{
+			"success": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   200,
 				Description:  "Success - 200",
 				DataTemplate: []*api.DXAPIEndPointParameter{},
 			},
-			"invalid_request": &api.DxAPIEndPointResponsePossibility{
+			"invalid_request": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   400,
 				Description:  "Invalid request - 400",
 				DataTemplate: nil,
 			},
-			"invalid_credential": &api.DxAPIEndPointResponsePossibility{
+			"invalid_credential": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   409,
 				Description:  "Invalid credential - 409",
 				DataTemplate: nil,
 			},
-			"unprocessable_entity": &api.DxAPIEndPointResponsePossibility{
+			"unprocessable_entity": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   422,
 				Description:  "Unprocessable entity - 422",
 				DataTemplate: nil,
 			},
-			"internal_error": &api.DxAPIEndPointResponsePossibility{
+			"internal_error": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:  500,
 				Description: "Internal error - 500",
 			}},
 		"delete": {
-			"success": &api.DxAPIEndPointResponsePossibility{
+			"success": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   200,
 				Description:  "Success - 200",
 				DataTemplate: []*api.DXAPIEndPointParameter{},
 			},
-			"invalid_request": &api.DxAPIEndPointResponsePossibility{
+			"invalid_request": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   400,
 				Description:  "Invalid request - 400",
 				DataTemplate: nil,
 			},
-			"invalid_credential": &api.DxAPIEndPointResponsePossibility{
+			"invalid_credential": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   409,
 				Description:  "Invalid credential - 409",
 				DataTemplate: nil,
 			},
-			"unprocessable_entity": &api.DxAPIEndPointResponsePossibility{
+			"unprocessable_entity": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   422,
 				Description:  "Unprocessable entity - 422",
 				DataTemplate: nil,
 			},
-			"internal_error": &api.DxAPIEndPointResponsePossibility{
+			"internal_error": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:  500,
 				Description: "Internal error - 500",
 			}},
 		"list": {
-			"success": &api.DxAPIEndPointResponsePossibility{
+			"success": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:  200,
 				Description: "Success - 200",
 				DataTemplate: []*api.DXAPIEndPointParameter{
@@ -679,22 +679,22 @@ func init() {
 					}},
 				},
 			},
-			"invalid_request": &api.DxAPIEndPointResponsePossibility{
+			"invalid_request": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   400,
 				Description:  "Invalid request - 400",
 				DataTemplate: nil,
 			},
-			"invalid_credential": &api.DxAPIEndPointResponsePossibility{
+			"invalid_credential": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   409,
 				Description:  "Invalid credential - 409",
 				DataTemplate: nil,
 			},
-			"unprocessable_entity": &api.DxAPIEndPointResponsePossibility{
+			"unprocessable_entity": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:   422,
 				Description:  "Unprocessable entity - 422",
 				DataTemplate: nil,
 			},
-			"internal_error": &api.DxAPIEndPointResponsePossibility{
+			"internal_error": &api.DXAPIEndPointResponsePossibility{
 				StatusCode:  500,
 				Description: "Internal error - 500",
 			}},

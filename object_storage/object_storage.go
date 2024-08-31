@@ -7,7 +7,6 @@ import (
 	"dxlib/v3/core"
 	"dxlib/v3/log"
 	"dxlib/v3/utils"
-	utilsHttp "dxlib/v3/utils/http"
 	"fmt"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -287,13 +286,10 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 }
 
 func (r *DXObjectStorage) ReceiveStreamObject(aepr *api.DXAPIEndPointRequest, filename string) (err error) {
-	bodyLen := aepr.FiberContext.Context().Request.Header.ContentLength()
+	bodyLen := aepr.Request.ContentLength
 	aepr.Log.Infof("Request body length: %d", bodyLen)
 
-	s, err := utilsHttp.GetRequestBodyStream(aepr.FiberContext.Context())
-	if err != nil {
-		return err
-	}
+	s := aepr.Request.Body
 
 	uploadInfo, err := r.UploadStream(s, filename, filename, "application/octet-stream")
 	if err != nil {
@@ -339,11 +335,11 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	if !ok {
 		originalFilename = filename
 	}
-	response := aepr.FiberContext.Response()
-	response.Header.Set("Content-Type", "application/octet-stream")
-	response.Header.Set("Content-Length", fmt.Sprintf("%d", objectInfo.Size))
+	response := aepr.ResponseWriter
+	response.Header().Set("Content-Type", "application/octet-stream")
+	response.Header().Set("Content-Length", fmt.Sprintf("%d", objectInfo.Size))
 	if originalFilename != "" {
-		response.Header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalFilename))
+		response.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalFilename))
 	}
 
 	// Use io.Pipe to stream the object, the thread will exist until it send all the content, even after the handler return to web server
@@ -360,7 +356,7 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	}()
 
 	// Send the object stream
-	err = aepr.FiberContext.SendStream(reader)
+	_, err = io.Copy(response, reader)
 	if err != nil {
 		aepr.ResponseStatusCode = http.StatusInternalServerError
 		return aepr.Log.ErrorAndCreateErrorf("SEND_STREAM_ERROR: %v", err)

@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gofiber/contrib/websocket"
-	"github.com/gofiber/fiber/v2"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -42,8 +40,8 @@ type DXAPIEndPointRequest struct {
 	EndPoint              *DXAPIEndPoint
 	ParameterValues       map[string]*DXAPIEndPointRequestParameterValue
 	Log                   log.DXLog
-	FiberContext          *fiber.Ctx
-	WSConnection          *websocket.Conn
+	Request               *http.Request
+	ResponseWriter        http.ResponseWriter
 	RequestBodyAsBytes    []byte
 	ResponseErrorAsString string
 	ResponseStatusCode    int
@@ -249,8 +247,9 @@ func (aepr *DXAPIEndPointRequest) ResponseSetFromJSON(v utils.JSON) (err error) 
 	if err != nil {
 		return err
 	}
-	aepr.FiberContext.Response().Header.Set(`Content-Type`, `application/json; charset=utf-8`)
+	aepr.ResponseWriter.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
 	aepr.ResponseBodyAsBytes = vAsBytes
+	_, err = aepr.ResponseWriter.Write(vAsBytes)
 	return nil
 }
 
@@ -416,14 +415,14 @@ func (aepr *DXAPIEndPointRequest) ProxyHTTPAPIClient(method string, url string, 
 }
 
 func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
-	xVar := aepr.FiberContext.Get("X-Var")
+	xVar := aepr.Request.Header.Get("X-Var")
 	var xVarJSON map[string]interface{}
 	if xVar != `` {
 		err := json.Unmarshal([]byte(xVar), &xVarJSON)
 		if err != nil {
-			aepr.Log.Errorf("Error parsing X-Var header as JSON: %v", err)
+			err2 := aepr.Log.ErrorAndCreateErrorf("ERROR_PARSING_HEADER_X-VAR_AS_JSON: %v", err)
 			aepr.ResponseStatusCode = http.StatusBadRequest
-			return fmt.Errorf("Error parsing X-Var header as JSON: %v", err)
+			return err2
 		}
 		for _, v := range aepr.EndPoint.Parameters {
 			rpv := aepr.NewAPIEndPointRequestParameter(v)
@@ -474,7 +473,12 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (e
 	case EndPointTypeHTTPUploadStream:
 		return nil
 	default:
-		aepr.RequestBodyAsBytes = aepr.FiberContext.Body()
+		aepr.RequestBodyAsBytes, err = io.ReadAll(aepr.Request.Body)
+		if err != nil {
+			aepr.Log.Errorf("Error reading request body: %v", err)
+			aepr.ResponseStatusCode = http.StatusInternalServerError
+			return err
+		}
 	}
 	return nil
 }
@@ -498,7 +502,7 @@ func (aepr *DXAPIEndPointRequest) responseSetStatusCodeAsErrorf(statusCode int, 
 }
 
 func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err error) {
-	actualContentType := aepr.FiberContext.Get("Content-Type")
+	actualContentType := aepr.Request.Header.Get("Content-Type")
 	if actualContentType != "" {
 		if !strings.Contains(actualContentType, "application/json") {
 			err := aepr.Log.WarnAndCreateErrorf(`Request content-type is not application/json but %s`, actualContentType)
@@ -507,7 +511,12 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		}
 	}
 	bodyAsJSON := utils.JSON{}
-	aepr.RequestBodyAsBytes = aepr.FiberContext.Body()
+	aepr.RequestBodyAsBytes, err = io.ReadAll(aepr.Request.Body)
+	if err != nil {
+		aepr.Log.Warnf(`Request body can not be read (%v): %v`, err, string(aepr.RequestBodyAsBytes))
+		aepr.ResponseStatusCode = http.StatusUnprocessableEntity
+		return err
+	}
 
 	err = json.Unmarshal(aepr.RequestBodyAsBytes, &bodyAsJSON)
 	if err != nil {
