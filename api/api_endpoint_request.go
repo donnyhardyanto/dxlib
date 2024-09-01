@@ -557,9 +557,11 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_READ:%v=%v`, err, string(aepr.RequestBodyAsBytes))
 	}
 
-	err = json.Unmarshal(aepr.RequestBodyAsBytes, &bodyAsJSON)
-	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v=%v`, err, string(aepr.RequestBodyAsBytes))
+	if len(aepr.RequestBodyAsBytes) > 0 {
+		err = json.Unmarshal(aepr.RequestBodyAsBytes, &bodyAsJSON)
+		if err != nil {
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v=%v`, err, string(aepr.RequestBodyAsBytes))
+		}
 	}
 	aepr.CurrentUser.ID = ""
 	aepr.CurrentUser.Name = ""

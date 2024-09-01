@@ -25,7 +25,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 	}
 	err = callback(tx, log)
 	if err != nil {
-		log.Errorf(`ErrorInCallback: (%v)`, err.Error())
+		log.Errorf(`TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
 			log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
@@ -34,7 +34,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 	}
 	err = tx.Commit()
 	if err != nil {
-		log.Errorf(`ErrorInCommit: (%v)`, err.Error())
+		log.Errorf(`TX_ERROR_IN_COMMITT: (%v)`, err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
 			log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
