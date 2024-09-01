@@ -75,7 +75,9 @@ func (d *DXDatabase) CheckConnection() (err error) {
 		d.Connected = false
 		return err
 	}
-	defer dbConn.Close()
+	defer func() {
+		_ = dbConn.Close()
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()

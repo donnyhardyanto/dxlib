@@ -211,14 +211,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	err = aepr.PreProcessRequest()
 	if err != nil {
-		err = aepr.Log.WarnAndCreateErrorf("PREPROCESS_REQUEST_ERROR:%s:%w ", err)
+		err = aepr.Log.WarnAndCreateErrorf("PREPROCESS_REQUEST_ERROR:%v ", err.Error())
 		return
 	}
 
 	for _, middleware := range p.Middlewares {
 		err = middleware(aepr)
 		if err != nil {
-			err = aepr.Log.WarnAndCreateErrorf("MIDDLEWARE_ERROR:%w ", err)
+			err = aepr.Log.WarnAndCreateErrorf("MIDDLEWARE_ERROR:%v ", err.Error())
 			return
 		}
 	}
@@ -226,7 +226,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	if p.OnExecute != nil {
 		err = p.OnExecute(aepr)
 		if err != nil {
-			err = aepr.Log.WarnAndCreateErrorf("ONEXECUTE_ERROR:%w ", err)
+			err = aepr.Log.WarnAndCreateErrorf("ONEXECUTE_ERROR:%v ", err.Error())
 			return
 		} else {
 			if !aepr.ResponseHeaderSent {
