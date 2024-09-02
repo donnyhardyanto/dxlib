@@ -272,7 +272,7 @@ func (a *DXApp) execute() (err error) {
 		defer func() {
 			err2 := a.Stop()
 			if err2 != nil {
-				log.Log.Infof("Error in Stopping.Stop(): (%v)", err2)
+				log.Log.Infof("Error in Stopping.Stop(): (%v)", err2.Error())
 			}
 
 			//log.Log.Info("Stopped")
@@ -283,7 +283,7 @@ func (a *DXApp) execute() (err error) {
 	if a.OnExecute != nil {
 		err = a.OnExecute()
 		if err != nil {
-			log.Log.Infof("onExecute error (%v)", err)
+			log.Log.Infof("onExecute error (%v)", err.Error())
 			return err
 		}
 	}
@@ -292,7 +292,7 @@ func (a *DXApp) execute() (err error) {
 		log.Log.Info("Waiting...")
 		err = a.RuntimeErrorGroup.Wait()
 		if err != nil {
-			log.Log.Infof("Exit reason: %v", err)
+			log.Log.Infof("Exit reason: %v", err.Error())
 			return err
 		}
 	}

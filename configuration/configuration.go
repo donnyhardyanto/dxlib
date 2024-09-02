@@ -115,7 +115,7 @@ func (c *DXConfiguration) LoadFromFile() (err error) {
 	content, err := os.ReadFile(c.Filename)
 	if err != nil {
 		if c.MustExist {
-			log.Log.Fatalf("Can not reading file %s, please check the file exists and has permission to be read. (%v)", c.Filename, err)
+			log.Log.Fatalf("Can not reading file %s, please check the file exists and has permission to be read. (%v)", c.Filename, err.Error())
 			return err
 		}
 		log.Log.Warnf("Can not reading file %s, please check the file exists and has permission to be read.", c.Filename)
@@ -125,14 +125,14 @@ func (c *DXConfiguration) LoadFromFile() (err error) {
 	case "json":
 		v, err := c.ByteArrayJSONToJSON(content)
 		if err != nil {
-			log.Log.Fatalf("Can not parsing file %s, please check the file content (%v)", c.Filename, err)
+			log.Log.Fatalf("Can not parsing file %s, please check the file content (%v)", c.Filename, err.Error())
 			return err
 		}
 		*c.Data = json2.DeepMerge(v, *c.Data)
 	case "yaml":
 		v, err := c.ByteArrayYAMLToJSON(content)
 		if err != nil {
-			log.Log.Fatalf("Can not parsing file %s, please check the file content (%v)", c.Filename, err)
+			log.Log.Fatalf("Can not parsing file %s, please check the file content (%v)", c.Filename, err.Error())
 			return err
 		}
 		*c.Data = json2.DeepMerge(v, *c.Data)

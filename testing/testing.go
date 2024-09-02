@@ -30,14 +30,14 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 
 	requestDump, err := httputil.DumpRequest(request, true)
 	if err != nil {
-		t.Logf(`Error in DumpRequest (%v)`, err)
+		t.Logf(`Error in DumpRequest (%v)`, err.Error())
 		return nil
 	}
 	t.Logf("\nRaw Request :\n%v\n", string(requestDump))
 
 	responseDump, err := httputil.DumpResponse(response, true)
 	if err != nil {
-		t.Logf(`Error in DumpResponse (%v)`, err)
+		t.Logf(`Error in DumpResponse (%v)`, err.Error())
 		t.FailNow()
 		return response
 	}
@@ -171,7 +171,7 @@ func THTTPClient(t *testing.T, mustStatusCode int, method string, url string, co
 	t.Logf("%d: ==== TEST START ====\nREQUEST ===\n%s %s\nContentType: %s\nBody:\n%s\n==\n\n", v, method, url, contentType, body)
 	_, response, err := dxlibv3HttpClient.HTTPClientReadAll(method, url, map[string]string{"Content-Type": contentType}, body)
 	if err != nil {
-		t.Logf("EXECUTE ERROR === Error in making HTTP request %v\n", err)
+		t.Logf("EXECUTE ERROR === Error in making HTTP request %v\n", err.Error())
 		t.FailNow()
 	}
 	statusCode := response.StatusCode

@@ -128,7 +128,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 	}
 	_, err := responseWriter.Write(bodyAsBytes)
 	if err != nil {
-		_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_WRITE_RESPONSE=%s", err)
+		_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_WRITE_RESPONSE=%s", err.Error())
 		return
 	}
 	aepr.ResponseBodySent = true
@@ -292,58 +292,6 @@ func (aepr *DXAPIEndPointRequest) NewAPIEndPointRequestParameter(aepp DXAPIEndPo
 	return &aerp
 }
 
-/*func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeError(statusCode int, reason, reasonMessage string, data ...any) (err error) {
-	aepr.ResponseStatusCode = statusCode
-	if aepr.ResponseStatusCode != 200 {
-		aepr.Log.Warnf("Status Code: %d %s %s %v", aepr.ResponseStatusCode, reason, reasonMessage, data)
-		err = errors.New(reason)
-	}
-	if !v3.IsDebug {
-		return nil
-	}
-	d := utils.JSON{
-		"reason":         reason,
-		"reason_message": reasonMessage,
-	}
-	if len(data) > 0 {
-		for _, item := range data {
-			jsonData, ok := item.(utils.JSON)
-			if !ok {
-				// Assuming item is convertible to JSON; otherwise, log an error or handle accordingly
-				jsonData = utils.JSON{"data": item} // Simplified conversion; adjust based on actual requirements
-			}
-			d = utilsJson.DeepMerge(d, jsonData)
-		}
-	}
-	err2 := aepr.ResponseSetStatusCodeAndBodyJSON(
-		aepr.ResponseStatusCode,
-		d,
-	)
-	if err == nil {
-		return err2
-	}
-	return err
-}
-*/
-/*func (aepr *DXAPIEndPointRequest) ResponseSetStatusCodeAndBodyJSON(statusCode int, v utils.JSON) (err error) {
-	aepr.ResponseStatusCode = statusCode
-	return aepr.ResponseSetFromJSON(v)
-}*/
-
-/*func (aepr *DXAPIEndPointRequest) ResponseSetFromJSON(v utils.JSON) (err error) {
-	if v == nil {
-		return nil
-	}
-	vAsBytes, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	aepr.ResponseWriter.Header().Set(`Content-Type`, `application/json; charset=utf-8`)
-	aepr.ResponseBodyAsBytes = vAsBytes
-	//_, err = aepr.ResponseWriter.Write(vAsBytes)
-	return nil
-}*/
-
 func (aepr *DXAPIEndPointRequest) GetParameterValueEntry(k string) (val *DXAPIEndPointRequestParameterValue, err error) {
 	var ok bool
 	if val, ok = aepr.ParameterValues[k]; !ok {
@@ -424,6 +372,36 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string, defaultVal
 	return true, v1, nil
 }
 
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsNullableInt64(k string, defaultValue ...any) (isExist bool, val *int64, err error) {
+	isExist, valAsAny, err := aepr.GetParameterValueAsAny(k)
+	ok := false
+	if !isExist {
+		if defaultValue != nil {
+			if len(defaultValue) > 0 {
+				if defaultValue[0] == nil {
+					return false, nil, nil
+				} else {
+					v1, ok := defaultValue[0].(int64)
+					if !ok {
+						err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `PARAMETER_DEFAULT_VALUE_IS_NOT_NULLABLE_INT64:%s=%v`, k, v1)
+						return false, nil, err
+					}
+					return false, &v1, nil
+				}
+			}
+		} else {
+			return isExist, nil, nil
+		}
+		return isExist, val, err
+	}
+	v1, ok := valAsAny.(int64)
+	if !ok {
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `REQUEST_FIELD_VALUE_IS_NOT_NULLABLE_INT64:%s=(%v)`, k, valAsAny)
+		return true, nil, err
+	}
+	return true, &v1, nil
+}
+
 func getParameterValue[A any](aepr *DXAPIEndPointRequest, k string, defaultValue ...A) (isExist bool, val A, err error) {
 	isExist, valAsAny, err := aepr.GetParameterValueAsAny(k)
 	if !isExist {
@@ -490,14 +468,14 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 	if xVar != `` {
 		err := json.Unmarshal([]byte(xVar), &xVarJSON)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_PARSING_HEADER_X-VAR_AS_JSON: %v", err)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_PARSING_HEADER_X-VAR_AS_JSON: %v", err.Error())
 		}
 		for _, v := range aepr.EndPoint.Parameters {
 			rpv := aepr.NewAPIEndPointRequestParameter(v)
 			aepr.ParameterValues[v.NameId] = rpv
 			err := rpv.SetRawValue(xVarJSON[v.NameId])
 			if err != nil {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "`ERROR_PROCESSING_PARAMETER_TO_STRING:%s=(%v)", v.NameId, err)
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "`ERROR_PROCESSING_PARAMETER_TO_STRING:%s=(%v)", v.NameId, err.Error())
 			}
 		}
 	}
@@ -538,7 +516,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (e
 	default:
 		aepr.RequestBodyAsBytes, err = io.ReadAll(aepr.Request.Body)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_READING_REQUEST_BODY: %v", err)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_READING_REQUEST_BODY: %v", err.Error())
 		}
 	}
 	return nil
@@ -571,7 +549,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		aepr.ParameterValues[v.NameId] = rpv
 		err := rpv.SetRawValue(bodyAsJSON[v.NameId])
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_PROCESSING_PARAMETER_TO_STRING:%s=%v`, v.NameId, err)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_PROCESSING_PARAMETER_TO_STRING:%s=%v`, v.NameId, err.Error())
 		}
 		if rpv.Metadata.IsMustExist {
 			if rpv.RawValue == nil {
@@ -605,13 +583,13 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 		var parametersAsJSONString []byte
 		parametersAsJSONString, err = json.Marshal(parameters)
 		if err != nil {
-			err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `SHOULD_NOT_HAPPEN:ERROR_MARSHALLING_PARAMETER_TO_STRING:%v`, err)
+			err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `SHOULD_NOT_HAPPEN:ERROR_MARSHALLING_PARAMETER_TO_STRING:%v`, err.Error())
 			return nil, err
 		}
 		request, err = http.NewRequest(method, effectiveUrl, bytes.NewBuffer(parametersAsJSONString))
 	}
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_CREATING_NEW_REQUEST:%v`, err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_CREATING_NEW_REQUEST:%v`, err.Error())
 		return nil, err
 	}
 	if parameters != nil {
@@ -624,20 +602,20 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 
 	requestDump, err := httputil.DumpRequest(request, true)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_DUMP_REQUEST:%v`, err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_DUMP_REQUEST:%v`, err.Error())
 		return nil, err
 	}
 	aepr.Log.Debugf("Send Request to %s:\n%s\n", effectiveUrl, string(requestDump))
 
 	response, err = client.Do(request)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_DUMP_REQUEST:%v`, err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_DUMP_REQUEST:%v`, err.Error())
 		return nil, err
 	}
 
 	responseDump, err := httputil.DumpResponse(response, true)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_DUMP_RESPONSE:%v`, err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_DUMP_RESPONSE:%v`, err.Error())
 		return response, err
 	}
 	aepr.Log.Debugf("Response :\n%s\n", string(responseDump))
@@ -652,7 +630,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 	request, err = http.NewRequest(method, effectiveUrl, bytes.NewBuffer([]byte(parametersAsJSONString)))
 
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_CREATING_NEW_REQUEST:%v`, err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_CREATING_NEW_REQUEST:%v`, err.Error())
 		return nil, err
 	}
 	request.Header.Set(`Content-Type`, "application/json")
@@ -663,20 +641,20 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 
 	requestDump, err := httputil.DumpRequest(request, true)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_IN_DUMP_REQUEST:%v", err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_IN_DUMP_REQUEST:%v", err.Error())
 		return nil, err
 	}
 	aepr.Log.Debugf("Request :\n%s\n", string(requestDump))
 
 	response, err = client.Do(request)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_MAKE_HTTP_REQUEST:%v`, err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_MAKE_HTTP_REQUEST:%v`, err.Error())
 		return nil, err
 	}
 
 	responseDump, err := httputil.DumpResponse(response, true)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_DUMP_RESPONSE:%v`, err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_IN_DUMP_RESPONSE:%v`, err.Error())
 		return response, err
 	}
 	aepr.Log.Debugf("Response :\n%s\n", string(responseDump))
@@ -702,13 +680,13 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 	}
 	responseAsJSON, err = utilsHttp.ResponseBodyToJSON(r)
 	if err != nil {
-		aepr.Log.Errorf("Error in make HTTP request (%v)", err)
+		aepr.Log.Errorf("Error in make HTTP request (%v)", err.Error())
 		return responseStatusCode, nil, err
 	}
 
 	vAsString, err := utilsJson.PrettyPrint(responseAsJSON)
 	if err != nil {
-		aepr.Log.Errorf("Error in make HTTP request (%v)", err)
+		aepr.Log.Errorf("Error in make HTTP request (%v)", err.Error())
 		return responseStatusCode, nil, err
 	}
 	aepr.Log.Debugf("Response data=%s", vAsString)
@@ -719,7 +697,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters utils.JSON, headers map[string]string) (_responseStatusCode int, responseAsJSON utils.JSON, err error) {
 	r, err := aepr.HTTPClientDo(method, url, parameters, headers)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:DIAL_ERROR:%v", err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:DIAL_ERROR:%v", err.Error())
 		if r != nil {
 			return r.StatusCode, nil, err
 		} else {
@@ -736,19 +714,19 @@ func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters uti
 	}
 	responseBodyAsString := string(responseBodyAsBytes)
 	if r.StatusCode != http.StatusOK {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:PROXY_STATUS_%d:%v", r.StatusCode, err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:PROXY_STATUS_%d:%v", r.StatusCode, err.Error())
 		return r.StatusCode, nil, err
 	}
 
 	responseAsJSON, err = utils.StringToJSON(responseBodyAsString)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:RESPONSE_BODY_CANNOT_CONVERT_TO_JSON:%v", err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:RESPONSE_BODY_CANNOT_CONVERT_TO_JSON:%v", err.Error())
 		return r.StatusCode, nil, err
 	}
 
 	vAsString, err := utilsJson.PrettyPrint(responseAsJSON)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "SHOULD_NOT_HAPPEN:HTTPCLIENT2-0:ERROR_IN_JSON_PRETTY_PRINT:%v", err)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "SHOULD_NOT_HAPPEN:HTTPCLIENT2-0:ERROR_IN_JSON_PRETTY_PRINT:%v", err.Error())
 		return r.StatusCode, nil, err
 	}
 	aepr.Log.Debugf("Response data=%s", vAsString)

@@ -129,7 +129,7 @@ func (o *DXOrganization) ApplyData(d utils.JSON) (err error) {
 	o.Redis = redis.Manager.Redises[o.RedisNameId]
 	o.AccessTokenTimeoutDurationSec, err = json2.GetInt64(d, `access_token_timeout_duration_sec`)
 	if err != nil {
-		err := log.Log.PanicAndCreateErrorf("DXOrganization/ApplyData", "Can not case AccessTokenTimeoutDurationSec tp Int64 (%v)", err)
+		err := log.Log.PanicAndCreateErrorf("DXOrganization/ApplyData", "Can not case AccessTokenTimeoutDurationSec tp Int64 (%v)", err.Error())
 		return err
 	}
 	return nil

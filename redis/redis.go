@@ -192,10 +192,10 @@ func (r *DXRedis) Connect() (err error) {
 		err = connection.Ping(r.Context).Err()
 		if err != nil {
 			if r.MustConnected {
-				log.Log.Fatalf("Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err)
+				log.Log.Fatalf("Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
 				return nil
 			} else {
-				log.Log.Errorf("Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err)
+				log.Log.Errorf("Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
 				return err
 			}
 		}
@@ -281,7 +281,7 @@ func (r *DXRedis) Disconnect() (err error) {
 		c := r.Connection
 		err := c.Close()
 		if err != nil {
-			log.Log.Errorf("Disconnecting to Redis %s at %s/%d error (%s)", r.NameId, r.Address, r.DatabaseIndex, err)
+			log.Log.Errorf("Disconnecting to Redis %s at %s/%d error (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
 			return err
 		}
 		r.Connection = nil

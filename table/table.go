@@ -80,7 +80,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
-		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:%s=%s", t.NameId, err)
+		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:%s=%s", t.NameId, err.Error())
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
 		t.FieldNameForRowId: newId,
@@ -297,7 +297,7 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 		"is_deleted":        false,
 	})
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err)
+		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err.Error())
 		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
@@ -324,7 +324,7 @@ func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error)
 		t.FieldNameForRowId: id,
 	})
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", t.NameId, err)
+		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", t.NameId, err.Error())
 		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
@@ -343,7 +343,7 @@ func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 
 	err = t.DoEdit(aepr, id, newFieldValues)
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.SoftDelete (%s) ", t.NameId, err)
+		aepr.Log.Errorf("Error at %s.SoftDelete (%s) ", t.NameId, err.Error())
 		return err
 	}
 	return err
@@ -357,7 +357,7 @@ func (t *DXTable) HardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 
 	err = t.DoDelete(aepr, id)
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.HardDelete (%s) ", t.NameId, err)
+		aepr.Log.Errorf("Error at %s.HardDelete (%s) ", t.NameId, err.Error())
 		return err
 	}
 	return err
@@ -499,7 +499,7 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 	if !t.Database.Connected {
 		err := t.Database.Connect()
 		if err != nil {
-			aepr.Log.Errorf("error at reconnect db at table %s list (%s) ", t.NameId, err)
+			aepr.Log.Errorf("error at reconnect db at table %s list (%s) ", t.NameId, err.Error())
 			return err
 		}
 	}
@@ -507,7 +507,7 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
-		aepr.Log.Errorf("Error at paging table %s (%s) ", t.NameId, err)
+		aepr.Log.Errorf("Error at paging table %s (%s) ", t.NameId, err.Error())
 		return err
 	}
 

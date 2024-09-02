@@ -87,7 +87,7 @@ func GetAllActualBindingAddress(configuredBindingAddress string) []string {
 func TCPIPPortCanConnect(ip string, port string) bool {
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, port), time.Second*3)
 	if err != nil {
-		fmt.Println("Failed to connect:", err)
+		fmt.Println("Failed to connect:", err.Error())
 		return false
 	}
 	if conn != nil {
@@ -101,7 +101,7 @@ func TCPIPPortCanConnect(ip string, port string) bool {
 func TCPAddressCanConnect(address string) bool {
 	conn, err := net.DialTimeout("tcp", address, time.Second*3)
 	if err != nil {
-		fmt.Println("Failed to connect:", err)
+		fmt.Println("Failed to connect:", err.Error())
 		return false
 	}
 	if conn != nil {
@@ -178,7 +178,7 @@ func RandomData(l int) (r []byte) {
 	r = make([]byte, l)
 	_, err := rand.Read(r)
 	if err != nil {
-		fmt.Println("RandomData: rand.read error:", err)
+		fmt.Println("RandomData: rand.read error:", err.Error())
 		return
 	}
 	return r

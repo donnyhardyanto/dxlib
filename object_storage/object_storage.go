@@ -316,7 +316,7 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	// Get the object storage bucket using the bucket_name
 	object, err := r.DownloadStream(filename)
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "ERROR_IN_DOWNLOAD_STREAM:%s", err)
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "ERROR_IN_DOWNLOAD_STREAM:%s", err.Error())
 	}
 	if object == nil {
 		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "OBJECT_IS_NIL:%s", r.NameId)
@@ -354,7 +354,7 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	// Send the object stream
 	_, err = io.Copy(responseWriter, reader)
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "SEND_STREAM_ERROR:%s", err)
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "SEND_STREAM_ERROR:%s", err.Error())
 	}
 
 	return nil

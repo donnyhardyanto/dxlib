@@ -34,7 +34,7 @@ func (ds *DXDatabaseScript) ExecuteFile(d *DXDatabase, filename string) (r sql.R
 	}
 	rs, err := fs.Exec(d.Connection.DB)
 	if err != nil {
-		log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err)
+		log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err.Error())
 		return rs[0], err
 	}
 	log.Log.Infof("Executing SQL file %s... done", filename)
@@ -46,7 +46,7 @@ func (ds *DXDatabaseScript) Execute(d *DXDatabase) (rs []sql.Result, err error) 
 	for k, v := range ds.Files {
 		r, err := ds.ExecuteFile(d, v)
 		if err != nil {
-			log.Log.Errorf("Error executing file %d:'%s' (%err)", k, v, err)
+			log.Log.Errorf("Error executing file %d:'%s' (%err)", k, v, err.Error())
 			return rs, err
 		}
 		rs = append(rs, r)

@@ -227,7 +227,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		err = p.OnExecute(aepr)
 		if err != nil {
 			if !aepr.ResponseHeaderSent {
-				err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "ONEXECUTE_ERROR:%v", err)
+				err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "ONEXECUTE_ERROR:%v", err.Error())
 				return
 			}
 		} else {
@@ -281,7 +281,7 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		log.Log.Infof("Listening at %s... start", a.Address)
 		err := a.HTTPServer.ListenAndServe()
 		if (err != nil) && (!errors.Is(err, http.ErrServerClosed)) {
-			log.Log.Errorf("HTTP server error: %v", err)
+			log.Log.Errorf("HTTP server error: %v", err.Error())
 		}
 		a.RuntimeIsActive = false
 		log.Log.Infof("Listening at %s... stopped", a.Address)

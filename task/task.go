@@ -119,7 +119,7 @@ func (a *DXTask) StartAndWait(errorGroup *errgroup.Group) error {
 			case "once":
 				log.Log.Infof("Task %s at (%s): Starting task start", a.NameId, a.StartAt)
 				err = a.OnExecute(a)
-				log.Log.Infof("Task %s at (%s): Task done: %v", a.NameId, a.StartAt, err)
+				log.Log.Infof("Task %s at (%s): Task done: %v", a.NameId, a.StartAt, err.Error())
 				log.Log.Info("Start AfterDelay sleep...")
 				time.Sleep(time.Duration(a.AfterDelaySec) * time.Second)
 				log.Log.Info("Finish AfterDelay sleep...")
@@ -129,7 +129,7 @@ func (a *DXTask) StartAndWait(errorGroup *errgroup.Group) error {
 				for inLoop {
 					log.Log.Infof("Task %s:%v at (%s): Execute task start", a.NameId, iterationIndex, a.StartAt)
 					err = a.OnExecute(a)
-					log.Log.Infof("Task %s:%v at (%s): Execute task done with result err=%v", a.NameId, iterationIndex, a.StartAt, err)
+					log.Log.Infof("Task %s:%v at (%s): Execute task done with result err=%v", a.NameId, iterationIndex, a.StartAt, err.Error())
 					if err != nil {
 						inLoop = false
 					} else {

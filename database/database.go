@@ -71,7 +71,7 @@ type DXDatabase struct {
 func (d *DXDatabase) CheckConnection() (err error) {
 	dbConn, err := d.Connection.Conn(context.Background())
 	if err != nil {
-		log.Log.Warnf("Database %v CheckConnection() failed: %v", d.NameId, err)
+		log.Log.Warnf("Database %v CheckConnection() failed: %v", d.NameId, err.Error())
 		d.Connected = false
 		return err
 	}
@@ -84,7 +84,7 @@ func (d *DXDatabase) CheckConnection() (err error) {
 
 	if err := dbConn.PingContext(ctx); err != nil {
 		d.Connected = false
-		log.Log.Warnf("Database %v ping failed: %v", d.NameId, err)
+		log.Log.Warnf("Database %v ping failed: %v", d.NameId, err.Error())
 		return err
 	}
 	log.Log.Tracef("Database %v ping success with result CheckConnection: %v", d.NameId, d.Connected)
@@ -297,10 +297,10 @@ func (d *DXDatabase) Connect() (err error) {
 		connection, err := sqlx.Open(d.DatabaseType.Driver(), d.ConnectionString)
 		if err != nil {
 			if d.MustConnected {
-				log.Log.Fatalf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err)
+				log.Log.Fatalf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return nil
 			} else {
-				log.Log.Errorf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err)
+				log.Log.Errorf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return err
 			}
 		}
@@ -311,10 +311,10 @@ func (d *DXDatabase) Connect() (err error) {
 				d.OnCannotConnect(d, err)
 			}
 			if d.MustConnected {
-				log.Log.Fatalf("Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err)
+				log.Log.Fatalf("Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return nil
 			} else {
-				log.Log.Errorf("Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err)
+				log.Log.Errorf("Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return err
 			}
 		}
@@ -329,7 +329,7 @@ func (d *DXDatabase) Disconnect() (err error) {
 		log.Log.Infof("Disconnecting to database %s/%s... start", d.NameId, d.NonSensitiveConnectionString)
 		err := (*d.Connection).Close()
 		if err != nil {
-			log.Log.Errorf("Disconnecting to database %s/%s error (%s)", d.NameId, d.NonSensitiveConnectionString, err)
+			log.Log.Errorf("Disconnecting to database %s/%s error (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 			return err
 		}
 		d.Connection = nil
@@ -457,7 +457,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 	}
 	rs, err := fs.Exec(d.Connection.DB)
 	if err != nil {
-		log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err)
+		log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err.Error())
 		return rs[0], err
 	}
 	log.Log.Infof("Executing SQL file %s... done", filename)
@@ -473,7 +473,7 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 	for k, v := range d.CreateScriptFiles {
 		r, err := d.ExecuteFile(v)
 		if err != nil {
-			log.Log.Errorf("Error executing file %d:'%s' (%err)", k, v, err)
+			log.Log.Errorf("Error executing file %d:'%s' (%err)", k, v, err.Error())
 			return rs, err
 		}
 		rs = append(rs, r)
