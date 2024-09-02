@@ -532,13 +532,13 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 	bodyAsJSON := utils.JSON{}
 	aepr.RequestBodyAsBytes, err = io.ReadAll(aepr.Request.Body)
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_READ:%v=%v`, err, string(aepr.RequestBodyAsBytes))
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_READ:%v=%v`, err.Error(), aepr.RequestBodyAsBytes)
 	}
 
 	if len(aepr.RequestBodyAsBytes) > 0 {
 		err = json.Unmarshal(aepr.RequestBodyAsBytes, &bodyAsJSON)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v=%v`, err, string(aepr.RequestBodyAsBytes))
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v`, err.Error()+"="+string(aepr.RequestBodyAsBytes))
 		}
 	}
 	aepr.CurrentUser.ID = ""
