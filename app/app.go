@@ -278,9 +278,9 @@ func (a *DXApp) execute() (err error) {
 			//log.Log.Info("Stopped")
 		}()
 	}
-	log.Log.Info("Starting")
 
 	if a.OnExecute != nil {
+		log.Log.Info("Starting")
 		err = a.OnExecute()
 		if err != nil {
 			log.Log.Infof("onExecute error (%v)", err.Error())
@@ -302,7 +302,6 @@ func (a *DXApp) execute() (err error) {
 var App DXApp
 
 func Set(nameId, title, description string, isLoop bool, debugKey string, debugValue string) {
-	//	v3.AppNameId = nameId
 	App.nameId = nameId
 	App.Title = title
 	App.Description = description

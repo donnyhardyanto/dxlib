@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	v3 "dxlib/v3"
 	"errors"
 	"net/http"
 	"time"
@@ -206,7 +207,13 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	aepr = p.NewEndPointRequest(requestContext, w, r)
 	defer func() {
-		aepr.Log.Infof("%d %s %s", aepr._responseStatusCode, aepr._responseErrorAsString, r.URL.Path)
+		if (err != nil) && (v3.IsDebug) && (p.RequestContentType == utilsHttp.ContentTypeApplicationJSON) {
+			if aepr.RequestBodyAsBytes != nil {
+				aepr.Log.Infof("%d %s Request: %s", aepr._responseStatusCode, r.URL.Path, string(aepr.RequestBodyAsBytes))
+			}
+		} else {
+			aepr.Log.Infof("%d %s", aepr._responseStatusCode, r.URL.Path)
+		}
 	}()
 
 	err = aepr.PreProcessRequest()

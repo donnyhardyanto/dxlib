@@ -80,7 +80,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
-		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:%s=%s", t.NameId, err.Error())
+		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:"+t.NameId+"="+err.Error())
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
 		t.FieldNameForRowId: newId,

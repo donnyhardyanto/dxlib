@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	go_ora "github.com/sijms/go-ora/v2"
+	goOra "github.com/sijms/go-ora/v2"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"dxlib/v3/database/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"
@@ -150,7 +150,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 		urlOptions := map[string]string{
 			"SID": d.DatabaseName,
 		}
-		s = go_ora.BuildUrl(host, portInt, "", d.UserName, d.UserPassword, urlOptions)
+		s = goOra.BuildUrl(host, portInt, "", d.UserName, d.UserPassword, urlOptions)
 		/*s = fmt.Sprintf("%s/%s@%s/%s", d.UserName, d.UserPassword, d.Address, d.DatabaseName)
 		/*host, port, err := net.SplitHostPort(d.Address)
 		if err != nil {
@@ -448,32 +448,54 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 	//if err != nil {
 	//	return nil, err
 	//}
-	log.Log.Infof("Executing SQL file %s... start", filename)
-	fs := sqlfile.SqlFile{}
-	err = fs.File(filename)
+	/*	log.Log.Infof("Executing SQL file %s... start", filename)
+		fs := sqlfile.SqlFile{}
+		err = fs.File(filename)
+		if err != nil {
+			log.Log.Panic("DXDatabaseScript/ExecuteFile/1", err)
+			return nil, err
+		}
+		rs, err := fs.Exec(d.Connection.DB)
+		if err != nil {
+			log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err.Error())
+			return rs[0], err
+		}
+		log.Log.Infof("Executing SQL file %s... done", filename)
+		return rs[0], nil
+	*/
+	defer func() {
+		if err != nil {
+			log.Log.Errorf("Error executing file %s (%v)", filename, err.Error())
+		}
+	}()
+
+	sqlScript, err := os.ReadFile(filename)
 	if err != nil {
-		log.Log.Panic("DXDatabaseScript/ExecuteFile/1", err)
 		return nil, err
 	}
-	rs, err := fs.Exec(d.Connection.DB)
+
+	// Execute the SQL script
+	r, err = d.Connection.Exec(string(sqlScript))
 	if err != nil {
-		log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err.Error())
-		return rs[0], err
+		return nil, err
 	}
-	log.Log.Infof("Executing SQL file %s... done", filename)
-	return rs[0], nil
+
+	log.Log.Info("SQL script executed successfully!")
+	return r, nil
 }
 
 func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
-	//err = d.CheckConnectionAndReconnect()
-	//if err != nil {
-	//	return nil, err
-	//}
+	if !d.Connected {
+		err = d.Connect()
+		if err != nil {
+			return nil, err
+		}
+	}
 	rs = []sql.Result{}
 	for k, v := range d.CreateScriptFiles {
 		r, err := d.ExecuteFile(v)
 		if err != nil {
-			log.Log.Errorf("Error executing file %d:'%s' (%err)", k, v, err.Error())
+			log.Log.Errorf("Error executing file %d:'%s' (%s)", k, v, err.Error())
 			return rs, err
 		}
 		rs = append(rs, r)

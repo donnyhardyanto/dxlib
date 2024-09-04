@@ -184,6 +184,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 	rawValueType := utils.TypeAsString(aeprpv.RawValue)
 	if aeprpv.Metadata.Type != rawValueType {
 		switch aeprpv.Metadata.Type {
+		case "nullable-int64":
 		case "int64":
 			if rawValueType == "float64" {
 				if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
@@ -230,6 +231,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		}
 	}
 	switch aeprpv.Metadata.Type {
+	case "nullable-int64":
+		if aeprpv.RawValue == nil {
+			aeprpv.Value = nil
+			return true
+		}
+		v := int64(aeprpv.RawValue.(float64))
+		aeprpv.Value = v
+		return true
 	case "int64":
 		v := int64(aeprpv.RawValue.(float64))
 		aeprpv.Value = v
@@ -258,6 +267,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		}
 		aeprpv.Value = s
 		return true
+	case "nullable-string":
+		if aeprpv.RawValue == nil {
+			aeprpv.Value = nil
+			return true
+		}
+		s := aeprpv.RawValue.(string)
+		aeprpv.Value = s
+		return true
 	case "string":
 		s := aeprpv.RawValue.(string)
 		aeprpv.Value = s
@@ -284,6 +301,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		aeprpv.Value = aeprpv.RawValue
 		return true
 	}
+	return false
 }
 
 func (aepr *DXAPIEndPointRequest) NewAPIEndPointRequestParameter(aepp DXAPIEndPointParameter) *DXAPIEndPointRequestParameterValue {
@@ -301,6 +319,36 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueEntry(k string) (val *DXAPIEn
 	return val, nil
 }
 
+func (aepr *DXAPIEndPointRequest) AssignParameterNullableInt64(target *utils.JSON, key string) (isExist bool, v *int64, err error) {
+	isExist, v, err = aepr.GetParameterValueAsNullableInt64(key)
+	if err != nil {
+		return isExist, v, err
+	}
+	if isExist {
+		if v != nil {
+			(*target)[key] = *v
+		} else {
+			(*target)[key] = nil
+		}
+	}
+	return isExist, v, nil
+}
+
+func (aepr *DXAPIEndPointRequest) AssignParameterNullableString(target *utils.JSON, key string) (isExist bool, v *string, err error) {
+	isExist, v, err = aepr.GetParameterValueAsNullableString(key)
+	if err != nil {
+		return isExist, v, err
+	}
+	if isExist {
+		if v != nil {
+			(*target)[key] = *v
+		} else {
+			(*target)[key] = nil
+		}
+	}
+	return isExist, v, nil
+}
+
 func (aepr *DXAPIEndPointRequest) GetParameterValueAsAny(k string) (isExist bool, val any, err error) {
 	valEntry, err := aepr.GetParameterValueEntry(k)
 	if err != nil {
@@ -308,11 +356,13 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsAny(k string) (isExist bool
 	}
 	valAsAny := valEntry.Value
 	if valAsAny == nil {
-		if valEntry.Metadata.IsMustExist {
-			err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_FIELD_VALUE_IS_NOT_EXIST:%s=(%v)`, k, valAsAny)
-			return false, "", err
+		if !valEntry.Metadata.IsNullable {
+			if valEntry.Metadata.IsMustExist {
+				err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_FIELD_VALUE_IS_NOT_EXIST:%s`, k)
+				return false, nil, err
+			}
 		}
-		return false, "", nil
+		return false, nil, nil
 	}
 	return true, valAsAny, nil
 }
@@ -553,7 +603,9 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		}
 		if rpv.Metadata.IsMustExist {
 			if rpv.RawValue == nil {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `MANDATORY_PARAMETER_IS_NOT_EXIST:%s`, v.NameId)
+				if !rpv.Metadata.IsNullable {
+					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `MANDATORY_PARAMETER_IS_NOT_EXIST:%s`, v.NameId)
+				}
 			}
 		}
 		if rpv.RawValue != nil {
@@ -714,7 +766,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters uti
 	}
 	responseBodyAsString := string(responseBodyAsBytes)
 	if r.StatusCode != http.StatusOK {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:PROXY_STATUS_%d:%v", r.StatusCode, err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:PROXY_STATUS_%d", r.StatusCode)
 		return r.StatusCode, nil, err
 	}
 

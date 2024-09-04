@@ -26,6 +26,7 @@ type DXAPIEndPointParameter struct {
 	Type        string
 	Description string
 	IsMustExist bool
+	IsNullable  bool
 	Children    []DXAPIEndPointParameter
 }
 
@@ -173,6 +174,14 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 
 func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId, aType, description string, isMustExist bool) *DXAPIEndPointParameter {
 	p := DXAPIEndPointParameter{Owner: aep, NameId: nameId, Type: aType, Description: description, IsMustExist: isMustExist}
+	switch aType {
+	case "nullable-int64":
+		p.IsNullable = true
+	case "nullable-string":
+		p.IsNullable = true
+	default:
+		p.IsNullable = false
+	}
 	p.Parent = parent
 	aep.Parameters = append(aep.Parameters, p)
 	return &p
