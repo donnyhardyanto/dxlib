@@ -433,21 +433,21 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 		effectiveJoinQueryPart = ` ` + joinQueryPart
 	}
 
-	summaryCalcFields := `count(*) as _total_rows`
-	if summaryCalcFieldsPart != `` {
-		summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
-	}
-	countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-	_, summaryRows, err = MustNamedQueryRow(dbAppInstance, countSQL, arg)
-	if err != nil {
-		return nil, nil, 0, 0, nil, err
-	}
-
-	totalRows = summaryRows[`_total_rows`].(int64)
-
 	query := ``
 	switch dbAppInstance.DriverName() {
 	case "sqlserver":
+		summaryCalcFields := `cast(count(*) as bigint) as s___total_rows`
+		if summaryCalcFieldsPart != `` {
+			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
+		}
+		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
+		_, summaryRows, err = MustNamedQueryRow(dbAppInstance, countSQL, arg)
+		if err != nil {
+			return nil, nil, 0, 0, nil, err
+		}
+
+		totalRows = summaryRows[`s___total_rows`].(int64)
+
 		effectiveLimitQueryPart := ``
 		if rowsPerPage == 0 {
 			totalPage = 1
@@ -464,6 +464,18 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	case "postgres":
+		summaryCalcFields := `cast(count(*) as bigint) as s___total_rows`
+		if summaryCalcFieldsPart != `` {
+			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
+		}
+		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
+		_, summaryRows, err = MustNamedQueryRow(dbAppInstance, countSQL, arg)
+		if err != nil {
+			return nil, nil, 0, 0, nil, err
+		}
+
+		totalRows = summaryRows[`s___total_rows`].(int64)
+
 		effectiveLimitQueryPart := ``
 		if rowsPerPage == 0 {
 			totalPage = 1
@@ -479,6 +491,27 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	case "oracle":
+		summaryCalcFields := `count(*) as s___total_rows`
+		if summaryCalcFieldsPart != `` {
+			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
+		}
+		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
+		_, summaryRows, err = MustNamedQueryRow(dbAppInstance, countSQL, arg)
+		if err != nil {
+			return nil, nil, 0, 0, nil, err
+		}
+
+		totalRowsAsAny, err := utils.ConvertToInterfaceInt64FromAny(summaryRows[`s___total_rows`])
+		if err != nil {
+			return nil, nil, 0, 0, nil, err
+		}
+
+		ok := true
+		totalRows, ok = totalRowsAsAny.(int64)
+		if !ok {
+			return nil, nil, 0, 0, nil, errors.New(fmt.Sprintf(`CANT_CONVERT_TOTAL_ROWS_TO_INT64:%v`, totalRowsAsAny))
+		}
+
 		effectiveLimitQueryPart := ``
 		if rowsPerPage == 0 {
 			totalPage = 1

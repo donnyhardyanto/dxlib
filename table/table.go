@@ -492,7 +492,7 @@ func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
 		case "postgres":
 			filterWhere = filterWhere + "(is_deleted=false)"
 		default:
-			filterWhere = filterWhere + "(is_deleted=false)"
+			filterWhere = filterWhere + "(is_deleted=0)"
 		}
 	}
 
