@@ -242,6 +242,51 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		}
 		s = `select ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
 		return s, nil
+	case "oracle":
+		f := SQLPartFieldNames(fieldNames)
+		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
+		effectiveWhere := ``
+		if w != `` {
+			effectiveWhere = ` where ` + w
+		}
+		j := ``
+		if joinSQLPart != nil {
+			j = ` ` + joinSQLPart.(string)
+		}
+		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections)
+		effectiveOrderBy := ``
+		if o != `` {
+			effectiveOrderBy = ` order by ` + o
+		}
+		effectiveLimitAsString := ``
+		if limit != nil {
+			var limitAsInt64 int64
+			switch limit.(type) {
+			case int:
+				limitAsInt64 = int64(limit.(int))
+			case int16:
+				limitAsInt64 = int64(limit.(int16))
+			case int32:
+				limitAsInt64 = int64(limit.(int32))
+			case int64:
+				limitAsInt64 = limit.(int64)
+			default:
+				err := errors.New(`SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64`)
+				return ``, err
+			}
+			if limitAsInt64 > 0 {
+				effectiveLimitAsString = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
+			}
+		}
+		u := ``
+		if forUpdatePart == nil {
+			forUpdatePart = false
+		}
+		if forUpdatePart == true {
+			u = ` for update `
+		}
+		s = `select ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
+		return s, nil
 	default:
 		err := errors.New(`UNKNOWN_DATABASE_TYPE:` + driverName)
 		return ``, err
@@ -419,6 +464,35 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	case "postgres":
+		effectiveLimitQueryPart := ``
+		if rowsPerPage == 0 {
+			totalPage = 1
+		} else {
+			totalPage = ((totalRows - 1) / rowsPerPage) + 1
+			effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+		}
+
+		effectiveOrderByQueryPart := ``
+		if orderByQueryPart != `` {
+			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
+		}
+
+		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
+	case "oracle":
+		effectiveLimitQueryPart := ``
+		if rowsPerPage == 0 {
+			totalPage = 1
+		} else {
+			totalPage = ((totalRows - 1) / rowsPerPage) + 1
+			effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+		}
+
+		effectiveOrderByQueryPart := ``
+		if orderByQueryPart != `` {
+			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
+		}
+
+		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	default:
 		effectiveLimitQueryPart := ``
 		if rowsPerPage == 0 {
@@ -552,6 +626,8 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
 	case "sqlserver":
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.` + fieldNameForRowId + ` VALUES (` + fv + `)`
+	case "oracle":
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
 	default:
 		fmt.Println("Unknown database type. Using Postgresql Dialect")
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning ` + fieldNameForRowId

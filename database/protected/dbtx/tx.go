@@ -236,6 +236,8 @@ func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
 	case "sqlserver":
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.id VALUES (` + fv + `)`
+	case "oracle":
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
 	default:
 		fmt.Println("Unknown database type. Using Postgresql Dialect")
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
