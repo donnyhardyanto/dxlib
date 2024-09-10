@@ -498,6 +498,7 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 			log.Log.Errorf("Error executing file %d:'%s' (%s)", k, v, err.Error())
 			return rs, err
 		}
+		log.Log.Infof("Executing file %d:'%s'... done", k+1, v)
 		rs = append(rs, r)
 	}
 	return rs, nil
