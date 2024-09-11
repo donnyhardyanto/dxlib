@@ -2,11 +2,11 @@ package table
 
 import (
 	"database/sql"
-	"dxlib/v3/api"
-	"dxlib/v3/database"
-	"dxlib/v3/database/protected/db"
-	"dxlib/v3/log"
-	"dxlib/v3/utils"
+	"dxlib/api"
+	"dxlib/database"
+	"dxlib/database/protected/db"
+	"dxlib/log"
+	"dxlib/utils"
 	"fmt"
 	"net/http"
 )

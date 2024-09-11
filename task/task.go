@@ -6,11 +6,11 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"dxlib/v3/configuration"
-	"dxlib/v3/core"
-	"dxlib/v3/log"
-	"dxlib/v3/utils"
-	"dxlib/v3/utils/json"
+	"dxlib/configuration"
+	"dxlib/core"
+	"dxlib/log"
+	"dxlib/utils"
+	"dxlib/utils/json"
 )
 
 const DXTaskDefaultAfterDelaySec = 1

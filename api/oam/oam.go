@@ -1,7 +1,7 @@
 package oam
 
 import (
-	"dxlib/v3/api"
+	"dxlib/api"
 	"io"
 	"net/http"
 )

@@ -1,3 +1,3 @@
-package v3
+package dxlib
 
 var IsDebug = false

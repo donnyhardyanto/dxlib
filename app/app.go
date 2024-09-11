@@ -2,22 +2,21 @@ package app
 
 import (
 	"context"
-	"dxlib/v3/object_storage"
-	"dxlib/v3/vault"
+	"dxlib/object_storage"
+	"dxlib/vault"
 	"fmt"
 	"os"
 
 	"golang.org/x/sync/errgroup"
 
-	v3 "dxlib/v3"
-	"dxlib/v3/api"
-	"dxlib/v3/configuration"
-	"dxlib/v3/core"
-	"dxlib/v3/database"
-	"dxlib/v3/log"
-	"dxlib/v3/redis"
-	"dxlib/v3/table"
-	"dxlib/v3/task"
+	"dxlib/api"
+	"dxlib/configuration"
+	"dxlib/core"
+	"dxlib/database"
+	"dxlib/log"
+	"dxlib/redis"
+	"dxlib/table"
+	"dxlib/task"
 )
 
 type DXAppArgCommandFunc func(s *DXApp, ac *DXAppArgCommand, T any) (err error)
@@ -309,7 +308,7 @@ func Set(nameId, title, description string, isLoop bool, debugKey string, debugV
 	App.DebugKey = debugKey
 	App.DebugValue = debugValue
 	if App.DebugKey != "" {
-		v3.IsDebug = os.Getenv(App.DebugKey) == App.DebugValue
+		dxlib.IsDebug = os.Getenv(App.DebugKey) == App.DebugValue
 	}
 	log.Log.Prefix = nameId
 }

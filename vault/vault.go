@@ -1,7 +1,7 @@
 package vault
 
 import (
-	"dxlib/v3/log"
+	"dxlib/log"
 	vault "github.com/hashicorp/vault/api"
 	"strings"
 )

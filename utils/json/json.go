@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dxlib/v3/utils"
+	"dxlib/utils"
 )
 
 type Number interface {

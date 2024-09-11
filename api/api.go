@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	v3 "dxlib/v3"
 	"errors"
 	"net/http"
 	"time"
@@ -10,12 +9,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 
-	dxlibv3Configuration "dxlib/v3/configuration"
-	"dxlib/v3/core"
-	"dxlib/v3/log"
-	"dxlib/v3/utils"
-	utilsHttp "dxlib/v3/utils/http"
-	utilsJSON "dxlib/v3/utils/json"
+	"dxlib/core"
+	"dxlib/log"
+	"dxlib/utils"
+	utilsHttp "dxlib/utils/http"
+	utilsJSON "dxlib/utils/json"
 )
 
 const (
@@ -81,7 +79,7 @@ func (am *DXAPIManager) NewAPI(nameId string) (*DXAPI, error) {
 }
 
 func (am *DXAPIManager) LoadFromConfiguration(configurationNameId string) (err error) {
-	configuration, ok := dxlibv3Configuration.Manager.Configurations[configurationNameId]
+	configuration, ok := dxlibConfiguration.Manager.Configurations[configurationNameId]
 	if !ok {
 		return log.Log.FatalAndCreateErrorf("configuration '%s' not found", configurationNameId)
 	}
@@ -135,7 +133,7 @@ func (am *DXAPIManager) StopAll() (err error) {
 }
 
 func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
-	configuration, ok := dxlibv3Configuration.Manager.Configurations[configurationNameId]
+	configuration, ok := dxlibConfiguration.Manager.Configurations[configurationNameId]
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
 		return err

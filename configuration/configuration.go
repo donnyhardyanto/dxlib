@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"os"
 
-	"gopkg.in/yaml.v3"
-
-	"dxlib/v3/log"
-	"dxlib/v3/utils"
-	json2 "dxlib/v3/utils/json"
+	"dxlib/log"
+	"dxlib/utils"
+	json2 "dxlib/utils/json"
 )
 
 type DXConfiguration struct {

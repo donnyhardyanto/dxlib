@@ -1,7 +1,7 @@
 package testing
 
 import (
-	dxlibv3HttpClient "dxlib/v3/utils/http/client"
+	dxlibv3HttpClient "dxlib/utils/http/client"
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -10,8 +10,8 @@ import (
 	"net/http/httputil"
 	"testing"
 
-	"dxlib/v3/utils"
-	json2 "dxlib/v3/utils/json"
+	"dxlib/utils"
+	json2 "dxlib/utils/json"
 )
 
 var Counter = 0

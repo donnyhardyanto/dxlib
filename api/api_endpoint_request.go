@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	v3 "dxlib/v3"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"dxlib/v3/log"
-	"dxlib/v3/utils"
-	utilsHttp "dxlib/v3/utils/http"
-	utilsJson "dxlib/v3/utils/json"
-	security "dxlib/v3/utils/security"
+	"dxlib/log"
+	"dxlib/utils"
+	utilsHttp "dxlib/utils/http"
+	utilsJson "dxlib/utils/json"
+	security "dxlib/utils/security"
 )
 
 type DXAPIEndPointRequestParameterValue struct {

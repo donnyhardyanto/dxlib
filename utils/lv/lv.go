@@ -2,7 +2,7 @@ package lv
 
 import (
 	"bytes"
-	"dxlib/v3/utils"
+	"dxlib/utils"
 	"encoding/binary"
 	"encoding/hex"
 )

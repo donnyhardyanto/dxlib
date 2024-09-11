@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-
-	dxlibv3Configuration "dxlib/v3/configuration"
-	"dxlib/v3/core"
-	"dxlib/v3/log"
-	"dxlib/v3/utils"
-	json2 "dxlib/v3/utils/json"
+	dxlibv3Configuration "dxlib/configuration"
+	"dxlib/core"
+	"dxlib/log"
+	"dxlib/utils"
+	json2 "dxlib/utils/json"
 )
 
 type DXRedis struct {

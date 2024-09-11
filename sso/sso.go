@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
-
-	"dxlib/v3/database"
-	"dxlib/v3/log"
-	"dxlib/v3/redis"
-	"dxlib/v3/utils"
-	json2 "dxlib/v3/utils/json"
+	"dxlib/database"
+	"dxlib/log"
+	"dxlib/redis"
+	"dxlib/utils"
+	json2 "dxlib/utils/json"
 )
 
 var OrganizationManager DXOrganizationsManager

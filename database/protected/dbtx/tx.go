@@ -7,9 +7,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"dxlib/v3/database/protected/db"
-	"dxlib/v3/log"
-	"dxlib/v3/utils"
+	"dxlib/database/protected/db"
+	"dxlib/log"
+	"dxlib/utils"
 )
 
 type TxCallback func(tx *sqlx.Tx, log *log.DXLog) (err error)

@@ -2,7 +2,7 @@ package log
 
 import (
 	"context"
-	"dxlib/v3/core"
+	"dxlib/core"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"runtime/debug"

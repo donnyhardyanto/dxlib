@@ -7,7 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"strconv"
 
-	"dxlib/v3/utils"
+	"dxlib/utils"
 )
 
 type RowsInfo struct {
