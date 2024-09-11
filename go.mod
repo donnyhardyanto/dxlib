@@ -1,4 +1,4 @@
-module dxlibv3
+module dxlib/v3
 
 go 1.23.0
 
