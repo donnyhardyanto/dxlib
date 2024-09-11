@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -75,7 +76,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend
 	}
 	var s utils.JSON
 
-	if v3.IsDebug {
+	if dxlib.IsDebug {
 		s = utils.JSON{
 			"reason":         errToSend.Error(),
 			"reason_message": errToSend.Error(),

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"time"
 
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"

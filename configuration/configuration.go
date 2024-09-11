@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"encoding/json"
+	"gopkg.in/yaml.v3"
 	"os"
 
 	"github.com/donnyhardyanto/dxlib/log"

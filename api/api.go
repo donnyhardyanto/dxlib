@@ -3,12 +3,14 @@ package api
 import (
 	"context"
 	"errors"
+	"github.com/donnyhardyanto/dxlib"
 	"net/http"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 
+	dxlibConfiguration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -205,7 +207,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	aepr = p.NewEndPointRequest(requestContext, w, r)
 	defer func() {
-		if (err != nil) && (v3.IsDebug) && (p.RequestContentType == utilsHttp.ContentTypeApplicationJSON) {
+		if (err != nil) && (dxlib.IsDebug) && (p.RequestContentType == utilsHttp.ContentTypeApplicationJSON) {
 			if aepr.RequestBodyAsBytes != nil {
 				aepr.Log.Infof("%d %s Request: %s", aepr._responseStatusCode, r.URL.Path, string(aepr.RequestBodyAsBytes))
 			}
