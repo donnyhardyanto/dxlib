@@ -555,6 +555,17 @@ func (t *DXTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fi
 	return true, nil
 }
 
+func (t *DXTable) Create(aepr *api.DXAPIEndPointRequest) (err error) {
+	p := map[string]interface{}{}
+	for k, v := range aepr.ParameterValues {
+		aepr.Log.Infof("ParameterValues %s: %v", k, v)
+		p[k] = v.Value
+	}
+	_, err = t.DoCreate(aepr, p)
+
+	return err
+}
+
 var Manager DXTableManager
 
 func init() {
