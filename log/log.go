@@ -2,8 +2,8 @@ package log
 
 import (
 	"context"
-	"dxlib/core"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/core"
 	log "github.com/sirupsen/logrus"
 	"runtime/debug"
 )

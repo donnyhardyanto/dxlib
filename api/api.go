@@ -9,11 +9,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 
-	"dxlib/core"
-	"dxlib/log"
-	"dxlib/utils"
-	utilsHttp "dxlib/utils/http"
-	utilsJSON "dxlib/utils/json"
+	"github.com/donnyhardyanto/dxlib/core"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
+	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
+	utilsJSON "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
 const (

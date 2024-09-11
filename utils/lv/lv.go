@@ -2,9 +2,9 @@ package lv
 
 import (
 	"bytes"
-	"dxlib/utils"
 	"encoding/binary"
 	"encoding/hex"
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 //var MAX_SIZE uint32 = 2147483647

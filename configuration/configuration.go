@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"os"
 
-	"dxlib/log"
-	"dxlib/utils"
-	json2 "dxlib/utils/json"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
+	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
 type DXConfiguration struct {

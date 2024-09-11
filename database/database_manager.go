@@ -1,10 +1,10 @@
 package database
 
 import (
-	dxlibv3Configuration "dxlib/configuration"
-	"dxlib/database/protected/db"
-	"dxlib/log"
-	"dxlib/utils"
+	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
+	"github.com/donnyhardyanto/dxlib/database/protected/db"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 type DXDatabaseSQLExpression = db.SQLExpression

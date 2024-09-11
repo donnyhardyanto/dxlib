@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"time"
 
-	dxlibv3Configuration "dxlib/configuration"
-	"dxlib/core"
-	"dxlib/log"
-	"dxlib/utils"
-	json2 "dxlib/utils/json"
+	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
+	"github.com/donnyhardyanto/dxlib/core"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
+	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
 type DXRedis struct {

@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"dxlib/utils"
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 type RequestContentType int

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"dxlib/database"
-	"dxlib/log"
-	"dxlib/redis"
-	"dxlib/utils"
-	json2 "dxlib/utils/json"
+	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/redis"
+	"github.com/donnyhardyanto/dxlib/utils"
+	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
 var OrganizationManager DXOrganizationsManager

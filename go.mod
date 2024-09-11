@@ -1,4 +1,4 @@
-module dxlib
+module github.com/donnyhardyanto/dxlib
 
 go 1.23.0
 

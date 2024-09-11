@@ -2,21 +2,21 @@ package app
 
 import (
 	"context"
-	"dxlib/object_storage"
-	"dxlib/vault"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/object_storage"
+	"github.com/donnyhardyanto/dxlib/vault"
 	"os"
 
 	"golang.org/x/sync/errgroup"
 
-	"dxlib/api"
-	"dxlib/configuration"
-	"dxlib/core"
-	"dxlib/database"
-	"dxlib/log"
-	"dxlib/redis"
-	"dxlib/table"
-	"dxlib/task"
+	"github.com/donnyhardyanto/dxlib/api"
+	"github.com/donnyhardyanto/dxlib/configuration"
+	"github.com/donnyhardyanto/dxlib/core"
+	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/redis"
+	"github.com/donnyhardyanto/dxlib/table"
+	"github.com/donnyhardyanto/dxlib/task"
 )
 
 type DXAppArgCommandFunc func(s *DXApp, ac *DXAppArgCommand, T any) (err error)

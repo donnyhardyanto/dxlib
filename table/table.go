@@ -2,12 +2,12 @@ package table
 
 import (
 	"database/sql"
-	"dxlib/api"
-	"dxlib/database"
-	"dxlib/database/protected/db"
-	"dxlib/log"
-	"dxlib/utils"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/api"
+	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/database/protected/db"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
 )
 

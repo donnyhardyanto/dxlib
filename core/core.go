@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	dxlibOs "dxlib/utils/os"
+	dxlibOs "github.com/donnyhardyanto/dxlib/utils/os"
 	"os"
 	"os/signal"
 	"syscall"

@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"dxlib/log"
-	"dxlib/utils"
-	utilsHttp "dxlib/utils/http"
-	utilsJson "dxlib/utils/json"
-	security "dxlib/utils/security"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
+	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
+	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
+	security "github.com/donnyhardyanto/dxlib/utils/security"
 )
 
 type DXAPIEndPointRequestParameterValue struct {

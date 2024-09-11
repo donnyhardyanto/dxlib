@@ -2,7 +2,7 @@ package database
 
 import (
 	"database/sql"
-	"dxlib/log"
+	"github.com/donnyhardyanto/dxlib/log"
 )
 
 type DXDatabaseScript struct {

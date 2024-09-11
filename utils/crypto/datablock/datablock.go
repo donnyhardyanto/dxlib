@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha512"
-	"dxlib/utils"
-	"dxlib/utils/crypto/aes"
-	"dxlib/utils/lv"
 	"encoding/hex"
 	"errors"
+	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/donnyhardyanto/dxlib/utils/crypto/aes"
+	"github.com/donnyhardyanto/dxlib/utils/lv"
 	"time"
 )
 

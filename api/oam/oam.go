@@ -1,7 +1,7 @@
 package oam
 
 import (
-	"dxlib/api"
+	"github.com/donnyhardyanto/dxlib/api"
 	"io"
 	"net/http"
 )

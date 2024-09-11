@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	"dxlib/core"
+	"github.com/donnyhardyanto/dxlib/core"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -18,13 +18,13 @@ import (
 	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/sijms/go-ora/v2"
 
-	"dxlib/configuration"
-	"dxlib/database/database_type"
-	"dxlib/database/protected/db"
-	"dxlib/database/protected/dbtx"
-	"dxlib/log"
-	"dxlib/utils"
-	utilsSql "dxlib/utils/security"
+	"github.com/donnyhardyanto/dxlib/configuration"
+	"github.com/donnyhardyanto/dxlib/database/database_type"
+	"github.com/donnyhardyanto/dxlib/database/protected/db"
+	"github.com/donnyhardyanto/dxlib/database/protected/dbtx"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
+	utilsSql "github.com/donnyhardyanto/dxlib/utils/security"
 )
 
 type DXDatabaseEventFunc func(dm *DXDatabase, err error)

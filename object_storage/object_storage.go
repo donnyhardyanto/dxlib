@@ -2,12 +2,12 @@ package object_storage
 
 import (
 	"context"
-	"dxlib/api"
-	dxlibv3Configuration "dxlib/configuration"
-	"dxlib/core"
-	"dxlib/log"
-	"dxlib/utils"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/api"
+	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
+	"github.com/donnyhardyanto/dxlib/core"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"io"
 	"net/http"
