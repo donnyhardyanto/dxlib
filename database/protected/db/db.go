@@ -436,7 +436,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 	query := ``
 	switch dbAppInstance.DriverName() {
 	case "sqlserver":
-		summaryCalcFields := `cast(count(*) as bigint) as S___TOTAL_ROWS`
+		summaryCalcFields := `cast(count(*) as bigint) as "S___TOTAL_ROWS""`
 		if summaryCalcFieldsPart != `` {
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
@@ -464,7 +464,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	case "postgres":
-		summaryCalcFields := `cast(count(*) as bigint) as S___TOTAL_ROWS`
+		summaryCalcFields := `cast(count(*) as bigint) as "S___TOTAL_ROWS"`
 		if summaryCalcFieldsPart != `` {
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
