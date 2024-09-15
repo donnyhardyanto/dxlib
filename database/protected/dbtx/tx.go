@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-
 	"github.com/jmoiron/sqlx"
 
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
@@ -135,6 +134,7 @@ func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query stri
 			}
 			return nil, nil, err
 		}
+		rowJSON = db.DeformatKeys(rowJSON, tx.DriverName())
 		r = append(r, rowJSON)
 	}
 
@@ -168,6 +168,7 @@ func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query strin
 			}
 			return rowsInfo, nil, err
 		}
+		rowJSON = db.DeformatKeys(rowJSON, tx.DriverName())
 		return rowsInfo, rowJSON, nil
 	}
 

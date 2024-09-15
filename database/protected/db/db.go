@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"strconv"
+	"strings"
 
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -13,6 +14,35 @@ import (
 type RowsInfo struct {
 	Columns     []string
 	ColumnTypes []*sql.ColumnType
+}
+
+func FormatIdentifier(identifier string, driverName string) string {
+	// Convert the identifier to lowercase as the base case
+	formattedIdentifier := strings.ToLower(identifier)
+
+	// Apply database-specific formatting
+	switch driverName {
+	case "oracle", "db2":
+		formattedIdentifier = strings.ToUpper(formattedIdentifier)
+	}
+
+	// Wrap the identifier in quotes to preserve case in the SQL statement
+	return `"` + formattedIdentifier + `"`
+}
+
+func DeformatIdentifier(identifier string, driverName string) string {
+	// Remove the quotes from the identifier
+	deformattedIdentifier := strings.Trim(identifier, `"`)
+	deformattedIdentifier = strings.ToLower(deformattedIdentifier)
+	return deformattedIdentifier
+}
+
+func DeformatKeys(kv map[string]interface{}, driverName string) (r map[string]interface{}) {
+	r = map[string]interface{}{}
+	for k, v := range kv {
+		r[DeformatIdentifier(k, driverName)] = v
+	}
+	return r
 }
 
 func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON) (r utils.JSON) {
@@ -304,11 +334,11 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 	rowsInfo = &RowsInfo{}
 	rowsInfo.Columns, err = rows.Columns()
 	if err != nil {
-		return nil, r, err
+		return nil, nil, err
 	}
 	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
 	if err != nil {
-		return rowsInfo, r, err
+		return rowsInfo, nil, err
 	}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
@@ -316,10 +346,11 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 		if err != nil {
 			return nil, nil, err
 		}
+		rowJSON = DeformatKeys(rowJSON, db.DriverName())
 		return rowsInfo, rowJSON, nil
 	}
 
-	return rowsInfo, r, nil
+	return rowsInfo, nil, nil
 }
 
 func MustNamedQueryRow(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
@@ -356,13 +387,13 @@ func MustNamedQueryId(dbAppInstance *sqlx.DB, query string, arg any) (int64, err
 	return returningId, nil
 }
 
-func NamedQueryRows(dbAppInstance *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func NamedQueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}
 	}
 
-	rows, err := dbAppInstance.NamedQuery(query, arg)
+	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -384,14 +415,15 @@ func NamedQueryRows(dbAppInstance *sqlx.DB, query string, arg any) (rowsInfo *Ro
 		if err != nil {
 			return nil, nil, err
 		}
+		rowJSON = DeformatKeys(rowJSON, db.DriverName())
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
 }
 
-func QueryRows(dbAppInstance *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func QueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
-	rows, err := dbAppInstance.Queryx(query, arg)
+	rows, err := db.Queryx(query, arg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -413,6 +445,7 @@ func QueryRows(dbAppInstance *sqlx.DB, query string, arg any) (rowsInfo *RowsInf
 		if err != nil {
 			return nil, nil, err
 		}
+		rowJSON = DeformatKeys(rowJSON, db.DriverName())
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
@@ -491,7 +524,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	case "oracle":
-		summaryCalcFields := `count(*) as S___TOTAL_ROWS`
+		summaryCalcFields := `count(*) as "S___TOTAL_ROWS""`
 		if summaryCalcFieldsPart != `` {
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
@@ -593,7 +626,7 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 }
 
 func MustSelectWhereId(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = MustNamedQueryRow(db, `SELECT * FROM `+tableName+` where id=:id`, utils.JSON{
+	rowsInfo, r, err = MustNamedQueryRow(db, `SELECT * FROM `+tableName+` where `+FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
 		`id`: idValue,
 	})
 	return rowsInfo, r, err

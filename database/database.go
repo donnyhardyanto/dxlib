@@ -151,18 +151,6 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 			"SID": d.DatabaseName,
 		}
 		s = goOra.BuildUrl(host, portInt, "", d.UserName, d.UserPassword, urlOptions)
-		/*s = fmt.Sprintf("%s/%s@%s/%s", d.UserName, d.UserPassword, d.Address, d.DatabaseName)
-		/*host, port, err := net.SplitHostPort(d.Address)
-		if err != nil {
-			return "", err
-		}
-		s = fmt.Sprintf(`user="%s" password="%s" connectString="(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=%s)(PORT=%s))(CONNECT_DATA=(SERVICE_NAME=%s)))"`,
-			d.UserName,
-			d.UserPassword,
-			host,
-			port,
-			d.DatabaseName,
-		)*/
 	default:
 		err = log.Log.ErrorAndCreateErrorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
 	}
@@ -340,10 +328,6 @@ func (d *DXDatabase) Disconnect() (err error) {
 }
 
 func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, err error) {
-	//err = d.CheckConnectionAndReconnect()
-	//if err != nil {
-	//	return nil, err
-	//}
 	isDDL := utilsSql.IsDDL(statement)
 	if !isDDL {
 		query := pq.NewNamedParameterQuery(statement)
@@ -365,9 +349,22 @@ func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, er
 		case float32, float64:
 			vs = fmt.Sprintf("%f", v)
 		}
-		s = strings.Replace(s, `:`+k, vs, -1)
+		s = strings.Replace(s, `:`+strings.ToUpper(k), vs, -1)
 	}
 	r, err = d.Connection.Exec(s)
+	if err != nil {
+		if d.Connected {
+			return nil, err
+		}
+		err = d.CheckConnectionAndReconnect()
+		if err != nil {
+			return nil, err
+		}
+		r, err = d.Connection.Exec(s)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return r, err
 }
 

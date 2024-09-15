@@ -30,7 +30,7 @@ type DXAPIEndPointRequestParameterValue struct {
 }
 
 type DXAPIUser struct {
-	ID   string `json:"id"`
+	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 
@@ -591,7 +591,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v`, err.Error()+"="+string(aepr.RequestBodyAsBytes))
 		}
 	}
-	aepr.CurrentUser.ID = ""
+	aepr.CurrentUser.Id = ""
 	aepr.CurrentUser.Name = ""
 
 	for _, v := range aepr.EndPoint.Parameters {
