@@ -497,7 +497,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	case "postgres":
-		summaryCalcFields := `cast(count(*) as bigint) as "S___TOTAL_ROWS"`
+		summaryCalcFields := `cast(count(*) as bigint) as s___total_rows`
 		if summaryCalcFieldsPart != `` {
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
@@ -507,7 +507,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 			return nil, nil, 0, 0, nil, err
 		}
 
-		totalRows = summaryRows[`S___TOTAL_ROWS`].(int64)
+		totalRows = summaryRows[`s___total_rows`].(int64)
 
 		effectiveLimitQueryPart := ``
 		if rowsPerPage == 0 {
