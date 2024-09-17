@@ -2,13 +2,13 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"strconv"
 	"strings"
-
-	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 type RowsInfo struct {
@@ -365,8 +365,65 @@ func MustNamedQueryRow(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo,
 	return rowsInfo, r, nil
 }
 
-func MustNamedQueryId(dbAppInstance *sqlx.DB, query string, arg any) (int64, error) {
-	rows, err := dbAppInstance.NamedQuery(query, arg)
+func oracleInsertReturning(db *sql.DB, tableName string, fieldNameForRowId string, keyValues map[string]interface{}) (int64, error) {
+	tableName = strings.ToUpper(tableName)
+	fieldNameForRowId = strings.ToUpper(fieldNameForRowId)
+	// Construct the SQL query
+	fieldNames := ""
+	fieldValues := ""
+	returningClause := ""
+	//returningClause := fmt.Sprintf("RETURNING %s", fieldNameForRowId)
+	keyValues = map[string]interface{}{
+		"kode_parameter": "kode_parameter",
+	}
+	for k, v := range keyValues {
+
+		switch v.(type) {
+		case bool:
+			if v.(bool) == true {
+				keyValues[k] = 1
+			} else {
+				keyValues[k] = 0
+			}
+		case []interface{}:
+			jsonValue, err := json.Marshal(v)
+			if err != nil {
+				return 0, fmt.Errorf("error marshaling slice to JSON: %w", err)
+			}
+			keyValues[k] = string(jsonValue)
+		default:
+			if fieldNames != "" {
+				fieldNames += ", "
+				fieldValues += ", "
+			}
+			fieldNames += strings.ToUpper(k)
+			fieldValues += /*":" +*/ `'` + v.(string) + `'`
+		}
+	}
+
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) %s", tableName, fieldNames, fieldValues, returningClause)
+
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	// Add the returning parameter
+	newId := int64(0)
+	//keyValues["new_id"] = sql.Named("new_id", sql.Out{Dest: &newId})
+
+	// Execute the statement
+	_, err = stmt.Exec(keyValues)
+	if err != nil {
+		return 0, err
+	}
+
+	return newId, nil
+}
+
+func MustNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
+	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return 0, err
 	}
@@ -469,7 +526,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 	query := ``
 	switch dbAppInstance.DriverName() {
 	case "sqlserver":
-		summaryCalcFields := `cast(count(*) as bigint) as "S___TOTAL_ROWS""`
+		summaryCalcFields := `cast(count(*) as bigint) as "s___total_rows"`
 		if summaryCalcFieldsPart != `` {
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
@@ -479,7 +536,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 			return nil, nil, 0, 0, nil, err
 		}
 
-		totalRows = summaryRows[`S___TOTAL_ROWS`].(int64)
+		totalRows = summaryRows[`s___total_rows`].(int64)
 
 		effectiveLimitQueryPart := ``
 		if rowsPerPage == 0 {
@@ -524,7 +581,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	case "oracle":
-		summaryCalcFields := `count(*) as "S___TOTAL_ROWS""`
+		summaryCalcFields := `count(*) as "s___total_rows"`
 		if summaryCalcFieldsPart != `` {
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
@@ -534,7 +591,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 			return nil, nil, 0, 0, nil, err
 		}
 
-		totalRowsAsAny, err := utils.ConvertToInterfaceInt64FromAny(summaryRows[`S___TOTAL_ROWS`])
+		totalRowsAsAny, err := utils.ConvertToInterfaceInt64FromAny(summaryRows[`s___total_rows`])
 		if err != nil {
 			return nil, nil, 0, 0, nil, err
 		}
@@ -550,7 +607,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 			totalPage = 1
 		} else {
 			totalPage = ((totalRows - 1) / rowsPerPage) + 1
-			effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+			effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
 		}
 
 		effectiveOrderByQueryPart := ``
@@ -560,20 +617,10 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 
 		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	default:
-		effectiveLimitQueryPart := ``
-		if rowsPerPage == 0 {
-			totalPage = 1
-		} else {
-			totalPage = ((totalRows - 1) / rowsPerPage) + 1
-			effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+		err = errors.New(`UNSUPPORTED_DATABASE_SQL_SELECT`)
+		if err != nil {
+			return rowsInfo, rows, 0, 0, summaryRows, err
 		}
-
-		effectiveOrderByQueryPart := ``
-		if orderByQueryPart != `` {
-			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-		}
-
-		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
 	}
 
 	rowsInfo, rows, err = NamedQueryRows(dbAppInstance, query, arg)
@@ -685,18 +732,26 @@ func UpdateWhereKeyValues(db *sqlx.DB, tableName string, setKeyValues utils.JSON
 }
 
 func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
-	fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
 	s := ``
 	switch db.DriverName() {
 	case "postgres":
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
 	case "sqlserver":
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.` + fieldNameForRowId + ` VALUES (` + fv + `)`
 	case "oracle":
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId + ` INTO :new_id`
+		//		keyValues["new_id"] = sql.Named("new_id", sql.Out{Dest: new(int64)})
+		id, err = oracleInsertReturning(db.DB, tableName, fieldNameForRowId, keyValues)
+		if err != nil {
+			return 0, err
+		}
+		return id, nil
 	default:
-		fmt.Println("Unknown database type. Using Postgresql Dialect")
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning ` + fieldNameForRowId
+		err = errors.New(`UNSUPPORTED_DATABASE_SQL_INSERT`)
+		return 0, err
 	}
 	kv := ExcludeSQLExpression(keyValues)
 	id, err = MustNamedQueryId(db, s, kv)
