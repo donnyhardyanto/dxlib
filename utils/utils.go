@@ -128,6 +128,10 @@ func TypeAsString(v any) string {
 	return fmt.Sprintf("%T", v)
 }
 
+func Int64ToString(i int64) string {
+	return strconv.FormatInt(i, 10)
+}
+
 func GetValueFromNestedMap(data map[string]interface{}, key string) (interface{}, error) {
 	keys := strings.Split(key, ".")
 	var value interface{}
