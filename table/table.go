@@ -9,6 +9,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
+	"time"
 )
 
 type DXTableManager struct {
@@ -56,9 +57,15 @@ func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName
 }
 
 func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
-	n := utils.NowAsString()
+	//n := utils.NowAsString()
+	/*switch t.Database.DatabaseType {
+	case database_type.Oracle:
+		//	n = strings.Replace(n, "T", " ", 1)
+	}*/
 	newKeyValues["is_deleted"] = false
-	newKeyValues["created_at"] = n
+	//newKeyValues["created_at"] = n
+	tt := time.Now()
+	newKeyValues["created_at"] = tt
 	_, ok := newKeyValues["created_by_user_id"]
 	if !ok {
 		if aepr.CurrentUser.Id != "" {
@@ -68,7 +75,8 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 			newKeyValues["created_by_user_id"] = "0"
 			newKeyValues["created_by_user_nameid"] = "SYSTEM"
 		}
-		newKeyValues["last_modified_at"] = n
+		//	newKeyValues["last_modified_at"] = n
+		newKeyValues["last_modified_at"] = tt
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["last_modified_by_user_id"] = aepr.CurrentUser.Id
 			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.Name

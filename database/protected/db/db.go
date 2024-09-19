@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -24,6 +23,7 @@ func FormatIdentifier(identifier string, driverName string) string {
 	switch driverName {
 	case "oracle", "db2":
 		formattedIdentifier = strings.ToUpper(formattedIdentifier)
+		return formattedIdentifier
 	}
 
 	// Wrap the identifier in quotes to preserve case in the SQL statement
@@ -213,9 +213,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 				return ``, err
 			}
 			if limitAsInt64 > 0 {
-				//effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
 				effectiveLimitAsString = ` top ` + strconv.FormatInt(limitAsInt64, 10)
-				//effectiveLimitAsString = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
 			}
 		}
 		u := ``
@@ -365,41 +363,46 @@ func MustNamedQueryRow(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo,
 	return rowsInfo, r, nil
 }
 
-func oracleInsertReturning(db *sql.DB, tableName string, fieldNameForRowId string, keyValues map[string]interface{}) (int64, error) {
-	tableName = strings.ToUpper(tableName)
-	fieldNameForRowId = strings.ToUpper(fieldNameForRowId)
-	// Construct the SQL query
-	fieldNames := ""
-	fieldValues := ""
-	returningClause := ""
-	//returningClause := fmt.Sprintf("RETURNING %s", fieldNameForRowId)
-	keyValues = map[string]interface{}{
-		"kode_parameter": "kode_parameter",
-	}
+func PrepareArrayArgs(keyValues map[string]any, driverName string) (fieldNames string, fieldValues string, fieldArgs []any) {
 	for k, v := range keyValues {
+		if fieldNames != "" {
+			fieldNames += ", "
+			fieldValues += ", "
+		}
 
+		fieldName := FormatIdentifier(k, driverName)
+		fieldNames += fieldName
+		fieldValues += ":" + fieldName
+
+		var s sql.NamedArg
 		switch v.(type) {
 		case bool:
-			if v.(bool) == true {
-				keyValues[k] = 1
-			} else {
-				keyValues[k] = 0
+			switch driverName {
+			case "oracle", "sqlserver":
+				if v.(bool) == true {
+					keyValues[k] = 1
+				} else {
+					keyValues[k] = 0
+				}
+
+			default:
 			}
-		case []interface{}:
-			jsonValue, err := json.Marshal(v)
-			if err != nil {
-				return 0, fmt.Errorf("error marshaling slice to JSON: %w", err)
-			}
-			keyValues[k] = string(jsonValue)
+
 		default:
-			if fieldNames != "" {
-				fieldNames += ", "
-				fieldValues += ", "
-			}
-			fieldNames += strings.ToUpper(k)
-			fieldValues += /*":" +*/ `'` + v.(string) + `'`
 		}
+		s = sql.Named(fieldName, keyValues[k])
+		fieldArgs = append(fieldArgs, s)
 	}
+
+	return fieldNames, fieldValues, fieldArgs
+}
+
+func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues map[string]interface{}) (int64, error) {
+	tableName = strings.ToUpper(tableName)
+	fieldNameForRowId = strings.ToUpper(fieldNameForRowId)
+	returningClause := fmt.Sprintf("RETURNING %s INTO :new_id", fieldNameForRowId)
+
+	fieldNames, fieldValues, fieldArgs := PrepareArrayArgs(keyValues, db.DriverName())
 
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) %s", tableName, fieldNames, fieldValues, returningClause)
 
@@ -410,11 +413,11 @@ func oracleInsertReturning(db *sql.DB, tableName string, fieldNameForRowId strin
 	defer stmt.Close()
 
 	// Add the returning parameter
-	newId := int64(0)
-	//keyValues["new_id"] = sql.Named("new_id", sql.Out{Dest: &newId})
+	newId := int64(99)
+	fieldArgs = append(fieldArgs, sql.Named("new_id", sql.Out{Dest: &newId}))
 
 	// Execute the statement
-	_, err = stmt.Exec(keyValues)
+	_, err = stmt.Exec(fieldArgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -744,7 +747,7 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId + ` INTO :new_id`
 		//		keyValues["new_id"] = sql.Named("new_id", sql.Out{Dest: new(int64)})
-		id, err = oracleInsertReturning(db.DB, tableName, fieldNameForRowId, keyValues)
+		id, err = OracleInsertReturning(db, tableName, fieldNameForRowId, keyValues)
 		if err != nil {
 			return 0, err
 		}
