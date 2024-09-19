@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/core"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"runtime/debug"
 )
 
@@ -56,7 +56,7 @@ func NewLog(parentLog *DXLog, context context.Context, prefix string) DXLog {
 
 func (l *DXLog) LogText(severity DXLogLevel, location string, text string) {
 	stack := ``
-	a := log.WithFields(log.Fields{"prefix": l.Prefix, "location": location})
+	a := logrus.WithFields(logrus.Fields{"prefix": l.Prefix, "location": location})
 	switch severity {
 	case DXLogLevelTrace:
 		a.Tracef("%s", text)
@@ -163,19 +163,19 @@ func (l *DXLog) PanicAndCreateErrorf(location, text string, v ...any) (err error
 var Log DXLog
 
 func SetFormatJSON() {
-	log.SetFormatter(&log.JSONFormatter{})
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 	Format = DXLogFormatJSON
 }
 
 func SetFormatText() {
-	log.SetFormatter(&log.TextFormatter{})
+	logrus.SetFormatter(&logrus.TextFormatter{})
 	Format = DXLogFormatText
 }
 
 func init() {
-	//log.SetFlags(log.Ldate | log.Lmicroseconds | log.LUTC)
-	//	log.SetReportCaller(true)
-	log.SetLevel(log.TraceLevel)
+	//logrus.SetFlags(log.Ldate | log.Lmicroseconds | log.LUTC)
+	//	logrus.SetReportCaller(true)
+	logrus.SetLevel(logrus.TraceLevel)
 	SetFormatJSON()
 	Log = NewLog(nil, core.RootContext, "")
 }

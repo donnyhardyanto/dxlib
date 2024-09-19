@@ -61,4 +61,4 @@ require (
 	golang.org/x/time v0.6.0 // indirect
 )
 
-replace github.com/sijms/go-ora/v2 => ../go-ora/v2
+//replace github.com/sijms/go-ora/v2 => ../go-ora/v2
