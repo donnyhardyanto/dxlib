@@ -531,6 +531,26 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 	}
 	switch aepr.EndPoint.Method {
 	case "GET", "DELETE":
+		for _, v := range aepr.EndPoint.Parameters {
+			rpv := aepr.NewAPIEndPointRequestParameter(v)
+			aepr.ParameterValues[v.NameId] = rpv
+			err := rpv.SetRawValue(aepr.Request.FormValue(v.NameId))
+			if err != nil {
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_PROCESSING_PARAMETER_TO_STRING:%s=%v", v.NameId, err.Error())
+			}
+			if rpv.Metadata.IsMustExist {
+				if rpv.RawValue == nil {
+					if !rpv.Metadata.IsNullable {
+						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "MANDATORY_PARAMETER_NOT_EXIST:%s", v.NameId)
+					}
+				}
+			}
+			if rpv.RawValue != nil {
+				if !rpv.Validate() {
+					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "PARAMETER_VALIDATION_FAIL:%s", v.NameId)
+				}
+			}
+		}
 	case "POST", "PUT":
 		switch aepr.EndPoint.RequestContentType {
 		case utilsHttp.ContentTypeApplicationOctetStream:
