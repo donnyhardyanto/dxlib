@@ -66,9 +66,13 @@ func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON) (r utils.JSON) {
 	return r
 }
 
-func ExcludeSQLExpression(kv utils.JSON) (r utils.JSON) {
+func ExcludeSQLExpression(kv utils.JSON, driverName string) (r utils.JSON) {
 	r = utils.JSON{}
 	for k, v := range kv {
+		switch driverName {
+		case "oracle":
+			k = strings.ToUpper(k)
+		}
 		switch v.(type) {
 		case SQLExpression:
 			break
@@ -94,7 +98,7 @@ func (se SQLExpression) String() (s string) {
 	return s
 }
 
-func SQLPartFieldNames(fieldNames []string) (s string) {
+func SQLPartFieldNames(fieldNames []string, driverName string) (s string) {
 	showFieldNames := ``
 	if fieldNames == nil {
 		return `*`
@@ -103,14 +107,22 @@ func SQLPartFieldNames(fieldNames []string) (s string) {
 		if showFieldNames != `` {
 			showFieldNames = showFieldNames + `, `
 		}
+		switch driverName {
+		case "oracle":
+			v = strings.ToUpper(v)
+		}
 		showFieldNames = showFieldNames + v
 	}
 	return showFieldNames
 }
 
-func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON) (s string) {
+func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string) (s string) {
 	andFieldNameValues := ``
 	for k, v := range whereKeyValues {
+		switch driverName {
+		case "oracle":
+			k = strings.ToUpper(k)
+		}
 		if andFieldNameValues != `` {
 			andFieldNameValues = andFieldNameValues + ` and `
 		}
@@ -128,9 +140,13 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON) (s string) {
 	return andFieldNameValues
 }
 
-func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string) (s string) {
+func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, driverName string) (s string) {
 	orderbyFieldNameDirections := ``
 	for k, v := range orderbyKeyValues {
+		switch driverName {
+		case "oracle":
+			k = strings.ToUpper(k)
+		}
 		if orderbyFieldNameDirections != `` {
 			orderbyFieldNameDirections = orderbyFieldNameDirections + `, `
 		}
@@ -139,7 +155,7 @@ func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string) (s st
 	return orderbyFieldNameDirections
 }
 
-func SQLPartSetFieldNameValues(setKeyValues utils.JSON) (newSetKeyValues utils.JSON, s string) {
+func SQLPartSetFieldNameValues(setKeyValues utils.JSON, driverName string) (newSetKeyValues utils.JSON, s string) {
 	setFieldNameValues := ``
 	newSetKeyValues = utils.JSON{}
 	for k, v := range setKeyValues {
@@ -151,6 +167,10 @@ func SQLPartSetFieldNameValues(setKeyValues utils.JSON) (newSetKeyValues utils.J
 			setFieldNameValues = setFieldNameValues + v.(SQLExpression).String()
 			newSetKeyValues[k] = v
 		default:
+			switch driverName {
+			case "oracle":
+				k = strings.ToUpper(k)
+			}
 			setFieldNameValues = setFieldNameValues + k + `=:NEW_` + k
 			newSetKeyValues[`NEW_`+k] = v
 		}
@@ -181,8 +201,8 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	orderbyFieldNameDirections map[string]string, limit any, forUpdatePart any) (s string, err error) {
 	switch driverName {
 	case "sqlserver":
-		f := SQLPartFieldNames(fieldNames)
-		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
+		f := SQLPartFieldNames(fieldNames, driverName)
+		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 		effectiveWhere := ``
 		if w != `` {
 			effectiveWhere = ` where ` + w
@@ -191,7 +211,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = ` ` + joinSQLPart.(string)
 		}
-		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections)
+		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
 		effectiveOrderBy := ``
 		if o != `` {
 			effectiveOrderBy = ` order by ` + o
@@ -226,8 +246,8 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		s = `select ` + effectiveLimitAsString + ` ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + u
 		return s, nil
 	case "postgres":
-		f := SQLPartFieldNames(fieldNames)
-		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
+		f := SQLPartFieldNames(fieldNames, driverName)
+		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 		effectiveWhere := ``
 		if w != `` {
 			effectiveWhere = ` where ` + w
@@ -236,7 +256,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = ` ` + joinSQLPart.(string)
 		}
-		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections)
+		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
 		effectiveOrderBy := ``
 		if o != `` {
 			effectiveOrderBy = ` order by ` + o
@@ -271,8 +291,8 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		s = `select ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
 		return s, nil
 	case "oracle":
-		f := SQLPartFieldNames(fieldNames)
-		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
+		f := SQLPartFieldNames(fieldNames, driverName)
+		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 		effectiveWhere := ``
 		if w != `` {
 			effectiveWhere = ` where ` + w
@@ -281,7 +301,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = ` ` + joinSQLPart.(string)
 		}
-		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections)
+		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
 		effectiveOrderBy := ``
 		if o != `` {
 			effectiveOrderBy = ` order by ` + o
@@ -684,11 +704,12 @@ func MustSelectWhereId(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *
 
 func SelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	s, err := SQLPartConstructSelect(db.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
+	driverName := db.DriverName()
+	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	wKV := ExcludeSQLExpression(whereAndFieldNameValues)
+	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	rowsInfo, r, err = NamedQueryRow(db, s, wKV)
 	return rowsInfo, r, err
 }
@@ -708,26 +729,29 @@ func MustSelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndF
 
 func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string,
 	limit any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
-	s, err := SQLPartConstructSelect(db.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, nil)
+	driverName := db.DriverName()
+	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	wKV := ExcludeSQLExpression(whereAndFieldNameValues)
+	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	rowsInfo, r, err = NamedQueryRows(db, s, wKV)
 	return rowsInfo, r, err
 }
 
 func DeleteWhereKeyValues(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
-	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
+	driverName := db.DriverName()
+	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	s := `DELETE FROM ` + tableName + ` where ` + w
-	wKV := ExcludeSQLExpression(whereAndFieldNameValues)
+	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	r, err = db.NamedExec(s, wKV)
 	return r, err
 }
 
 func UpdateWhereKeyValues(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
-	setKeyValues, u := SQLPartSetFieldNameValues(setKeyValues)
-	w := SQLPartWhereAndFieldNameValues(whereKeyValues)
+	driverName := db.DriverName()
+	setKeyValues, u := SQLPartSetFieldNameValues(setKeyValues, driverName)
+	w := SQLPartWhereAndFieldNameValues(whereKeyValues, driverName)
 	joinedKeyValues := MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w
 	result, err = db.NamedExec(s, joinedKeyValues)
@@ -736,7 +760,8 @@ func UpdateWhereKeyValues(db *sqlx.DB, tableName string, setKeyValues utils.JSON
 
 func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
 	s := ``
-	switch db.DriverName() {
+	driverName := db.DriverName()
+	switch driverName {
 	case "postgres":
 		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
@@ -756,7 +781,7 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 		err = errors.New(`UNSUPPORTED_DATABASE_SQL_INSERT`)
 		return 0, err
 	}
-	kv := ExcludeSQLExpression(keyValues)
+	kv := ExcludeSQLExpression(keyValues, driverName)
 	id, err = MustNamedQueryId(db, s, kv)
 	return id, err
 }

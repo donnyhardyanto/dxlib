@@ -193,23 +193,25 @@ func TxMustNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query s
 
 func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, nil, forUpdatePart)
+	driverName := tx.DriverName()
+	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, nil, forUpdatePart)
 	if err != nil {
 		return nil, nil, err
 	}
-	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues)
+	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	rowsInfo, r, err = TxNamedQueryRows(log, autoRollback, tx, s, wKV)
 	return rowsInfo, r, err
 }
 
 func TxMustSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
+	driverName := tx.DriverName()
+	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
 		err := fmt.Errorf(`%s:%s`, err, tableName)
 		return rowsInfo, nil, err
 	}
-	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues)
+	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	rowsInfo, r, err = TxMustNamedQueryRow(log, autoRollback, tx, s, wKV)
 	if err != nil {
 		err := fmt.Errorf(`%s:%s`, err, tableName)
@@ -220,11 +222,12 @@ func TxMustSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName s
 
 func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	s, err := db.SQLPartConstructSelect(tx.DriverName(), tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
+	driverName := tx.DriverName()
+	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
 		return nil, nil, err
 	}
-	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues)
+	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	rowsInfo, r, err = TxNamedQueryRow(log, autoRollback, tx, s, wKV)
 	return rowsInfo, r, err
 }
@@ -232,7 +235,8 @@ func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, keyValues utils.JSON) (id int64, err error) {
 	fn, fv := db.SQLPartInsertFieldNamesFieldValues(keyValues)
 	s := ``
-	switch tx.DriverName() {
+	driverName := tx.DriverName()
+	switch driverName {
 	case "postgres":
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
 	case "sqlserver":
@@ -243,14 +247,15 @@ func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 		fmt.Println("Unknown database type. Using Postgresql Dialect")
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
 	}
-	kv := db.ExcludeSQLExpression(keyValues)
+	kv := db.ExcludeSQLExpression(keyValues, driverName)
 	id, err = TxMustNamedQueryIdBig(log, autoRollback, tx, s, kv)
 	return id, err
 }
 
 func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
-	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues)
-	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues)
+	driveName := tx.DriverName()
+	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
+	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
 	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w
 
@@ -260,8 +265,9 @@ func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tabl
 
 func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (
 	result utils.JSON, err error) {
-	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues)
-	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues)
+	driveName := tx.DriverName()
+	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
+	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
 	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w + ` returning *`
 
@@ -270,9 +276,10 @@ func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 }
 
 func TxDeleteWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
-	w := db.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues)
+	driverName := tx.DriverName()
+	w := db.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	s := `delete from ` + tableName + ` where ` + w
-	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues)
+	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	r, err = TxNamedExec(log, autoRollback, tx, s, wKV)
 	return r, err
 }
