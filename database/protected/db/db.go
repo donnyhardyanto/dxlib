@@ -74,6 +74,12 @@ func ExcludeSQLExpression(kv utils.JSON, driverName string) (r utils.JSON) {
 			k = strings.ToUpper(k)
 		}
 		switch v.(type) {
+		case bool:
+			if !v.(bool) {
+				r[k] = 0
+			} else {
+				r[k] = 1
+			}
 		case SQLExpression:
 			break
 		default:
@@ -323,7 +329,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 				return ``, err
 			}
 			if limitAsInt64 > 0 {
-				effectiveLimitAsString = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
+				effectiveLimitAsString = ` FETCH FIRST ` + strconv.FormatInt(limitAsInt64, 10) + ` ROWS ONLY`
 			}
 		}
 		u := ``
@@ -342,6 +348,22 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 }
 
 func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	/*	var argAsArray []any
+		switch arg.(type) {
+		case map[string]any:
+			_, _, argAsArray = PrepareArrayArgs(arg.(map[string]any), db.DriverName())
+		}
+
+		stmt, err := db.PrepareNamed(query)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer stmt.Close()
+		xr, err := stmt.Query(argAsArray)
+		if err != nil {
+			return nil, nil, err
+		}
+		rows := xr*/
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return nil, nil, err
@@ -425,6 +447,37 @@ func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId stri
 	fieldNames, fieldValues, fieldArgs := PrepareArrayArgs(keyValues, db.DriverName())
 
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) %s", tableName, fieldNames, fieldValues, returningClause)
+
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	// Add the returning parameter
+	newId := int64(99)
+	fieldArgs = append(fieldArgs, sql.Named("new_id", sql.Out{Dest: &newId}))
+
+	// Execute the statement
+	_, err = stmt.Exec(fieldArgs...)
+	if err != nil {
+		return 0, err
+	}
+
+	return newId, nil
+}
+
+func OracleSelect(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues map[string]interface{}) (int64, error) {
+	tableName = strings.ToUpper(tableName)
+	fieldNameForRowId = strings.ToUpper(fieldNameForRowId)
+
+	fieldNames, _, fieldArgs := PrepareArrayArgs(keyValues, db.DriverName())
+
+	whereClause := ""
+	orderByClause := ""
+	limitClause := ""
+
+	query := fmt.Sprintf("SELECT %s from %s %s %s", fieldNames, tableName, whereClause, orderByClause, limitClause)
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
