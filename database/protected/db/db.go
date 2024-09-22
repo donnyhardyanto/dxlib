@@ -467,35 +467,63 @@ func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId stri
 	return newId, nil
 }
 
-func OracleSelect(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues map[string]interface{}) (int64, error) {
+func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+
 	tableName = strings.ToUpper(tableName)
-	fieldNameForRowId = strings.ToUpper(fieldNameForRowId)
+	tableName = strings.ToUpper(tableName)
+	fieldNamesStr := SQLPartFieldNames(fieldNames, db.DriverName())
 
-	fieldNames, _, fieldArgs := PrepareArrayArgs(keyValues, db.DriverName())
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, db.DriverName())
+	if whereClause != `` {
+		whereClause = ` WHERE ` + whereClause
+	}
 
-	whereClause := ""
-	orderByClause := ""
+	orderByClause := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, db.DriverName())
+	if orderByClause != `` {
+		orderByClause = ` order by ` + orderByClause
+	}
 	limitClause := ""
 
-	query := fmt.Sprintf("SELECT %s from %s %s %s", fieldNames, tableName, whereClause, orderByClause, limitClause)
+	_, _, fieldArgs := PrepareArrayArgs(whereAndFieldNameValues, db.DriverName())
+
+	query := fmt.Sprintf("SELECT %s from %s %s %s %s", fieldNamesStr, tableName, whereClause, orderByClause, limitClause)
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
-		return 0, err
+		return nil, nil, err
 	}
 	defer stmt.Close()
 
-	// Add the returning parameter
-	newId := int64(99)
-	fieldArgs = append(fieldArgs, sql.Named("new_id", sql.Out{Dest: &newId}))
-
 	// Execute the statement
-	_, err = stmt.Exec(fieldArgs...)
+	arows, err := stmt.Query(fieldArgs...)
 	if err != nil {
-		return 0, err
+		return nil, nil, err
 	}
+	defer func() {
+		_ = arows.Close()
+	}()
+	rows := sqlx.Rows{Rows: arows}
 
-	return newId, nil
+	rowsInfo = &RowsInfo{}
+	rowsInfo.Columns, err = rows.Columns()
+	if err != nil {
+		return nil, r, err
+	}
+	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	if err != nil {
+		return rowsInfo, r, err
+	}
+	for rows.Next() {
+		rowJSON := make(utils.JSON)
+		err = rows.MapScan(rowJSON)
+		if err != nil {
+			return nil, nil, err
+		}
+		rowJSON = DeformatKeys(rowJSON, db.DriverName())
+		r = append(r, rowJSON)
+	}
+	return rowsInfo, r, nil
 }
 
 func MustNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
@@ -758,6 +786,23 @@ func MustSelectWhereId(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *
 func SelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	driverName := db.DriverName()
+	switch driverName {
+	case "oracle":
+		rowsInfo, rx, err := OracleSelect(db, tableName,
+			fieldNames, whereAndFieldNameValues,
+			joinSQLPart,
+			orderbyFieldNameDirections)
+		if err != nil {
+			return rowsInfo, nil, err
+		}
+		if rx == nil {
+			return rowsInfo, nil, err
+		}
+		if len(rx) < 1 {
+			return rowsInfo, nil, err
+		}
+		return rowsInfo, rx[0], err
+	}
 	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
 	if err != nil {
 		return nil, nil, err
