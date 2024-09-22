@@ -49,6 +49,24 @@ type DXDatabaseTx struct {
 	Log *log.DXLog
 }
 
+func (dtx *DXDatabaseTx) Commit() (err error) {
+	err = dtx.Tx.Commit()
+	if err != nil {
+		dtx.Log.Errorf("TX_ERROR_IN_COMMIT: (%v)", err.Error())
+		return err
+	}
+	return nil
+}
+
+func (dtx *DXDatabaseTx) Rollback() (err error) {
+	err = dtx.Tx.Rollback()
+	if err != nil {
+		dtx.Log.Errorf("TX_ERROR_IN_ROLLBACK: (%v)", err.Error())
+		return err
+	}
+	return nil
+}
+
 type DXDatabase struct {
 	NameId                       string
 	IsConfigured                 bool
@@ -66,6 +84,25 @@ type DXDatabase struct {
 	NonSensitiveConnectionString string
 	OnCannotConnect              DXDatabaseEventFunc
 	CreateScriptFiles            []string
+}
+
+func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel) (dtx *DXDatabaseTx, err error) {
+	err = d.CheckConnectionAndReconnect()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := d.Connection.BeginTxx(context.Background(), &sql.TxOptions{
+		Isolation: isolationLevel,
+		ReadOnly:  false,
+	})
+	if err != nil {
+		return nil, err
+	}
+	dtx = &DXDatabaseTx{
+		Tx:  tx,
+		Log: &log.Log,
+	}
+	return dtx, nil
 }
 
 func (d *DXDatabase) CheckConnection() (err error) {
