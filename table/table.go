@@ -138,9 +138,12 @@ func (t *DXTable) TxMustGetByNameId(tx *database.DXDatabaseTx, nameId string) (r
 }
 
 func (t *DXTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
-	n := utils.NowAsString()
+	//n := utils.NowAsString()
+	tt := time.Now()
 	newKeyValues["is_deleted"] = false
-	newKeyValues["created_at"] = n
+	//newKeyValues["created_at"] = n
+	newKeyValues["created_at"] = tt
+
 	_, ok := newKeyValues["created_by_user_id"]
 	if !ok {
 		newKeyValues["created_by_user_id"] = "0"
@@ -287,8 +290,11 @@ func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 }
 
 func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
-	n := utils.NowAsString()
-	newKeyValues["last_modified_at"] = n
+	//n := utils.NowAsString()
+	tt := time.Now()
+	//newKeyValues["last_modified_at"] = n
+	newKeyValues["last_modified_at"] = tt
+
 	_, ok := newKeyValues["last_modified_by_user_id"]
 	if !ok {
 		if aepr.CurrentUser.Id != "" {

@@ -233,9 +233,9 @@ func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 }
 
 func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, keyValues utils.JSON) (id int64, err error) {
-	fn, fv := db.SQLPartInsertFieldNamesFieldValues(keyValues)
-	s := ``
 	driverName := tx.DriverName()
+	fn, fv := db.SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
+	s := ``
 	switch driverName {
 	case "postgres":
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
@@ -256,7 +256,7 @@ func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tabl
 	driveName := tx.DriverName()
 	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
-	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
+	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues, driveName)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w
 
 	result, err = TxNamedExec(log, autoRollback, tx, s, joinedKeyValues)
@@ -268,7 +268,7 @@ func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 	driveName := tx.DriverName()
 	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
-	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
+	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues, driveName)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w + ` returning *`
 
 	_, result, err = TxNamedQueryRow(log, autoRollback, tx, s, joinedKeyValues)

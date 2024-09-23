@@ -45,10 +45,20 @@ func DeformatKeys(kv map[string]interface{}, driverName string) (r map[string]in
 	return r
 }
 
-func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON) (r utils.JSON) {
+func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON, driverName string) (r utils.JSON) {
 	r = utils.JSON{}
 	for k, v := range m1 {
+		switch driverName {
+		case "oracle":
+			k = strings.ToUpper(k)
+		}
 		switch v.(type) {
+		case bool:
+			if !v.(bool) {
+				r[k] = 0
+			} else {
+				r[k] = 1
+			}
 		case SQLExpression:
 			break
 		default:
@@ -56,7 +66,17 @@ func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON) (r utils.JSON) {
 		}
 	}
 	for k, v := range m2 {
+		switch driverName {
+		case "oracle":
+			k = strings.ToUpper(k)
+		}
 		switch v.(type) {
+		case bool:
+			if !v.(bool) {
+				r[k] = 0
+			} else {
+				r[k] = 1
+			}
 		case SQLExpression:
 			break
 		default:
@@ -184,8 +204,12 @@ func SQLPartSetFieldNameValues(setKeyValues utils.JSON, driverName string) (newS
 	return newSetKeyValues, setFieldNameValues
 }
 
-func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON) (fieldNames string, fieldValues string) {
+func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName string) (fieldNames string, fieldValues string) {
 	for k, v := range insertKeyValues {
+		switch driverName {
+		case "oracle":
+			k = strings.ToUpper(k)
+		}
 		if fieldNames != `` {
 			fieldNames = fieldNames + `,`
 		}
@@ -465,6 +489,63 @@ func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId stri
 	}
 
 	return newId, nil
+}
+
+func OracleDelete(ddb *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+	tableName = strings.ToUpper(tableName)
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, ddb.DriverName())
+	if whereClause != `` {
+		whereClause = ` WHERE ` + whereClause
+	}
+
+	_, _, fieldArgs := PrepareArrayArgs(whereAndFieldNameValues, ddb.DriverName())
+
+	query := fmt.Sprintf("DELETE FROM %s %s", tableName, whereClause)
+
+	stmt, err := ddb.Prepare(query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	// Execute the statement
+	r, err = stmt.Exec(fieldArgs...)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
+	tableName = strings.ToUpper(tableName)
+	setKeyValues, setFieldNameValues := SQLPartSetFieldNameValues(setKeyValues, db.DriverName())
+	whereClause := SQLPartWhereAndFieldNameValues(whereKeyValues, db.DriverName())
+
+	_, _, setFieldArgs := PrepareArrayArgs(setKeyValues, db.DriverName())
+	_, _, setWhereFieldArgs := PrepareArrayArgs(whereKeyValues, db.DriverName())
+
+	if whereClause != "" {
+		whereClause = ` WHERE ` + whereClause
+	}
+
+	for _, v := range setWhereFieldArgs {
+		setFieldArgs = append(setFieldArgs, v)
+	}
+
+	query := fmt.Sprintf("UPDATE "+tableName+" SET %s %s", setFieldNameValues, whereClause)
+
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	// Execute the statement
+	result, err = stmt.Exec(setFieldArgs...)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
@@ -847,6 +928,11 @@ func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNam
 
 func DeleteWhereKeyValues(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	driverName := db.DriverName()
+	switch driverName {
+	case "oracle":
+		r, err = OracleDelete(db, tableName, whereAndFieldNameValues)
+		return r, err
+	}
 	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	s := `DELETE FROM ` + tableName + ` where ` + w
 	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
@@ -856,9 +942,14 @@ func DeleteWhereKeyValues(db *sqlx.DB, tableName string, whereAndFieldNameValues
 
 func UpdateWhereKeyValues(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
 	driverName := db.DriverName()
+	switch driverName {
+	case "oracle":
+		result, err = OracleEdit(db, tableName, setKeyValues, whereKeyValues)
+		return result, err
+	}
 	setKeyValues, u := SQLPartSetFieldNameValues(setKeyValues, driverName)
 	w := SQLPartWhereAndFieldNameValues(whereKeyValues, driverName)
-	joinedKeyValues := MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues)
+	joinedKeyValues := MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues, driverName)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w
 	result, err = db.NamedExec(s, joinedKeyValues)
 	return result, err
@@ -869,13 +960,13 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 	driverName := db.DriverName()
 	switch driverName {
 	case "postgres":
-		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
 	case "sqlserver":
-		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.` + fieldNameForRowId + ` VALUES (` + fv + `)`
 	case "oracle":
-		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues)
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId + ` INTO :new_id`
 		//		keyValues["new_id"] = sql.Named("new_id", sql.Out{Dest: new(int64)})
 		id, err = OracleInsertReturning(db, tableName, fieldNameForRowId, keyValues)
