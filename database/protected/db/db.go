@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"strconv"
@@ -13,36 +14,6 @@ import (
 type RowsInfo struct {
 	Columns     []string
 	ColumnTypes []*sql.ColumnType
-}
-
-func FormatIdentifier(identifier string, driverName string) string {
-	// Convert the identifier to lowercase as the base case
-	formattedIdentifier := strings.ToLower(identifier)
-
-	// Apply database-specific formatting
-	switch driverName {
-	case "oracle", "db2":
-		formattedIdentifier = strings.ToUpper(formattedIdentifier)
-		return formattedIdentifier
-	}
-
-	// Wrap the identifier in quotes to preserve case in the SQL statement
-	return `"` + formattedIdentifier + `"`
-}
-
-func DeformatIdentifier(identifier string, driverName string) string {
-	// Remove the quotes from the identifier
-	deformattedIdentifier := strings.Trim(identifier, `"`)
-	deformattedIdentifier = strings.ToLower(deformattedIdentifier)
-	return deformattedIdentifier
-}
-
-func DeformatKeys(kv map[string]interface{}, driverName string) (r map[string]interface{}) {
-	r = map[string]interface{}{}
-	for k, v := range kv {
-		r[DeformatIdentifier(k, driverName)] = v
-	}
-	return r
 }
 
 func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON, driverName string) (r utils.JSON) {
@@ -410,7 +381,7 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON = DeformatKeys(rowJSON, db.DriverName())
+		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
 		return rowsInfo, rowJSON, nil
 	}
 
@@ -429,46 +400,12 @@ func MustNamedQueryRow(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo,
 	return rowsInfo, r, nil
 }
 
-func PrepareArrayArgs(keyValues map[string]any, driverName string) (fieldNames string, fieldValues string, fieldArgs []any) {
-	for k, v := range keyValues {
-		if fieldNames != "" {
-			fieldNames += ", "
-			fieldValues += ", "
-		}
-
-		fieldName := FormatIdentifier(k, driverName)
-		fieldNames += fieldName
-		fieldValues += ":" + fieldName
-
-		var s sql.NamedArg
-		switch v.(type) {
-		case bool:
-			switch driverName {
-			case "oracle", "sqlserver":
-				if v.(bool) == true {
-					keyValues[k] = 1
-				} else {
-					keyValues[k] = 0
-				}
-
-			default:
-			}
-
-		default:
-		}
-		s = sql.Named(fieldName, keyValues[k])
-		fieldArgs = append(fieldArgs, s)
-	}
-
-	return fieldNames, fieldValues, fieldArgs
-}
-
 func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues map[string]interface{}) (int64, error) {
 	tableName = strings.ToUpper(tableName)
 	fieldNameForRowId = strings.ToUpper(fieldNameForRowId)
 	returningClause := fmt.Sprintf("RETURNING %s INTO :new_id", fieldNameForRowId)
 
-	fieldNames, fieldValues, fieldArgs := PrepareArrayArgs(keyValues, db.DriverName())
+	fieldNames, fieldValues, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(keyValues, db.DriverName())
 
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) %s", tableName, fieldNames, fieldValues, returningClause)
 
@@ -498,7 +435,7 @@ func OracleDelete(ddb *sqlx.DB, tableName string, whereAndFieldNameValues utils.
 		whereClause = ` WHERE ` + whereClause
 	}
 
-	_, _, fieldArgs := PrepareArrayArgs(whereAndFieldNameValues, ddb.DriverName())
+	_, _, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereAndFieldNameValues, ddb.DriverName())
 
 	query := fmt.Sprintf("DELETE FROM %s %s", tableName, whereClause)
 
@@ -521,8 +458,8 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 	setKeyValues, setFieldNameValues := SQLPartSetFieldNameValues(setKeyValues, db.DriverName())
 	whereClause := SQLPartWhereAndFieldNameValues(whereKeyValues, db.DriverName())
 
-	_, _, setFieldArgs := PrepareArrayArgs(setKeyValues, db.DriverName())
-	_, _, setWhereFieldArgs := PrepareArrayArgs(whereKeyValues, db.DriverName())
+	_, _, setFieldArgs := databaseProtectedUtils.PrepareArrayArgs(setKeyValues, db.DriverName())
+	_, _, setWhereFieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereKeyValues, db.DriverName())
 
 	if whereClause != "" {
 		whereClause = ` WHERE ` + whereClause
@@ -566,7 +503,7 @@ func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFi
 	}
 	limitClause := ""
 
-	_, _, fieldArgs := PrepareArrayArgs(whereAndFieldNameValues, db.DriverName())
+	_, _, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereAndFieldNameValues, db.DriverName())
 
 	query := fmt.Sprintf("SELECT %s from %s %s %s %s", fieldNamesStr, tableName, whereClause, orderByClause, limitClause)
 
@@ -601,7 +538,7 @@ func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFi
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON = DeformatKeys(rowJSON, db.DriverName())
+		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
@@ -657,7 +594,7 @@ func NamedQueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r [
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON = DeformatKeys(rowJSON, db.DriverName())
+		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
@@ -687,7 +624,7 @@ func QueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []util
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON = DeformatKeys(rowJSON, db.DriverName())
+		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
@@ -858,7 +795,7 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 }
 
 func MustSelectWhereId(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = MustNamedQueryRow(db, `SELECT * FROM `+tableName+` where `+FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
+	rowsInfo, r, err = MustNamedQueryRow(db, `SELECT * FROM `+tableName+` where `+databaseProtectedUtils.FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
 		`id`: idValue,
 	})
 	return rowsInfo, r, err
@@ -966,9 +903,6 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.` + fieldNameForRowId + ` VALUES (` + fv + `)`
 	case "oracle":
-		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId + ` INTO :new_id`
-		//		keyValues["new_id"] = sql.Named("new_id", sql.Out{Dest: new(int64)})
 		id, err = OracleInsertReturning(db, tableName, fieldNameForRowId, keyValues)
 		if err != nil {
 			return 0, err

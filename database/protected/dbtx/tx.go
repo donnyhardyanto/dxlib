@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/jmoiron/sqlx"
+	"strings"
 
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/log"
@@ -166,7 +168,7 @@ func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query stri
 			}
 			return nil, nil, err
 		}
-		rowJSON = db.DeformatKeys(rowJSON, tx.DriverName())
+		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, tx.DriverName())
 		r = append(r, rowJSON)
 	}
 
@@ -200,7 +202,7 @@ func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query strin
 			}
 			return rowsInfo, nil, err
 		}
-		rowJSON = db.DeformatKeys(rowJSON, tx.DriverName())
+		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, tx.DriverName())
 		return rowsInfo, rowJSON, nil
 	}
 
@@ -264,6 +266,34 @@ func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 	return rowsInfo, r, err
 }
 
+func OracleTxInsertReturning(tx *sqlx.Tx, tableName string, fieldNameForRowId string, keyValues map[string]interface{}) (int64, error) {
+	tableName = strings.ToUpper(tableName)
+	fieldNameForRowId = strings.ToUpper(fieldNameForRowId)
+	returningClause := fmt.Sprintf("RETURNING %s INTO :new_id", fieldNameForRowId)
+
+	fieldNames, fieldValues, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(keyValues, tx.DriverName())
+
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) %s", tableName, fieldNames, fieldValues, returningClause)
+
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	// Add the returning parameter
+	newId := int64(99)
+	fieldArgs = append(fieldArgs, sql.Named("new_id", sql.Out{Dest: &newId}))
+
+	// Execute the statement
+	_, err = stmt.Exec(fieldArgs...)
+	if err != nil {
+		return 0, err
+	}
+
+	return newId, nil
+}
+
 func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, keyValues utils.JSON) (id int64, err error) {
 	driverName := tx.DriverName()
 	fn, fv := db.SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
@@ -274,7 +304,11 @@ func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 	case "sqlserver":
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.id VALUES (` + fv + `)`
 	case "oracle":
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
+		id, err = OracleTxInsertReturning(tx, tableName, `id`, keyValues)
+		if err != nil {
+			return 0, err
+		}
+		return id, nil
 	default:
 		fmt.Println("Unknown database type. Using Postgresql Dialect")
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
