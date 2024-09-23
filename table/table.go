@@ -64,7 +64,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	}*/
 	newKeyValues["is_deleted"] = false
 	//newKeyValues["created_at"] = n
-	tt := time.Now()
+	tt := time.Now().UTC()
 	newKeyValues["created_at"] = tt
 	_, ok := newKeyValues["created_by_user_id"]
 	if !ok {
@@ -105,17 +105,17 @@ func (t *DXTable) MustGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, 
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) MustGetByNameId(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func (t *DXTable) MustGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.MustSelectOne(log, utils.JSON{
-		t.FieldNameForRowNameId: id,
+		t.FieldNameForRowNameId: nameid,
 		"is_deleted":            false,
 	}, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxMustGetById(tx *database.DXDatabaseTx, code string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func (t *DXTable) TxMustGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.MustSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
-		t.FieldNameForRowId: code,
+		t.FieldNameForRowId: id,
 		"is_deleted":        false,
 	}, nil, nil, nil)
 	return rowsInfo, r, err
@@ -139,7 +139,7 @@ func (t *DXTable) TxMustGetByNameId(tx *database.DXDatabaseTx, nameId string) (r
 
 func (t *DXTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
 	//n := utils.NowAsString()
-	tt := time.Now()
+	tt := time.Now().UTC()
 	newKeyValues["is_deleted"] = false
 	//newKeyValues["created_at"] = n
 	newKeyValues["created_at"] = tt
@@ -184,7 +184,7 @@ func (t *DXTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database
 }
 
 func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
-	n := utils.NowAsString()
+	//n := utils.NowAsString()
 	/*	if t.Database.DatabaseType.String() == "sqlserver" {
 		t, err := time.Parse(time.RFC3339, n)
 		if err != nil {
@@ -194,9 +194,13 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 		// Format the time.Time value back into a string without the timezone offset
 		n = t.Format("2006-01-02 15:04:05")
 	}*/
+	//n := utils.NowAsString()
+	tt := time.Now().UTC()
+	newKeyValues["created_at"] = tt
+	newKeyValues["last_modified_at"] = tt
 	newKeyValues["is_deleted"] = false
-	newKeyValues["created_at"] = n
-	newKeyValues["last_modified_at"] = n
+	//newKeyValues["created_at"] = n
+	//newKeyValues["last_modified_at"] = n
 	_, ok := newKeyValues["created_by_user_id"]
 	if !ok {
 		newKeyValues["created_by_user_id"] = "0"
@@ -219,6 +223,10 @@ func (t *DXTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.
 }
 
 func (t *DXTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
+	_, _, err = t.MustGetById(l, FieldValueForId)
+	if err != nil {
+		return nil, err
+	}
 	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
 		t.FieldNameForRowId: FieldValueForId,
 	})
@@ -257,10 +265,7 @@ func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	rowsInfo, d, err := t.Database.SelectOne(t.ListViewNameId, nil, utils.JSON{
-		t.FieldNameForRowId: id,
-		"is_deleted":        false,
-	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
+	rowsInfo, d, err := t.MustGetById(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -276,10 +281,7 @@ func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	rowsInfo, d, err := t.Database.SelectOne(t.ListViewNameId, nil, utils.JSON{
-		t.FieldNameForRowNameId: nameid,
-		"is_deleted":            false,
-	}, nil, map[string]string{t.FieldNameForRowNameId: "asc"})
+	rowsInfo, d, err := t.MustGetByNameId(&aepr.Log, nameid)
 	if err != nil {
 		return err
 	}
@@ -290,8 +292,12 @@ func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 }
 
 func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
+	_, _, err = t.MustGetById(&aepr.Log, id)
+	if err != nil {
+		return err
+	}
 	//n := utils.NowAsString()
-	tt := time.Now()
+	tt := time.Now().UTC()
 	//newKeyValues["last_modified_at"] = n
 	newKeyValues["last_modified_at"] = tt
 
@@ -334,6 +340,10 @@ func (t *DXTable) Edit(aepr *api.DXAPIEndPointRequest) (err error) {
 }
 
 func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
+	_, _, err = t.MustGetById(&aepr.Log, id)
+	if err != nil {
+		return err
+	}
 	_, err = db.DeleteWhereKeyValues(t.Database.Connection, t.NameId, utils.JSON{
 		t.FieldNameForRowId: id,
 	})
