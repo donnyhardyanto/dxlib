@@ -91,6 +91,22 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 	if err != nil {
 		return nil, err
 	}
+	driverName := d.Connection.DriverName()
+	switch driverName {
+	case "oracle":
+		tx, err := d.Connection.BeginTxx(context.Background(), &sql.TxOptions{
+			ReadOnly: false,
+		})
+		if err != nil {
+			return nil, err
+		}
+		dtx = &DXDatabaseTx{
+			Tx:  tx,
+			Log: &log.Log,
+		}
+		return dtx, nil
+	}
+
 	tx, err := d.Connection.BeginTxx(context.Background(), &sql.TxOptions{
 		Isolation: isolationLevel,
 		ReadOnly:  false,
@@ -543,6 +559,36 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	//if err != nil {
 	//	return err
 	//}
+	driverName := d.Connection.DriverName()
+	switch driverName {
+	case "oracle":
+		tx, err := d.TransactionBegin(isolationLevel)
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		err = callback(tx)
+		if err != nil {
+			log.Errorf(`TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
+			errTx := tx.Rollback()
+			if errTx != nil {
+				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+			}
+			return err
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Errorf(`TX_ERROR_IN_COMMITT: (%v)`, err.Error())
+			errTx := tx.Rollback()
+			if errTx != nil {
+				log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
+			}
+			return err
+		}
+
+		return nil
+	}
+
 	tx, err := d.Connection.BeginTxx(log.Context, &sql.TxOptions{
 		Isolation: isolationLevel,
 		ReadOnly:  false,

@@ -14,6 +14,38 @@ import (
 type TxCallback func(tx *sqlx.Tx, log *log.DXLog) (err error)
 
 func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback TxCallback) (err error) {
+	driverName := db.DriverName()
+	switch driverName {
+	case "oracle":
+		tx, err := db.BeginTxx(log.Context, &sql.TxOptions{
+			Isolation: isolationLevel,
+			ReadOnly:  false,
+		})
+		if err != nil {
+			log.Error(err.Error())
+			return err
+		}
+		err = callback(tx, log)
+		if err != nil {
+			log.Errorf(`TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
+			errTx := tx.Rollback()
+			if errTx != nil {
+				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+			}
+			return err
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Errorf(`TX_ERROR_IN_COMMITT: (%v)`, err.Error())
+			errTx := tx.Rollback()
+			if errTx != nil {
+				log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
+			}
+			return err
+		}
+
+		return nil
+	}
 	tx, err := db.BeginTxx(log.Context, &sql.TxOptions{
 		Isolation: isolationLevel,
 		ReadOnly:  false,
