@@ -828,6 +828,14 @@ func MustSelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndF
 func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string,
 	limit any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	driverName := db.DriverName()
+	switch driverName {
+	case "oracle":
+		rowsInfo, r, err := OracleSelect(db, tableName,
+			fieldNames, whereAndFieldNameValues,
+			joinSQLPart,
+			orderbyFieldNameDirections)
+		return rowsInfo, r, err
+	}
 	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, nil)
 	if err != nil {
 		return nil, nil, err
