@@ -513,6 +513,13 @@ func (aepr *DXAPIEndPointRequest) ProxyHTTPAPIClient(method string, url string, 
 }
 
 func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
+	if aepr.Request.Method != aepr.EndPoint.Method {
+		if aepr.Request.Method == "OPTIONS" {
+			aepr.WriteResponseAsBytes(http.StatusOK, nil, []byte(``))
+			return nil
+		}
+		return aepr.WriteResponseAndNewErrorf(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED:%s!=%s", aepr.Request.Method, aepr.EndPoint.Method)
+	}
 	xVar := aepr.Request.Header.Get("X-Var")
 	var xVarJSON map[string]interface{}
 	if xVar != `` {
