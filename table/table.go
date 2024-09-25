@@ -194,7 +194,7 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 		// Format the time.Time value back into a string without the timezone offset
 		n = t.Format("2006-01-02 15:04:05")
 	}*/
-	n := utils.NowAsString()
+	//n := utils.NowAsString()
 	tt := time.Now().UTC()
 	newKeyValues["created_at"] = tt
 	newKeyValues["last_modified_at"] = tt
