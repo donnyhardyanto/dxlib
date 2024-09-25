@@ -280,7 +280,11 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		aeprpv.Value = s
 		return true
 	case "json":
-		s := aeprpv.RawValue.(utils.JSON)
+		s := utils.JSON{}
+		for _, v := range aeprpv.Children {
+			s[v.Metadata.NameId] = v.Value
+		}
+		//s := aeprpv.RawValue.(utils.JSON)
 		aeprpv.Value = s
 		return true
 	case "array":
