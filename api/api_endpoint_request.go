@@ -292,7 +292,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		aeprpv.Value = s
 		return true
 	case "iso8601":
+		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
+		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has a wrong information on the RFC3339/RFC3329Nano format,.
+		but the code is conform to the standard. Only the documentation is incorrect.
+		*/
 		s := aeprpv.RawValue.(string)
+		if strings.Contains(s, " ") {
+			s = strings.Replace(s, " ", "T", 1)
+		}
 		t, err := time.Parse(time.RFC3339Nano, s)
 		if err != nil {
 			aeprpv.Owner.Log.Warnf("Invalid RFC3339Nano format [%s]", s)
