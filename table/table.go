@@ -97,24 +97,24 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	return newId, err
 }
 
-func (t *DXTable) MustGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = t.MustSelectOne(log, utils.JSON{
+func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
 	}, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) MustGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = t.MustSelectOne(log, utils.JSON{
+func (t *DXTable) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowNameId: nameid,
 		"is_deleted":            false,
 	}, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxMustGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.MustSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
+func (t *DXTable) TxShouldGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
 	}, nil, nil, nil)
@@ -129,8 +129,8 @@ func (t *DXTable) TxGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsI
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) TxMustGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.MustSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
+func (t *DXTable) TxShouldGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
 		t.FieldNameForRowNameId: nameId,
 		"is_deleted":            false,
 	}, nil, nil, nil)
@@ -223,7 +223,7 @@ func (t *DXTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.
 }
 
 func (t *DXTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
-	_, _, err = t.MustGetById(l, FieldValueForId)
+	_, _, err = t.ShouldGetById(l, FieldValueForId)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +265,7 @@ func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	rowsInfo, d, err := t.MustGetById(&aepr.Log, id)
+	rowsInfo, d, err := t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	rowsInfo, d, err := t.MustGetByNameId(&aepr.Log, nameid)
+	rowsInfo, d, err := t.ShouldGetByNameId(&aepr.Log, nameid)
 	if err != nil {
 		return err
 	}
@@ -292,7 +292,7 @@ func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 }
 
 func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
-	_, _, err = t.MustGetById(&aepr.Log, id)
+	_, _, err = t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,7 @@ func (t *DXTable) Edit(aepr *api.DXAPIEndPointRequest) (err error) {
 }
 
 func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
-	_, _, err = t.MustGetById(&aepr.Log, id)
+	_, _, err = t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -412,7 +412,7 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldName
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) MustSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON,
+func (t *DXTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -420,11 +420,11 @@ func (t *DXTable) MustSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JS
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return t.Database.MustSelectOne(t.ListViewNameId,
+	return t.Database.ShouldSelectOne(t.ListViewNameId,
 		whereAndFieldNameValues, orderbyFieldNameDirections)
 }
 
-func (t *DXTable) TxMustSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
+func (t *DXTable) TShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -432,7 +432,7 @@ func (t *DXTable) TxMustSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameVa
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.MustSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
+	return tx.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
 }
 
 func (t *DXTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,

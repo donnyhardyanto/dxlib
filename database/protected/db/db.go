@@ -388,7 +388,7 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 	return rowsInfo, nil, nil
 }
 
-func MustNamedQueryRow(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+func ShouldNamedQueryRow(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = NamedQueryRow(db, query, args)
 	if err != nil {
 		return rowsInfo, r, err
@@ -544,7 +544,7 @@ func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFi
 	return rowsInfo, r, nil
 }
 
-func MustNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
+func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return 0, err
@@ -653,7 +653,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
 		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-		_, summaryRows, err = MustNamedQueryRow(dbAppInstance, countSQL, arg)
+		_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
 		if err != nil {
 			return nil, nil, 0, 0, nil, err
 		}
@@ -681,7 +681,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
 		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-		_, summaryRows, err = MustNamedQueryRow(dbAppInstance, countSQL, arg)
+		_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
 		if err != nil {
 			return nil, nil, 0, 0, nil, err
 		}
@@ -708,7 +708,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
 		}
 		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-		_, summaryRows, err = MustNamedQueryRow(dbAppInstance, countSQL, arg)
+		_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
 		if err != nil {
 			return nil, nil, 0, 0, nil, err
 		}
@@ -768,7 +768,7 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 	}
 
 	countSQL := `SELECT COUNT(*) FROM ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-	totalRows, err = MustNamedQueryId(dbAppInstance, countSQL, arg)
+	totalRows, err = ShouldNamedQueryId(dbAppInstance, countSQL, arg)
 	if err != nil {
 		return nil, nil, 0, 0, err
 	}
@@ -794,8 +794,8 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 	return rowsInfo, rows, totalRows, totalPage, err
 }
 
-func MustSelectWhereId(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = MustNamedQueryRow(db, `SELECT * FROM `+tableName+` where `+databaseProtectedUtils.FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
+func ShouldSelectWhereId(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = ShouldNamedQueryRow(db, `SELECT * FROM `+tableName+` where `+databaseProtectedUtils.FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
 		`id`: idValue,
 	})
 	return rowsInfo, r, err
@@ -830,7 +830,7 @@ func SelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndField
 	return rowsInfo, r, err
 }
 
-func MustSelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func ShouldSelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = SelectOne(db, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 	if err != nil {
@@ -913,6 +913,6 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 		return 0, err
 	}
 	kv := ExcludeSQLExpression(keyValues, driverName)
-	id, err = MustNamedQueryId(db, s, kv)
+	id, err = ShouldNamedQueryId(db, s, kv)
 	return id, err
 }

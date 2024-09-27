@@ -426,7 +426,7 @@ func (d *DXDatabase) PropertyValue(key string) (value string, err error) {
 	//if err != nil {
 	//	return "", err
 	//}
-	_, resultData, err := db.MustSelectOne(d.Connection, "properties", nil, utils.JSON{
+	_, resultData, err := db.ShouldSelectOne(d.Connection, "properties", nil, utils.JSON{
 		"key": key,
 	}, nil, nil)
 	if err != nil {
@@ -452,13 +452,13 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 	return db.UpdateWhereKeyValues(d.Connection, tableName, setKeyValues, whereKeyValues)
 }
 
-func (d *DXDatabase) MustSelectOne(tableName string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
+func (d *DXDatabase) ShouldSelectOne(tableName string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
 	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
 	//err = d.CheckConnectionAndReconnect()
 	//if err != nil {
 	//	return nil, nil, err
 	//}
-	rowsInfo, resultData, err = db.MustSelectOne(d.Connection, tableName, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
+	rowsInfo, resultData, err = db.ShouldSelectOne(d.Connection, tableName, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 	return rowsInfo, resultData, err
 }
 
@@ -628,9 +628,9 @@ func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldNames []string, whereA
 	return dbtx.TxSelectOne(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
 }
 
-func (dtx *DXDatabaseTx) MustSelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func (dtx *DXDatabaseTx) ShouldSelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	return dbtx.TxMustSelectOne(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
+	return dbtx.TxShouldSelectOne(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
 }
 func (dtx *DXDatabaseTx) Insert(tableName string, keyValues utils.JSON) (id int64, err error) {
 	return dbtx.TxInsert(dtx.Log, false, dtx.Tx, tableName, keyValues)

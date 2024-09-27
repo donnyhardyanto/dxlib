@@ -106,7 +106,7 @@ func TxNamedExec(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, a
 	return r, nil
 }
 
-func TxMustNamedQueryIdBig(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, args any) (int64, error) {
+func TxShouldNamedQueryIdBig(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, args any) (int64, error) {
 	rows, err := TxNamedQuery(log, autoRollback, tx, query, args)
 	if err != nil {
 		return 0, err
@@ -209,7 +209,7 @@ func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query strin
 	return rowsInfo, nil, nil
 }
 
-func TxMustNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func TxShouldNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, row, err := TxNamedQueryRow(log, autoRollback, tx, query, arg)
 	if err != nil {
 		return rowsInfo, row, err
@@ -237,7 +237,7 @@ func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, 
 	return rowsInfo, r, err
 }
 
-func TxMustSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func TxShouldSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
@@ -246,7 +246,7 @@ func TxMustSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName s
 		return rowsInfo, nil, err
 	}
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
-	rowsInfo, r, err = TxMustNamedQueryRow(log, autoRollback, tx, s, wKV)
+	rowsInfo, r, err = TxShouldNamedQueryRow(log, autoRollback, tx, s, wKV)
 	if err != nil {
 		err := fmt.Errorf(`%s:%s`, err, tableName)
 		return rowsInfo, nil, err
@@ -314,7 +314,7 @@ func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 		s = `INSERT INTO ` + tableName + ` (` + fn + `) values (` + fv + `) returning id`
 	}
 	kv := db.ExcludeSQLExpression(keyValues, driverName)
-	id, err = TxMustNamedQueryIdBig(log, autoRollback, tx, s, kv)
+	id, err = TxShouldNamedQueryIdBig(log, autoRollback, tx, s, kv)
 	return id, err
 }
 
