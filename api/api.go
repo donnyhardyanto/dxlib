@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/donnyhardyanto/dxlib"
 	"net/http"
-	"net/http/httputil"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -220,9 +219,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	err = aepr.PreProcessRequest()
 	if err != nil {
 		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "PREPROCESS_REQUEST_ERROR:%v ", err.Error())
-		requestDump, err2 := httputil.DumpRequest(aepr.Request, true)
+		requestDump, err2 := aepr.RequestDump()
 		if err2 != nil {
-			aepr.Log.Errorf(`Error in DumpRequest (%v)`, err2.Error())
+			aepr.Log.Errorf(`Error in RequestDump (%v)`, err2.Error())
 			return
 		}
 		aepr.Log.Errorf("ONPREPROCESSREQUEST_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
@@ -233,9 +232,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		err = middleware(aepr)
 		if err != nil {
 			err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "MIDDLEWARE_ERROR:%v ", err.Error())
-			requestDump, err2 := httputil.DumpRequest(aepr.Request, true)
+			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(`Error in DumpRequest (%v)`, err2.Error())
+				aepr.Log.Errorf(`Error in RequestDump (%v)`, err2.Error())
 				return
 			}
 			aepr.Log.Errorf("ONMIDDLEWARE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
@@ -246,9 +245,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	if p.OnExecute != nil {
 		err = p.OnExecute(aepr)
 		if err != nil {
-			requestDump, err2 := httputil.DumpRequest(aepr.Request, true)
+			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(`Error in DumpRequest (%v)`, err2.Error())
+				aepr.Log.Errorf(`Error in RequestDump (%v)`, err2.Error())
 				return
 			}
 			aepr.Log.Errorf("ONEXECUTE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))

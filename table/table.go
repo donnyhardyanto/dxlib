@@ -320,7 +320,9 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
+		t.FieldNameForRowId: id,
+	})
 	return nil
 }
 
@@ -582,7 +584,7 @@ func (t *DXTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fi
 func (t *DXTable) Create(aepr *api.DXAPIEndPointRequest) (err error) {
 	p := map[string]interface{}{}
 	for k, v := range aepr.ParameterValues {
-		aepr.Log.Infof("ParameterValues %s: %v", k, v)
+		//aepr.Log.Infof("ParameterValues %s: %v", k, v)
 		p[k] = v.Value
 	}
 	_, err = t.DoCreate(aepr, p)
