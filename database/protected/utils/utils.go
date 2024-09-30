@@ -2,6 +2,9 @@ package utils
 
 import (
 	"database/sql"
+	"fmt"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/jmoiron/sqlx"
 	"strings"
 )
 
@@ -67,4 +70,52 @@ func PrepareArrayArgs(keyValues map[string]any, driverName string) (fieldNames s
 	}
 
 	return fieldNames, fieldValues, fieldArgs
+}
+
+// Function to kill all connections to a specific database
+
+func KillConnections(db *sqlx.DB, dbName string) error {
+	query := fmt.Sprintf(`
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = '%s'
+          AND pid <> pg_backend_pid();
+    `, dbName)
+	_, err := db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to kill connections: %w", err)
+	}
+	return nil
+}
+
+func DropDatabase(db *sqlx.DB, dbName string) (err error) {
+	defer func() {
+		if err != nil {
+			log.Log.Warnf(`Error drop database %s:%s`, dbName, err.Error())
+		}
+	}()
+
+	// Kill all connections to the target database
+	err = KillConnections(db, dbName)
+	if err != nil {
+		log.Log.Errorf("Failed to kill connections: %s", err.Error())
+		return err
+	}
+
+	query := fmt.Sprintf(`DROP DATABASE "%s"`, dbName)
+	_, err = db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func CreateDatabase(db *sqlx.DB, dbName string) error {
+	query := fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)
+	_, err := db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to create database: %w", err)
+	}
+	return nil
 }
