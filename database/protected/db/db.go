@@ -359,6 +359,20 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 			return nil, nil, err
 		}
 		rows := xr*/
+	switch db.DriverName() {
+	case "oracle":
+		rowInfo, x, err := _oracleSelectRaw(db, query, arg)
+		if err != nil {
+			return nil, nil, err
+		}
+		if x == nil {
+			return rowInfo, nil, err
+		}
+		if len(x) < 1 {
+			return rowInfo, nil, err
+		}
+		return rowInfo, x[0], err
+	}
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return nil, nil, err
