@@ -485,7 +485,7 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 	return result, nil
 }
 
-func _oracleSelectRaw(query string, fieldArgs ...any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func _oracleSelectRaw(db *sqlx.DB, query string, fieldArgs ...any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, nil, err
@@ -545,7 +545,7 @@ func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFi
 
 	query := fmt.Sprintf("SELECT %s from %s %s %s %s", fieldNamesStr, tableName, whereClause, orderByClause, limitClause)
 
-	return _oracleSelectRaw(query, fieldArgs)
+	return _oracleSelectRaw(db, query, fieldArgs)
 	/*stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, nil, err
