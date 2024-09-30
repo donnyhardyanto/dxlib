@@ -1,15 +1,18 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/log"
 	"go/types"
 	"math"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -477,4 +480,35 @@ func BytesToInt64(b []byte) int64 {
 		return 0 // or handle the error as needed
 	}
 	return int64(binary.BigEndian.Uint64(b))
+}
+
+func AskForConfirmation(key1 string, key2 string) (err error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	log.Log.Warnf("Input confirmation key 1?")
+	userInputConfirmationKey1, err := reader.ReadString('\n')
+	if err != nil {
+		log.Log.Errorf("Failed to input confirmation key 1: %s", err.Error())
+		return err
+	}
+	userInputConfirmationKey1 = strings.TrimSpace(userInputConfirmationKey1)
+
+	log.Log.Warnf("Input the input confirmation key 2 to confirm:")
+	userInputConfirmationKey2, err := reader.ReadString('\n')
+	if err != nil {
+		log.Log.Errorf("Failed to input confirmation key 2: %s", err.Error())
+		return err
+	}
+	userInputConfirmationKey2 = strings.TrimSpace(userInputConfirmationKey2)
+
+	if userInputConfirmationKey1 != key1 {
+		err := log.Log.ErrorAndCreateErrorf("Confirmation key mismatch")
+		return err
+	}
+	if userInputConfirmationKey2 != key2 {
+		err := log.Log.ErrorAndCreateErrorf("Confirmation key mismatch")
+		return err
+	}
+
+	return nil
 }
