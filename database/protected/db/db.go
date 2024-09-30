@@ -485,28 +485,7 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 	return result, nil
 }
 
-func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
-
-	tableName = strings.ToUpper(tableName)
-	tableName = strings.ToUpper(tableName)
-	fieldNamesStr := SQLPartFieldNames(fieldNames, db.DriverName())
-
-	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, db.DriverName())
-	if whereClause != `` {
-		whereClause = ` WHERE ` + whereClause
-	}
-
-	orderByClause := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, db.DriverName())
-	if orderByClause != `` {
-		orderByClause = ` order by ` + orderByClause
-	}
-	limitClause := ""
-
-	_, _, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereAndFieldNameValues, db.DriverName())
-
-	query := fmt.Sprintf("SELECT %s from %s %s %s %s", fieldNamesStr, tableName, whereClause, orderByClause, limitClause)
-
+func _oracleSelectRaw(query string, fieldArgs ...any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, nil, err
@@ -542,6 +521,66 @@ func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFi
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
+}
+
+func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+
+	tableName = strings.ToUpper(tableName)
+	tableName = strings.ToUpper(tableName)
+	fieldNamesStr := SQLPartFieldNames(fieldNames, db.DriverName())
+
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, db.DriverName())
+	if whereClause != `` {
+		whereClause = ` WHERE ` + whereClause
+	}
+
+	orderByClause := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, db.DriverName())
+	if orderByClause != `` {
+		orderByClause = ` order by ` + orderByClause
+	}
+	limitClause := ""
+
+	_, _, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereAndFieldNameValues, db.DriverName())
+
+	query := fmt.Sprintf("SELECT %s from %s %s %s %s", fieldNamesStr, tableName, whereClause, orderByClause, limitClause)
+
+	return _oracleSelectRaw(query, fieldArgs)
+	/*stmt, err := db.Prepare(query)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer stmt.Close()
+
+	// Execute the statement
+	arows, err := stmt.Query(fieldArgs...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		_ = arows.Close()
+	}()
+	rows := sqlx.Rows{Rows: arows}
+
+	rowsInfo = &RowsInfo{}
+	rowsInfo.Columns, err = rows.Columns()
+	if err != nil {
+		return nil, r, err
+	}
+	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	if err != nil {
+		return rowsInfo, r, err
+	}
+	for rows.Next() {
+		rowJSON := make(utils.JSON)
+		err = rows.MapScan(rowJSON)
+		if err != nil {
+			return nil, nil, err
+		}
+		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
+		r = append(r, rowJSON)
+	}
+	return rowsInfo, r, nil*/
 }
 
 func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
