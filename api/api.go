@@ -168,7 +168,8 @@ func (a *DXAPI) FindEndPointByURI(uri string) *DXAPIEndPoint {
 
 func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType DXAPIEndPointType,
 	contentType utilsHttp.RequestContentType, parameters []DXAPIEndPointParameter, onExecute DXAPIEndPointExecuteFunc,
-	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DXAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc) *DXAPIEndPoint {
+	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DXAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc,
+	privileges []string) *DXAPIEndPoint {
 
 	t := a.FindEndPointByURI(uri)
 	if t != nil {
@@ -187,6 +188,7 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 		OnWSLoop:              onWSLoop,
 		ResponsePossibilities: responsePossibilities,
 		Middlewares:           middlewares,
+		Privileges:            privileges,
 	}
 	a.EndPoints = append(a.EndPoints, ae)
 	return &ae
