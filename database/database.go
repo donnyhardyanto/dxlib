@@ -506,7 +506,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 	}
 	driverName := d.Connection.DriverName()
 	switch driverName {
-	case "sqlserver", "postgres":
+	case "sqlserver", "postgres", "oracle":
 		log.Log.Infof("Executing SQL file %s... start", filename)
 		fs := sqlfile.SqlFile{}
 		err = fs.File(filename)
