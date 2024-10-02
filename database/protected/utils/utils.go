@@ -74,14 +74,58 @@ func PrepareArrayArgs(keyValues map[string]any, driverName string) (fieldNames s
 
 // Function to kill all connections to a specific database
 
-func KillConnections(db *sqlx.DB, dbName string) error {
-	query := fmt.Sprintf(`
+func KillConnections(db *sqlx.DB, dbName string) (err error) {
+	driverName := db.DriverName()
+	switch driverName {
+	case `postgres`:
+		query := fmt.Sprintf(`
         SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
         WHERE pg_stat_activity.datname = '%s'
           AND pid <> pg_backend_pid();
     `, dbName)
-	_, err := db.Exec(query)
+		_, err = db.Exec(query)
+
+	case "sqlserver":
+		query := fmt.Sprintf(`
+            USE master;
+            DECLARE @kill varchar(8000) = '';
+            SELECT @kill = @kill + 'kill ' + CONVERT(varchar(5), session_id) + ';'
+            FROM sys.dm_exec_sessions
+            WHERE database_id = DB_ID('%s')
+              AND session_id != @@SPID;
+            EXEC(@kill);
+        `, dbName)
+		_, err = db.Exec(query)
+	case "godror", "oracle":
+		// For Oracle, we need to execute multiple statements
+		queries := []string{
+			fmt.Sprintf(`
+                BEGIN
+                    FOR s IN (SELECT sid, serial# FROM v$session WHERE username = UPPER('%s'))
+                    LOOP
+                        EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION ''' || s.sid || ',' || s.serial# || ''' IMMEDIATE';
+                    END LOOP;
+                END;
+            `, dbName),
+			fmt.Sprintf(`
+                BEGIN
+                    DBMS_SESSION.KILL_SESSION('%s');
+                END;
+            `, dbName),
+		}
+
+		for _, q := range queries {
+			_, err = db.Exec(q)
+			if err != nil {
+				return fmt.Errorf("failed to kill Oracle connections: %w", err)
+			}
+		}
+
+	default:
+		return fmt.Errorf("unsupported database driver: %s", driverName)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to kill connections: %w", err)
 	}

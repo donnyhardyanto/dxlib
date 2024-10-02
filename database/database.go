@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	sqlfile "github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
+	mssql "github.com/microsoft/go-mssqldb"
 	goOra "github.com/sijms/go-ora/v2"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"
 	_ "github.com/lib/pq"
-	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/sijms/go-ora/v2"
 
 	"github.com/donnyhardyanto/dxlib/configuration"
@@ -494,11 +494,20 @@ func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFi
 }
 
 func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
-	//err = d.CheckConnectionAndReconnect()
-	//if err != nil {
-	//	return nil, err
-	//}
-	/*	log.Log.Infof("Executing SQL file %s... start", filename)
+	defer func() {
+		if err != nil {
+			log.Log.Errorf("Error executing file %s (%v)", filename, err.Error())
+		}
+	}()
+
+	err = d.CheckConnectionAndReconnect()
+	if err != nil {
+		return nil, err
+	}
+	driverName := d.Connection.DriverName()
+	switch driverName {
+	case "sqlserver", "postgres":
+		log.Log.Infof("Executing SQL file %s... start", filename)
 		fs := sqlfile.SqlFile{}
 		err = fs.File(filename)
 		if err != nil {
@@ -512,26 +521,25 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 		}
 		log.Log.Infof("Executing SQL file %s... done", filename)
 		return rs[0], nil
-	*/
-	defer func() {
+	default:
+		err = log.Log.FatalAndCreateErrorf("Driver %s is not supported", driverName)
+		return nil, err
+
+		/* this way is always fail in SQL Server, but success in Postgresql */
+		/*sqlScript, err := os.ReadFile(filename)
 		if err != nil {
-			log.Log.Errorf("Error executing file %s (%v)", filename, err.Error())
+			return nil, err
 		}
-	}()
 
-	sqlScript, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
+		// Execute the SQL script
+		r, err = d.Connection.Exec(string(sqlScript))
+		if err != nil {
+			return nil, err
+		}*/
 	}
-
-	// Execute the SQL script
-	r, err = d.Connection.Exec(string(sqlScript))
-	if err != nil {
-		return nil, err
-	}
-
 	log.Log.Info("SQL script executed successfully!")
 	return r, nil
+
 }
 
 func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
@@ -546,6 +554,10 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 		r, err := d.ExecuteFile(v)
 		if err != nil {
 			log.Log.Errorf("Error executing file %d:'%s' (%s)", k, v, err.Error())
+			if sqlErr, ok := err.(mssql.Error); ok {
+				log.Log.Errorf("SQL Server Error Number: %d, State: %d, Message: %s",
+					sqlErr.Number, sqlErr.State, sqlErr.Message)
+			}
 			return rs, err
 		}
 		log.Log.Infof("Executing file %d:'%s'... done", k+1, v)
