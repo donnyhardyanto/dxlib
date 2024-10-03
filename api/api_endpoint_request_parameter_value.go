@@ -32,7 +32,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any) (err error
 	if aeprpv.Metadata.Type == "json" {
 		jsonValue, ok := rv.(map[string]interface{})
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("Invalid type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
 		}
 		for _, v := range aeprpv.Metadata.Children {
 			{
@@ -63,7 +63,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		case "int64":
 			if rawValueType == "float64" {
 				if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
-					aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Invalid type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+					aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 					return false
 				}
 			}
@@ -74,7 +74,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 			case "float64":
 			case "float32":
 			default:
-				aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Invalid type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+				aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 				return false
 			}
 		case "protected-string", "protected-sql-string":
@@ -88,11 +88,11 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 			for _, v := range aeprpv.Children {
 				if v.Validate() != true {
 					childRawValueType := utils.TypeAsString(aeprpv.RawValue)
-					aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Invalid type [%s].(%v) but receive (%s)=%v ", v.Metadata.NameId, v.Metadata.Type, childRawValueType, v.RawValue)
+					aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", v.Metadata.NameId, v.Metadata.Type, childRawValueType, v.RawValue)
 					return false
 				}
 			}
-		case "iso8601":
+		case "iso8601", "date", "time":
 			if rawValueType != "string" {
 				return false
 			}
@@ -101,7 +101,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 				return false
 			}
 		default:
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			return false
 		}
 	}
@@ -113,7 +113,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		}
 		t, ok := aeprpv.RawValue.(float64)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		v := int64(t)
@@ -122,7 +122,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 	case "int64":
 		t, ok := aeprpv.RawValue.(float64)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		v := int64(t)
@@ -131,7 +131,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 	case "float64":
 		v, ok := aeprpv.RawValue.(float64)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		aeprpv.Value = v
@@ -139,7 +139,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 	case "float32":
 		t, ok := aeprpv.RawValue.(float64)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		v := float32(t)
@@ -148,7 +148,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 	case "protected-string":
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		if security.StringCheckPossibleSQLInjection(s) {
@@ -160,7 +160,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 	case "protected-sql-string":
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		if security.PartSQLStringCheckPossibleSQLInjection(s) {
@@ -176,7 +176,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		}
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		aeprpv.Value = s
@@ -184,7 +184,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 	case "string":
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		aeprpv.Value = s
@@ -199,7 +199,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 	case "array":
 		s, ok := aeprpv.RawValue.([]any)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		aeprpv.Value = s
@@ -211,7 +211,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Incompatible type [%s].(%v) but receive (%s)=%v ", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			return false
 		}
 		if strings.Contains(s, " ") {
@@ -219,7 +219,43 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		}
 		t, err := time.Parse(time.RFC3339Nano, s)
 		if err != nil {
-			aeprpv.Owner.Log.Warnf("Invalid RFC3339Nano format [%s]", s)
+			aeprpv.Owner.Log.Warnf("INVALID_RFC3339NANO_FORMAT:%s", s)
+			aeprpv.ErrValidate = err
+			return false
+		}
+		aeprpv.Value = t
+		return true
+	case "date":
+		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
+		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has a wrong information on the RFC3339/RFC3329Nano format,.
+		but the code is conform to the standard. Only the documentation is incorrect.
+		*/
+		s, ok := aeprpv.RawValue.(string)
+		if !ok {
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return false
+		}
+		t, err := time.Parse(time.DateOnly, s)
+		if err != nil {
+			aeprpv.Owner.Log.Warnf("INVALID_DATE_FROMAT:%s", s)
+			aeprpv.ErrValidate = err
+			return false
+		}
+		aeprpv.Value = t
+		return true
+	case "time":
+		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
+		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has a wrong information on the RFC3339/RFC3329Nano format,.
+		but the code is conform to the standard. Only the documentation is incorrect.
+		*/
+		s, ok := aeprpv.RawValue.(string)
+		if !ok {
+			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", aeprpv.Metadata.NameId, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return false
+		}
+		t, err := time.Parse(time.TimeOnly, s)
+		if err != nil {
+			aeprpv.Owner.Log.Warnf("INVALID_TIME_FROMAT:%s", s)
 			aeprpv.ErrValidate = err
 			return false
 		}
@@ -229,5 +265,4 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		aeprpv.Value = aeprpv.RawValue
 		return true
 	}
-	return false
 }
