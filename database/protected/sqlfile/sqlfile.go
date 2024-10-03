@@ -6,7 +6,9 @@ package sqlfile
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -89,8 +91,89 @@ func (s *SqlFile) Exec(db *sql.DB) (res []sql.Result, err error) {
 	return rs, err
 }
 
-// Load load sql file from path, and return SqlFile pointer
-func load(path string) (qs []string, err error) {
+func load(path string) ([]string, error) {
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove comments
+	commentRegex := regexp.MustCompile(`--.*$|/\*[\s\S]*?\*/`)
+	cleanContent := commentRegex.ReplaceAllString(string(content), "")
+
+	// Split the content into statements
+	statements := splitSQLStatements(cleanContent)
+
+	// Trim and filter out empty statements
+	var queries []string
+	for _, stmt := range statements {
+		if trimmedStmt := strings.TrimSpace(stmt); trimmedStmt != "" {
+			queries = append(queries, trimmedStmt)
+		}
+	}
+
+	return queries, nil
+}
+
+func splitSQLStatements(content string) []string {
+	var statements []string
+	var currentStmt strings.Builder
+	var inQuote bool
+	var inDollarQuote bool
+	var dollarQuoteTag string
+
+	for i := 0; i < len(content); i++ {
+		ch := content[i]
+		currentStmt.WriteByte(ch)
+
+		switch ch {
+		case '\'':
+			if !inDollarQuote {
+				inQuote = !inQuote
+			}
+		case '$':
+			if !inQuote && !inDollarQuote {
+				if tag, ok := extractDollarQuoteTag(content[i:]); ok {
+					inDollarQuote = true
+					dollarQuoteTag = tag
+					currentStmt.WriteString(tag[1:])
+					i += len(tag) - 1
+				}
+			} else if inDollarQuote {
+				if strings.HasPrefix(content[i:], dollarQuoteTag) {
+					inDollarQuote = false
+					currentStmt.WriteString(dollarQuoteTag[1:])
+					i += len(dollarQuoteTag) - 1
+				}
+			}
+		case ';':
+			if !inQuote && !inDollarQuote {
+				statements = append(statements, currentStmt.String())
+				currentStmt.Reset()
+			}
+		}
+	}
+
+	// Add the last statement if there's any content
+	if currentStmt.Len() > 0 {
+		statements = append(statements, currentStmt.String())
+	}
+
+	return statements
+}
+
+func extractDollarQuoteTag(s string) (string, bool) {
+	if !strings.HasPrefix(s, "$$") {
+		endIndex := strings.Index(s, "$")
+		if endIndex > 0 {
+			return s[:endIndex+1], true
+		}
+	}
+	return "", false
+}
+
+// Old Load load sql file from path, and return SqlFile pointer
+func load2(path string) (qs []string, err error) {
 	ls, err := readFileByLine(path)
 	if err != nil {
 		return qs, err
