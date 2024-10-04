@@ -465,7 +465,7 @@ func (t *DXTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, w
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.UpdateOne(t.ListViewNameId, setKeyValues, whereAndFieldNameValues)
+	return tx.UpdateOne(t.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
 func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
