@@ -426,7 +426,7 @@ func (t *DXTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.
 		whereAndFieldNameValues, orderbyFieldNameDirections)
 }
 
-func (t *DXTable) TShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
+func (t *DXTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {

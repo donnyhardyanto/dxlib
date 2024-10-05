@@ -67,6 +67,20 @@ func (dtx *DXDatabaseTx) Rollback() (err error) {
 	return nil
 }
 
+func (dtx *DXDatabaseTx) Finish(log *log.DXLog, err error) {
+	if err != nil {
+		err2 := dtx.Rollback()
+		if err2 != nil {
+			log.Errorf("ROLLBACK_ERROR:%v", err2)
+		}
+	} else {
+		err2 := dtx.Commit()
+		if err2 != nil {
+			log.Errorf("ROLLBACK_ERROR:%v", err2)
+		}
+	}
+}
+
 type DXDatabase struct {
 	NameId                       string
 	IsConfigured                 bool
