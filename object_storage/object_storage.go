@@ -356,7 +356,8 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	if err != nil {
 		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "SEND_STREAM_ERROR:%s", err.Error())
 	}
-
+	aepr.ResponseHeaderSent = true
+	aepr.ResponseBodySent = true
 	return nil
 }
 
