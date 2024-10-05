@@ -293,8 +293,8 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v`, err.Error()+"="+string(aepr.RequestBodyAsBytes))
 		}
 	}
-	aepr.CurrentUser.Id = ""
-	aepr.CurrentUser.Name = ""
+	//aepr.CurrentUser.Id = ""
+	//aepr.CurrentUser.Name = ""
 
 	for _, v := range aepr.EndPoint.Parameters {
 		rpv := aepr.NewAPIEndPointRequestParameter(v)

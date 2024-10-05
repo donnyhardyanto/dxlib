@@ -456,7 +456,7 @@ func (t *DXTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldN
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
+	return tx.SelectOne(t.NameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
 func (t *DXTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result utils.JSON, err error) {
