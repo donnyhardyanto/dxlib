@@ -3,6 +3,7 @@ package sso
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/database"
