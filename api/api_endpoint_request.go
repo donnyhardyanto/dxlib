@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
@@ -115,13 +114,13 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend
 	}
 	var s utils.JSON
 
-	if dxlib.IsDebug {
-		s = utils.JSON{
-			"status":         http.StatusText(statusCode),
-			"reason":         errToSend.Error(),
-			"reason_message": errToSend.Error(),
-		}
+	//	if dxlib.IsDebug {
+	s = utils.JSON{
+		"status":         http.StatusText(statusCode),
+		"reason":         errToSend.Error(),
+		"reason_message": errToSend.Error(),
 	}
+	//	}
 
 	aepr.WriteResponseAsJSON(statusCode, nil, s)
 }
@@ -134,9 +133,10 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 	var jsonBytes []byte
 	var err error
 	if bodyAsJSON == nil {
-		bodyAsJSON = utils.JSON{
-			"status": http.StatusText(statusCode),
-		}
+		bodyAsJSON = utils.JSON{}
+	}
+	if bodyAsJSON["status"] == nil {
+		bodyAsJSON["status"] = http.StatusText(statusCode)
 	}
 	jsonBytes, err = json.Marshal(bodyAsJSON)
 	if err != nil {
