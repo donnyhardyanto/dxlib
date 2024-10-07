@@ -29,6 +29,14 @@ func StringToJSON(s string) (JSON, error) {
 	return v, nil
 }
 
+func JSONToString(v JSON) (string, error) {
+	s, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(s), nil
+}
+
 func ArrayOfStringIsContains(arr []string, str string) bool {
 	for _, a := range arr {
 		if a == str {

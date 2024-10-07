@@ -37,9 +37,16 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any) (err error
 		for _, v := range aeprpv.Metadata.Children {
 			{
 				childValue := aeprpv.NewChild(v)
-				err = childValue.SetRawValue(jsonValue[v.NameId])
-				if err != nil {
-					return err
+				jv, ok := jsonValue[v.NameId]
+				if !ok {
+					if v.IsMustExist {
+						return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", v.NameId)
+					}
+				} else {
+					err = childValue.SetRawValue(jv)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -206,8 +213,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		return true
 	case "iso8601":
 		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
-		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has a wrong information on the RFC3339/RFC3329Nano format,.
-		but the code is conform to the standard. Only the documentation is incorrect.
+		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
+		but the code is conformed to the standard. Only the documentation is incorrect.
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
@@ -227,8 +234,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		return true
 	case "date":
 		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
-		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has a wrong information on the RFC3339/RFC3329Nano format,.
-		but the code is conform to the standard. Only the documentation is incorrect.
+		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
+		but the code is conformed to the standard. Only the documentation is incorrect.
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
@@ -245,8 +252,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() bool {
 		return true
 	case "time":
 		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
-		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has a wrong information on the RFC3339/RFC3329Nano format,.
-		but the code is conform to the standard. Only the documentation is incorrect.
+		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
+		but the code is conformed to the standard. Only the documentation is incorrect.
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
