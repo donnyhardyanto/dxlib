@@ -253,6 +253,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				return
 			}
 			aepr.Log.Errorf("ONEXECUTE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
+
 			if !aepr.ResponseHeaderSent {
 				err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "ONEXECUTE_ERROR:%v", err.Error())
 				return
