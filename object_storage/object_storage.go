@@ -234,7 +234,7 @@ func (r *DXObjectStorage) Connect() (err error) {
 			log.Log.Errorf("Cannot configure to Object Storage %s to connect (%s)", r.NameId, err.Error())
 			return err
 		}
-		log.Log.Infof("Connecting to Object Storage  %s at %s/%s... start", r.NameId, r.Address, r.BucketName)
+		log.Log.Infof("Connecting to Object Storage %s at %s/%s... start", r.NameId, r.Address, r.BucketName)
 
 		minioClient, err := minio.New(
 			r.Address,
@@ -254,10 +254,10 @@ func (r *DXObjectStorage) Connect() (err error) {
 
 func (r *DXObjectStorage) Disconnect() (err error) {
 	if r.Connected {
-		log.Log.Infof("Disconnecting to Object Storage   %s at %s/%s... start", r.NameId, r.Address, r.BucketName)
+		log.Log.Infof("Disconnecting to Object Storage %s at %s/%s... start", r.NameId, r.Address, r.BucketName)
 		r.Client = nil
 		r.Connected = false
-		log.Log.Infof("Disconnecting to Object Storage   %s at %s/%s... done DISCONNECTED", r.NameId, r.Address, r.BucketName)
+		log.Log.Infof("Disconnecting to Object Storage %s at %s/%s... done DISCONNECTED", r.NameId, r.Address, r.BucketName)
 	}
 	return nil
 }
