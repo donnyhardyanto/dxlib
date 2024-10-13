@@ -569,7 +569,7 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 		if err != nil {
 			log.Log.Errorf("Error executing file %d:'%s' (%s)", k, v, err.Error())
 			if sqlErr, ok := err.(mssql.Error); ok {
-				log.Log.Errorf("SQL Server Error Number: %d, State: %d, Message: %s",
+				log.Log.Errorf("SQL Server Error Number: %d, State: %d, FCMMessage: %s",
 					sqlErr.Number, sqlErr.State, sqlErr.Message)
 			}
 			return rs, err
@@ -647,6 +647,11 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	}
 
 	return nil
+}
+
+func (dtx *DXDatabaseTx) Select(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	return dbtx.TxSelect(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
 }
 
 func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,

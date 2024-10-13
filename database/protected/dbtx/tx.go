@@ -225,7 +225,7 @@ func TxShouldNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query
 	return rowsInfo, row, err
 }
 
-func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+/*func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, nil, forUpdatePart)
@@ -235,7 +235,7 @@ func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, 
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	rowsInfo, r, err = TxNamedQueryRows(log, autoRollback, tx, s, wKV)
 	return rowsInfo, r, err
-}
+}*/
 
 func TxShouldSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
@@ -251,6 +251,18 @@ func TxShouldSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName
 		err := fmt.Errorf(`%s:%s`, err, tableName)
 		return rowsInfo, nil, err
 	}
+	return rowsInfo, r, err
+}
+
+func TxSelect(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	driverName := tx.DriverName()
+	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
+	if err != nil {
+		return nil, nil, err
+	}
+	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+	rowsInfo, r, err = TxNamedQueryRows(log, autoRollback, tx, s, wKV)
 	return rowsInfo, r, err
 }
 

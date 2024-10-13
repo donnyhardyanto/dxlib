@@ -85,7 +85,7 @@ func (om *DXOrganizationsManager) GetValidOrganizationAndApplication(organizatio
 	}
 	applicationSettings, ok = (*organization).Applications[applicationNameid].(utils.JSON)
 	if !ok {
-		err = fmt.Errorf("invalid Application nameId %s for Organization %s", applicationNameid, organizationNameId)
+		err = fmt.Errorf("invalid FCMApplication nameId %s for Organization %s", applicationNameid, organizationNameId)
 		return nil, nil, err
 	}
 	return organization, applicationSettings, nil

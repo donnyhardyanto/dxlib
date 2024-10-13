@@ -389,6 +389,10 @@ func (t *DXTable) HardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	return err
 }
 
+func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	return t.Select(log, nil, nil, nil, nil)
+}
+
 func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
@@ -445,6 +449,17 @@ func (t *DXTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAnd
 	whereAndFieldNameValues["is_deleted"] = false
 
 	return tx.ShouldSelectOne(t.NameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
+}
+
+func (t *DXTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
+	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+	whereAndFieldNameValues["is_deleted"] = false
+
+	return tx.Select(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
 }
 
 func (t *DXTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,

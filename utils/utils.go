@@ -37,6 +37,13 @@ func JSONToString(v JSON) (string, error) {
 	return string(s), nil
 }
 
+func JSONToBytes(v JSON) ([]byte, error) {
+	s, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
 func ArrayOfStringIsContains(arr []string, str string) bool {
 	for _, a := range arr {
 		if a == str {
@@ -435,7 +442,20 @@ func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
-func JSONToMapStringString(kv JSON) (r map[string]string, err error) {
+func JSONToMapStringString(kv JSON) (r map[string]string) {
+	r = map[string]string{}
+	for k, v := range kv {
+		switch v.(type) {
+		case string:
+			r[k] = v.(string)
+		default:
+			r[k] = fmt.Sprintf("%v", v)
+		}
+	}
+	return r
+}
+
+func ShouldStrictJSONToMapStringString(kv JSON) (r map[string]string, err error) {
 	r = map[string]string{}
 	for k, v := range kv {
 		switch v.(type) {
