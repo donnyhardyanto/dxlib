@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ed25519 and X25519 Demo</title>
+    <!-- Add any required CSS or JavaScript files here -->
+    <script src="dayjs.min.js"></script>
+    <script src="main.js" type="module"></script>
+    <style>
+        div {
+            margin: 10px;
+        }
+
+        label {
+            display: inline-block;
+            width: 100px;
+        }
+
+        input {
+            width: 200px;
+        }
+
+        button {
+            width: 100px;
+        }
+
+        .section {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid grey;
+            background-color: lightgrey;
+        }
+    </style>
+</head>
+<body>
+<div class="section">
+    <div>
+        <label for="input_select_api_server_address">Server</label>
+        <select id="input_select_api_server_address" onchange="input_select_api_server_address_onchange()">
+        </select>
+    </div>
+</div>
+<hr>
+<div class="section">
+    <div>
+        <h1>WebAdmin</h1>
+    </div>
+    <div>
+        <div>
+            <label for="input_text_webadmin_loginid">Email:</label>
+            <input type="text" id="input_text_webadmin_loginid" value="superadmin">
+        </div>
+        <div>
+            <label for="input_text_webadmin_password">Password:</label>
+            <input type="password" id="input_text_webadmin_password" value="bebekangsa">
+        </div>
+        <button onclick="button_webadmin_login_onclick()">Login</button>
+    </div>
+    <div>
+        <button onclick="button_webadmin_self_detail_onclick()">Self Detail</button>
+    </div>
+    <div>
+        <button onclick="button_webadmin_init_data_onclick()">Initialize Data</button>
+    </div>
+    <div>
+        <button onclick="button_webadmin_read_data_onclick()">Read Data</button>
+    </div>
+    <div>
+        <div>
+            <label for="input_text_webadmin_old_password">Old Password:</label>
+            <input type="password" id="input_text_webadmin_old_password" value="bebekangsa">
+        </div>
+        <div>
+            <label for="input_text_webadmin_new_password">New Password:</label>
+            <input type="password" id="input_text_webadmin_new_password" value="bebekangsa">
+        </div>
+        <button onclick="button_webadmin_change_password_onclick()">Change Password</button>
+    </div>
+    <div>
+        <button onclick="button_webadmin_logout_onclick()">Logout</button>
+    </div>
+</div>
+<hr>
+<div class="section">
+    <div>
+        <h1>Mobile App</h1>
+    </div>
+    <hr>
+    <div>
+        <h3>Login Executor:</h3>
+        <div>
+            <label for="input_text_mobile_loginid">Email:</label>
+            <input type="text" id="input_text_mobile_loginid" value="+6287747393058">
+        </div>
+        <div>
+            <label for="input_text_mobile_password">Password:</label>
+            <input type="password" id="input_text_mobile_password" value="bebekangsa">
+        </div>
+        <button onclick="button_mobile_login_onclick()">Login</button>
+    </div>
+    <div>
+        <div>
+            <label for="input_text_mobile_loginid">Sub Task Id:</label>
+            <input type="number" id="executer_sub_task_id" value="1">
+        </div>
+        Konstruksi SK: <br/>
+        Scenarion 1: <br/>
+        <div>
+            <button onclick="button_mobile_s1_sub_task_pick_onclick('flow_executor')">Sub Task Pick</button>
+            <button onclick="button_mobile_s1_sub_task_schedule_onclick('flow_executor')">Sub Task Schedule</button>
+            <button onclick="button_mobile_s1_sub_task_working_start_onclick('flow_executor')">Sub Task Working Start</button>
+            <button onclick="button_mobile_s1_sub_task_pause_onclick('flow_executor')">Sub Task Working Pause</button>
+            <button onclick="button_mobile_s1_sub_task_resume_onclick('flow_executor')">Sub Task Working Resume</button>
+            <button onclick="button_mobile_s1_sub_task_working_finish_onclick('flow_executor')">Sub Task Working Finish</button>
+            <button onclick="button_mobile_s1_sub_task_fixing_start_onclick('flow_executor')">Sub Task Fixing Start</button>
+            <button onclick="button_mobile_s1_sub_task_fixing_finish_onclick('flow_executor')">Sub Task Fixing Finish</button>
+        </div>
+        Scenarion 2: <br/>
+        <div>
+            <button onclick="button_mobile_s1_sub_task_pick_onclick('flow_executor')">Sub Task Pick</button>
+            <button onclick="button_mobile_s1_sub_task_schedule_onclick('flow_executor')">Sub Task Schedule</button>
+            <button onclick="button_mobile_s1_sub_task_working_start_onclick('flow_executor')">Sub Task Working Start</button>
+            <button onclick="button_mobile_s1_sub_task_cancel_by_field_executor_onclick('flow_executor')">Sub Task Working Cencel By Field Executor</button>
+            <button onclick="button_mobile_s1_sub_task_cancel_by_customer_onclick('flow_executor')">Sub Task Working Cencel By Customer</button>
+        </div>
+    </div>
+    <div>
+        <button onclick="button_mobile_logout_onclick()">Logout</button>
+    </div>
+    <hr>
+    <div>
+        <h3>Login Supervisor:</h3>
+        <div>
+            <label for="input_text_mobile_loginid">Email:</label>
+            <input type="text" id="input_text_mobile_loginid_supervisor" value="+62877000124">
+        </div>
+        <div>
+            <label for="input_text_mobile_password">Password:</label>
+            <input type="password" id="input_text_mobile_password_supervisor" value="bebekangsa">
+        </div>
+        <button onclick="button_mobile_login_supervisor_onclick()">Login</button>
+    </div>
+    <div>
+        <div>
+            <label for="input_text_mobile_loginid">Sub Task Id:</label>
+            <input type="number" id="supervisor_sub_task_id" value="1">
+        </div>
+        Konstruksi SK Verification: <br/>
+        Scenarion 1: <br/>
+        <div>
+            <button onclick="button_mobile_s1_sub_task_verify_start_onclick('flow_supervisor')">Sub Task Verify Start</button>
+            <button onclick="button_mobile_s1_sub_task_verify_fail_onclick('flow_supervisor')">Sub Task Verify Finish Fail</button>
+            <button onclick="button_mobile_s1_sub_task_verify_success_onclick('flow_supervisor')">Sub Task Verify Finish Success</button>
+        </div>
+    </div>
+    <div>
+        <button onclick="button_mobile_logout_onclick()">Logout</button>
+    </div>
+    <hr>
+    <div>
+        <h3>Automation Sekenario Konstruksi:</h3>
+        <div>
+            <label for="input_text_mobile_loginid">Sub Task Id:</label>
+            <input type="number" id="auto_sub_task_id" value="1">
+        </div>
+        <div>
+            <button style="width: 200px; height: 50px" onclick="button_mobile_sub_task_flow_sk_onclick()">Sambungan Keluar (SK)</button>
+            <button style="width: 200px; height: 50px" onclick="button_mobile_sub_task_flow_sr_onclick()">Sambungan Rumah (SR)</button>
+            <button style="width: 200px; height: 50px" onclick="button_mobile_sub_task_flow_mi_onclick()">Meter Installation</button>
+            <button style="width: 200px; height: 50px" onclick="button_mobile_sub_task_flow_gi_onclick()">Gas In</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
