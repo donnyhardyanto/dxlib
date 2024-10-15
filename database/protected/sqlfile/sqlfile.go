@@ -6,7 +6,6 @@ package sqlfile
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -92,7 +91,7 @@ func (s *SqlFile) Exec(db *sql.DB) (res []sql.Result, err error) {
 }
 
 func load(path string) ([]string, error) {
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +101,7 @@ func load(path string) ([]string, error) {
 	cleanContent := commentRegex.ReplaceAllString(string(content), "")
 
 	// Split the content into statements
-	statements := splitSQLStatements(cleanContent)
+	statements := splitSQLStatements2(cleanContent)
 
 	// Trim and filter out empty statements
 	var queries []string
@@ -157,6 +156,53 @@ func splitSQLStatements(content string) []string {
 	// Add the last statement if there's any content
 	if currentStmt.Len() > 0 {
 		statements = append(statements, currentStmt.String())
+	}
+
+	return statements
+}
+
+func splitSQLStatements2(script string) []string {
+	var statements []string
+	var currentStatement strings.Builder
+	var inQuote bool
+	var quoteChar rune
+	var inDollarQuote bool
+	var dollarQuoteTag string
+
+	for _, char := range script {
+		currentStatement.WriteRune(char)
+
+		switch {
+		case inDollarQuote:
+			if strings.HasSuffix(currentStatement.String(), dollarQuoteTag) {
+				inDollarQuote = false
+				dollarQuoteTag = ""
+			}
+		case inQuote:
+			if char == quoteChar {
+				inQuote = false
+			}
+		case char == '\'':
+			inQuote = true
+			quoteChar = '\''
+		case char == '"':
+			inQuote = true
+			quoteChar = '"'
+		case char == '$' && !inQuote:
+			if dollarQuoteTag == "" {
+				dollarQuoteTag = "$"
+			} else {
+				inDollarQuote = true
+			}
+		case char == ';' && !inQuote && !inDollarQuote:
+			statements = append(statements, strings.TrimSpace(currentStatement.String()))
+			currentStatement.Reset()
+		}
+	}
+
+	// Add the last statement if there's any content
+	if currentStatement.Len() > 0 {
+		statements = append(statements, strings.TrimSpace(currentStatement.String()))
 	}
 
 	return statements
