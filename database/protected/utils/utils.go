@@ -98,30 +98,16 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
         `, dbName)
 		_, err = db.Exec(query)
 	case "godror", "oracle":
-		// For Oracle, we need to execute multiple statements
-		queries := []string{
-			fmt.Sprintf(`
-                BEGIN
-                    FOR s IN (SELECT sid, serial# FROM v$session WHERE username = UPPER('%s'))
-                    LOOP
-                        EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION ''' || s.sid || ',' || s.serial# || ''' IMMEDIATE';
-                    END LOOP;
-                END;
-            `, dbName),
-			fmt.Sprintf(`
-                BEGIN
-                    DBMS_SESSION.KILL_SESSION('%s');
-                END;
-            `, dbName),
-		}
-
-		for _, q := range queries {
-			_, err = db.Exec(q)
-			if err != nil {
-				return fmt.Errorf("failed to kill Oracle connections: %w", err)
-			}
-		}
-
+		// For Oracle, we use ALTER SYSTEM KILL SESSION
+		query := `
+            BEGIN
+                FOR s IN (SELECT sid, serial# FROM v$session WHERE username = UPPER(:1))
+                LOOP
+                    EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION ''' || s.sid || ',' || s.serial# || ''' IMMEDIATE';
+                END LOOP;
+            END;
+        `
+		_, err = db.Exec(query, dbName)
 	default:
 		return fmt.Errorf("unsupported database driver: %s", driverName)
 	}
@@ -132,7 +118,7 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
 	return nil
 }
 
-func DropDatabase(db *sqlx.DB, dbName string) (err error) {
+/*func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 	defer func() {
 		if err != nil {
 			log.Log.Warnf(`Error drop database %s:%s`, dbName, err.Error())
@@ -153,13 +139,96 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 	}
 
 	return nil
+}*/
+
+func DropDatabase(db *sqlx.DB, dbName string) (err error) {
+	defer func() {
+		if err != nil {
+			log.Log.Warnf(`Error dropping database %s: %s`, dbName, err.Error())
+		}
+	}()
+
+	driverName := db.DriverName()
+
+	// Kill all connections to the target database
+	err = KillConnections(db, dbName)
+	if err != nil {
+		log.Log.Errorf("Failed to kill connections: %s", err.Error())
+		return err
+	}
+
+	var query string
+	switch driverName {
+	case "postgres":
+		query = fmt.Sprintf(`DROP DATABASE IF EXISTS "%s"`, dbName)
+	case "sqlserver":
+		query = fmt.Sprintf(`
+            IF EXISTS (SELECT name FROM sys.databases WHERE name = N'%s')
+            BEGIN
+                ALTER DATABASE [%s] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                DROP DATABASE [%s];
+            END
+        `, dbName, dbName, dbName)
+	case "godror", "oracle":
+		// Oracle doesn't support DROP DATABASE. Instead, we'll drop all objects in the schema.
+		query = fmt.Sprintf(`
+            BEGIN
+                FOR obj IN (SELECT object_name, object_type FROM all_objects WHERE owner = UPPER('%s'))
+                LOOP
+                    IF obj.object_type = 'TABLE' THEN
+                        EXECUTE IMMEDIATE 'DROP ' || obj.object_type || ' "' || UPPER('%s') || '"."' || obj.object_name || '" CASCADE CONSTRAINTS';
+                    ELSE
+                        EXECUTE IMMEDIATE 'DROP ' || obj.object_type || ' "' || UPPER('%s') || '"."' || obj.object_name || '"';
+                    END IF;
+                END LOOP;
+            END;
+        `, dbName, dbName, dbName)
+	default:
+		return fmt.Errorf("unsupported database driver: %s", driverName)
+	}
+
+	_, err = db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to drop database: %w", err)
+	}
+
+	return nil
 }
 
 func CreateDatabase(db *sqlx.DB, dbName string) error {
-	query := fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)
+	driverName := db.DriverName()
+
+	var query string
+	switch driverName {
+	case "postgres":
+		query = fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)
+	case "sqlserver":
+		query = fmt.Sprintf(`CREATE DATABASE [%s]`, dbName)
+	case "godror", "oracle":
+		// In Oracle, we create a user (schema) instead of a database
+		// Note: You may want to replace 'identified by password' with a more secure method
+		query = fmt.Sprintf(`
+            BEGIN
+                EXECUTE IMMEDIATE 'CREATE USER %s IDENTIFIED BY "TemporaryPassword123!"';
+                EXECUTE IMMEDIATE 'GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW TO %s';
+                EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO %s';
+            END;
+        `, dbName, dbName, dbName)
+	default:
+		return fmt.Errorf("unsupported database driver: %s", driverName)
+	}
+
 	_, err := db.Exec(query)
 	if err != nil {
-		return fmt.Errorf("failed to create database: %w", err)
+		return fmt.Errorf("failed to create database/user: %w", err)
 	}
+
 	return nil
+	/*
+		query := fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)
+		_, err := db.Exec(query)
+		if err != nil {
+			return fmt.Errorf("failed to create database: %w", err)
+		}
+		return nil*/
 }

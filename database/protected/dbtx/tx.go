@@ -335,8 +335,18 @@ func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tabl
 	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
 	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues, driveName)
-	s := `update ` + tableName + ` set ` + u + ` where ` + w
-
+	driverName := tx.DriverName()
+	var s string
+	switch driverName {
+	case "postgres":
+		s = `update ` + tableName + ` set ` + u + ` where ` + w
+	case "sqlserver":
+		s = `update ` + tableName + ` set ` + u + ` output inserted.* where ` + w
+	case "oracle":
+		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
+	default:
+		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
+	}
 	result, err = TxNamedExec(log, autoRollback, tx, s, joinedKeyValues)
 	return result, err
 }
@@ -347,8 +357,21 @@ func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
 	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues, driveName)
-	s := `update ` + tableName + ` set ` + u + ` where ` + w + ` returning *`
-
+	driverName := tx.DriverName()
+	var s string
+	switch driverName {
+	case "postgres":
+		s = `update ` + tableName + ` set ` + u + ` where ` + w
+	case "sqlserver":
+		s = `update ` + tableName + ` set ` + u + ` output inserted.* where ` + w
+	case "oracle":
+		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
+	default:
+		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
+	}
+	/*
+		s := `update ` + tableName + ` set ` + u + ` where ` + w + ` returning *`
+	*/
 	_, result, err = TxNamedQueryRow(log, autoRollback, tx, s, joinedKeyValues)
 	return result, err
 }

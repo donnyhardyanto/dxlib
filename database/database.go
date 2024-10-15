@@ -215,9 +215,9 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 			return "", err
 		}
 		urlOptions := map[string]string{
-			"SID": d.DatabaseName,
+			//	"SERVICE_NAME": d.DatabaseName,
 		}
-		s = goOra.BuildUrl(host, portInt, "", d.UserName, d.UserPassword, urlOptions)
+		s = goOra.BuildUrl(host, portInt, d.DatabaseName, d.UserName, d.UserPassword, urlOptions)
 	default:
 		err = log.Log.ErrorAndCreateErrorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
 	}
