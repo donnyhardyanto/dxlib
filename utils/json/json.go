@@ -3,12 +3,11 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/utils"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 type Number interface {
