@@ -100,6 +100,59 @@ func doOnDefineConfiguration() (err error) {
 
 }
 
+func testTableFunction(db *database.DXDatabase) (err error) {
+	var dtx *database.DXDatabaseTx
+	dtx, err = db.TransactionBegin(sql.LevelReadCommitted)
+	if err != nil {
+		return err
+	}
+
+	defer dtx.Finish(&log.Log, err)
+
+	var aId int64
+	aId, err = dbtx.TxInsert(&log.Log, true, dtx.Tx, "test1.test1_table", map[string]any{
+		"name":  "abc",
+		"at":    "2024-01-10 15:16:17.001+07:00",
+		"is_ok": true,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Log.Infof("Update result aId2: %v", aId)
+
+	table1 := table.Manager.NewTable(db.NameId, "test1.test1_table", "test1",
+		"test1_table", "id", "id")
+
+	aId2, err := table1.TxInsert(dtx, map[string]any{
+		"name":  "zfx",
+		"at":    "2024-01-10 15:16:17.001+07:00",
+		"is_ok": false,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Log.Infof("Update result aId2: %v", aId2)
+
+	var r sql.Result
+	r, err = table1.TxUpdate(dtx, map[string]any{
+		"name": "bc1",
+	}, map[string]any{
+		"id": aId,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = table1.TxHardDelete(dtx, map[string]any{
+		`id`: aId2,
+	})
+	log.Log.Infof("Update result r after update: %v", r)
+
+	return nil
+}
+
 func doOnAfterConfigurationStartAll() (err error) {
 
 	log.Log.Warn("Executing wipe... START")
@@ -122,7 +175,11 @@ func doOnAfterConfigurationStartAll() (err error) {
 		log.Log.Errorf("Failed to connect/execute to database %s: %s", dbP1.DatabaseName, err.Error())
 	}
 
-	var dtx1 *database.DXDatabaseTx
+	err = testTableFunction(dbP1)
+	if err != nil {
+		return err
+	}
+	/*var dtx1 *database.DXDatabaseTx
 	dtx1, err = dbP1.TransactionBegin(sql.LevelReadCommitted)
 	if err != nil {
 		return err
@@ -153,7 +210,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 		}
 
 		log.Log.Infof("Update result: %v", r)
-	}
+	}*/
 
 	dbP2 := database.Manager.Databases[`p2`]
 	dbP2System := database.Manager.Databases[`sqlserver-system`]
@@ -172,38 +229,43 @@ func doOnAfterConfigurationStartAll() (err error) {
 		log.Log.Errorf("Failed to connect/execute to database %s: %s", dbP2.DatabaseName, err.Error())
 	}
 
-	var dtx2 *database.DXDatabaseTx
-	dtx2, err = dbP2.TransactionBegin(sql.LevelReadCommitted)
+	err = testTableFunction(dbP2)
 	if err != nil {
 		return err
 	}
-	{
-		defer dtx2.Finish(&log.Log, err)
-
-		var aId int64
-		aId, err = dbtx.TxInsert(&log.Log, true, dtx2.Tx, "test1.test1_table", map[string]any{
-			"name":  "abc",
-			"at":    "2024-01-10 15:16:17.001+07:00",
-			"is_ok": true,
-		})
+	/*
+		var dtx2 *database.DXDatabaseTx
+		dtx2, err = dbP2.TransactionBegin(sql.LevelReadCommitted)
 		if err != nil {
 			return err
 		}
+		{
+			defer dtx2.Finish(&log.Log, err)
 
-		tableTable2 := table.Manager.NewTable(dbP2.NameId, "test1.test1_table", "test1",
-			"test1_table", "id", "id")
-		var r map[string]any
-		r, err = tableTable2.TxUpdate(dtx2, map[string]any{
-			"name": "bc1",
-		}, map[string]any{
-			"id": aId,
-		})
-		if err != nil {
-			return err
-		}
+			var aId int64
+			aId, err = dbtx.TxInsert(&log.Log, true, dtx2.Tx, "test1.test1_table", map[string]any{
+				"name":  "abc",
+				"at":    "2024-01-10 15:16:17.001+07:00",
+				"is_ok": true,
+			})
+			if err != nil {
+				return err
+			}
 
-		log.Log.Infof("Update result: %v", r)
-	}
+			tableTable2 := table.Manager.NewTable(dbP2.NameId, "test1.test1_table", "test1",
+				"test1_table", "id", "id")
+			var r map[string]any
+			r, err = tableTable2.TxUpdate(dtx2, map[string]any{
+				"name": "bc1",
+			}, map[string]any{
+				"id": aId,
+			})
+			if err != nil {
+				return err
+			}
+
+			log.Log.Infof("Update result: %v", r)
+		}*/
 
 	/*	dbP3 := database.Manager.Databases[`p3`]
 

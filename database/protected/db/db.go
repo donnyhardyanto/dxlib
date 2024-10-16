@@ -916,7 +916,7 @@ func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNam
 	return rowsInfo, r, err
 }
 
-func DeleteWhereKeyValues(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	driverName := db.DriverName()
 	switch driverName {
 	case "oracle":
@@ -930,7 +930,7 @@ func DeleteWhereKeyValues(db *sqlx.DB, tableName string, whereAndFieldNameValues
 	return r, err
 }
 
-func UpdateWhereKeyValues(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
+func Update(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
 	driverName := db.DriverName()
 	switch driverName {
 	case "oracle":

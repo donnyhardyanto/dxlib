@@ -136,14 +136,8 @@ func TxShouldNamedQueryIdBig(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, que
 }
 
 func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	rows, err := tx.NamedQuery(query, arg)
+	rows, err := TxNamedQuery(log, autoRollback, tx, query, arg)
 	if err != nil {
-		if autoRollback {
-			errTx := tx.Rollback()
-			if errTx != nil {
-				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
-			}
-		}
 		return nil, nil, err
 	}
 	defer func() {
@@ -330,7 +324,7 @@ func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 	return id, err
 }
 
-func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
+func TxUpdate(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
 	driveName := tx.DriverName()
 	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
@@ -352,7 +346,7 @@ func TxUpdateWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tabl
 }
 
 func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (
-	result utils.JSON, err error) {
+	result sql.Result, err error) {
 	driveName := tx.DriverName()
 	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
 	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
@@ -363,20 +357,19 @@ func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 	case "postgres":
 		s = `update ` + tableName + ` set ` + u + ` where ` + w
 	case "sqlserver":
-		s = `update ` + tableName + ` set ` + u + ` output inserted.* where ` + w
+		s = `update ` + tableName + ` set ` + u + ` where ` + w
 	case "oracle":
 		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
 	default:
 		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
 	}
-	/*
-		s := `update ` + tableName + ` set ` + u + ` where ` + w + ` returning *`
-	*/
-	_, result, err = TxNamedQueryRow(log, autoRollback, tx, s, joinedKeyValues)
+	result, err = TxNamedExec(log, autoRollback, tx, s, joinedKeyValues)
+
+	//_, result, err = TxNamedQueryRow(log, autoRollback, tx, s, joinedKeyValues)
 	return result, err
 }
 
-func TxDeleteWhereKeyValues(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+func TxDelete(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	driverName := tx.DriverName()
 	w := db.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	s := `delete from ` + tableName + ` where ` + w

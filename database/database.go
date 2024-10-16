@@ -21,65 +21,12 @@ import (
 	"github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/database/database_type"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
-	"github.com/donnyhardyanto/dxlib/database/protected/dbtx"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsSql "github.com/donnyhardyanto/dxlib/utils/security"
 )
 
 type DXDatabaseEventFunc func(dm *DXDatabase, err error)
-
-type DXDatabaseTxCallback func(dtx *DXDatabaseTx) (err error)
-
-type DXDatabaseTxIsolationLevel = sql.IsolationLevel
-
-const (
-	LevelDefault DXDatabaseTxIsolationLevel = iota
-	LevelReadUncommitted
-	LevelReadCommitted
-	LevelWriteCommitted
-	LevelRepeatableRead
-	LevelSnapshot
-	LevelSerializable
-	LevelLinearizable
-)
-
-type DXDatabaseTx struct {
-	*sqlx.Tx
-	Log *log.DXLog
-}
-
-func (dtx *DXDatabaseTx) Commit() (err error) {
-	err = dtx.Tx.Commit()
-	if err != nil {
-		dtx.Log.Errorf("TX_ERROR_IN_COMMIT: (%v)", err.Error())
-		return err
-	}
-	return nil
-}
-
-func (dtx *DXDatabaseTx) Rollback() (err error) {
-	err = dtx.Tx.Rollback()
-	if err != nil {
-		dtx.Log.Errorf("TX_ERROR_IN_ROLLBACK: (%v)", err.Error())
-		return err
-	}
-	return nil
-}
-
-func (dtx *DXDatabaseTx) Finish(log *log.DXLog, err error) {
-	if err != nil {
-		err2 := dtx.Rollback()
-		if err2 != nil {
-			log.Errorf("ROLLBACK_ERROR:%v", err2)
-		}
-	} else {
-		err2 := dtx.Commit()
-		if err2 != nil {
-			log.Errorf("ROLLBACK_ERROR:%v", err2)
-		}
-	}
-}
 
 type DXDatabase struct {
 	NameId                       string
@@ -463,7 +410,7 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 	//if err != nil {
 	//	return nil, err
 	//}
-	return db.UpdateWhereKeyValues(d.Connection, tableName, setKeyValues, whereKeyValues)
+	return db.Update(d.Connection, tableName, setKeyValues, whereKeyValues)
 }
 
 func (d *DXDatabase) ShouldSelectOne(tableName string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
@@ -505,6 +452,16 @@ func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFi
 			}
 		}
 	}
+}
+
+func (d *DXDatabase) SoftDelete(tableName string, whereKeyValues utils.JSON) (result sql.Result, err error) {
+	return d.Update(tableName, utils.JSON{
+		`is_deleted`: true,
+	}, whereKeyValues)
+}
+
+func (d *DXDatabase) Delete(tableName string, whereKeyValues utils.JSON) (r sql.Result, err error) {
+	return db.Delete(d.Connection, tableName, whereKeyValues)
 }
 
 func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
@@ -647,26 +604,4 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	}
 
 	return nil
-}
-
-func (dtx *DXDatabaseTx) Select(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	return dbtx.TxSelect(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
-}
-
-func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	return dbtx.TxSelectOne(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
-}
-
-func (dtx *DXDatabaseTx) ShouldSelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	return dbtx.TxShouldSelectOne(dtx.Log, false, dtx.Tx, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, forUpdatePart)
-}
-func (dtx *DXDatabaseTx) Insert(tableName string, keyValues utils.JSON) (id int64, err error) {
-	return dbtx.TxInsert(dtx.Log, false, dtx.Tx, tableName, keyValues)
-}
-
-func (dtx *DXDatabaseTx) UpdateOne(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result utils.JSON, err error) {
-	return dbtx.TxUpdateOne(dtx.Log, false, dtx.Tx, tableName, setKeyValues, whereKeyValues)
 }

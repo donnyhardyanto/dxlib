@@ -312,7 +312,7 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 		}
 	}
 
-	_, err = db.UpdateWhereKeyValues(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
+	_, err = db.Update(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
 	})
@@ -346,7 +346,7 @@ func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error)
 	if err != nil {
 		return err
 	}
-	_, err = db.DeleteWhereKeyValues(t.Database.Connection, t.NameId, utils.JSON{
+	_, err = db.Delete(t.Database.Connection, t.NameId, utils.JSON{
 		t.FieldNameForRowId: id,
 	})
 	if err != nil {
@@ -484,13 +484,21 @@ func (t *DXTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldN
 	return tx.SelectOne(t.NameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
-func (t *DXTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result utils.JSON, err error) {
+func (t *DXTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
 	return tx.UpdateOne(t.NameId, setKeyValues, whereAndFieldNameValues)
+}
+
+func (t *DXTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	return tx.Delete(t.NameId, whereAndFieldNameValues)
 }
 
 func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
