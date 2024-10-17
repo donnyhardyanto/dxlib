@@ -246,6 +246,22 @@ func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
 	return value, nil
 }
 
+func (r *DXRedis) GetEx(key string, duration time.Duration) (value utils.JSON, err error) {
+	valueAsBytes, err := r.Connection.GetEx(r.Context, key, duration).Bytes()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, nil
+		}
+		log.Log.Errorf("Cannot get to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
+		return nil, err
+	}
+	err = json.Unmarshal(valueAsBytes, &value)
+	if err != nil {
+		log.Log.Errorf("Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
+		return nil, err
+	}
+	return value, nil
+}
 func (r *DXRedis) MustGet(key string) (value utils.JSON, err error) {
 	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
 	if err != nil {
