@@ -335,7 +335,7 @@ func TxUpdate(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 	case "postgres":
 		s = `update ` + tableName + ` set ` + u + ` where ` + w
 	case "sqlserver":
-		s = `update ` + tableName + ` set ` + u + ` output inserted.* where ` + w
+		s = `update ` + tableName + ` set ` + u + ` where ` + w
 	case "oracle":
 		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
 	default:
