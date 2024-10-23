@@ -211,7 +211,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			variablePath := v.NameId
 			err := rpv.SetRawValue(xVarJSON[v.NameId], variablePath)
 			if err != nil {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "`ERROR_PROCESSING_PARAMETER_TO_STRING:%s=(%v)", variablePath, err.Error())
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, err.Error())
 			}
 		}
 	}
@@ -223,7 +223,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			variablePath := v.NameId
 			err := rpv.SetRawValue(aepr.Request.FormValue(v.NameId), variablePath)
 			if err != nil {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_PROCESSING_PARAMETER_TO_STRING:%s=%v", variablePath, err.Error())
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, err.Error())
 			}
 			if rpv.Metadata.IsMustExist {
 				if rpv.RawValue == nil {
@@ -306,7 +306,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		variablePath := v.NameId
 		err := rpv.SetRawValue(bodyAsJSON[v.NameId], variablePath)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_PROCESSING_PARAMETER_TO_STRING:%s=%v`, variablePath, err.Error())
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, err.Error())
 		}
 		if rpv.Metadata.IsMustExist {
 			if rpv.RawValue == nil {
