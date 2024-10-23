@@ -27,7 +27,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) NewChild(aepp DXAPIEndPointPar
 	return &child
 }
 
-func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any) (err error) {
+func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePath string) (err error) {
 	aeprpv.RawValue = rv
 	if aeprpv.Metadata.Type == "json" {
 		jsonValue, ok := rv.(map[string]interface{})
@@ -37,13 +37,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any) (err error
 		for _, v := range aeprpv.Metadata.Children {
 			{
 				childValue := aeprpv.NewChild(v)
+				aVariablePath := variablePath + "." + v.NameId
 				jv, ok := jsonValue[v.NameId]
 				if !ok {
 					if v.IsMustExist {
-						return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", v.NameId)
+						return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", aVariablePath)
 					}
 				} else {
-					err = childValue.SetRawValue(jv)
+					err = childValue.SetRawValue(jv, variablePath)
 					if err != nil {
 						return err
 					}

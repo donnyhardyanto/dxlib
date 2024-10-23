@@ -208,9 +208,10 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 		for _, v := range aepr.EndPoint.Parameters {
 			rpv := aepr.NewAPIEndPointRequestParameter(v)
 			aepr.ParameterValues[v.NameId] = rpv
-			err := rpv.SetRawValue(xVarJSON[v.NameId])
+			variablePath := v.NameId
+			err := rpv.SetRawValue(xVarJSON[v.NameId], variablePath)
 			if err != nil {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "`ERROR_PROCESSING_PARAMETER_TO_STRING:%s=(%v)", v.NameId, err.Error())
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "`ERROR_PROCESSING_PARAMETER_TO_STRING:%s=(%v)", variablePath, err.Error())
 			}
 		}
 	}
@@ -219,20 +220,21 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 		for _, v := range aepr.EndPoint.Parameters {
 			rpv := aepr.NewAPIEndPointRequestParameter(v)
 			aepr.ParameterValues[v.NameId] = rpv
-			err := rpv.SetRawValue(aepr.Request.FormValue(v.NameId))
+			variablePath := v.NameId
+			err := rpv.SetRawValue(aepr.Request.FormValue(v.NameId), variablePath)
 			if err != nil {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_PROCESSING_PARAMETER_TO_STRING:%s=%v", v.NameId, err.Error())
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "ERROR_PROCESSING_PARAMETER_TO_STRING:%s=%v", variablePath, err.Error())
 			}
 			if rpv.Metadata.IsMustExist {
 				if rpv.RawValue == nil {
 					if !rpv.Metadata.IsNullable {
-						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "MANDATORY_PARAMETER_NOT_EXIST:%s", v.NameId)
+						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
 					}
 				}
 			}
 			if rpv.RawValue != nil {
 				if !rpv.Validate() {
-					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "PARAMETER_VALIDATION_FAIL:%s", v.NameId)
+					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "PARAMETER_VALIDATION_FAIL:%s", variablePath)
 				}
 			}
 		}
@@ -241,14 +243,15 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 		case utilsHttp.ContentTypeApplicationOctetStream:
 			for _, v := range aepr.EndPoint.Parameters {
 				rpv, ok := aepr.ParameterValues[v.NameId]
+				variablePath := v.NameId
 				if v.IsMustExist {
 					if !ok {
-						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "MANDATORY_PARAMETER_NOT_EXIST:%s", v.NameId)
+						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
 					}
 				}
 				if rpv.RawValue != nil {
 					if !rpv.Validate() {
-						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "PARAMETER_VALIDATION_FAIL:%s", v.NameId)
+						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "PARAMETER_VALIDATION_FAIL:%s", variablePath)
 					}
 				}
 			}
@@ -296,26 +299,25 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v`, err.Error()+"="+string(aepr.RequestBodyAsBytes))
 		}
 	}
-	//aepr.CurrentUser.Id = ""
-	//aepr.CurrentUser.Name = ""
 
 	for _, v := range aepr.EndPoint.Parameters {
 		rpv := aepr.NewAPIEndPointRequestParameter(v)
 		aepr.ParameterValues[v.NameId] = rpv
-		err := rpv.SetRawValue(bodyAsJSON[v.NameId])
+		variablePath := v.NameId
+		err := rpv.SetRawValue(bodyAsJSON[v.NameId], variablePath)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_PROCESSING_PARAMETER_TO_STRING:%s=%v`, v.NameId, err.Error())
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `ERROR_AT_PROCESSING_PARAMETER_TO_STRING:%s=%v`, variablePath, err.Error())
 		}
 		if rpv.Metadata.IsMustExist {
 			if rpv.RawValue == nil {
 				if !rpv.Metadata.IsNullable {
-					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `MANDATORY_PARAMETER_IS_NOT_EXIST:%s`, v.NameId)
+					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `MANDATORY_PARAMETER_IS_NOT_EXIST:%s`, variablePath)
 				}
 			}
 		}
 		if rpv.RawValue != nil {
 			if !rpv.Validate() {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `PARAMETER_VALIDATION_FAIL:%s`, v.NameId)
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `PARAMETER_VALIDATION_FAIL:%s`, variablePath)
 			}
 		}
 	}
