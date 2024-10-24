@@ -97,6 +97,14 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	return newId, err
 }
 
+func (t *DXTable) GetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.SelectOne(log, utils.JSON{
+		t.FieldNameForRowId: id,
+		"is_deleted":        false,
+	}, map[string]string{t.FieldNameForRowId: "asc"})
+	return rowsInfo, r, err
+}
+
 func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowId: id,
