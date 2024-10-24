@@ -12,6 +12,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type DXObjectStorageType int64
@@ -49,6 +50,7 @@ type DXObjectStorage struct {
 	HasUserName       bool
 	Password          string
 	HasPassword       bool
+	BasePath          string
 	UseSSL            bool
 	BucketName        string
 	IsConnectAtStart  bool
@@ -72,6 +74,7 @@ func (osm *DXObjectStorageManager) NewObjectStorage(nameId string, isConnectAtSt
 		Connected:        false,
 		HasUserName:      false,
 		HasPassword:      false,
+		BasePath:         "/",
 		UseSSL:           false,
 		Context:          core.RootContext,
 	}
@@ -219,6 +222,7 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 			err := log.Log.ErrorAndCreateErrorf("Mandatory bucket_name field in object storage ObjectStorage %s configuration not exist.", r.NameId)
 			return err
 		}
+		r.BasePath, ok = ObjectStorageConfiguration[`base_path`].(string)
 		r.IsConfigured = true
 		log.Log.Infof("Configuring to ObjectStorage %s... done", r.NameId)
 	}
@@ -266,11 +270,15 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 	if r.Client == nil {
 		return nil, log.Log.ErrorAndCreateErrorf("CLIENT_IS_NIL")
 	}
-
+	fullPathObjectName := r.BasePath
+	if !strings.HasSuffix(fullPathObjectName, "/") {
+		fullPathObjectName += "/"
+	}
+	fullPathObjectName = fullPathObjectName + objectName
 	info, err := r.Client.PutObject(
 		context.Background(),
 		r.BucketName,
-		objectName,
+		fullPathObjectName,
 		reader,
 		-1,
 		minio.PutObjectOptions{ContentType: contentType, UserMetadata: map[string]string{
@@ -302,8 +310,14 @@ func (r *DXObjectStorage) DownloadStream(objectName string) (*minio.Object, erro
 		return nil, log.Log.ErrorAndCreateErrorf("CLIENT_IS_NIL")
 	}
 
+	fullPathObjectName := r.BasePath
+	if !strings.HasSuffix(fullPathObjectName, "/") {
+		fullPathObjectName += "/"
+	}
+	fullPathObjectName = fullPathObjectName + objectName
+
 	// Get the object from the bucket
-	object, err := r.Client.GetObject(context.Background(), r.BucketName, objectName, minio.GetObjectOptions{})
+	object, err := r.Client.GetObject(context.Background(), r.BucketName, fullPathObjectName, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
