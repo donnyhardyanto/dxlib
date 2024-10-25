@@ -113,6 +113,14 @@ func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo
 	return rowsInfo, r, err
 }
 
+func (t *DXTable) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.SelectOne(log, utils.JSON{
+		t.FieldNameForRowNameId: nameid,
+		"is_deleted":            false,
+	}, map[string]string{t.FieldNameForRowNameId: "asc"})
+	return rowsInfo, r, err
+}
+
 func (t *DXTable) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowNameId: nameid,
