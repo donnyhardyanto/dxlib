@@ -44,7 +44,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 						return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", aVariablePath)
 					}
 				} else {
-					err = childValue.SetRawValue(jv, variablePath)
+					err = childValue.SetRawValue(jv, aVariablePath)
 					if err != nil {
 						return err
 					}
