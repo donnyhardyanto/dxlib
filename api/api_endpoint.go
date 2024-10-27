@@ -30,6 +30,13 @@ type DXAPIEndPointParameter struct {
 	Children    []DXAPIEndPointParameter
 }
 
+func (aep *DXAPIEndPointParameter) GetNameIdPath() (s string) {
+	if aep.Parent == nil {
+		return aep.NameId
+	}
+	return aep.Parent.GetNameIdPath() + "." + aep.NameId
+}
+
 func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
 	switch SpecFormat {
 	case "MarkDown":

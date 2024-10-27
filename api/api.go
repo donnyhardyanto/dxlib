@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"github.com/donnyhardyanto/dxlib"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -23,6 +25,23 @@ const (
 	DXAPIDefaultReadTimeoutSec  = 300
 )
 
+type DXAPIAuditLogEntry struct {
+	StartTime    time.Time `json:"start_time"`
+	EndTime      time.Time `json:"end_time"`
+	Duration     float64   `json:"duration_ms"`
+	IPAddress    string    `json:"ip_address"`
+	UserID       string    `json:"user_id,omitempty"`
+	UserName     string    `json:"user_name,omitempty"`
+	APIURL       string    `json:"api_url"`
+	APITitle     string    `json:"api_title"`
+	Method       string    `json:"method"`
+	StatusCode   int       `json:"status_code"`
+	ErrorMessage string    `json:"error_message,omitempty"`
+	RequestID    string    `json:"request_id"`
+}
+
+type DXAuditLogHandler func(oldAuditLogId int64, parameters *DXAPIAuditLogEntry) (newAuditLogId int64, err error)
+
 type DXAPI struct {
 	NameId          string
 	Address         string
@@ -34,6 +53,8 @@ type DXAPI struct {
 	Log             log.DXLog
 	Context         context.Context
 	Cancel          context.CancelFunc
+	OnAuditLogStart DXAuditLogHandler
+	OnAuditLogEnd   DXAuditLogHandler
 }
 
 var SpecFormat = "MarkDown"
@@ -166,6 +187,21 @@ func (a *DXAPI) FindEndPointByURI(uri string) *DXAPIEndPoint {
 	return nil
 }
 
+func GetIPAddress(r *http.Request) string {
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ip = r.Header.Get("X-Real-IP")
+	}
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	// Remove port if present
+	if strings.Contains(ip, ":") {
+		ip, _, _ = net.SplitHostPort(ip)
+	}
+	return ip
+}
+
 func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType DXAPIEndPointType,
 	contentType utilsHttp.RequestContentType, parameters []DXAPIEndPointParameter, onExecute DXAPIEndPointExecuteFunc,
 	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DXAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc,
@@ -204,6 +240,27 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	defer func() {
 		if err != nil {
 			//		_ = aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "ERROR_AT_AEPR:%s (%s)", aepr.Id, err)
+		}
+	}()
+
+	auditLogId := int64(0)
+
+	if a.OnAuditLogStart != nil {
+		auditLogId, err = a.OnAuditLogStart(auditLogId, &DXAPIAuditLogEntry{
+			StartTime: time.Now(),
+			IPAddress: GetIPAddress(r),
+			APIURL:    r.URL.Path,
+			APITitle:  p.Title,
+			Method:    r.Method,
+		})
+	}
+
+	defer func() {
+		if a.OnAuditLogEnd != nil {
+			_, err = a.OnAuditLogEnd(auditLogId, &DXAPIAuditLogEntry{
+				EndTime:    time.Now(),
+				StatusCode: aepr._responseStatusCode,
+			})
 		}
 	}()
 
