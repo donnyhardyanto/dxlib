@@ -233,8 +233,13 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 				}
 			}
 			if rpv.RawValue != nil {
-				if !rpv.Validate() {
+				err = rpv.Validate()
+				if err != nil {
+					aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
+					return err
+					/*if !rpv.Validate() {
 					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "PARAMETER_VALIDATION_FAIL:%s", variablePath)
+					*/
 				}
 			}
 		}
@@ -250,9 +255,14 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 					}
 				}
 				if rpv.RawValue != nil {
-					if !rpv.Validate() {
-						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "PARAMETER_VALIDATION_FAIL:%s", variablePath)
+					err = rpv.Validate()
+					if err != nil {
+						aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
+						return err
 					}
+					/*if !rpv.Validate() {
+						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "PARAMETER_VALIDATION_FAIL:%s", variablePath)
+					}*/
 				}
 			}
 			err = aepr.preProcessRequestAsApplicationOctetStream()
@@ -316,9 +326,14 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			}
 		}
 		if rpv.RawValue != nil {
-			if !rpv.Validate() {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `PARAMETER_VALIDATION_FAIL:%s`, variablePath)
+			err = rpv.Validate()
+			if err != nil {
+				aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
+				return err
 			}
+			/*if !rpv.Validate() {
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `PARAMETER_VALIDATION_FAIL:%s`, variablePath)
+			}*/
 		}
 	}
 	return nil
