@@ -352,6 +352,7 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 		responseWriter.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalFilename))
 	}
 	responseWriter.WriteHeader(http.StatusOK)
+	aepr.ResponseStatusCode = http.StatusOK
 
 	// Use io.Pipe to stream the object, the thread will exist until it send all the content, even after the handler return to web server
 	reader, writer := io.Pipe()

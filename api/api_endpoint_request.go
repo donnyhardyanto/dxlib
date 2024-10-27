@@ -28,7 +28,7 @@ type DXAPIEndPointRequest struct {
 	RequestBodyAsBytes     []byte
 	_responseWriter        *http.ResponseWriter
 	_responseErrorAsString string
-	_responseStatusCode    int
+	ResponseStatusCode     int
 	//ResponseBodyAsBytes []byte
 	ErrorMessage       []string
 	CurrentUser        DXAPIUser
@@ -161,7 +161,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		responseWriter.Header().Set(k, v)
 	}
 	responseWriter.WriteHeader(statusCode)
-	aepr._responseStatusCode = statusCode
+	aepr.ResponseStatusCode = statusCode
 
 	aepr.ResponseHeaderSent = true
 	if aepr.ResponseBodySent {

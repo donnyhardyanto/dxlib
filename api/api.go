@@ -259,7 +259,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		if a.OnAuditLogEnd != nil {
 			_, err = a.OnAuditLogEnd(auditLogId, &DXAPIAuditLogEntry{
 				EndTime:    time.Now(),
-				StatusCode: aepr._responseStatusCode,
+				StatusCode: aepr.ResponseStatusCode,
 			})
 		}
 	}()
@@ -268,10 +268,10 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	defer func() {
 		if (err != nil) && (dxlib.IsDebug) && (p.RequestContentType == utilsHttp.ContentTypeApplicationJSON) {
 			if aepr.RequestBodyAsBytes != nil {
-				aepr.Log.Infof("%d %s Request: %s", aepr._responseStatusCode, r.URL.Path, string(aepr.RequestBodyAsBytes))
+				aepr.Log.Infof("%d %s Request: %s", aepr.ResponseStatusCode, r.URL.Path, string(aepr.RequestBodyAsBytes))
 			}
 		} else {
-			aepr.Log.Infof("%d %s", aepr._responseStatusCode, r.URL.Path)
+			aepr.Log.Infof("%d %s", aepr.ResponseStatusCode, r.URL.Path)
 		}
 	}()
 
@@ -280,7 +280,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "PREPROCESS_REQUEST_ERROR:%v ", err.Error())
 		requestDump, err2 := aepr.RequestDump()
 		if err2 != nil {
-			aepr.Log.Errorf(`Error in RequestDump (%v)`, err2.Error())
+			aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())
 			return
 		}
 		aepr.Log.Errorf("ONPREPROCESSREQUEST_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
@@ -293,7 +293,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "MIDDLEWARE_ERROR:%v ", err.Error())
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(`Error in RequestDump (%v)`, err2.Error())
+				aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())
 				return
 			}
 			aepr.Log.Errorf("ONMIDDLEWARE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
@@ -306,7 +306,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		if err != nil {
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(`Error in RequestDump (%v)`, err2.Error())
+				aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())
 				return
 			}
 			aepr.Log.Errorf("ONEXECUTE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
@@ -326,7 +326,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 	if a.RuntimeIsActive {
-		return errors.New("server is already active")
+		return errors.New("SERVER_ALREADY_ACTIVE")
 	}
 
 	mux := http.NewServeMux()
