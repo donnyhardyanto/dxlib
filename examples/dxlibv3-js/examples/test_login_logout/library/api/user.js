@@ -1,7 +1,7 @@
 import * as api from './core.js';
 import * as self from './self.js'
 
-export async function user_create(keys, organizationId, roleId, loginid, email, fullname, phonenumber, status, password, data_id_number) {
+export async function user_create(keys, organizationId, roleId, loginid, email, fullname, phonenumber, status, password, membership_number) {
 
     await self.self_prekey(keys);
 
@@ -17,7 +17,7 @@ export async function user_create(keys, organizationId, roleId, loginid, email, 
         "fullname": fullname,
         "phonenumber": phonenumber,
         "status": status,
-        "data_id_number": data_id_number,
+        "membership_number": membership_number,
         "password_i": keys.preKeyIndex,
         "password_d": dataBlockEnvelopeAsHexString,
     }, true)
