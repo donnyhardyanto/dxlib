@@ -347,6 +347,12 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 		}
 	}
 
+	for k, v := range newKeyValues {
+		if v == nil {
+			delete(newKeyValues, k)
+		}
+	}
+
 	_, err = db.Update(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
