@@ -119,6 +119,10 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 					return false*/
 				}
 			}
+		case "json-passthrough":
+			if rawValueType != "map[string]interface {}" {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			}
 		case "iso8601", "date", "time":
 			if rawValueType != "string" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
@@ -241,6 +245,17 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s := utils.JSON{}
 		for _, v := range aeprpv.Children {
 			s[v.Metadata.NameId] = v.Value
+		}
+		aeprpv.Value = s
+		return nil
+	case "json-passthrough":
+		s, ok := aeprpv.RawValue.(map[string]any)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+
+			/*			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+						return false
+			*/
 		}
 		aeprpv.Value = s
 		return nil
