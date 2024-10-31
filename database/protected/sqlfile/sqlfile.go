@@ -1,16 +1,14 @@
-// Package sqlparser provides a fast, memory-efficient SQL statement parser
-package sqlparser
+package sqlfile
 
 import (
 	"database/sql"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile/sqlparser"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
-// SQLFile represents a queries holder
+// SQLFile represents a SQL file handler
 type SQLFile struct {
 	files   []string
 	queries []string
@@ -26,23 +24,24 @@ func NewSQLFile() *SQLFile {
 	}
 }
 
-// File adds and loads queries from input file
-func (s *SQLFile) File(file string) error {
-	content, err := os.ReadFile(file)
+// File loads and parses a single SQL file
+func (s *SQLFile) File(filename string) error {
+	// Read file content
+	content, err := os.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to read file %s: %w", file, err)
+		return fmt.Errorf("failed to read file %s: %w", filename, err)
 	}
 
-	// Parse SQL statements
+	// Parse statements
 	statements, err := s.parser.Parse(content)
 	if err != nil {
-		return fmt.Errorf("failed to parse SQL from file %s: %w", file, err)
+		return fmt.Errorf("failed to parse SQL from file %s: %w", filename, err)
 	}
 
 	// Add file to processed files list
-	s.files = append(s.files, file)
+	s.files = append(s.files, filename)
 
-	// Add parsed statements to queries list
+	// Add statements to queries list
 	for _, stmt := range statements {
 		if query := strings.TrimSpace(string(stmt.Query)); query != "" {
 			s.queries = append(s.queries, query)
@@ -52,7 +51,7 @@ func (s *SQLFile) File(file string) error {
 	return nil
 }
 
-// Files adds and loads queries from multiple input files
+// Files loads and parses multiple SQL files
 func (s *SQLFile) Files(files ...string) error {
 	for _, file := range files {
 		if err := s.File(file); err != nil {
@@ -62,44 +61,15 @@ func (s *SQLFile) Files(files ...string) error {
 	return nil
 }
 
-// Directory adds and loads queries from *.sql files in specified directory
-func (s *SQLFile) Directory(dir string) error {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return fmt.Errorf("failed to read directory %s: %w", dir, err)
-	}
-
-	foundSQL := false
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		if filepath.Ext(entry.Name()) != ".sql" {
-			continue
-		}
-
-		foundSQL = true
-		fullPath := filepath.Join(dir, entry.Name())
-		if err := s.File(fullPath); err != nil {
-			return err
-		}
-	}
-
-	if !foundSQL {
-		return fmt.Errorf("no SQL files found in directory %s", dir)
-	}
-
-	return nil
-}
-
-// Execute executes the SQL statements
+// Execute executes all loaded queries in a transaction
 func (s *SQLFile) Execute(db *sql.DB) error {
 	// Start transaction
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
+
+	// Use defer to ensure rollback in case of error
 	defer func() {
 		if err != nil {
 			tx.Rollback()
@@ -126,7 +96,7 @@ func ExecuteSQL(db *sql.DB, sqlContent string) error {
 	parser := sqlparser.NewParser()
 
 	// Parse SQL statements
-	statements, err := parser.ParseString(sqlContent)
+	statements, err := parser.Parse([]byte(sqlContent))
 	if err != nil {
 		return fmt.Errorf("failed to parse SQL: %w", err)
 	}
@@ -136,6 +106,7 @@ func ExecuteSQL(db *sql.DB, sqlContent string) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			tx.Rollback()
@@ -144,13 +115,10 @@ func ExecuteSQL(db *sql.DB, sqlContent string) error {
 
 	// Execute each statement
 	for _, stmt := range statements {
-		query := strings.TrimSpace(string(stmt.Query))
-		if query == "" {
-			continue
-		}
-
-		if _, err := tx.Exec(query); err != nil {
-			return fmt.Errorf("failed to execute query: %w\nQuery: %s", err, query)
+		if query := strings.TrimSpace(string(stmt.Query)); query != "" {
+			if _, err := tx.Exec(query); err != nil {
+				return fmt.Errorf("failed to execute query: %w\nQuery: %s", err, query)
+			}
 		}
 	}
 

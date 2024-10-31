@@ -63,7 +63,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 		//	n = strings.Replace(n, "T", " ", 1)
 	}*/
 	newKeyValues["is_deleted"] = false
-	//newKeyValues["created_at"] = n
+
 	tt := time.Now().UTC()
 	newKeyValues["created_at"] = tt
 	_, ok := newKeyValues["created_by_user_id"]
@@ -75,7 +75,6 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 			newKeyValues["created_by_user_id"] = "0"
 			newKeyValues["created_by_user_nameid"] = "SYSTEM"
 		}
-		//	newKeyValues["last_modified_at"] = n
 		newKeyValues["last_modified_at"] = tt
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["last_modified_by_user_id"] = aepr.CurrentUser.Id
@@ -109,6 +108,14 @@ func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
+	}, map[string]string{t.FieldNameForRowId: "asc"})
+	return rowsInfo, r, err
+}
+
+func (t *DXTable) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
+		"utag":       utag,
+		"is_deleted": false,
 	}, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
@@ -215,8 +222,6 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 	newKeyValues["created_at"] = tt
 	newKeyValues["last_modified_at"] = tt
 	newKeyValues["is_deleted"] = false
-	//newKeyValues["created_at"] = n
-	//newKeyValues["last_modified_at"] = n
 	_, ok := newKeyValues["created_by_user_id"]
 	if !ok {
 		newKeyValues["created_by_user_id"] = "0"
@@ -307,14 +312,28 @@ func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 	return nil
 }
 
+func (t *DXTable) ReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
+	_, utag, err := aepr.GetParameterValueAsString("utag")
+	if err != nil {
+		return err
+	}
+
+	rowsInfo, d, err := t.ShouldGetByUtag(&aepr.Log, utag)
+	if err != nil {
+		return err
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
+
+	return nil
+}
+
 func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
 	_, _, err = t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
-	//n := utils.NowAsString()
 	tt := time.Now().UTC()
-	//newKeyValues["last_modified_at"] = n
 	newKeyValues["last_modified_at"] = tt
 
 	_, ok := newKeyValues["last_modified_by_user_id"]
