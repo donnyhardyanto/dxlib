@@ -479,19 +479,46 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 	switch driverName {
 	case "sqlserver", "postgres", "oracle":
 		log.Log.Infof("Executing SQL file %s... start", filename)
-		fs := sqlfile.SqlFile{}
-		err = fs.File(filename)
+		/*		fs := sqlfile.SqlFile{}
+				err = fs.File(filename)
+				if err != nil {
+					log.Log.Panic("DXDatabaseScript/ExecuteFile/1", err)
+					return nil, err
+				}
+				rs, err := fs.Exec(d.Connection.DB)
+				if err != nil {
+					log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err.Error())
+					return rs[0], err
+				}
+				log.Log.Infof("Executing SQL file %s... done", filename)
+				return rs[0], nil*/
+
+		sqlFile := sqlfile.NewSQLFile()
+
+		// Load single file
+		err = sqlFile.File(filename)
 		if err != nil {
-			log.Log.Panic("DXDatabaseScript/ExecuteFile/1", err)
 			return nil, err
 		}
-		rs, err := fs.Exec(d.Connection.DB)
+
+		// Execute the queries
+		err = sqlFile.Execute(d.Connection.DB)
 		if err != nil {
-			log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err.Error())
-			return rs[0], err
+			return nil, err
 		}
-		log.Log.Infof("Executing SQL file %s... done", filename)
-		return rs[0], nil
+
+		/*sf := sqlfile.New()
+		err := sf.File(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		results, err := sf.Exec(d.Connection.DB)
+		if err != nil {
+			return nil, err
+		}
+		*/
+		return nil, nil
 	default:
 		err = log.Log.FatalAndCreateErrorf("Driver %s is not supported", driverName)
 		return nil, err

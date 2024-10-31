@@ -1,42 +1,59 @@
-// Package sqlfile provides a way to execute sql file easily
-//
-// For more usage see https://github.com/tanimutomo/sqlfile
-package sqlfile
+// Package sqlparser provides a fast, memory-efficient SQL statement parser
+package sqlparser
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile/sqlparser"
 	"os"
-	"regexp"
+	"path/filepath"
 	"strings"
 )
 
-// SqlFile represents a queries holder
-type SqlFile struct {
+// SQLFile represents a queries holder
+type SQLFile struct {
 	files   []string
 	queries []string
+	parser  *sqlparser.Parser
 }
 
-// New create new SqlFile object
-func New() *SqlFile {
-	return &SqlFile{}
+// NewSQLFile creates a new SQLFile instance
+func NewSQLFile() *SQLFile {
+	return &SQLFile{
+		files:   make([]string, 0),
+		queries: make([]string, 0),
+		parser:  sqlparser.NewParser(),
+	}
 }
 
-// File add and load queries from input file
-func (s *SqlFile) File(file string) error {
-	queries, err := load(file)
+// File adds and loads queries from input file
+func (s *SQLFile) File(file string) error {
+	content, err := os.ReadFile(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read file %s: %w", file, err)
 	}
 
+	// Parse SQL statements
+	statements, err := s.parser.Parse(content)
+	if err != nil {
+		return fmt.Errorf("failed to parse SQL from file %s: %w", file, err)
+	}
+
+	// Add file to processed files list
 	s.files = append(s.files, file)
-	s.queries = append(s.queries, queries...)
+
+	// Add parsed statements to queries list
+	for _, stmt := range statements {
+		if query := strings.TrimSpace(string(stmt.Query)); query != "" {
+			s.queries = append(s.queries, query)
+		}
+	}
 
 	return nil
 }
 
-// Files add and load queries from multiple input files
-func (s *SqlFile) Files(files ...string) error {
+// Files adds and loads queries from multiple input files
+func (s *SQLFile) Files(files ...string) error {
 	for _, file := range files {
 		if err := s.File(file); err != nil {
 			return err
@@ -45,266 +62,122 @@ func (s *SqlFile) Files(files ...string) error {
 	return nil
 }
 
-// Directory add and load queries from *.sql files in specified directory
-func (s *SqlFile) Directory(dir string) error {
-	files, err := os.ReadDir(dir)
+// Directory adds and loads queries from *.sql files in specified directory
+func (s *SQLFile) Directory(dir string) error {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read directory %s: %w", dir, err)
 	}
 
-	for _, file := range files {
-		if file.IsDir() {
+	foundSQL := false
+	for _, entry := range entries {
+		if entry.IsDir() {
 			continue
 		}
 
-		name := file.Name()
-		if name[len(name)-3:] != "sql" {
+		if filepath.Ext(entry.Name()) != ".sql" {
 			continue
 		}
 
-		if err := s.File(dir + "/" + name); err != nil {
+		foundSQL = true
+		fullPath := filepath.Join(dir, entry.Name())
+		if err := s.File(fullPath); err != nil {
 			return err
 		}
+	}
+
+	if !foundSQL {
+		return fmt.Errorf("no SQL files found in directory %s", dir)
 	}
 
 	return nil
 }
 
-// Exec execute SQL statements written int the specified sql file
-func (s *SqlFile) Exec(db *sql.DB) (res []sql.Result, err error) {
+// Execute executes the SQL statements
+func (s *SQLFile) Execute(db *sql.DB) error {
+	// Start transaction
 	tx, err := db.Begin()
 	if err != nil {
-		return res, err
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer saveTx(tx, &err)
-
-	var rs []sql.Result
-	for _, q := range s.queries {
-		r, err := tx.Exec(q)
+	defer func() {
 		if err != nil {
-			return res, fmt.Errorf(err.Error() + " : when executing > " + q)
+			tx.Rollback()
 		}
-		rs = append(rs, r)
+	}()
+
+	// Execute each query
+	for _, query := range s.queries {
+		if _, err := tx.Exec(query); err != nil {
+			return fmt.Errorf("failed to execute query: %w\nQuery: %s", err, query)
+		}
 	}
 
-	return rs, err
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
-func load(path string) ([]string, error) {
-	content, err := os.ReadFile(path)
+// ExecuteSQL executes a SQL string directly
+func ExecuteSQL(db *sql.DB, sqlContent string) error {
+	parser := sqlparser.NewParser()
+
+	// Parse SQL statements
+	statements, err := parser.ParseString(sqlContent)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to parse SQL: %w", err)
 	}
 
-	// Remove comments
-	commentRegex := regexp.MustCompile(`--.*$|/\*[\s\S]*?\*/`)
-	cleanContent := commentRegex.ReplaceAllString(string(content), "")
+	// Start transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
 
-	// Split the content into statements
-	statements := splitSQLStatements2(cleanContent)
-
-	// Trim and filter out empty statements
-	var queries []string
+	// Execute each statement
 	for _, stmt := range statements {
-		if trimmedStmt := strings.TrimSpace(stmt); trimmedStmt != "" {
-			queries = append(queries, trimmedStmt)
+		query := strings.TrimSpace(string(stmt.Query))
+		if query == "" {
+			continue
+		}
+
+		if _, err := tx.Exec(query); err != nil {
+			return fmt.Errorf("failed to execute query: %w\nQuery: %s", err, query)
 		}
 	}
 
-	return queries, nil
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
-func splitSQLStatements(content string) []string {
-	var statements []string
-	var currentStmt strings.Builder
-	var inQuote bool
-	var inDollarQuote bool
-	var dollarQuoteTag string
-
-	for i := 0; i < len(content); i++ {
-		ch := content[i]
-		currentStmt.WriteByte(ch)
-
-		switch ch {
-		case '\'':
-			if !inDollarQuote {
-				inQuote = !inQuote
-			}
-		case '$':
-			if !inQuote && !inDollarQuote {
-				if tag, ok := extractDollarQuoteTag(content[i:]); ok {
-					inDollarQuote = true
-					dollarQuoteTag = tag
-					currentStmt.WriteString(tag[1:])
-					i += len(tag) - 1
-				}
-			} else if inDollarQuote {
-				if strings.HasPrefix(content[i:], dollarQuoteTag) {
-					inDollarQuote = false
-					currentStmt.WriteString(dollarQuoteTag[1:])
-					i += len(dollarQuoteTag) - 1
-				}
-			}
-		case ';':
-			if !inQuote && !inDollarQuote {
-				statements = append(statements, currentStmt.String())
-				currentStmt.Reset()
-			}
-		}
-	}
-
-	// Add the last statement if there's any content
-	if currentStmt.Len() > 0 {
-		statements = append(statements, currentStmt.String())
-	}
-
-	return statements
+// GetQueries returns the list of loaded queries
+func (s *SQLFile) GetQueries() []string {
+	result := make([]string, len(s.queries))
+	copy(result, s.queries)
+	return result
 }
 
-func splitSQLStatements2(script string) []string {
-	var statements []string
-	var currentStatement strings.Builder
-	var inQuote bool
-	var quoteChar rune
-	var inDollarQuote bool
-	var dollarQuoteTag string
-
-	for _, char := range script {
-		currentStatement.WriteRune(char)
-
-		switch {
-		case inDollarQuote:
-			if strings.HasSuffix(currentStatement.String(), dollarQuoteTag) {
-				inDollarQuote = false
-				dollarQuoteTag = ""
-			}
-		case inQuote:
-			if char == quoteChar {
-				inQuote = false
-			}
-		case char == '\'':
-			inQuote = true
-			quoteChar = '\''
-		case char == '"':
-			inQuote = true
-			quoteChar = '"'
-		case char == '$' && !inQuote:
-			if dollarQuoteTag == "" {
-				dollarQuoteTag = "$"
-			} else {
-				inDollarQuote = true
-			}
-		case char == ';' && !inQuote && !inDollarQuote:
-			statements = append(statements, strings.TrimSpace(currentStatement.String()))
-			currentStatement.Reset()
-		}
-	}
-
-	// Add the last statement if there's any content
-	if currentStatement.Len() > 0 {
-		statements = append(statements, strings.TrimSpace(currentStatement.String()))
-	}
-
-	return statements
+// GetFiles returns the list of processed files
+func (s *SQLFile) GetFiles() []string {
+	result := make([]string, len(s.files))
+	copy(result, s.files)
+	return result
 }
 
-func extractDollarQuoteTag(s string) (string, bool) {
-	if !strings.HasPrefix(s, "$$") {
-		endIndex := strings.Index(s, "$")
-		if endIndex > 0 {
-			return s[:endIndex+1], true
-		}
-	}
-	return "", false
-}
-
-// Old Load load sql file from path, and return SqlFile pointer
-func load2(path string) (qs []string, err error) {
-	ls, err := readFileByLine(path)
-	if err != nil {
-		return qs, err
-	}
-
-	var ncls []string
-	for _, l := range ls {
-		ncl := excludeComment(l)
-		ncls = append(ncls, ncl)
-	}
-
-	l := strings.Join(ncls, "\n")
-	qs = strings.Split(l, ";")
-	qs = qs[:len(qs)-1]
-
-	return qs, nil
-}
-
-func readFileByLine(path string) (ls []string, err error) {
-	f, err := os.ReadFile(path)
-	if err != nil {
-		return ls, err
-	}
-
-	ls = strings.Split(string(f), "\n")
-	return ls, nil
-}
-
-func excludeComment(line string) string {
-	d := "\""
-	s := "'"
-	c := "--"
-
-	var nc string
-	ck := line
-	mx := len(line) + 1
-
-	for {
-		if len(ck) == 0 {
-			return nc
-		}
-
-		di := strings.Index(ck, d)
-		si := strings.Index(ck, s)
-		ci := strings.Index(ck, c)
-
-		if di < 0 {
-			di = mx
-		}
-		if si < 0 {
-			si = mx
-		}
-		if ci < 0 {
-			ci = mx
-		}
-
-		var ei int
-
-		if di < si && di < ci {
-			nc += ck[:di+1]
-			ck = ck[di+1:]
-			ei = strings.Index(ck, d)
-		} else if si < di && si < ci {
-			nc += ck[:si+1]
-			ck = ck[si+1:]
-			ei = strings.Index(ck, s)
-		} else if ci < di && ci < si {
-			return nc + ck[:ci]
-		} else {
-			return nc + ck
-		}
-
-		nc += ck[:ei+1]
-		ck = ck[ei+1:]
-	}
-}
-
-func saveTx(tx *sql.Tx, err *error) {
-	if p := recover(); p != nil {
-		tx.Rollback()
-		panic(p)
-	} else if *err != nil {
-		tx.Rollback()
-	} else {
-		e := tx.Commit()
-		err = &e
-	}
+// Clear removes all loaded queries and files
+func (s *SQLFile) Clear() {
+	s.queries = s.queries[:0]
+	s.files = s.files[:0]
 }

@@ -85,8 +85,8 @@ func doOnDefineConfiguration() (err error) {
 			"nameid":              "p3",
 			"database_type":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_TYPE`, "oracle"),
 			"address":             utilsOs.GetEnvDefaultValue(`DB_SYSTEM_ADDRESS`, "127.0.0.1:1521"),
-			"user_name":           utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_NAME`, "alma"),
-			"user_password":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_PASSWORD`, "solusi"),
+			"user_name":           utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_NAME`, "SYSTEM"),
+			"user_password":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_PASSWORD`, "oraORAora1000"),
 			"database_name":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_NAME`, `FREEPDB1`),
 			"connection_options":  "sslmode=disable",
 			"must_connected":      true,
@@ -267,25 +267,25 @@ func doOnAfterConfigurationStartAll() (err error) {
 			log.Log.Infof("Update result: %v", r)
 		}*/
 
-	/*	dbP3 := database.Manager.Databases[`p3`]
+	dbP3 := database.Manager.Databases[`p3`]
 
-		dbP3System := database.Manager.Databases[`oracle-system`]
+	dbP3System := database.Manager.Databases[`oracle-system`]
 
-		err = dbP3.Connect()
-		if err != nil {
-			log.Log.Errorf("Failed to connect to database %s: %s", dbP2.DatabaseName, err.Error())
-			return err
-		}
+	err = dbP3.Connect()
+	if err != nil {
+		log.Log.Errorf("Failed to connect to database %s: %s", dbP2.DatabaseName, err.Error())
+		return err
+	}
 
-		_ = utils.DropDatabase(dbP3System.Connection, dbP3.DatabaseName)
-		_ = utils.CreateDatabase(dbP3System.Connection, dbP3.DatabaseName)
+	_ = utils.DropDatabase(dbP3System.Connection, dbP3.DatabaseName)
+	_ = utils.CreateDatabase(dbP3System.Connection, dbP3.DatabaseName)
 
-		_, err = dbP3.ExecuteCreateScripts()
+	_, err = dbP3.ExecuteCreateScripts()
 
-		if err != nil {
-			log.Log.Errorf("Failed to connect/execute to database %s: %s", dbP3.DatabaseName, err.Error())
-		}
-	*/
+	if err != nil {
+		log.Log.Errorf("Failed to connect/execute to database %s: %s", dbP3.DatabaseName, err.Error())
+	}
+
 	log.Log.Warn("Executing wipe... DONE")
 	return nil
 }
