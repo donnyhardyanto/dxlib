@@ -232,3 +232,13 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 		}
 		return nil*/
 }
+
+func SQLBuildWhereInClause(fieldName string, values []string) string {
+	// Quote each status and join them with commas
+	quotedStatuses := make([]string, len(values))
+	for i, status := range values {
+		quotedStatuses[i] = fmt.Sprintf("'%s'", status)
+	}
+
+	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
+}

@@ -113,7 +113,82 @@ func SQLPartFieldNames(fieldNames []string, driverName string) (s string) {
 	return showFieldNames
 }
 
-func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string) (s string) {
+// formatIdentifierForDB formats an identifier (column/table name) according to database requirements
+func formatIdentifierForDB(identifier string, driverName string) string {
+	switch driverName {
+	case "oracle":
+		return strings.ToUpper(identifier)
+	case "db2":
+		return strings.ToUpper(identifier) // DB2 is case-insensitive but conventionally uppercase
+	case "sqlserver":
+		return identifier // SQL Server is case-insensitive
+	case "mysql":
+		return identifier // MySQL on Windows is case-insensitive, on Unix case-sensitive
+	case "postgres":
+		return identifier // PostgreSQL is case-sensitive
+	default:
+		return identifier
+	}
+}
+
+// SQLPartWhereAndFieldNameValues generates WHERE clause conditions for different database types
+func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string) string {
+	if len(whereKeyValues) == 0 {
+		return ""
+	}
+
+	var conditions []string
+
+	for k, v := range whereKeyValues {
+		// Format the field name according to database requirements
+		k = formatIdentifierForDB(k, driverName)
+
+		var condition string
+		if v == nil {
+			// Handle NULL values according to SQL standard (works in all databases)
+			condition = k + " IS NULL"
+		} else {
+			switch v := v.(type) {
+			case SQLExpression:
+				// Handle custom SQL expressions
+				switch driverName {
+				case "oracle", "db2":
+					// Convert the expression to uppercase for case-insensitive databases
+					condition = strings.ToUpper(v.String())
+				default:
+					condition = v.String()
+				}
+			default:
+				// Handle regular equality conditions
+				switch driverName {
+				case "postgres":
+					// PostgreSQL supports case-sensitive parameter names
+					condition = k + "=:" + k
+				case "mysql":
+					// MySQL uses ? for parameters by default, but we're using named parameters
+					condition = k + "=:" + k
+				case "sqlserver":
+					// SQL Server supports both @ and : for parameters
+					condition = k + "=:" + k
+				case "oracle":
+					// Oracle uses : for parameters and uppercase
+					condition = k + "=:" + strings.ToUpper(k)
+				case "db2":
+					// DB2 uses ? for parameters by default, but we're using named parameters
+					condition = k + "=:" + strings.ToUpper(k)
+				default:
+					condition = k + "=:" + k
+				}
+			}
+		}
+		conditions = append(conditions, condition)
+	}
+
+	// Join all conditions with AND
+	return strings.Join(conditions, " AND ")
+}
+
+/*func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string) (s string) {
 	andFieldNameValues := ``
 	for k, v := range whereKeyValues {
 		switch driverName {
@@ -135,23 +210,100 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 		}
 	}
 	return andFieldNameValues
-}
+}*/
 
-func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, driverName string) (s string) {
-	orderbyFieldNameDirections := ``
-	for k, v := range orderbyKeyValues {
-		switch driverName {
-		case "oracle":
-			k = strings.ToUpper(k)
-		}
-		if orderbyFieldNameDirections != `` {
-			orderbyFieldNameDirections = orderbyFieldNameDirections + `, `
-		}
-		orderbyFieldNameDirections = orderbyFieldNameDirections + k + ` ` + v
+// validateOrderDirection ensures the order direction is valid
+func validateOrderDirection(direction string) (string, error) {
+	// Normalize the direction to uppercase for comparison
+	upperDir := strings.ToUpper(strings.TrimSpace(direction))
+
+	switch upperDir {
+	case "ASC", "DESC":
+		return upperDir, nil
+	case "": // Default to ASC if empty
+		return "ASC", nil
+	default:
+		return "", fmt.Errorf("invalid sort direction: %s. Must be ASC or DESC", direction)
 	}
-	return orderbyFieldNameDirections
 }
 
+// formatOrderByField formats a field name for ORDER BY according to database requirements
+func formatOrderByField(field string, direction string, driverName string) (string, error) {
+	validDirection, err := validateOrderDirection(direction)
+	if err != nil {
+		return "", err
+	}
+
+	switch driverName {
+	case "oracle", "db2":
+		// Oracle and DB2 conventionally use uppercase
+		return strings.ToUpper(field) + " " + validDirection, nil
+
+	case "sqlserver":
+		// SQL Server supports NULLS LAST/FIRST but needs specific syntax
+		if strings.Contains(strings.ToLower(field), "nulls") {
+			return "", fmt.Errorf("SQL Server doesn't support NULLS FIRST/LAST in ORDER BY directly")
+		}
+		return field + " " + validDirection, nil
+
+	case "postgres":
+		// PostgreSQL supports NULLS LAST/FIRST
+		// Check if the field already contains NULLS specification
+		if strings.Contains(strings.ToLower(field), "nulls") {
+			return field + " " + validDirection, nil
+		}
+		// Add default NULLS LAST for DESC, NULLS FIRST for ASC
+		nullsPos := "FIRST"
+		if validDirection == "DESC" {
+			nullsPos = "LAST"
+		}
+		return fmt.Sprintf("%s %s NULLS %s", field, validDirection, nullsPos), nil
+
+	case "mysql":
+		// MySQL handles NULLs differently and doesn't support NULLS FIRST/LAST
+		// NULL values are considered lower than non-NULL values
+		return field + " " + validDirection, nil
+
+	default:
+		return field + " " + validDirection, nil
+	}
+}
+
+// SQLPartOrderByFieldNameDirections generates ORDER BY clause for different database types
+func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, driverName string) (string, error) {
+	if len(orderbyKeyValues) == 0 {
+		return "", nil
+	}
+
+	var orderParts []string
+
+	for field, direction := range orderbyKeyValues {
+		formattedPart, err := formatOrderByField(field, direction, driverName)
+		if err != nil {
+			return "", fmt.Errorf("error formatting ORDER BY for field %s: %w", field, err)
+		}
+		orderParts = append(orderParts, formattedPart)
+	}
+
+	return strings.Join(orderParts, ", "), nil
+}
+
+/*
+	func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, driverName string) (s string) {
+		orderbyFieldNameDirections := ``
+		for k, v := range orderbyKeyValues {
+			switch driverName {
+			case "oracle":
+				k = strings.ToUpper(k)
+			}
+			if orderbyFieldNameDirections != `` {
+				orderbyFieldNameDirections = orderbyFieldNameDirections + `, `
+			}
+			orderbyFieldNameDirections = orderbyFieldNameDirections + k + ` ` + v
+		}
+		return orderbyFieldNameDirections
+	}
+*/
 func SQLPartSetFieldNameValues(setKeyValues utils.JSON, driverName string) (newSetKeyValues utils.JSON, s string) {
 	setFieldNameValues := ``
 	newSetKeyValues = utils.JSON{}
@@ -212,7 +364,10 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = ` ` + joinSQLPart.(string)
 		}
-		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		if err != nil {
+			return ``, err
+		}
 		effectiveOrderBy := ``
 		if o != `` {
 			effectiveOrderBy = ` order by ` + o
@@ -257,7 +412,11 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = ` ` + joinSQLPart.(string)
 		}
-		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		if err != nil {
+			return ``, err
+		}
+
 		effectiveOrderBy := ``
 		if o != `` {
 			effectiveOrderBy = ` order by ` + o
@@ -302,7 +461,10 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = ` ` + joinSQLPart.(string)
 		}
-		o := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		if err != nil {
+			return ``, err
+		}
 		effectiveOrderBy := ``
 		if o != `` {
 			effectiveOrderBy = ` order by ` + o
@@ -549,7 +711,11 @@ func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFi
 		whereClause = ` WHERE ` + whereClause
 	}
 
-	orderByClause := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, db.DriverName())
+	orderByClause, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, db.DriverName())
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if orderByClause != `` {
 		orderByClause = ` order by ` + orderByClause
 	}
@@ -683,128 +849,290 @@ func QueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []util
 	return rowsInfo, r, nil
 }
 
-func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
-	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
-	if returnFieldsQueryPart == `` {
-		returnFieldsQueryPart = `*`
-	}
-	effectiveWhereQueryPart := ``
-	if whereQueryPart != `` {
-		effectiveWhereQueryPart = ` where ` + whereQueryPart
+// buildCountQuery generates count SQL based on database type
+func buildCountQuery(dbType string, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart string) (string, error) {
+	effectiveWherePart := ""
+	if whereQueryPart != "" {
+		effectiveWherePart = " where " + whereQueryPart
 	}
 
-	effectiveJoinQueryPart := ``
-	if joinQueryPart != `` {
-		effectiveJoinQueryPart = ` ` + joinQueryPart
+	effectiveJoinPart := ""
+	if joinQueryPart != "" {
+		effectiveJoinPart = " " + joinQueryPart
 	}
 
-	query := ``
-	switch dbAppInstance.DriverName() {
+	var summaryCalcFields string
+
+	switch dbType {
 	case "sqlserver":
-		summaryCalcFields := `cast(count(*) as bigint) as "s___total_rows"`
-		if summaryCalcFieldsPart != `` {
-			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
-		}
-		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-		_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
-		if err != nil {
-			return nil, nil, 0, 0, nil, err
-		}
-
-		totalRows = summaryRows[`s___total_rows`].(int64)
-
-		effectiveLimitQueryPart := ``
-		if rowsPerPage == 0 {
-			totalPage = 1
-		} else {
-			totalPage = ((totalRows - 1) / rowsPerPage) + 1
-			effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
-		}
-
-		effectiveOrderByQueryPart := ``
-		if orderByQueryPart == `` {
-			orderByQueryPart = `1`
-		}
-		effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-
-		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
+		summaryCalcFields = `cast(count(*) as bigint) as "s___total_rows"`
 	case "postgres":
-		summaryCalcFields := `cast(count(*) as bigint) as s___total_rows`
-		if summaryCalcFieldsPart != `` {
-			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
-		}
-		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-		_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
-		if err != nil {
-			return nil, nil, 0, 0, nil, err
-		}
-
-		totalRows = summaryRows[`s___total_rows`].(int64)
-
-		effectiveLimitQueryPart := ``
-		if rowsPerPage == 0 {
-			totalPage = 1
-		} else {
-			totalPage = ((totalRows - 1) / rowsPerPage) + 1
-			effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
-		}
-
-		effectiveOrderByQueryPart := ``
-		if orderByQueryPart != `` {
-			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-		}
-
-		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
+		summaryCalcFields = "cast(count(*) as bigint) as s___total_rows"
 	case "oracle":
-		summaryCalcFields := `count(*) as "s___total_rows"`
-		if summaryCalcFieldsPart != `` {
-			summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
-		}
-		countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-		_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
-		if err != nil {
-			return nil, nil, 0, 0, nil, err
-		}
-
-		totalRowsAsAny, err := utils.ConvertToInterfaceInt64FromAny(summaryRows[`s___total_rows`])
-		if err != nil {
-			return nil, nil, 0, 0, nil, err
-		}
-
-		ok := true
-		totalRows, ok = totalRowsAsAny.(int64)
-		if !ok {
-			return nil, nil, 0, 0, nil, errors.New(fmt.Sprintf(`CANT_CONVERT_TOTAL_ROWS_TO_INT64:%v`, totalRowsAsAny))
-		}
-
-		effectiveLimitQueryPart := ``
-		if rowsPerPage == 0 {
-			totalPage = 1
-		} else {
-			totalPage = ((totalRows - 1) / rowsPerPage) + 1
-			effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
-		}
-
-		effectiveOrderByQueryPart := ``
-		if orderByQueryPart != `` {
-			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-		}
-
-		query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
+		summaryCalcFields = `count(*) as "s___total_rows"`
+	case "mysql":
+		summaryCalcFields = "cast(count(*) as signed) as s___total_rows"
+	case "db2":
+		summaryCalcFields = `cast(count(*) as bigint) as "s___total_rows"`
 	default:
-		err = errors.New(`UNSUPPORTED_DATABASE_SQL_SELECT`)
+		return "", errors.New("UNSUPPORTED_DATABASE_SQL_COUNT")
+	}
+
+	if summaryCalcFieldsPart != "" {
+		summaryCalcFields += "," + summaryCalcFieldsPart
+	}
+
+	return "select " + summaryCalcFields + " from " + fromQueryPart + effectiveWherePart + effectiveJoinPart, nil
+}
+
+// ShouldCountQuery executes the count query and returns the total rows and summary
+func ShouldCountQuery(dbAppInstance *sqlx.DB, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart string,
+	arg any) (totalRows int64, summaryRows utils.JSON, err error) {
+
+	driverName := dbAppInstance.DriverName()
+	countSQL, err := buildCountQuery(driverName, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	// Handle different database types for total rows extraction
+	if driverName == "oracle" {
+		totalRowsAsAny, err := utils.ConvertToInterfaceInt64FromAny(summaryRows["s___total_rows"])
 		if err != nil {
-			return rowsInfo, rows, 0, 0, summaryRows, err
+			return 0, summaryRows, err
 		}
+
+		totalRows, ok := totalRowsAsAny.(int64)
+		if !ok {
+			return 0, summaryRows, errors.New(fmt.Sprintf("CANT_CONVERT_TOTAL_ROWS_TO_INT64:%v", totalRowsAsAny))
+		}
+		return totalRows, summaryRows, nil
+	}
+
+	totalRows = summaryRows["s___total_rows"].(int64)
+	return totalRows, summaryRows, nil
+}
+
+// NamedQueryPaging updated to use the extracted count query function
+func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64,
+	returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
+	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
+
+	// Execute count query
+	totalRows, summaryRows, err = ShouldCountQuery(dbAppInstance, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart, arg)
+	if err != nil {
+		return nil, nil, 0, 0, nil, err
+	}
+
+	if returnFieldsQueryPart == "" {
+		returnFieldsQueryPart = "*"
+	}
+
+	effectiveWherePart := ""
+	if whereQueryPart != "" {
+		effectiveWherePart = " where " + whereQueryPart
+	}
+
+	effectiveJoinPart := ""
+	if joinQueryPart != "" {
+		effectiveJoinPart = " " + joinQueryPart
+	}
+
+	// Calculate total pages
+	if rowsPerPage == 0 {
+		totalPage = 1
+	} else {
+		totalPage = ((totalRows - 1) / rowsPerPage) + 1
+	}
+
+	driverName := dbAppInstance.DriverName()
+
+	query := ""
+	switch driverName {
+	case "sqlserver":
+		effectiveLimitPart := ""
+		if rowsPerPage > 0 {
+			effectiveLimitPart = " offset " + strconv.FormatInt(pageIndex*rowsPerPage, 10) +
+				" ROWS FETCH NEXT " + strconv.FormatInt(rowsPerPage, 10) + " ROWS ONLY"
+		}
+
+		if orderByQueryPart == "" {
+			orderByQueryPart = "1"
+		}
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + " order by " + orderByQueryPart + effectiveLimitPart
+
+	case "postgres":
+		effectiveLimitPart := ""
+		if rowsPerPage > 0 {
+			effectiveLimitPart = " limit " + strconv.FormatInt(rowsPerPage, 10) +
+				" offset " + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+		}
+
+		effectiveOrderByPart := ""
+		if orderByQueryPart != "" {
+			effectiveOrderByPart = " order by " + orderByQueryPart
+		}
+
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + effectiveOrderByPart + effectiveLimitPart
+
+	case "oracle":
+		effectiveLimitPart := ""
+		if rowsPerPage > 0 {
+			effectiveLimitPart = " offset " + strconv.FormatInt(pageIndex*rowsPerPage, 10) +
+				" ROWS FETCH NEXT " + strconv.FormatInt(rowsPerPage, 10) + " ROWS ONLY"
+		}
+
+		effectiveOrderByPart := ""
+		if orderByQueryPart != "" {
+			effectiveOrderByPart = " order by " + orderByQueryPart
+		}
+
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + effectiveOrderByPart + effectiveLimitPart
+
+	default:
+		return rowsInfo, rows, 0, 0, summaryRows, errors.New("UNSUPPORTED_DATABASE_SQL_SELECT")
 	}
 
 	rowsInfo, rows, err = NamedQueryRows(dbAppInstance, query, arg)
 	if err != nil {
 		return rowsInfo, rows, 0, 0, summaryRows, err
 	}
+
 	return rowsInfo, rows, totalRows, totalPage, summaryRows, err
 }
 
+/*
+func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
+
+		arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
+		if returnFieldsQueryPart == `` {
+			returnFieldsQueryPart = `*`
+		}
+		effectiveWhereQueryPart := ``
+		if whereQueryPart != `` {
+			effectiveWhereQueryPart = ` where ` + whereQueryPart
+		}
+
+		effectiveJoinQueryPart := ``
+		if joinQueryPart != `` {
+			effectiveJoinQueryPart = ` ` + joinQueryPart
+		}
+
+		query := ``
+		switch dbAppInstance.DriverName() {
+		case "sqlserver":
+			summaryCalcFields := `cast(count(*) as bigint) as "s___total_rows"`
+			if summaryCalcFieldsPart != `` {
+				summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
+			}
+			countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
+			_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
+			if err != nil {
+				return nil, nil, 0, 0, nil, err
+			}
+
+			totalRows = summaryRows[`s___total_rows`].(int64)
+
+			effectiveLimitQueryPart := ``
+			if rowsPerPage == 0 {
+				totalPage = 1
+			} else {
+				totalPage = ((totalRows - 1) / rowsPerPage) + 1
+				effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
+			}
+
+			effectiveOrderByQueryPart := ``
+			if orderByQueryPart == `` {
+				orderByQueryPart = `1`
+			}
+			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
+
+			query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
+		case "postgres":
+			summaryCalcFields := `cast(count(*) as bigint) as s___total_rows`
+			if summaryCalcFieldsPart != `` {
+				summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
+			}
+			countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
+			_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
+			if err != nil {
+				return nil, nil, 0, 0, nil, err
+			}
+
+			totalRows = summaryRows[`s___total_rows`].(int64)
+
+			effectiveLimitQueryPart := ``
+			if rowsPerPage == 0 {
+				totalPage = 1
+			} else {
+				totalPage = ((totalRows - 1) / rowsPerPage) + 1
+				effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+			}
+
+			effectiveOrderByQueryPart := ``
+			if orderByQueryPart != `` {
+				effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
+			}
+
+			query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
+		case "oracle":
+			summaryCalcFields := `count(*) as "s___total_rows"`
+			if summaryCalcFieldsPart != `` {
+				summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
+			}
+			countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
+			_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
+			if err != nil {
+				return nil, nil, 0, 0, nil, err
+			}
+
+			totalRowsAsAny, err := utils.ConvertToInterfaceInt64FromAny(summaryRows[`s___total_rows`])
+			if err != nil {
+				return nil, nil, 0, 0, nil, err
+			}
+
+			ok := true
+			totalRows, ok = totalRowsAsAny.(int64)
+			if !ok {
+				return nil, nil, 0, 0, nil, errors.New(fmt.Sprintf(`CANT_CONVERT_TOTAL_ROWS_TO_INT64:%v`, totalRowsAsAny))
+			}
+
+			effectiveLimitQueryPart := ``
+			if rowsPerPage == 0 {
+				totalPage = 1
+			} else {
+				totalPage = ((totalRows - 1) / rowsPerPage) + 1
+				effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
+			}
+
+			effectiveOrderByQueryPart := ``
+			if orderByQueryPart != `` {
+				effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
+			}
+
+			query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
+		default:
+			err = errors.New(`UNSUPPORTED_DATABASE_SQL_SELECT`)
+			if err != nil {
+				return rowsInfo, rows, 0, 0, summaryRows, err
+			}
+		}
+
+		rowsInfo, rows, err = NamedQueryRows(dbAppInstance, query, arg)
+		if err != nil {
+			return rowsInfo, rows, 0, 0, summaryRows, err
+		}
+		return rowsInfo, rows, totalRows, totalPage, summaryRows, err
+	}
+*/
 func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
 	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, err error) {
 	if returnFieldsQueryPart == `` {
@@ -914,6 +1242,116 @@ func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNam
 	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	rowsInfo, r, err = NamedQueryRows(db, s, wKV)
 	return rowsInfo, r, err
+}
+
+// SelectCount performs a count query with optional field summaries for multiple database types
+func SelectCount(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
+	joinSQLPart any) (totalRows int64, summaryRows utils.JSON, err error) {
+
+	driverName := db.DriverName()
+
+	// Handle Oracle's uppercase requirement
+	if driverName == "oracle" {
+		tableName = strings.ToUpper(tableName)
+		if summaryCalcFieldsPart != "" {
+			// Split by comma and handle each field
+			fields := strings.Split(summaryCalcFieldsPart, ",")
+			for i, field := range fields {
+				fields[i] = strings.ToUpper(strings.TrimSpace(field))
+			}
+			summaryCalcFieldsPart = strings.Join(fields, ",")
+		}
+	}
+
+	// Prepare where clause
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
+
+	// Prepare join clause
+	joinClause := ""
+	if joinSQLPart != nil {
+		joinClause = joinSQLPart.(string)
+	}
+
+	// Process arguments based on database type
+	args := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+
+	// Special handling for different databases
+	switch driverName {
+	case "sqlserver", "postgres", "oracle", "mysql", "db2":
+		totalRows, summaryRows, err = ShouldCountQuery(
+			db,
+			summaryCalcFieldsPart,
+			tableName,
+			whereClause,
+			joinClause,
+			args,
+		)
+		if err != nil {
+			return 0, nil, fmt.Errorf("count query failed for %s: %w", driverName, err)
+		}
+
+		// Special handling for Oracle's number types
+		if driverName == "oracle" && summaryRows != nil {
+			summaryRows = convertOracleTypes(summaryRows)
+		}
+
+	default:
+		return 0, nil, fmt.Errorf("unsupported database type: %s", driverName)
+	}
+
+	return totalRows, summaryRows, nil
+}
+
+// convertOracleTypes handles Oracle's specific number types
+func convertOracleTypes(rows utils.JSON) utils.JSON {
+	result := make(utils.JSON)
+	for k, v := range rows {
+		switch v := v.(type) {
+		case []uint8: // Handle Oracle's raw number type
+			if newVal, err := utils.ConvertToInterfaceInt64FromAny(v); err == nil {
+				result[k] = newVal
+			} else if newVal, err := utils.ConvertToInterfaceFloat64FromAny(v); err == nil {
+				result[k] = newVal
+			} else {
+				result[k] = v
+			}
+		default:
+			result[k] = v
+		}
+	}
+	return result
+}
+
+// CountSelectOne performs a count query expecting exactly one row
+func CountSelectOne(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
+	joinSQLPart any) (totalRows int64, summaryRows utils.JSON, err error) {
+
+	totalRows, summaryRows, err = SelectCount(db, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	if totalRows != 1 {
+		return totalRows, summaryRows, fmt.Errorf("expected exactly one row, got %d rows", totalRows)
+	}
+
+	return totalRows, summaryRows, nil
+}
+
+// ShouldSelectCount performs a count query and ensures at least one row exists
+func ShouldSelectCount(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
+	joinSQLPart any) (totalRows int64, summaryRows utils.JSON, err error) {
+
+	totalRows, summaryRows, err = SelectCount(db, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	if totalRows == 0 {
+		return 0, nil, fmt.Errorf("NO_ROWS_FOUND:%s", tableName)
+	}
+
+	return totalRows, summaryRows, nil
 }
 
 func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {

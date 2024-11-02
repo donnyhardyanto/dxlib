@@ -413,6 +413,11 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 	return db.Update(d.Connection, tableName, setKeyValues, whereKeyValues)
 }
 
+func (d *DXDatabase) ShouldSelectCount(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, c utils.JSON, err error) {
+	totalRows, c, err = db.ShouldSelectCount(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, nil)
+	return totalRows, c, err
+}
+
 func (d *DXDatabase) ShouldSelectOne(tableName string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
 	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
 	//err = d.CheckConnectionAndReconnect()

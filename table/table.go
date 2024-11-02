@@ -434,6 +434,35 @@ func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JS
 	return t.Select(log, nil, nil, nil, nil)
 }
 
+func (t *DXTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, summaryCalcRow utils.JSON, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{
+			"is_deleted": false,
+		}
+		if t.Database.DatabaseType.String() == "sqlserver" {
+			whereAndFieldNameValues["is_deleted"] = 0
+		}
+	}
+
+	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
+	return totalRows, summaryCalcRow, err
+}
+
+/*
+	func (t *DXTable) TxSelectCount(tx *database.DXDatabaseTx, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, summaryCalcRow utils.JSON, err error) {
+		if whereAndFieldNameValues == nil {
+			whereAndFieldNameValues = utils.JSON{
+				"is_deleted": false,
+			}
+			if t.Database.DatabaseType.String() == "sqlserver" {
+				whereAndFieldNameValues["is_deleted"] = 0
+			}
+		}
+
+		totalRows, summaryCalcRow, err = tx.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
+		return totalRows, summaryCalcRow, err
+	}
+*/
 func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
