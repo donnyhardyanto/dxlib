@@ -345,7 +345,7 @@ func TxUpdate(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 	return result, err
 }
 
-func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (
+/*func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (
 	result sql.Result, err error) {
 	driveName := tx.DriverName()
 	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
@@ -367,7 +367,7 @@ func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 
 	//_, result, err = TxNamedQueryRow(log, autoRollback, tx, s, joinedKeyValues)
 	return result, err
-}
+}*/
 
 func TxDelete(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	driverName := tx.DriverName()

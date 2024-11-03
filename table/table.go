@@ -526,7 +526,7 @@ func (t *DXTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, w
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.UpdateOne(t.NameId, setKeyValues, whereAndFieldNameValues)
+	return tx.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
 func (t *DXTable) TxSoftDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
@@ -534,7 +534,7 @@ func (t *DXTable) TxSoftDelete(tx *database.DXDatabaseTx, whereAndFieldNameValue
 		whereAndFieldNameValues = utils.JSON{}
 	}
 
-	return tx.UpdateOne(t.NameId, map[string]any{
+	return tx.Update(t.NameId, map[string]any{
 		`is_deleted`: true,
 	}, whereAndFieldNameValues)
 }

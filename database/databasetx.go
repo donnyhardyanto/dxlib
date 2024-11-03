@@ -79,9 +79,9 @@ func (dtx *DXDatabaseTx) Insert(tableName string, keyValues utils.JSON) (id int6
 	return dbtx.TxInsert(dtx.Log, false, dtx.Tx, tableName, keyValues)
 }
 
-func (dtx *DXDatabaseTx) UpdateOne(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
+/*func (dtx *DXDatabaseTx) UpdateOne(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
 	return dbtx.TxUpdateOne(dtx.Log, false, dtx.Tx, tableName, setKeyValues, whereKeyValues)
-}
+}*/
 
 func (dtx *DXDatabaseTx) Update(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
 	return dbtx.TxUpdate(dtx.Log, false, dtx.Tx, tableName, setKeyValues, whereKeyValues)

@@ -341,7 +341,7 @@ func (t *DXRawTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON
 		whereAndFieldNameValues = utils.JSON{}
 	}
 
-	return tx.UpdateOne(t.NameId, setKeyValues, whereAndFieldNameValues)
+	return tx.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
 func (t *DXRawTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
