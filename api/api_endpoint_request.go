@@ -52,8 +52,7 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 		reqURI = req.URL.RequestURI()
 	}
 
-	fmt.Fprintf(&b, "%s %s HTTP/%d.%d\r\n", req.Method,
-		reqURI, req.ProtoMajor, req.ProtoMinor)
+	_, _ = fmt.Fprintf(&b, "%s %s HTTP/%d.%d\r\n", req.Method, reqURI, req.ProtoMajor, req.ProtoMinor)
 
 	absRequestURI := strings.HasPrefix(reqURI, "http://") || strings.HasPrefix(reqURI, "https://")
 	if !absRequestURI {
@@ -62,12 +61,12 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 			host = req.URL.Host
 		}
 		if host != "" {
-			fmt.Fprintf(&b, "Host: %s\r\n", host)
+			_, _ = fmt.Fprintf(&b, "Host: %s\r\n", host)
 		}
 	}
 
 	if len(req.TransferEncoding) > 0 {
-		fmt.Fprintf(&b, "Transfer-Encoding: %s\r\n", strings.Join(req.TransferEncoding, ","))
+		_, _ = fmt.Fprintf(&b, "Transfer-Encoding: %s\r\n", strings.Join(req.TransferEncoding, ","))
 	}
 
 	var reqWriteExcludeHeaderDump = map[string]bool{
@@ -81,9 +80,9 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 		return nil, err
 	}
 
-	io.WriteString(&b, "\r\n")
+	_, _ = io.WriteString(&b, "\r\n")
 	b.Write(aepr.RequestBodyAsBytes)
-	io.WriteString(&b, "\r\n\r\n")
+	_, _ = io.WriteString(&b, "\r\n\r\n")
 
 	if err != nil {
 		return nil, err

@@ -3,8 +3,9 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	sqlfile "github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
+	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
 	mssql "github.com/microsoft/go-mssqldb"
 	goOra "github.com/sijms/go-ora/v2"
 	"net"
@@ -523,7 +524,6 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 			return nil, err
 		}
 		*/
-		return nil, nil
 	default:
 		err = log.Log.FatalAndCreateErrorf("Driver %s is not supported", driverName)
 		return nil, err
@@ -557,7 +557,8 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 		r, err := d.ExecuteFile(v)
 		if err != nil {
 			log.Log.Errorf("Error executing file %d:'%s' (%s)", k, v, err.Error())
-			if sqlErr, ok := err.(mssql.Error); ok {
+			var sqlErr mssql.Error
+			if errors.As(err, &sqlErr) {
 				log.Log.Errorf("SQL Server Error Number: %d, State: %d, FCMMessage: %s",
 					sqlErr.Number, sqlErr.State, sqlErr.Message)
 			}

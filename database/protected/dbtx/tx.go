@@ -285,7 +285,9 @@ func OracleTxInsertReturning(tx *sqlx.Tx, tableName string, fieldNameForRowId st
 	if err != nil {
 		return 0, err
 	}
-	defer stmt.Close()
+	defer func() {
+		_ = stmt.Close()
+	}()
 
 	// Add the returning parameter
 	newId := int64(99)
@@ -337,9 +339,9 @@ func TxUpdate(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 	case "sqlserver":
 		s = `update ` + tableName + ` set ` + u + ` where ` + w
 	case "oracle":
-		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
+		return nil, errors.New("unknown database type, using Postgresql Dialect")
 	default:
-		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
+		return nil, errors.New("unknown database type, using Postgresql Dialect")
 	}
 	result, err = TxNamedExec(log, autoRollback, tx, s, joinedKeyValues)
 	return result, err

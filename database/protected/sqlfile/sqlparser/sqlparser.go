@@ -107,7 +107,7 @@ func (s *SQLFile) Execute(db *sql.DB) error {
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 		}
 	}()
 

@@ -589,7 +589,9 @@ func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId stri
 	if err != nil {
 		return 0, err
 	}
-	defer stmt.Close()
+	defer func() {
+		_ = stmt.Close()
+	}()
 
 	// Add the returning parameter
 	newId := int64(99)
@@ -619,7 +621,9 @@ func OracleDelete(ddb *sqlx.DB, tableName string, whereAndFieldNameValues utils.
 	if err != nil {
 		return nil, err
 	}
-	defer stmt.Close()
+	defer func() {
+		_ = stmt.Close()
+	}()
 
 	// Execute the statement
 	r, err = stmt.Exec(fieldArgs...)
@@ -651,7 +655,9 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 	if err != nil {
 		return nil, err
 	}
-	defer stmt.Close()
+	defer func() {
+		_ = stmt.Close()
+	}()
 
 	// Execute the statement
 	result, err = stmt.Exec(setFieldArgs...)
@@ -666,7 +672,9 @@ func _oracleSelectRaw(db *sqlx.DB, query string, fieldArgs ...any) (rowsInfo *Ro
 	if err != nil {
 		return nil, nil, err
 	}
-	defer stmt.Close()
+	defer func() {
+		_ = stmt.Close()
+	}()
 
 	// Execute the statement
 	arows, err := stmt.Query(fieldArgs...)

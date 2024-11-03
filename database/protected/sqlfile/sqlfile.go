@@ -72,7 +72,7 @@ func (s *SQLFile) Execute(db *sql.DB) error {
 	// Use defer to ensure rollback in case of error
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 		}
 	}()
 
@@ -109,7 +109,7 @@ func ExecuteSQL(db *sql.DB, sqlContent string) error {
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 		}
 	}()
 
