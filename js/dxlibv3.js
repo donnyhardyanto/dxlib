@@ -121,7 +121,7 @@ import './libs/tweetnacl/nacl.js';
             }
 
             static unmarshalBinary(data) {
-                if (!data instanceof Uint8Array) {
+                if (!(data instanceof Uint8Array)) {
                     if (!Array.isArray(data)) {
                         data = [data];
                     }
