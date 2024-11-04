@@ -99,7 +99,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 				/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 				return false*/
 			}
-		case "protected-string", "protected-sql-string":
+		case "protected-string", "protected-sql-string", "nullable-string":
 			if rawValueType != "string" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
