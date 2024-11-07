@@ -53,6 +53,7 @@ type DXApp struct {
 	IsLoop                   bool
 	RuntimeErrorGroup        *errgroup.Group
 	RuntimeErrorGroupContext context.Context
+	LocalData                map[string]any
 
 	IsRedisExist         bool
 	IsStorageExist       bool
@@ -323,5 +324,6 @@ func init() {
 			Commands: map[string]*DXAppArgCommand{},
 			Options:  map[string]*DXAppArgOption{},
 		},
+		LocalData: map[string]any{},
 	}
 }
