@@ -242,3 +242,13 @@ func SQLBuildWhereInClause(fieldName string, values []string) string {
 
 	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
 }
+
+func SQLBuildWhereInClauseInt64(fieldName string, values []int64) string {
+	// Quote each status and join them with commas
+	quotedStatuses := make([]string, len(values))
+	for i, status := range values {
+		quotedStatuses[i] = fmt.Sprintf("%d", status)
+	}
+
+	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
+}

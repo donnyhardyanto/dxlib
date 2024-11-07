@@ -142,6 +142,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			if rawValueType != "[]interface {}" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
+		case "array-string":
+			if rawValueType != "[]interface {}" {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			}
+		case "array-int64":
+			if rawValueType != "[]interface {}" {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			}
 		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 
@@ -279,6 +287,53 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 						return false
 			*/
 		}
+		aeprpv.Value = s
+		return nil
+	case "array-string":
+		rawSlice, ok := aeprpv.RawValue.([]any)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+
+		// Convert []any to []string
+		s := make([]string, len(rawSlice))
+		for i, v := range rawSlice {
+			str, ok := v.(string)
+			if !ok {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			}
+			s[i] = str
+		}
+
+		/*		s, ok := aeprpv.RawValue.([]string)
+				if !ok {
+					return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+
+				}*/
+		aeprpv.Value = s
+		return nil
+	case "array-int64":
+		rawSlice, ok := aeprpv.RawValue.([]any)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+
+		// Convert []any to []string
+		s := make([]int64, len(rawSlice))
+		for i, v := range rawSlice {
+			aNumber, ok := v.(float64)
+			if !ok {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			}
+			aInt := int64(aNumber)
+			s[i] = aInt
+		}
+
+		/*	s, ok := aeprpv.RawValue.([]int64)
+			if !ok {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			}
+		*/
 		aeprpv.Value = s
 		return nil
 	case "iso8601":

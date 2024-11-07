@@ -540,3 +540,57 @@ func AskForConfirmation(key1 string, key2 string) (err error) {
 
 	return nil
 }
+
+// DiffJsonFieldValues checks values existence between valuesToCheck and jsonData[fieldName]
+// Returns:
+//   - included: values from valuesToCheck that exist in jsonData[fieldName]
+//   - missing: values from valuesToCheck that do NOT exist in jsonData[fieldName]
+func DiffJsonFieldValues(valuesToCheck []string, jsonData []map[string]any, fieldName string) (included, missing []string) {
+	// Create a map of all values from jsonData[fieldName]
+	valueMap := make(map[string]bool)
+	for _, record := range jsonData {
+		if value, ok := record[fieldName].(string); ok {
+			valueMap[value] = true
+		}
+	}
+
+	// For each value in valuesToCheck:
+	// - if it exists in valueMap -> add to included
+	// - if it doesn't exist in valueMap -> add to missing
+	for _, value := range valuesToCheck {
+		if valueMap[value] {
+			included = append(included, value)
+		} else {
+			missing = append(missing, value)
+		}
+	}
+
+	return included, missing
+}
+
+// DiffJsonFieldValuesInt64 checks values existence between valuesToCheck and jsonData[fieldName]
+// Returns:
+//   - included: values from valuesToCheck that exist in jsonData[fieldName]
+//   - missing: values from valuesToCheck that do NOT exist in jsonData[fieldName]
+func DiffJsonFieldValuesInt64(valuesToCheck []int64, jsonData []map[string]any, fieldName string) (included, missing []int64) {
+	// Create a map of all values from jsonData[fieldName]
+	valueMap := make(map[int64]bool)
+	for _, record := range jsonData {
+		if value, ok := record[fieldName].(int64); ok {
+			valueMap[value] = true
+		}
+	}
+
+	// For each value in valuesToCheck:
+	// - if it exists in valueMap -> add to included
+	// - if it doesn't exist in valueMap -> add to missing
+	for _, value := range valuesToCheck {
+		if valueMap[value] {
+			included = append(included, value)
+		} else {
+			missing = append(missing, value)
+		}
+	}
+
+	return included, missing
+}
