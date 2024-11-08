@@ -499,7 +499,21 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 				log.Log.Infof("Executing SQL file %s... done", filename)
 				return rs[0], nil*/
 
-		sqlFile := sqlfile.NewSQLFile()
+		sqlFile := sqlfile.New()
+
+		// Load single file
+		err = sqlFile.File(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		// Execute the queries
+		_, err = sqlFile.Exec(d.Connection.DB)
+		if err != nil {
+			return nil, err
+		}
+
+		/*sqlFile := sqlfile.NewSQLFile()
 
 		// Load single file
 		err = sqlFile.File(filename)
@@ -512,7 +526,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 		if err != nil {
 			return nil, err
 		}
-
+		*/
 		/*sf := sqlfile.New()
 		err := sf.File(filename)
 		if err != nil {

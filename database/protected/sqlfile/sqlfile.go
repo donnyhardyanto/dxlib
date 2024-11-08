@@ -3,56 +3,71 @@ package sqlfile
 import (
 	"database/sql"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile/sqlparser"
 	"os"
 	"strings"
 )
 
-// SQLFile represents a SQL file handler
-type SQLFile struct {
+// SqlFile represents a queries holder
+type SqlFile struct {
 	files   []string
 	queries []string
-	parser  *sqlparser.Parser
 }
 
-// NewSQLFile creates a new SQLFile instance
-func NewSQLFile() *SQLFile {
-	return &SQLFile{
+type sqlTokenizer struct {
+	inSingleQuote  bool
+	inDoubleQuote  bool
+	inDollarQuote  bool
+	inFunction     bool
+	parenCount     int
+	dollarQuoteTag string
+	currentStmt    strings.Builder
+	statements     []string
+}
+
+func newSQLTokenizer() *sqlTokenizer {
+	return &sqlTokenizer{
+		statements: make([]string, 0),
+	}
+}
+
+func (st *sqlTokenizer) addChar(ch rune) {
+	st.currentStmt.WriteRune(ch)
+}
+
+func (st *sqlTokenizer) endStatement() {
+	stmt := strings.TrimSpace(st.currentStmt.String())
+	if stmt != "" {
+		if !strings.HasSuffix(stmt, ";") {
+			stmt += ";"
+		}
+		st.statements = append(st.statements, stmt)
+	}
+	st.currentStmt.Reset()
+}
+
+// New create new SqlFile object
+func New() *SqlFile {
+	return &SqlFile{
 		files:   make([]string, 0),
 		queries: make([]string, 0),
-		parser:  sqlparser.NewParser(),
 	}
 }
 
-// File loads and parses a single SQL file
-func (s *SQLFile) File(filename string) error {
-	// Read file content
-	content, err := os.ReadFile(filename)
+// File add and load queries from input file
+func (s *SqlFile) File(file string) error {
+	queries, err := load(file)
 	if err != nil {
-		return fmt.Errorf("failed to read file %s: %w", filename, err)
+		return err
 	}
 
-	// Parse statements
-	statements, err := s.parser.Parse(content)
-	if err != nil {
-		return fmt.Errorf("failed to parse SQL from file %s: %w", filename, err)
-	}
-
-	// Add file to processed files list
-	s.files = append(s.files, filename)
-
-	// Add statements to queries list
-	for _, stmt := range statements {
-		if query := strings.TrimSpace(string(stmt.Query)); query != "" {
-			s.queries = append(s.queries, query)
-		}
-	}
+	s.files = append(s.files, file)
+	s.queries = append(s.queries, queries...)
 
 	return nil
 }
 
-// Files loads and parses multiple SQL files
-func (s *SQLFile) Files(files ...string) error {
+// Files add and load queries from multiple input files
+func (s *SqlFile) Files(files ...string) error {
 	for _, file := range files {
 		if err := s.File(file); err != nil {
 			return err
@@ -61,91 +76,250 @@ func (s *SQLFile) Files(files ...string) error {
 	return nil
 }
 
-// Execute executes all loaded queries in a transaction
-func (s *SQLFile) Execute(db *sql.DB) error {
-	// Start transaction
-	tx, err := db.Begin()
+// Directory add and load queries from *.sql files in specified directory
+func (s *SqlFile) Directory(dir string) error {
+	files, err := os.ReadDir(dir)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return err
 	}
 
-	// Use defer to ensure rollback in case of error
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
+	foundSQL := false
+	for _, file := range files {
+		if file.IsDir() {
+			continue
 		}
-	}()
 
-	// Execute each query
-	for _, query := range s.queries {
-		if _, err := tx.Exec(query); err != nil {
-			return fmt.Errorf("failed to execute query: %w\nQuery: %s", err, query)
+		name := file.Name()
+		if !strings.HasSuffix(name, ".sql") {
+			continue
+		}
+
+		foundSQL = true
+		if err := s.File(dir + "/" + name); err != nil {
+			return err
 		}
 	}
 
-	// Commit transaction
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+	if !foundSQL {
+		return fmt.Errorf("no SQL files found in directory %s", dir)
 	}
 
 	return nil
 }
 
-// ExecuteSQL executes a SQL string directly
-func ExecuteSQL(db *sql.DB, sqlContent string) error {
-	parser := sqlparser.NewParser()
+// splitSQLStatements splits SQL content into individual statements
+func splitSQLStatements(content string) []string {
+	tokenizer := newSQLTokenizer()
 
-	// Parse SQL statements
-	statements, err := parser.Parse([]byte(sqlContent))
-	if err != nil {
-		return fmt.Errorf("failed to parse SQL: %w", err)
-	}
+	// Normalize line endings
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 
-	// Start transaction
-	tx, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
+	for i := 0; i < len(content); i++ {
+		ch := rune(content[i])
 
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
-
-	// Execute each statement
-	for _, stmt := range statements {
-		if query := strings.TrimSpace(string(stmt.Query)); query != "" {
-			if _, err := tx.Exec(query); err != nil {
-				return fmt.Errorf("failed to execute query: %w\nQuery: %s", err, query)
+		// Handle dollar quotes (PostgreSQL)
+		if ch == '$' && !tokenizer.inSingleQuote && !tokenizer.inDoubleQuote {
+			if !tokenizer.inDollarQuote {
+				// Look ahead for dollar quote tag
+				j := i + 1
+				for j < len(content) && (isIdentChar(rune(content[j])) || content[j] == '$') {
+					j++
+				}
+				if j < len(content) && content[j-1] == '$' {
+					tokenizer.dollarQuoteTag = content[i:j]
+					tokenizer.inDollarQuote = true
+					tokenizer.addChar(ch)
+					continue
+				}
+			} else if strings.HasPrefix(content[i:], tokenizer.dollarQuoteTag) {
+				tokenizer.inDollarQuote = false
+				for k := 0; k < len(tokenizer.dollarQuoteTag); k++ {
+					tokenizer.addChar(rune(content[i+k]))
+				}
+				i += len(tokenizer.dollarQuoteTag) - 1
+				tokenizer.dollarQuoteTag = ""
+				continue
 			}
 		}
+
+		// Handle quotes
+		if ch == '\'' && !tokenizer.inDoubleQuote && !tokenizer.inDollarQuote {
+			if i > 0 && content[i-1] == '\'' {
+				tokenizer.addChar(ch)
+				continue
+			}
+			tokenizer.inSingleQuote = !tokenizer.inSingleQuote
+			tokenizer.addChar(ch)
+			continue
+		}
+
+		if ch == '"' && !tokenizer.inSingleQuote && !tokenizer.inDollarQuote {
+			if i > 0 && content[i-1] == '"' {
+				tokenizer.addChar(ch)
+				continue
+			}
+			tokenizer.inDoubleQuote = !tokenizer.inDoubleQuote
+			tokenizer.addChar(ch)
+			continue
+		}
+
+		// Handle parentheses and function detection
+		if !tokenizer.inSingleQuote && !tokenizer.inDoubleQuote && !tokenizer.inDollarQuote {
+			if ch == '(' {
+				tokenizer.parenCount++
+				if tokenizer.parenCount == 1 && i > 6 {
+					prev := strings.ToUpper(strings.TrimSpace(content[i-6 : i]))
+					if strings.HasSuffix(prev, "FUNCTION") {
+						tokenizer.inFunction = true
+					}
+				}
+			} else if ch == ')' {
+				tokenizer.parenCount--
+				if tokenizer.parenCount == 0 {
+					tokenizer.inFunction = false
+				}
+			}
+		}
+
+		// Handle statement termination
+		if ch == ';' && !tokenizer.inSingleQuote && !tokenizer.inDoubleQuote &&
+			!tokenizer.inDollarQuote && tokenizer.parenCount == 0 && !tokenizer.inFunction {
+			tokenizer.addChar(ch)
+			tokenizer.endStatement()
+			continue
+		}
+
+		// Handle whitespace
+		if isWhitespace(ch) {
+			if !tokenizer.inSingleQuote && !tokenizer.inDoubleQuote && !tokenizer.inDollarQuote {
+				if tokenizer.currentStmt.Len() > 0 && !isWhitespace(rune(tokenizer.currentStmt.String()[tokenizer.currentStmt.Len()-1])) {
+					tokenizer.addChar(' ')
+				}
+			} else {
+				tokenizer.addChar(ch)
+			}
+			continue
+		}
+
+		tokenizer.addChar(ch)
 	}
 
-	// Commit transaction
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+	// Add any remaining statement
+	if tokenizer.currentStmt.Len() > 0 {
+		tokenizer.endStatement()
 	}
 
-	return nil
+	return tokenizer.statements
 }
 
-// GetQueries returns the list of loaded queries
-func (s *SQLFile) GetQueries() []string {
-	result := make([]string, len(s.queries))
-	copy(result, s.queries)
-	return result
+// removeComments removes SQL comments while preserving line structure
+func removeComments(content string) string {
+	var result strings.Builder
+	inLineComment := false
+	inBlockComment := false
+	i := 0
+
+	for i < len(content) {
+		// Handle block comments /* */
+		if i < len(content)-1 && content[i] == '/' && content[i+1] == '*' && !inLineComment && !inBlockComment {
+			inBlockComment = true
+			i += 2
+			continue
+		}
+		if i < len(content)-1 && content[i] == '*' && content[i+1] == '/' && inBlockComment {
+			inBlockComment = false
+			i += 2
+			continue
+		}
+
+		// Handle line comments --
+		if i < len(content)-1 && content[i] == '-' && content[i+1] == '-' && !inBlockComment && !inLineComment {
+			inLineComment = true
+			i += 2
+			continue
+		}
+		if inLineComment && content[i] == '\n' {
+			inLineComment = false
+			result.WriteByte('\n')
+			i++
+			continue
+		}
+
+		// Keep all non-comment characters
+		if !inBlockComment && !inLineComment {
+			result.WriteByte(content[i])
+		}
+		i++
+	}
+
+	return result.String()
 }
 
-// GetFiles returns the list of processed files
-func (s *SQLFile) GetFiles() []string {
-	result := make([]string, len(s.files))
-	copy(result, s.files)
-	return result
+// load reads and parses SQL file content
+func load(path string) ([]string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
+	}
+
+	// Remove comments while preserving newlines
+	s := removeComments(string(content))
+
+	// Split into statements
+	statements := splitSQLStatements(s)
+
+	return statements, nil
 }
 
-// Clear removes all loaded queries and files
-func (s *SQLFile) Clear() {
-	s.queries = s.queries[:0]
-	s.files = s.files[:0]
+// Exec executes SQL statements
+func (s *SqlFile) Exec(db *sql.DB) (res []sql.Result, err error) {
+	if db == nil {
+		return nil, fmt.Errorf("nil database connection")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer saveTx(tx, &err)
+
+	var results []sql.Result
+	for _, query := range s.queries {
+		query = strings.TrimSpace(query)
+		if query == "" || strings.HasPrefix(query, "--") {
+			continue
+		}
+
+		r, err := tx.Exec(query)
+		if err != nil {
+			return nil, fmt.Errorf("SQL error: %w\nQuery: %s", err, query)
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
+// Helper functions
+func isWhitespace(ch rune) bool {
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
+}
+
+func isIdentChar(ch rune) bool {
+	return (ch >= 'a' && ch <= 'z') ||
+		(ch >= 'A' && ch <= 'Z') ||
+		(ch >= '0' && ch <= '9') ||
+		ch == '_'
+}
+
+// saveTx handles transaction commit/rollback
+func saveTx(tx *sql.Tx, err *error) {
+	if p := recover(); p != nil {
+		tx.Rollback()
+		panic(p)
+	} else if *err != nil {
+		tx.Rollback()
+	} else {
+		*err = tx.Commit()
+	}
 }
