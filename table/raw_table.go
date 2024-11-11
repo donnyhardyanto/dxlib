@@ -20,7 +20,7 @@ type DXRawTable struct {
 	FieldNameForRowNameId string
 }
 
-func (t *DXRawTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
+func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
 		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:"+t.NameId+"="+err.Error())
@@ -126,7 +126,7 @@ func (t *DXRawTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValue
 	return newId, err
 }
 
-func (t *DXRawTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXRawTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -142,7 +142,7 @@ func (t *DXRawTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 	return nil
 }
 
-func (t *DXRawTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXRawTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, nameid, err := aepr.GetParameterValueAsString(t.FieldNameForRowNameId)
 	if err != nil {
 		return err
@@ -158,7 +158,7 @@ func (t *DXRawTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 	return nil
 }
 
-func (t *DXRawTable) ReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXRawTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, utag, err := aepr.GetParameterValueAsString("utag")
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValu
 	return nil
 }
 
-func (t *DXRawTable) Edit(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXRawTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -230,7 +230,7 @@ func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err err
 	return nil
 }
 
-func (t *DXRawTable) HardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -238,7 +238,7 @@ func (t *DXRawTable) HardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 
 	err = t.DoDelete(aepr, id)
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.HardDelete (%s) ", t.NameId, err.Error())
+		aepr.Log.Errorf("Error at %s.RequestHardDelete (%s) ", t.NameId, err.Error())
 		return err
 	}
 	return err
@@ -352,7 +352,7 @@ func (t *DXRawTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameVa
 	return tx.Delete(t.NameId, whereAndFieldNameValues)
 }
 
-func (t *DXRawTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXRawTable) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
@@ -444,13 +444,13 @@ func (t *DXRawTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string,
 	return true, nil
 }
 
-func (t *DXRawTable) Create(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXRawTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 	p := map[string]interface{}{}
 	for k, v := range aepr.ParameterValues {
 		//aepr.Log.Infof("ParameterValues %s: %v", k, v)
 		p[k] = v.Value
 	}
-	_, err = t.DoCreate(aepr, p)
+	_, err = t.RequestDoCreate(aepr, p)
 
 	return err
 }

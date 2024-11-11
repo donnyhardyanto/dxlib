@@ -69,7 +69,7 @@ func HTTPClient(method string, url string, headers map[string]string, body any) 
 		request.Header.Set(key, value)
 	}
 
-	// Create an HTTP client and send the request
+	// RequestCreate an HTTP client and send the request
 	client := &http.Client{}
 	resp, err := client.Do(request)
 	if err != nil {
@@ -90,7 +90,7 @@ func HTTPClientReadAll(method string, url string, headers map[string]string, bod
 		}
 	}()
 
-	// Read the response body
+	// RequestRead the response body
 	responseBodyAsBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, err

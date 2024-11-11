@@ -246,7 +246,7 @@ func (t *DXTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues u
 	return newId, err
 }
 
-func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -262,7 +262,7 @@ func (t *DXTable) Read(aepr *api.DXAPIEndPointRequest) (err error) {
 	return nil
 }
 
-func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, nameid, err := aepr.GetParameterValueAsString(t.FieldNameForRowNameId)
 	if err != nil {
 		return err
@@ -278,7 +278,7 @@ func (t *DXTable) ReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 	return nil
 }
 
-func (t *DXTable) ReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, utag, err := aepr.GetParameterValueAsString("utag")
 	if err != nil {
 		return err
@@ -333,7 +333,7 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 	return nil
 }
 
-func (t *DXTable) Edit(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -364,7 +364,7 @@ func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error)
 	return nil
 }
 
-func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -376,13 +376,13 @@ func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 
 	err = t.DoEdit(aepr, id, newFieldValues)
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.SoftDelete (%s) ", t.NameId, err.Error())
+		aepr.Log.Errorf("Error at %s.RequestSoftDelete (%s) ", t.NameId, err.Error())
 		return err
 	}
 	return err
 }
 
-func (t *DXTable) HardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -390,14 +390,14 @@ func (t *DXTable) HardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 
 	err = t.DoDelete(aepr, id)
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.HardDelete (%s) ", t.NameId, err.Error())
+		aepr.Log.Errorf("Error at %s.RequestHardDelete (%s) ", t.NameId, err.Error())
 		return err
 	}
 	return err
 }
 
 func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	return t.Select(log, nil, nil, nil, nil)
+	return t.Select(log, nil, nil, map[string]string{t.FieldNameForRowId: "asc"}, nil)
 }
 
 func (t *DXTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, summaryCalcRow utils.JSON, err error) {
@@ -476,6 +476,7 @@ func (t *DXTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldName
 
 	return tx.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
 }
+
 func (t *DXTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
@@ -547,7 +548,18 @@ func (t *DXTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValue
 	return tx.Delete(t.NameId, whereAndFieldNameValues)
 }
 
-func (t *DXTable) List(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXTable) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
+	_, l, err := t.SelectAll(&aepr.Log)
+	if err != nil {
+		return err
+	}
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
+		"list": l,
+	})
+	return nil
+}
+
+func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
@@ -660,10 +672,9 @@ func (t *DXTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fi
 	return true, nil
 }
 
-func (t *DXTable) Create(aepr *api.DXAPIEndPointRequest) (err error) {
+func (t *DXTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 	p := map[string]interface{}{}
 	for k, v := range aepr.ParameterValues {
-		//aepr.Log.Infof("ParameterValues %s: %v", k, v)
 		p[k] = v.Value
 	}
 	_, err = t.DoCreate(aepr, p)

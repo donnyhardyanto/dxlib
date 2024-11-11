@@ -37,6 +37,14 @@ type DXAPIEndPointRequest struct {
 	ResponseBodySent   bool
 }
 
+func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
+	r = utils.JSON{}
+	for k, v := range aepr.ParameterValues {
+		r[k] = v.Value
+	}
+	return r
+}
+
 func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 	var b bytes.Buffer
 

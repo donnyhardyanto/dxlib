@@ -88,7 +88,7 @@ func (dtx *DXDatabaseTx) Update(tableName string, setKeyValues utils.JSON, where
 }
 
 /*
-	func (dtx *DXDatabaseTx) SoftDelete(tableName string, whereKeyValues utils.JSON) (result sql.Result, err error) {
+	func (dtx *DXDatabaseTx) RequestSoftDelete(tableName string, whereKeyValues utils.JSON) (result sql.Result, err error) {
 		return dbtx.TxUpdate(dtx.Log, false, dtx.Tx, tableName, utils.JSON{
 			`is_deleted`: true,
 		}, whereKeyValues)

@@ -541,15 +541,40 @@ func AskForConfirmation(key1 string, key2 string) (err error) {
 	return nil
 }
 
+// Diff returns the intersection and difference between two arrays
+// Returns:
+//   - included: values from first that exist in second
+//   - missing: values from first that do NOT exist in second
+func Diff[T comparable](first []T, second []T) (included, missing []T) {
+	// RequestCreate a map of all values from second array
+	valueMap := make(map[T]bool)
+	for _, value := range second {
+		valueMap[value] = true
+	}
+
+	// For each value in first array:
+	// - if it exists in valueMap -> add to included
+	// - if it doesn't exist in valueMap -> add to missing
+	for _, value := range first {
+		if valueMap[value] {
+			included = append(included, value)
+		} else {
+			missing = append(missing, value)
+		}
+	}
+
+	return included, missing
+}
+
 // DiffJsonFieldValues checks values existence between valuesToCheck and jsonData[fieldName]
 // Returns:
 //   - included: values from valuesToCheck that exist in jsonData[fieldName]
 //   - missing: values from valuesToCheck that do NOT exist in jsonData[fieldName]
-func DiffJsonFieldValues(valuesToCheck []string, jsonData []map[string]any, fieldName string) (included, missing []string) {
-	// Create a map of all values from jsonData[fieldName]
-	valueMap := make(map[string]bool)
+func DiffJsonFieldValues[T comparable](valuesToCheck []T, jsonData []map[string]any, fieldName string) (included, missing []T) {
+	// RequestCreate a map of all values from jsonData[fieldName]
+	valueMap := make(map[T]bool)
 	for _, record := range jsonData {
-		if value, ok := record[fieldName].(string); ok {
+		if value, ok := record[fieldName].(T); ok {
 			valueMap[value] = true
 		}
 	}
@@ -568,29 +593,42 @@ func DiffJsonFieldValues(valuesToCheck []string, jsonData []map[string]any, fiel
 	return included, missing
 }
 
-// DiffJsonFieldValuesInt64 checks values existence between valuesToCheck and jsonData[fieldName]
-// Returns:
-//   - included: values from valuesToCheck that exist in jsonData[fieldName]
-//   - missing: values from valuesToCheck that do NOT exist in jsonData[fieldName]
-func DiffJsonFieldValuesInt64(valuesToCheck []int64, jsonData []map[string]any, fieldName string) (included, missing []int64) {
-	// Create a map of all values from jsonData[fieldName]
-	valueMap := make(map[int64]bool)
-	for _, record := range jsonData {
-		if value, ok := record[fieldName].(int64); ok {
-			valueMap[value] = true
+// K is the type for the map key (usually string)
+// V is the type for the values we're comparing (must be comparable)
+func FindCommonValues[K comparable, V comparable](arrays1, arrays2 []map[K]any, key K) []V {
+	// RequestCreate maps to store unique values from each array
+	values1 := make(map[V]bool)
+	values2 := make(map[V]bool)
+
+	// Collect values from first array
+	for _, m := range arrays1 {
+		if val, exists := m[key]; exists {
+			if typedVal, ok := val.(V); ok {
+				values1[typedVal] = true
+			}
 		}
 	}
 
-	// For each value in valuesToCheck:
-	// - if it exists in valueMap -> add to included
-	// - if it doesn't exist in valueMap -> add to missing
-	for _, value := range valuesToCheck {
-		if valueMap[value] {
-			included = append(included, value)
-		} else {
-			missing = append(missing, value)
+	// Collect values from second array
+	for _, m := range arrays2 {
+		if val, exists := m[key]; exists {
+			if typedVal, ok := val.(V); ok {
+				values2[typedVal] = true
+			}
 		}
 	}
 
-	return included, missing
+	// Find common values
+	var common []V
+	for val := range values1 {
+		if values2[val] {
+			common = append(common, val)
+		}
+	}
+
+	return common
+}
+
+func FindCommonValuesInMapString[V comparable](arrays1, arrays2 []map[string]any, key string) []V {
+	return FindCommonValues[string, V](arrays1, arrays2, key)
 }
