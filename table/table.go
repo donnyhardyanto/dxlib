@@ -548,15 +548,151 @@ func (t *DXTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValue
 	return tx.Delete(t.NameId, whereAndFieldNameValues)
 }
 
-func (t *DXTable) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
-	_, l, err := t.SelectAll(&aepr.Log)
+func (t *DXTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	if !t.Database.Connected {
+		err := t.Database.Connect()
+		if err != nil {
+			return err
+		}
+	}
+
+	rowsInfo, list, err := db.NamedQueryList(t.Database.Connection, "*", t.ListViewNameId,
+		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
-		"list": l,
-	})
+
+	for i := range list {
+
+		if onResultList != nil {
+			aListRow, err := onResultList(list[i])
+			if err != nil {
+				return err
+			}
+			list[i] = aListRow
+		}
+
+	}
+
+	data := utils.JSON{
+		"list": utils.JSON{
+			"rows":      list,
+			"rows_info": rowsInfo,
+		},
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
+
 	return nil
+}
+
+func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	if !t.Database.Connected {
+		err := t.Database.Connect()
+		if err != nil {
+			return err
+		}
+	}
+
+	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
+	if err != nil {
+		return err
+	}
+
+	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
+	if err != nil {
+		return err
+	}
+
+	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
+		filterWhere, "", filterOrderBy, filterKeyValues)
+	if err != nil {
+		return err
+	}
+
+	for i := range list {
+
+		if onResultList != nil {
+			aListRow, err := onResultList(list[i])
+			if err != nil {
+				return err
+			}
+			list[i] = aListRow
+		}
+
+	}
+
+	data := utils.JSON{
+		"list": utils.JSON{
+			"rows":       list,
+			"total_rows": totalRows,
+			"total_page": totalPage,
+			"rows_info":  rowsInfo,
+		},
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
+
+	return nil
+}
+
+func (t *DXTable) RequestListAll(aepr *api.DXAPIEndPointRequest) (err error) {
+	return t.DoRequestList(aepr, "", "", nil, nil)
+}
+
+func (t *DXTable) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
+	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
+	if err != nil {
+		return err
+	}
+	if !isExistFilterWhere {
+		filterWhere = ""
+	}
+	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
+	if err != nil {
+		return err
+	}
+	if !isExistFilterOrderBy {
+		filterOrderBy = ""
+	}
+
+	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	if err != nil {
+		return err
+	}
+	if !isExistFilterKeyValues {
+		filterKeyValues = nil
+	}
+
+	_, isDeletedIncluded, err := aepr.GetParameterValueAsBool("is_deleted", false)
+	if err != nil {
+		return err
+	}
+
+	if !isDeletedIncluded {
+		if filterWhere != "" {
+			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
+		}
+
+		switch t.Database.DatabaseType.String() {
+		case "sqlserver":
+			filterWhere = filterWhere + "(is_deleted=0)"
+		case "postgres":
+			filterWhere = filterWhere + "(is_deleted=false)"
+		default:
+			filterWhere = filterWhere + "(is_deleted=0)"
+		}
+	}
+
+	return t.DoRequestList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
 func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -583,16 +719,6 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) 
 		filterKeyValues = nil
 	}
 
-	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
-	if err != nil {
-		return err
-	}
-
-	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
-	if err != nil {
-		return err
-	}
-
 	_, isDeletedIncluded, err := aepr.GetParameterValueAsBool("is_deleted", false)
 	if err != nil {
 		return err
@@ -613,32 +739,7 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) 
 		}
 	}
 
-	if !t.Database.Connected {
-		err := t.Database.Connect()
-		if err != nil {
-			aepr.Log.Errorf("error at reconnect db at table %s list (%s) ", t.NameId, err.Error())
-			return err
-		}
-	}
-
-	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
-		filterWhere, "", filterOrderBy, filterKeyValues)
-	if err != nil {
-		aepr.Log.Errorf("Error at paging table %s (%s) ", t.NameId, err.Error())
-		return err
-	}
-
-	data := utils.JSON{
-		"list": utils.JSON{
-			"rows":       list,
-			"total_rows": totalRows,
-			"total_page": totalPage,
-			"rows_info":  rowsInfo,
-		},
-	}
-
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
-	return nil
+	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
 func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (

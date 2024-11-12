@@ -1017,6 +1017,72 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 	return rowsInfo, rows, totalRows, totalPage, summaryRows, err
 }
 
+// NamedQueryPagingList updated to use the extracted count query function
+func NamedQueryList(dbAppInstance *sqlx.DB,
+	returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
+	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, err error) {
+
+	if returnFieldsQueryPart == "" {
+		returnFieldsQueryPart = "*"
+	}
+
+	effectiveWherePart := ""
+	if whereQueryPart != "" {
+		effectiveWherePart = " where " + whereQueryPart
+	}
+
+	effectiveJoinPart := ""
+	if joinQueryPart != "" {
+		effectiveJoinPart = " " + joinQueryPart
+	}
+
+	driverName := dbAppInstance.DriverName()
+
+	query := ""
+	switch driverName {
+	case "sqlserver":
+		effectiveLimitPart := ""
+
+		if orderByQueryPart == "" {
+			orderByQueryPart = "1"
+		}
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + " order by " + orderByQueryPart + effectiveLimitPart
+
+	case "postgres":
+		effectiveLimitPart := ""
+
+		effectiveOrderByPart := ""
+		if orderByQueryPart != "" {
+			effectiveOrderByPart = " order by " + orderByQueryPart
+		}
+
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + effectiveOrderByPart + effectiveLimitPart
+
+	case "oracle":
+		effectiveLimitPart := ""
+
+		effectiveOrderByPart := ""
+		if orderByQueryPart != "" {
+			effectiveOrderByPart = " order by " + orderByQueryPart
+		}
+
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + effectiveOrderByPart + effectiveLimitPart
+
+	default:
+		return rowsInfo, rows, errors.New("UNSUPPORTED_DATABASE_SQL_SELECT")
+	}
+
+	rowsInfo, rows, err = NamedQueryRows(dbAppInstance, query, arg)
+	if err != nil {
+		return rowsInfo, rows, err
+	}
+
+	return rowsInfo, rows, err
+}
+
 /*
 func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
 
@@ -1141,6 +1207,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 		return rowsInfo, rows, totalRows, totalPage, summaryRows, err
 	}
 */
+
 func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
 	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, err error) {
 	if returnFieldsQueryPart == `` {
