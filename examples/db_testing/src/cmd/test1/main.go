@@ -157,6 +157,23 @@ func doOnAfterConfigurationStartAll() (err error) {
 
 	log.Log.Warn("Executing wipe... START")
 
+	/*
+	   Example to execute stored procedure
+	   var dbP1 *database.DXDatabase
+
+	   	dbP1 := database.Manager.Databases[`p1`]
+	   	defer dbP1.Disconnect()
+
+	   	err = dbP1.Connect()
+	   	if err != nil {
+	   		log.Log.Errorf("Failed to connect to database %s: %s", dbP1.DatabaseName, err.Error())
+	   		return err
+	   	}
+	   	_, err = dbP1.Execute("EXEC inv.CreateTransaction @stagTransactionId=1", nil)
+	   	if err != nil {
+	   		return err
+	   	}*/
+
 	dbP1 := database.Manager.Databases[`p1`]
 	dbSystem := database.Manager.Databases[`postgresql-system`]
 
