@@ -5,5 +5,6 @@ type DXModuleInterface interface {
 
 type DXModule struct {
 	DXModuleInterface
-	NameId string
+	NameId         string
+	DatabaseNameId string
 }
