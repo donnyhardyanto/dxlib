@@ -26,18 +26,16 @@ const (
 )
 
 type DXAPIAuditLogEntry struct {
-	StartTime    time.Time `json:"start_time"`
-	EndTime      time.Time `json:"end_time"`
-	Duration     float64   `json:"duration_ms"`
-	IPAddress    string    `json:"ip_address"`
+	StartTime    time.Time `json:"start_time,omitempty"`
+	EndTime      time.Time `json:"end_time,omitempty"`
+	IPAddress    string    `json:"ip_address,omitempty"`
 	UserID       string    `json:"user_id,omitempty"`
 	UserName     string    `json:"user_name,omitempty"`
-	APIURL       string    `json:"api_url"`
-	APITitle     string    `json:"api_title"`
-	Method       string    `json:"method"`
-	StatusCode   int       `json:"status_code"`
+	APIURL       string    `json:"api_url,omitempty"`
+	APITitle     string    `json:"api_title,omitempty"`
+	Method       string    `json:"method,omitempty"`
+	StatusCode   int       `json:"status_code,omitempty"`
 	ErrorMessage string    `json:"error_message,omitempty"`
-	RequestID    string    `json:"request_id"`
 }
 
 type DXAuditLogHandler func(oldAuditLogId int64, parameters *DXAPIAuditLogEntry) (newAuditLogId int64, err error)
@@ -244,10 +242,11 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	}()
 
 	auditLogId := int64(0)
+	auditLogStartTime := time.Now()
 
 	if a.OnAuditLogStart != nil {
 		auditLogId, err = a.OnAuditLogStart(auditLogId, &DXAPIAuditLogEntry{
-			StartTime: time.Now(),
+			StartTime: auditLogStartTime,
 			IPAddress: GetIPAddress(r),
 			APIURL:    r.URL.Path,
 			APITitle:  p.Title,
@@ -258,6 +257,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	defer func() {
 		if a.OnAuditLogEnd != nil {
 			_, err = a.OnAuditLogEnd(auditLogId, &DXAPIAuditLogEntry{
+				StartTime:  auditLogStartTime,
 				EndTime:    time.Now(),
 				StatusCode: aepr.ResponseStatusCode,
 			})

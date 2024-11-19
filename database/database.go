@@ -84,6 +84,11 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 }
 
 func (d *DXDatabase) CheckConnection() (err error) {
+	if d.Connection == nil {
+		d.Connected = false
+		return nil
+	}
+
 	dbConn, err := d.Connection.Conn(context.Background())
 	if err != nil {
 		log.Log.Warnf("Database %v CheckConnection() failed: %v", d.NameId, err.Error())
@@ -585,10 +590,10 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 }
 
 func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callback DXDatabaseTxCallback) (err error) {
-	//err = d.CheckConnectionAndReconnect()
-	//if err != nil {
-	//	return err
-	//}
+	err = d.CheckConnectionAndReconnect()
+	if err != nil {
+		return err
+	}
 	driverName := d.Connection.DriverName()
 	switch driverName {
 	case "oracle":
