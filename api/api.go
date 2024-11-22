@@ -29,8 +29,10 @@ type DXAPIAuditLogEntry struct {
 	StartTime    time.Time `json:"start_time,omitempty"`
 	EndTime      time.Time `json:"end_time,omitempty"`
 	IPAddress    string    `json:"ip_address,omitempty"`
-	UserID       string    `json:"user_id,omitempty"`
-	UserName     string    `json:"user_name,omitempty"`
+	UserId       string    `json:"user_id,omitempty"`
+	UserUid      string    `json:"user_uid,omitempty"`
+	UserLoginId  string    `json:"user_loginid,omitempty"`
+	UserFullName string    `json:"user_fullname,omitempty"`
 	APIURL       string    `json:"api_url,omitempty"`
 	APITitle     string    `json:"api_title,omitempty"`
 	Method       string    `json:"method,omitempty"`
@@ -41,18 +43,19 @@ type DXAPIAuditLogEntry struct {
 type DXAuditLogHandler func(oldAuditLogId int64, parameters *DXAPIAuditLogEntry) (newAuditLogId int64, err error)
 
 type DXAPI struct {
-	NameId          string
-	Address         string
-	WriteTimeoutSec int
-	ReadTimeoutSec  int
-	EndPoints       []DXAPIEndPoint
-	RuntimeIsActive bool
-	HTTPServer      *http.Server
-	Log             log.DXLog
-	Context         context.Context
-	Cancel          context.CancelFunc
-	OnAuditLogStart DXAuditLogHandler
-	OnAuditLogEnd   DXAuditLogHandler
+	NameId                   string
+	Address                  string
+	WriteTimeoutSec          int
+	ReadTimeoutSec           int
+	EndPoints                []DXAPIEndPoint
+	RuntimeIsActive          bool
+	HTTPServer               *http.Server
+	Log                      log.DXLog
+	Context                  context.Context
+	Cancel                   context.CancelFunc
+	OnAuditLogStart          DXAuditLogHandler
+	OnAuditLogUserIdentified DXAuditLogHandler
+	OnAuditLogEnd            DXAuditLogHandler
 }
 
 var SpecFormat = "MarkDown"
@@ -299,6 +302,24 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			aepr.Log.Errorf("ONMIDDLEWARE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
 			return
 		}
+
+	}
+
+	if aepr.CurrentUser.Id != "" {
+		if a.OnAuditLogUserIdentified != nil {
+			_, err = a.OnAuditLogUserIdentified(auditLogId, &DXAPIAuditLogEntry{
+				StartTime:    auditLogStartTime,
+				IPAddress:    GetIPAddress(r),
+				APIURL:       r.URL.Path,
+				APITitle:     p.Title,
+				Method:       r.Method,
+				UserId:       aepr.CurrentUser.Id,
+				UserUid:      aepr.CurrentUser.Uid,
+				UserLoginId:  aepr.CurrentUser.LoginId,
+				UserFullName: aepr.CurrentUser.FullName,
+			})
+		}
+
 	}
 
 	if p.OnExecute != nil {

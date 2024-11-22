@@ -36,7 +36,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	if !ok {
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["created_by_user_id"] = aepr.CurrentUser.Id
-			newKeyValues["created_by_user_nameid"] = aepr.CurrentUser.Name
+			newKeyValues["created_by_user_nameid"] = aepr.CurrentUser.LoginId
 		} else {
 			newKeyValues["created_by_user_id"] = "0"
 			newKeyValues["created_by_user_nameid"] = "SYSTEM"
@@ -44,7 +44,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 		newKeyValues["last_modified_at"] = tt
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["last_modified_by_user_id"] = aepr.CurrentUser.Id
-			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.Name
+			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.LoginId
 		} else {
 			newKeyValues["last_modified_by_user_id"] = "0"
 			newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
@@ -153,7 +153,7 @@ func (t *DXTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database
 	if !ok {
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["created_by_user_id"] = aepr.CurrentUser.Id
-			newKeyValues["created_by_user_nameid"] = aepr.CurrentUser.Name
+			newKeyValues["created_by_user_nameid"] = aepr.CurrentUser.LoginId
 		} else {
 			newKeyValues["created_by_user_id"] = "0"
 			newKeyValues["created_by_user_nameid"] = "SYSTEM"
@@ -161,7 +161,7 @@ func (t *DXTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database
 		newKeyValues["last_modified_at"] = n
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["last_modified_by_user_id"] = aepr.CurrentUser.Id
-			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.Name
+			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.LoginId
 		} else {
 			newKeyValues["last_modified_by_user_id"] = "0"
 			newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
@@ -227,7 +227,7 @@ func (t *DXTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues u
 	if !ok {
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["created_by_user_id"] = aepr.CurrentUser.Id
-			newKeyValues["created_by_user_nameid"] = aepr.CurrentUser.Name
+			newKeyValues["created_by_user_nameid"] = aepr.CurrentUser.LoginId
 		} else {
 			newKeyValues["created_by_user_id"] = "0"
 			newKeyValues["created_by_user_nameid"] = "SYSTEM"
@@ -235,7 +235,7 @@ func (t *DXTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues u
 		newKeyValues["last_modified_at"] = n
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["last_modified_by_user_id"] = aepr.CurrentUser.Id
-			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.Name
+			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.LoginId
 		} else {
 			newKeyValues["last_modified_by_user_id"] = "0"
 			newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
@@ -306,7 +306,7 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 	if !ok {
 		if aepr.CurrentUser.Id != "" {
 			newKeyValues["last_modified_by_user_id"] = aepr.CurrentUser.Id
-			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.Name
+			newKeyValues["last_modified_by_user_nameid"] = aepr.CurrentUser.LoginId
 		} else {
 			newKeyValues["last_modified_by_user_id"] = "0"
 			newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
