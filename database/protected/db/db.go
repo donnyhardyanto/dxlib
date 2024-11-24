@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
+	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"strconv"
@@ -535,6 +536,12 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 		}
 		return rowInfo, x[0], err
 	}
+
+	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
+
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return nil, nil, err
@@ -597,6 +604,11 @@ func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId stri
 	newId := int64(99)
 	fieldArgs = append(fieldArgs, sql.Named("new_id", sql.Out{Dest: &newId}))
 
+	err = sqlchecker.CheckAll(db.DriverName(), query, fieldArgs)
+	if err != nil {
+		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
+
 	// Execute the statement
 	_, err = stmt.Exec(fieldArgs...)
 	if err != nil {
@@ -606,24 +618,29 @@ func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId stri
 	return newId, nil
 }
 
-func OracleDelete(ddb *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+func OracleDelete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	tableName = strings.ToUpper(tableName)
-	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, ddb.DriverName())
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, db.DriverName())
 	if whereClause != `` {
 		whereClause = ` WHERE ` + whereClause
 	}
 
-	_, _, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereAndFieldNameValues, ddb.DriverName())
+	_, _, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereAndFieldNameValues, db.DriverName())
 
 	query := fmt.Sprintf("DELETE FROM %s %s", tableName, whereClause)
 
-	stmt, err := ddb.Prepare(query)
+	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
 		_ = stmt.Close()
 	}()
+
+	err = sqlchecker.CheckAll(db.DriverName(), query, fieldArgs)
+	if err != nil {
+		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
 
 	// Execute the statement
 	r, err = stmt.Exec(fieldArgs...)
@@ -659,6 +676,11 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 		_ = stmt.Close()
 	}()
 
+	err = sqlchecker.CheckAll(db.DriverName(), query, setFieldArgs)
+	if err != nil {
+		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
+
 	// Execute the statement
 	result, err = stmt.Exec(setFieldArgs...)
 	if err != nil {
@@ -675,6 +697,11 @@ func _oracleSelectRaw(db *sqlx.DB, query string, fieldArgs ...any) (rowsInfo *Ro
 	defer func() {
 		_ = stmt.Close()
 	}()
+
+	err = sqlchecker.CheckAll(db.DriverName(), query, fieldArgs)
+	if err != nil {
+		return nil, r, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
 
 	// Execute the statement
 	arows, err := stmt.Query(fieldArgs...)
@@ -772,6 +799,12 @@ func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFi
 }
 
 func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
+
+	err := sqlchecker.CheckAll(db.DriverName(), query, arg)
+	if err != nil {
+		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+	}
+
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return 0, err
@@ -797,6 +830,11 @@ func NamedQueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r [
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}
+	}
+
+	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
+	if err != nil {
+		return nil, r, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
 	rows, err := db.NamedQuery(query, arg)
@@ -828,6 +866,12 @@ func NamedQueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r [
 }
 
 func QueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+
+	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
+	if err != nil {
+		return nil, r, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+	}
+
 	r = []utils.JSON{}
 	rows, err := db.Queryx(query, arg)
 	if err != nil {
@@ -1439,6 +1483,12 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (
 	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	s := `DELETE FROM ` + tableName + ` where ` + w
 	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+
+	err = sqlchecker.CheckAll(db.DriverName(), s, wKV)
+	if err != nil {
+		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
+
 	r, err = db.NamedExec(s, wKV)
 	return r, err
 }
@@ -1454,6 +1504,12 @@ func Update(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValu
 	w := SQLPartWhereAndFieldNameValues(whereKeyValues, driverName)
 	joinedKeyValues := MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues, driverName)
 	s := `update ` + tableName + ` set ` + u + ` where ` + w
+
+	err = sqlchecker.CheckAll(db.DriverName(), s, joinedKeyValues)
+	if err != nil {
+		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
+
 	result, err = db.NamedExec(s, joinedKeyValues)
 	return result, err
 }

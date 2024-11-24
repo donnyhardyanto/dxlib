@@ -742,6 +742,78 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) 
 	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
+/*
+	func (t *DXTable) RequestPagingList2(aepr *api.DXAPIEndPointRequest) (err error) {
+		p := aepr.GetParameterValues()
+
+		filter := p["filter"].(map[string]any)
+
+		builder := sqlbuilder.New(t.Database.DatabaseType)
+
+		opt := sqlbuilder.BuildOption{
+			BaseQuery: "SELECT * FROM users",
+			Filter:    filter,
+			OrderBy: map[string]any{
+				"id":         "asc",
+				"created_at": "desc nulls last",
+				"status":     true,  // ASC
+				"priority":   false, // DESC
+				"name":       nil,   // defaults to ASC
+			},
+			Page: pagebuilder.PageInfo{
+				Page:     1,
+				PageSize: 10,
+			},
+		}
+
+		query, args, err := builder.Build(opt)
+
+		f, err := sqlbuilder.TranslateFilter(filter)
+
+		orderBy := p["order_by"].(map[string]any)
+
+		sqlbuilder.TranslateOrderByMap(orderBy, t.Database.DatabaseType)
+		sqlOrderByMapStringString, err := sqlbuilder.TranslateOrderBy(orderBy, t.Database.Driver)
+
+		isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
+		if err != nil {
+			return err
+		}
+		if !isExistFilterOrderBy {
+			filterOrderBy = ""
+		}
+
+		isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+		if err != nil {
+			return err
+		}
+		if !isExistFilterKeyValues {
+			filterKeyValues = nil
+		}
+
+		_, isDeletedIncluded, err := aepr.GetParameterValueAsBool("is_deleted", false)
+		if err != nil {
+			return err
+		}
+
+		if !isDeletedIncluded {
+			if filterWhere != "" {
+				filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
+			}
+
+			switch t.Database.DatabaseType.String() {
+			case "sqlserver":
+				filterWhere = filterWhere + "(is_deleted=0)"
+			case "postgres":
+				filterWhere = filterWhere + "(is_deleted=false)"
+			default:
+				filterWhere = filterWhere + "(is_deleted=0)"
+			}
+		}
+
+		return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
+	}
+*/
 func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
 	rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 

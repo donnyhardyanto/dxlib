@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
+	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	"github.com/jmoiron/sqlx"
 	"strings"
 
@@ -79,6 +80,11 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 }
 
 func TxNamedQuery(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, args any) (rows *sqlx.Rows, err error) {
+	err = sqlchecker.CheckAll(tx.DriverName(), query, args)
+	if err != nil {
+		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
+
 	rows, err = tx.NamedQuery(query, args)
 	if err != nil {
 		if autoRollback {
@@ -93,6 +99,11 @@ func TxNamedQuery(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, 
 }
 
 func TxNamedExec(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, args any) (r sql.Result, err error) {
+	err = sqlchecker.CheckAll(tx.DriverName(), query, args)
+	if err != nil {
+		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
+
 	r, err = tx.NamedExec(query, args)
 	if err != nil {
 		if autoRollback {
@@ -292,6 +303,11 @@ func OracleTxInsertReturning(tx *sqlx.Tx, tableName string, fieldNameForRowId st
 	// Add the returning parameter
 	newId := int64(99)
 	fieldArgs = append(fieldArgs, sql.Named("new_id", sql.Out{Dest: &newId}))
+
+	err = sqlchecker.CheckAll(tx.DriverName(), query, fieldArgs)
+	if err != nil {
+		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
 
 	// Execute the statement
 	_, err = stmt.Exec(fieldArgs...)
