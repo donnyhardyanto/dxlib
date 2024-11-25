@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Number interface {
@@ -190,6 +191,26 @@ func GetFloat64(kv utils.JSON, k string) (v float64, err error) {
 func GetIntWithDefault(kv utils.JSON, k string, defaultValue int) (v int, err error) {
 	a := GetNumberWithDefault(kv, k, defaultValue)
 	return a, err
+}
+
+func GetTime(kv utils.JSON, k string) (v time.Time, err error) {
+	var z time.Time
+	switch kv[k].(type) {
+	case time.Time:
+		z = kv[k].(time.Time)
+	case string:
+		z, err = time.Parse(time.RFC3339, kv[k].(string))
+		if err != nil {
+			return time.Time{}, err
+		}
+	default:
+		var ok bool
+		z, ok = kv[k].(time.Time)
+		if !ok {
+			return time.Time{}, fmt.Errorf("can not get %s as %T from %v", k, v, kv)
+		}
+	}
+	return z, nil
 }
 
 func ReplaceMergeMap(m1 utils.JSON, m2 utils.JSON) utils.JSON {
