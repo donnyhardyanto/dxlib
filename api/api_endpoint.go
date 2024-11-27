@@ -203,6 +203,7 @@ func (aep *DXAPIEndPoint) NewEndPointRequest(context context.Context, w http.Res
 		EndPoint:        aep,
 		ParameterValues: map[string]*DXAPIEndPointRequestParameterValue{},
 		LocalData:       map[string]any{},
+		SuppressLogDump: false,
 	}
 	er.Id = fmt.Sprintf("%p", er)
 	er.Log = log.NewLog(&aep.Owner.Log, context, aep.Title+" | "+er.Id)

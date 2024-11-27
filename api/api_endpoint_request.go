@@ -37,6 +37,7 @@ type DXAPIEndPointRequest struct {
 	LocalData          map[string]any
 	ResponseHeaderSent bool
 	ResponseBodySent   bool
+	SuppressLogDump    bool
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
