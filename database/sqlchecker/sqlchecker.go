@@ -161,14 +161,57 @@ func CheckValue(value any) error {
 }
 
 // CheckLikePattern validates LIKE patterns
-func CheckLikePattern(pattern string) error {
-	if err := checkStringValue(pattern); err != nil {
-		return err
+func CheckLikePattern(query string) error {
+	// Convert to lowercase for case-insensitive matching
+	loweredQuery := strings.ToLower(query)
+
+	// Find all LIKE or ILIKE clauses
+	likePositions := []int{}
+	likeKeywords := []string{"like", "ilike"}
+
+	for _, keyword := range likeKeywords {
+		currentPos := 0
+		for {
+			// Find next occurrence starting from currentPos
+			foundPos := strings.Index(loweredQuery[currentPos:], keyword)
+			if foundPos == -1 {
+				break
+			}
+			// Add the absolute position
+			absolutePos := currentPos + foundPos
+			likePositions = append(likePositions, absolutePos)
+			// Move past this occurrence
+			currentPos = absolutePos + len(keyword)
+		}
 	}
 
-	// Additional LIKE-specific checks
-	if strings.Count(pattern, "%") > 5 {
-		return fmt.Errorf("too many wildcards in LIKE pattern")
+	// For each LIKE/ILIKE found, extract and check its pattern
+	for _, pos := range likePositions {
+		// Find the next value after LIKE/ILIKE (usually enclosed in quotes)
+		remainingQuery := query[pos:]
+		quotePos := strings.Index(remainingQuery, "'")
+		if quotePos == -1 {
+			continue // No pattern found, skip
+		}
+
+		// Find the closing quote
+		endQuotePos := strings.Index(remainingQuery[quotePos+1:], "'")
+		if endQuotePos == -1 {
+			continue // Unclosed quote, skip
+		}
+
+		// Extract the pattern between quotes
+		pattern := remainingQuery[quotePos+1 : quotePos+1+endQuotePos]
+
+		// Check the actual pattern
+		if err := checkStringValue(pattern); err != nil {
+			return err
+		}
+
+		// Check wildcard count
+		if strings.Count(pattern, "%") > 5 {
+			return fmt.Errorf("too many wildcards in LIKE pattern")
+		}
 	}
 
 	return nil
