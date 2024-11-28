@@ -82,9 +82,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			if rawValueType == "float64" {
 				if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
 					return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-
-					/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-					return false*/
 				}
 			}
 		case "float32":
@@ -95,9 +92,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			case "float32":
 			default:
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-
-				/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-				return false*/
 			}
 		case "float64":
 			switch rawValueType {
@@ -105,8 +99,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			case "float64":
 			default:
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-				/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-				return false*/
 			}
 		case "protected-string", "protected-sql-string", "nullable-string":
 			if rawValueType != "string" {
@@ -120,14 +112,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 				err = v.Validate()
 				if err != nil {
 					return err
-					/*if v.Validate() != true {
-					 */
-					/*childRawValueType := utils.TypeAsString(aeprpv.RawValue)
-					aNameIdPath := aeprpv.Metadata.GetNameIdPath()
-					return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", aNameIdPath, v.Metadata.Type, childRawValueType, v.RawValue)
-
-					*/ /*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", aNameIdPath, v.Metadata.Type, childRawValueType, v.RawValue)
-					return false*/
 				}
 			}
 		case "json-passthrough":
@@ -152,9 +136,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			}
 		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-
-			/*	aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-				return false*/
 		}
 	}
 	switch aeprpv.Metadata.Type {
@@ -166,8 +147,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		t, ok := aeprpv.RawValue.(float64)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			/*			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-						return false*/
 		}
 		v := int64(t)
 		aeprpv.Value = v
@@ -176,8 +155,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		t, ok := aeprpv.RawValue.(float64)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			/*			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-						return false*/
 		}
 		v := int64(t)
 		aeprpv.Value = v
@@ -186,8 +163,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		v, ok := aeprpv.RawValue.(float64)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			/*	aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-				return false*/
 		}
 		aeprpv.Value = v
 		return nil
@@ -195,9 +170,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		t, ok := aeprpv.RawValue.(float64)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			return false*/
 		}
 		v := float32(t)
 		aeprpv.Value = v
@@ -206,15 +178,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*	aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-				return false*/
 		}
 		if security.StringCheckPossibleSQLInjection(s) {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("Possible SQL injection found [%s]", s)
-			/*
-				aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Possible SQL injection found [%s]", s)
-				return false*/
 		}
 		aeprpv.Value = s
 		return nil
@@ -222,16 +188,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-						return false
-			*/
 		}
 		if security.PartSQLStringCheckPossibleSQLInjection(s) {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("Possible SQL injection found [%s]", s)
-
-			/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf("Possible SQL injection found [%s]", s)
-			return false*/
 		}
 		aeprpv.Value = s
 		return nil
@@ -243,9 +202,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			return false*/
 		}
 		aeprpv.Value = s
 		return nil
@@ -253,10 +209,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-						return false
-			*/
 		}
 		aeprpv.Value = s
 		return nil
@@ -271,10 +223,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(map[string]any)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-						return false
-			*/
 		}
 		aeprpv.Value = s
 		return nil
@@ -282,10 +230,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.([]any)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*			aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-						return false
-			*/
 		}
 		aeprpv.Value = s
 		return nil
@@ -304,12 +248,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			}
 			s[i] = str
 		}
-
-		/*		s, ok := aeprpv.RawValue.([]string)
-				if !ok {
-					return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-				}*/
 		aeprpv.Value = s
 		return nil
 	case "array-int64":
@@ -328,12 +266,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			aInt := int64(aNumber)
 			s[i] = aInt
 		}
-
-		/*	s, ok := aeprpv.RawValue.([]int64)
-			if !ok {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			}
-		*/
 		aeprpv.Value = s
 		return nil
 	case "iso8601":
@@ -344,9 +276,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			return false*/
 		}
 		if strings.Contains(s, " ") {
 			s = strings.Replace(s, " ", "T", 1)
@@ -354,10 +283,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		t, err := time.Parse(time.RFC3339Nano, s)
 		if err != nil {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_RFC3339NANO_FORMAT:%s", s)
-
-			/*aeprpv.Owner.Log.Warnf("INVALID_RFC3339NANO_FORMAT:%s", s)
-			aeprpv.ErrValidate = err
-			return false*/
 		}
 		aeprpv.Value = t
 		return nil
@@ -369,19 +294,10 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			return false*/
 		}
 		t, err := time.Parse(time.DateOnly, s)
 		if err != nil {
-			//return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_DATE_FROMAT:%s=%s", nameIdPath, s)
-
-			/*aeprpv.Owner.Log.Warnf("INVALID_DATE_FROMAT:%s", s)
-			aeprpv.ErrValidate = err
-			return false*/
 		}
 		aeprpv.Value = t
 		return nil
@@ -393,17 +309,10 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-
-			/*aeprpv.ErrValidate = aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			return false*/
 		}
 		t, err := time.Parse(time.TimeOnly, s)
 		if err != nil {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TIME_FROMAT:%s=%s", nameIdPath, s)
-
-			/*aeprpv.Owner.Log.Warnf("INVALID_TIME_FROMAT:%s", s)
-			aeprpv.ErrValidate = err
-			return false*/
 		}
 		aeprpv.Value = t
 		return nil
