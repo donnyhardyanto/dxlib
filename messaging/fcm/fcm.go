@@ -9,9 +9,9 @@ import (
 	"golang.org/x/time/rate"
 	"google.golang.org/api/option"
 	"sync"
-	"time"
 )
 
+/*
 type Message struct {
 	ID            int64
 	ApplicationID int
@@ -22,7 +22,7 @@ type Message struct {
 	Status        string
 	RetryCount    int
 	NextRetryTime time.Time
-}
+}*/
 
 type FirebaseServiceAccount struct {
 	App    *firebase.App
