@@ -13,6 +13,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -631,4 +632,13 @@ func FindCommonValues[K comparable, V comparable](arrays1, arrays2 []map[K]any, 
 
 func FindCommonValuesInMapString[V comparable](arrays1, arrays2 []map[string]any, key string) []V {
 	return FindCommonValues[string, V](arrays1, arrays2, key)
+}
+
+func StringArrayHasCommonItem(arr1, arr2 []string) bool {
+	for _, str := range arr1 {
+		if slices.Contains(arr2, str) {
+			return true
+		}
+	}
+	return false
 }
