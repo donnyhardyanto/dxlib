@@ -642,3 +642,20 @@ func StringArrayHasCommonItem(arr1, arr2 []string) bool {
 	}
 	return false
 }
+
+func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
+	r, ok := kv[key].(JSON)
+	if !ok {
+		rASBytes, ok := kv[key].([]byte)
+		if !ok {
+			err = fmt.Errorf("KEY_%S_IS_NOT_JSON", key)
+			return nil, err
+		}
+		r = JSON{}
+		err = json.Unmarshal(rASBytes, &r)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return r, nil
+}
