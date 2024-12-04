@@ -23,11 +23,6 @@ type DXTable struct {
 }
 
 func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
-	//n := utils.NowAsString()
-	/*switch t.Database.DatabaseType {
-	case database_type.Oracle:
-		//	n = strings.Replace(n, "T", " ", 1)
-	}*/
 	newKeyValues["is_deleted"] = false
 
 	tt := time.Now().UTC()
