@@ -252,3 +252,17 @@ func SQLBuildWhereInClauseInt64(fieldName string, values []int64) string {
 
 	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
 }
+
+func SQLBuildWhereInClauseBool(fieldName string, values []bool) string {
+	// Quote each status and join them with commas
+	quotedStatuses := make([]string, len(values))
+	for i, status := range values {
+		if status {
+			quotedStatuses[i] = "1"
+		} else {
+			quotedStatuses[i] = "0"
+		}
+	}
+
+	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
+}
