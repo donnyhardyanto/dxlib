@@ -364,7 +364,8 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 			// Consider restricting this to specific origins in production
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,HEAD,PUT,DELETE,PATCH,OPTION")
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization,*")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization,X-Var,*")
+			w.Header().Set("Access-Control-Expose-Headers", "X-Var")
 
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
