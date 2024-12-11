@@ -14,9 +14,11 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/microsoft/go-mssqldb v1.7.2
 	github.com/minio/minio-go/v7 v7.0.80
+	github.com/shopspring/decimal v1.4.0
 	github.com/sijms/go-ora/v2 v2.8.22
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
+	github.com/xuri/excelize/v2 v2.9.0
 	go.opentelemetry.io/otel v1.32.0
 	golang.org/x/crypto v0.29.0
 	golang.org/x/sync v0.9.0
@@ -85,9 +87,7 @@ require (
 	github.com/richardlehane/msoleps v1.0.4 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/xuri/efp v0.0.0-20240408161823-9ad904a10d6d // indirect
-	github.com/xuri/excelize/v2 v2.9.0 // indirect
 	github.com/xuri/nfp v0.0.0-20240318013403-ab9948c2c4a7 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.32.0 // indirect
