@@ -143,18 +143,22 @@ func splitSQLStatements(content string) []string {
 		}
 
 		// Handle quotes
-		if ch == '\'' && !tokenizer.inDoubleQuote && !tokenizer.inDollarQuote {
-			if i > 0 && content[i-1] == '\'' {
+		if ch == 39 {
+			if ch == '\'' && !tokenizer.inDoubleQuote && !tokenizer.inDollarQuote {
+				if i > 0 && content[i-1] == '\'' {
+					tokenizer.inSingleQuote = !tokenizer.inSingleQuote
+					tokenizer.addChar(ch)
+					continue
+				}
+				tokenizer.inSingleQuote = !tokenizer.inSingleQuote
 				tokenizer.addChar(ch)
 				continue
 			}
-			tokenizer.inSingleQuote = !tokenizer.inSingleQuote
-			tokenizer.addChar(ch)
-			continue
 		}
 
 		if ch == '"' && !tokenizer.inSingleQuote && !tokenizer.inDollarQuote {
 			if i > 0 && content[i-1] == '"' {
+				tokenizer.inDoubleQuote = !tokenizer.inDoubleQuote
 				tokenizer.addChar(ch)
 				continue
 			}
@@ -182,11 +186,13 @@ func splitSQLStatements(content string) []string {
 		}
 
 		// Handle statement termination
-		if ch == ';' && !tokenizer.inSingleQuote && !tokenizer.inDoubleQuote &&
-			!tokenizer.inDollarQuote && tokenizer.parenCount == 0 && !tokenizer.inFunction {
-			tokenizer.addChar(ch)
-			tokenizer.endStatement()
-			continue
+		if ch == 59 {
+			if ch == ';' && !tokenizer.inSingleQuote && !tokenizer.inDoubleQuote &&
+				!tokenizer.inDollarQuote && tokenizer.parenCount == 0 && !tokenizer.inFunction {
+				tokenizer.addChar(ch)
+				tokenizer.endStatement()
+				continue
+			}
 		}
 
 		// Handle whitespace
