@@ -659,3 +659,11 @@ func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
 	}
 	return r, nil
 }
+
+func Int64SliceToStrings(nums []int64) []string {
+	strs := make([]string, len(nums))
+	for i, num := range nums {
+		strs[i] = strconv.FormatInt(num, 10)
+	}
+	return strs
+}
