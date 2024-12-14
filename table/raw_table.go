@@ -309,13 +309,13 @@ func (t *DXRawTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, where
 }
 
 func (t *DXRawTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
 
-	return tx.Select(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
+	return tx.Select(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit, false)
 }
 
 func (t *DXRawTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,

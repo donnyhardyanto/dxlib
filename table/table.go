@@ -484,14 +484,14 @@ func (t *DXTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAnd
 }
 
 func (t *DXTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.Select(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
+	return tx.Select(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit, false)
 }
 
 func (t *DXTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,

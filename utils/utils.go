@@ -667,3 +667,40 @@ func Int64SliceToStrings(nums []int64) []string {
 	}
 	return strs
 }
+
+// GetMapValue safely retrieves and type-asserts a value from a map[string]any.
+// Returns:
+// - exists: True if the key exists in the map
+// - value: The typed value if key exists and type assertion succeeds, nil otherwise
+// - err: Error if type assertion fails for existing key
+func GetMapValue[T any](m map[string]any, key string) (exists bool, value T, err error) {
+	// Check if key exists
+	rawValue, keyExists := m[key]
+	if !keyExists {
+		return false, value, nil
+	}
+
+	// If value is nil, return early
+	if rawValue == nil {
+		return true, value, nil
+	}
+
+	// Attempt type assertion
+	typedValue, ok := rawValue.(T)
+	if !ok {
+		return true, value, fmt.Errorf("value for key '%s' cannot be converted to requested type", key)
+	}
+
+	return true, typedValue, nil
+}
+
+func ExtractMapValue[T any](m *map[string]any, key string) (exists bool, value T, err error) {
+	exists, value, err = GetMapValue[T](*m, key)
+	if err != nil {
+		return exists, value, err
+	}
+	if exists {
+		delete(*m, key)
+	}
+	return exists, value, nil
+}
