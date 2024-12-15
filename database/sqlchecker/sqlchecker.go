@@ -283,14 +283,14 @@ func CheckBaseQuery(query string, dialect database_type.DXDatabaseType) error {
 // Internal helper functions
 
 func checkStringValue(value string) error {
-	lowered := strings.ToLower(value)
+	/*lowered := strings.ToLower(value)
 
 	// Check for suspicious patterns
 	for _, pattern := range suspiciousValuePatterns {
 		if strings.Contains(lowered, pattern) {
 			return fmt.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
 		}
-	}
+	}*/
 	return nil
 }
 
