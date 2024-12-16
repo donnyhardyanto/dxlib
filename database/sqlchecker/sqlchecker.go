@@ -119,6 +119,9 @@ func CheckValue(value any) error {
 	}
 
 	switch v := value.(type) {
+	case *string:
+		vv := *v
+		return checkStringValue(vv)
 	case string:
 		return checkStringValue(v)
 	case []any:
@@ -344,4 +347,99 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	}
 
 	return nil
+}
+
+// ValidateAndSanitizeOrderBy validates and sanitizes the order by clause
+func ValidateAndSanitizeOrderBy(orderBy string) (string, error) {
+	if strings.TrimSpace(orderBy) == "" {
+		return "id ASC", nil // Default order
+	}
+
+	// Allowed field names - add your fields here
+	allowedFields := map[string]bool{
+		"id":         true,
+		"code":       true,
+		"name":       true,
+		"created_at": true,
+		"updated_at": true,
+		// Add other allowed fields here
+	}
+
+	// Split by comma and validate each part
+	parts := strings.Split(orderBy, ",")
+	var sanitizedParts []string
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		// Split into field and direction
+		components := strings.Fields(part)
+		if len(components) == 0 || len(components) > 2 {
+			return "", fmt.Errorf("invalid order by format: %s", part)
+		}
+
+		// Validate field name (only allow alphanumeric and underscore)
+		field := strings.ToLower(components[0])
+		if !allowedFields[field] {
+			return "", fmt.Errorf("invalid field name: %s", field)
+		}
+
+		// Validate direction if provided
+		direction := "ASC" // default direction
+		if len(components) == 2 {
+			dir := strings.ToUpper(components[1])
+			if dir != "ASC" && dir != "DESC" {
+				return "", fmt.Errorf("invalid sort direction: %s", components[1])
+			}
+			direction = dir
+		}
+
+		sanitizedParts = append(sanitizedParts, fmt.Sprintf("%s %s", field, direction))
+	}
+
+	if len(sanitizedParts) == 0 {
+		return "id ASC", nil
+	}
+
+	return strings.Join(sanitizedParts, ", "), nil
+}
+
+// Example usage in handler
+func ValidateAndSanitizeOrderByExampleUsage() {
+	// Valid examples
+	examples := []string{
+		"id ASC",
+		"name DESC, created_at ASC",
+		"code asc, id desc",
+		"updated_at", // Will use default ASC
+		"",           // Will use default "id ASC"
+	}
+
+	for _, example := range examples {
+		result, err := ValidateAndSanitizeOrderBy(example)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			continue
+		}
+		fmt.Printf("Input: %s -> Sanitized: %s\n", example, result)
+	}
+
+	// Invalid examples that will be rejected
+	invalidExamples := []string{
+		"id ASC; DROP TABLE users",
+		"name' OR '1'='1",
+		"id) UNION SELECT",
+		"unknown_field ASC",
+		"id ASCENDING", // Invalid direction
+		"id ASC DESC",  // Too many directions
+		"id, , name",   // Empty part
+	}
+
+	for _, example := range invalidExamples {
+		_, err := ValidateAndSanitizeOrderBy(example)
+		fmt.Printf("Invalid input '%s': %v\n", example, err)
+	}
 }
