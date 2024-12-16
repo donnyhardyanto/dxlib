@@ -99,8 +99,8 @@ Future<void> login() async {
   final sharedKey1AsBytes = X25519.computeSharedSecret(ecdhA1PrivateKeyAsBytes, ecdhB1PublicKeyAsBytes);
   final sharedKey2AsBytes = X25519.computeSharedSecret(ecdhA2PrivateKeyAsBytes, ecdhB2PublicKeyAsBytes);
 
-  const userLogin = 'superadmin';
-  const password = 'bebekangsa';
+  const userLogin = dotenv.env['TEST_USER_NAME'];
+  const password = dotenv.env['TEST_USER_PASSWORD'];
 
   final lvUserLogin = LV.fromString(userLogin);
   final lvPassword = LV.fromString(password);
