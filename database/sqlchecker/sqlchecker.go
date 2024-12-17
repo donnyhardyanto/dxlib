@@ -136,7 +136,7 @@ func CheckValue(value any) error {
 				return err
 			}
 		}
-	case []uint8:
+	case []uint8, []uint64, []int64, []int32, []int16, []int8, []int, []float64, []float32, []bool:
 		return nil
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, bool:
 		// Numeric and boolean values are safe

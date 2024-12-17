@@ -805,14 +805,25 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
+	fmt.Printf("Query: %s\nArgs: %+v\n", query, arg)
+
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return 0, err
 	}
 	defer func() {
-		_ = rows.Close()
+		if closeErr := rows.Close(); closeErr != nil {
+			fmt.Printf("Error closing rows: %v\n", closeErr)
+		}
 	}()
 
+	/*	// Debug: Print column information
+		cols, err := rows.Columns()
+		if err != nil {
+			return 0, fmt.Errorf("failed to get columns: %w", err)
+		}
+		fmt.Printf("Returned columns: %v\n", cols)
+	*/
 	var returningId int64
 	if rows.Next() {
 		err := rows.Scan(&returningId)
