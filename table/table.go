@@ -22,7 +22,7 @@ type DXTable struct {
 	FieldNameForRowNameId string
 }
 
-func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
+func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	newKeyValues["is_deleted"] = false
 
 	tt := time.Now().UTC()
@@ -48,13 +48,24 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
-		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:"+t.NameId+"="+err.Error())
+		return 0, err
+	}
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
+		t.FieldNameForRowId: newId,
+	})
+	return newId, nil
+}
+
+func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
+	newId, err = t.DoInsert(aepr, newKeyValues)
+	if err != nil {
+		return 0, err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
 		t.FieldNameForRowId: newId,
 	})
 
-	return newId, err
+	return newId, nil
 }
 
 func (t *DXTable) GetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
