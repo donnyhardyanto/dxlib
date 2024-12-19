@@ -805,7 +805,7 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
-	fmt.Printf("Query: %s\nArgs: %+v\n", query, arg)
+	//fmt.Printf("Query: %s\nArgs: %+v\n", query, arg)
 
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
