@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"strings"
 )
+
+type FieldTypeMapping map[string]string
 
 func FormatIdentifier(identifier string, driverName string) string {
 	// Convert the identifier to lowercase as the base case
@@ -30,12 +33,25 @@ func DeformatIdentifier(identifier string, driverName string) string {
 	return deformattedIdentifier
 }
 
-func DeformatKeys(kv map[string]interface{}, driverName string) (r map[string]interface{}) {
+func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping FieldTypeMapping) (r map[string]interface{}, err error) {
 	r = map[string]interface{}{}
 	for k, v := range kv {
-		r[DeformatIdentifier(k, driverName)] = v
+		newKey := DeformatIdentifier(k, driverName)
+		if fieldTypeMapping != nil {
+			fieldValueType, isExist := fieldTypeMapping[newKey]
+			if isExist {
+				switch fieldValueType {
+				case "array-string":
+					v, err = utils.GetArrayFromV(v)
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+		r[newKey] = v
 	}
-	return r
+	return r, nil
 }
 
 func PrepareArrayArgs(keyValues map[string]any, driverName string) (fieldNames string, fieldValues string, fieldArgs []any) {

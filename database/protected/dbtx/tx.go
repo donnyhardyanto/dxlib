@@ -146,7 +146,7 @@ func TxShouldNamedQueryIdBig(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, que
 	return returningId, nil
 }
 
-func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+func TxNamedQueryRows(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 	rows, err := TxNamedQuery(log, autoRollback, tx, query, arg)
 	if err != nil {
 		return nil, nil, err
@@ -173,14 +173,17 @@ func TxNamedQueryRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query stri
 			}
 			return nil, nil, err
 		}
-		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, tx.DriverName())
+		rowJSON, err = databaseProtectedUtils.DeformatKeys(rowJSON, tx.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, err
+		}
 		r = append(r, rowJSON)
 	}
 
 	return rowsInfo, r, nil
 }
 
-func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func TxNamedQueryRow(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rows, err := TxNamedQuery(log, autoRollback, tx, query, arg)
 	if err != nil {
 		return nil, nil, err
@@ -207,15 +210,18 @@ func TxNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query strin
 			}
 			return rowsInfo, nil, err
 		}
-		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, tx.DriverName())
+		rowJSON, err = databaseProtectedUtils.DeformatKeys(rowJSON, tx.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, err
+		}
 		return rowsInfo, rowJSON, nil
 	}
 
 	return rowsInfo, nil, nil
 }
 
-func TxShouldNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, row, err := TxNamedQueryRow(log, autoRollback, tx, query, arg)
+func TxShouldNamedQueryRow(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, query string, arg any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, row, err := TxNamedQueryRow(log, fieldTypeMapping, autoRollback, tx, query, arg)
 	if err != nil {
 		return rowsInfo, row, err
 	}
@@ -242,7 +248,7 @@ func TxShouldNamedQueryRow(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query
 	return rowsInfo, r, err
 }*/
 
-func TxShouldSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func TxShouldSelectOne(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
@@ -251,7 +257,7 @@ func TxShouldSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName
 		return rowsInfo, nil, err
 	}
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
-	rowsInfo, r, err = TxShouldNamedQueryRow(log, autoRollback, tx, s, wKV)
+	rowsInfo, r, err = TxShouldNamedQueryRow(log, fieldTypeMapping, autoRollback, tx, s, wKV)
 	if err != nil {
 		err := fmt.Errorf(`%s:%s`, err, tableName)
 		return rowsInfo, nil, err
@@ -259,7 +265,7 @@ func TxShouldSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName
 	return rowsInfo, r, err
 }
 
-func TxSelect(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func TxSelect(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
@@ -267,11 +273,11 @@ func TxSelect(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 		return nil, nil, err
 	}
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
-	rowsInfo, r, err = TxNamedQueryRows(log, autoRollback, tx, s, wKV)
+	rowsInfo, r, err = TxNamedQueryRows(log, fieldTypeMapping, autoRollback, tx, s, wKV)
 	return rowsInfo, r, err
 }
 
-func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func TxSelectOne(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
@@ -279,7 +285,7 @@ func TxSelectOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName strin
 		return nil, nil, err
 	}
 	wKV := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
-	rowsInfo, r, err = TxNamedQueryRow(log, autoRollback, tx, s, wKV)
+	rowsInfo, r, err = TxNamedQueryRow(log, fieldTypeMapping, autoRollback, tx, s, wKV)
 	return rowsInfo, r, err
 }
 

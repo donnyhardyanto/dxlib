@@ -643,6 +643,37 @@ func StringArrayHasCommonItem(arr1, arr2 []string) bool {
 	return false
 }
 
+func GetJSONFromV(v any) (r JSON, err error) {
+	r, ok := v.(JSON)
+	if !ok {
+		rASBytes, ok := v.([]byte)
+		if !ok {
+			err = fmt.Errorf("VALUE_IS_NOT_JSON:%v", v)
+			return nil, err
+		}
+		r = JSON{}
+		err = json.Unmarshal(rASBytes, &r)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return r, nil
+}
+
+func GetArrayFromV(v any) (r []any, err error) {
+	rASBytes, ok := v.([]byte)
+	if !ok {
+		err = fmt.Errorf("VALUE_IS_NOT_JSON:%v", v)
+		return nil, err
+	}
+	r = []any{}
+	err = json.Unmarshal(rASBytes, &r)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
 	r, ok := kv[key].(JSON)
 	if !ok {

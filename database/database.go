@@ -399,7 +399,7 @@ func (d *DXDatabase) PropertyValue(key string) (value string, err error) {
 	//if err != nil {
 	//	return "", err
 	//}
-	_, resultData, err := db.ShouldSelectOne(d.Connection, "properties", nil, utils.JSON{
+	_, resultData, err := db.ShouldSelectOne(d.Connection, nil, "properties", nil, utils.JSON{
 		"key": key,
 	}, nil, nil)
 	if err != nil {
@@ -436,7 +436,7 @@ func (d *DXDatabase) ShouldSelectOne(tableName string, whereAndFieldNameValues u
 	//if err != nil {
 	//	return nil, nil, err
 	//}
-	rowsInfo, resultData, err = db.ShouldSelectOne(d.Connection, tableName, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
+	rowsInfo, resultData, err = db.ShouldSelectOne(d.Connection, nil, tableName, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 	return rowsInfo, resultData, err
 }
 
@@ -446,7 +446,7 @@ func (d *DXDatabase) Select(tableName string, showFieldNames []string, whereAndF
 	//if err != nil {
 	//	return nil, nil, err
 	//}
-	return db.Select(d.Connection, tableName, showFieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit)
+	return db.Select(d.Connection, nil, tableName, showFieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit)
 }
 
 func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
@@ -454,7 +454,7 @@ func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFi
 
 	tryCount := 0
 	for {
-		rowsInfo, r, err = db.SelectOne(d.Connection, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
+		rowsInfo, r, err = db.SelectOne(d.Connection, nil, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 		if err == nil {
 			return rowsInfo, r, nil
 		}

@@ -6,6 +6,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
+	databaseUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
@@ -20,6 +21,7 @@ type DXTable struct {
 	ListViewNameId        string
 	FieldNameForRowId     string
 	FieldNameForRowNameId string
+	FieldTypeMapping      databaseUtils.FieldTypeMapping
 }
 
 func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
@@ -566,7 +568,7 @@ func (t *DXTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere stri
 		}
 	}
 
-	rowsInfo, list, err := db.NamedQueryList(t.Database.Connection, "*", t.ListViewNameId,
+	rowsInfo, list, err := db.NamedQueryList(t.Database.Connection, t.FieldTypeMapping, "*", t.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
 		return err
@@ -618,7 +620,7 @@ func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWher
 		return err
 	}
 
-	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
+	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, t.FieldTypeMapping, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
 		return err

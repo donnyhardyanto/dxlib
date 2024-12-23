@@ -505,7 +505,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	}
 }
 
-func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+func NamedQueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, arg any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	/*	var argAsArray []any
 		switch arg.(type) {
 		case map[string]any:
@@ -524,7 +524,7 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 		rows := xr*/
 	switch db.DriverName() {
 	case "oracle":
-		rowInfo, x, err := _oracleSelectRaw(db, query, arg)
+		rowInfo, x, err := _oracleSelectRaw(db, fieldTypeMapping, query, arg)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -564,15 +564,18 @@ func NamedQueryRow(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r ut
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
+		rowJSON, err = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, err
+		}
 		return rowsInfo, rowJSON, nil
 	}
 
 	return rowsInfo, nil, nil
 }
 
-func ShouldNamedQueryRow(db *sqlx.DB, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = NamedQueryRow(db, query, args)
+func ShouldNamedQueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = NamedQueryRow(db, fieldTypeMapping, query, args)
 	if err != nil {
 		return rowsInfo, r, err
 	}
@@ -689,7 +692,7 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 	return result, nil
 }
 
-func _oracleSelectRaw(db *sqlx.DB, query string, fieldArgs ...any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func _oracleSelectRaw(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, fieldArgs ...any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, nil, err
@@ -728,13 +731,16 @@ func _oracleSelectRaw(db *sqlx.DB, query string, fieldArgs ...any) (rowsInfo *Ro
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
+		rowJSON, err = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, err
+		}
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
 }
 
-func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func OracleSelect(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 
 	tableName = strings.ToUpper(tableName)
@@ -760,7 +766,7 @@ func OracleSelect(db *sqlx.DB, tableName string, fieldNames []string, whereAndFi
 
 	query := fmt.Sprintf("SELECT %s from %s %s %s %s", fieldNamesStr, tableName, whereClause, orderByClause, limitClause)
 
-	return _oracleSelectRaw(db, query, fieldArgs)
+	return _oracleSelectRaw(db, fieldTypeMapping, query, fieldArgs)
 	/*stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, nil, err
@@ -805,8 +811,6 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
-	//fmt.Printf("Query: %s\nArgs: %+v\n", query, arg)
-
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return 0, err
@@ -817,13 +821,6 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 		}
 	}()
 
-	/*	// Debug: Print column information
-		cols, err := rows.Columns()
-		if err != nil {
-			return 0, fmt.Errorf("failed to get columns: %w", err)
-		}
-		fmt.Printf("Returned columns: %v\n", cols)
-	*/
 	var returningId int64
 	if rows.Next() {
 		err := rows.Scan(&returningId)
@@ -837,7 +834,7 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 	return returningId, nil
 }
 
-func NamedQueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func NamedQueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}
@@ -870,13 +867,16 @@ func NamedQueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r [
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
+		rowJSON, err = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, err
+		}
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
 }
 
-func QueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func QueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
@@ -906,7 +906,10 @@ func QueryRows(db *sqlx.DB, query string, arg any) (rowsInfo *RowsInfo, r []util
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
+		rowJSON, err = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, err
+		}
 		r = append(r, rowJSON)
 	}
 	return rowsInfo, r, nil
@@ -958,7 +961,7 @@ func ShouldCountQuery(dbAppInstance *sqlx.DB, summaryCalcFieldsPart, fromQueryPa
 		return 0, nil, err
 	}
 
-	_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
+	_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, nil, countSQL, arg)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -982,7 +985,7 @@ func ShouldCountQuery(dbAppInstance *sqlx.DB, summaryCalcFieldsPart, fromQueryPa
 }
 
 // NamedQueryPaging updated to use the extracted count query function
-func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64,
+func NamedQueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64,
 	returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
 	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
 
@@ -1064,7 +1067,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 		return rowsInfo, rows, 0, 0, summaryRows, errors.New("UNSUPPORTED_DATABASE_SQL_SELECT")
 	}
 
-	rowsInfo, rows, err = NamedQueryRows(dbAppInstance, query, arg)
+	rowsInfo, rows, err = NamedQueryRows(dbAppInstance, fieldTypeMapping, query, arg)
 	if err != nil {
 		return rowsInfo, rows, 0, 0, summaryRows, err
 	}
@@ -1073,7 +1076,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 }
 
 // NamedQueryPagingList updated to use the extracted count query function
-func NamedQueryList(dbAppInstance *sqlx.DB,
+func NamedQueryList(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping,
 	returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
 	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, err error) {
 
@@ -1130,7 +1133,7 @@ func NamedQueryList(dbAppInstance *sqlx.DB,
 		return rowsInfo, rows, errors.New("UNSUPPORTED_DATABASE_SQL_SELECT")
 	}
 
-	rowsInfo, rows, err = NamedQueryRows(dbAppInstance, query, arg)
+	rowsInfo, rows, err = NamedQueryRows(dbAppInstance, fieldTypeMapping, query, arg)
 	if err != nil {
 		return rowsInfo, rows, err
 	}
@@ -1263,7 +1266,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 	}
 */
 
-func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
+func QueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
 	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, err error) {
 	if returnFieldsQueryPart == `` {
 		returnFieldsQueryPart = `*`
@@ -1298,26 +1301,26 @@ func QueryPaging(dbAppInstance *sqlx.DB, rowsPerPage int64, pageIndex int64, ret
 	}
 
 	query := `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
-	rowsInfo, rows, err = QueryRows(dbAppInstance, query, arg)
+	rowsInfo, rows, err = QueryRows(dbAppInstance, fieldTypeMapping, query, arg)
 	if err != nil {
 		return rowsInfo, rows, 0, 0, err
 	}
 	return rowsInfo, rows, totalRows, totalPage, err
 }
 
-func ShouldSelectWhereId(db *sqlx.DB, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = ShouldNamedQueryRow(db, `SELECT * FROM `+tableName+` where `+databaseProtectedUtils.FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
+func ShouldSelectWhereId(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = ShouldNamedQueryRow(db, fieldTypeMapping, `SELECT * FROM `+tableName+` where `+databaseProtectedUtils.FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
 		`id`: idValue,
 	})
 	return rowsInfo, r, err
 }
 
-func SelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func SelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	driverName := db.DriverName()
 	switch driverName {
 	case "oracle":
-		rowsInfo, rx, err := OracleSelect(db, tableName,
+		rowsInfo, rx, err := OracleSelect(db, fieldTypeMapping, tableName,
 			fieldNames, whereAndFieldNameValues,
 			joinSQLPart,
 			orderbyFieldNameDirections)
@@ -1337,13 +1340,13 @@ func SelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndField
 		return nil, nil, err
 	}
 	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
-	rowsInfo, r, err = NamedQueryRow(db, s, wKV)
+	rowsInfo, r, err = NamedQueryRow(db, fieldTypeMapping, s, wKV)
 	return rowsInfo, r, err
 }
 
-func ShouldSelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func ShouldSelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = SelectOne(db, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
+	rowsInfo, r, err = SelectOne(db, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 	if err != nil {
 		return rowsInfo, r, err
 	}
@@ -1354,12 +1357,12 @@ func ShouldSelectOne(db *sqlx.DB, tableName string, fieldNames []string, whereAn
 	return rowsInfo, r, nil
 }
 
-func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string,
+func Select(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string,
 	limit any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	driverName := db.DriverName()
 	switch driverName {
 	case "oracle":
-		rowsInfo, r, err := OracleSelect(db, tableName,
+		rowsInfo, r, err := OracleSelect(db, fieldTypeMapping, tableName,
 			fieldNames, whereAndFieldNameValues,
 			joinSQLPart,
 			orderbyFieldNameDirections)
@@ -1370,7 +1373,7 @@ func Select(db *sqlx.DB, tableName string, fieldNames []string, whereAndFieldNam
 		return nil, nil, err
 	}
 	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
-	rowsInfo, r, err = NamedQueryRows(db, s, wKV)
+	rowsInfo, r, err = NamedQueryRows(db, fieldTypeMapping, s, wKV)
 	return rowsInfo, r, err
 }
 
