@@ -87,7 +87,7 @@ func (pt *DXPropertyTable) GetAsInteger(l *log.DXLog, propertyId string) (int, e
 }
 
 func (pt *DXPropertyTable) PropertyTxSetAsInteger(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
-	v, err := json.Marshal(utils.JSON{"int": value})
+	v, err := json.Marshal(utils.JSON{"value": value})
 	_, err = pt.TxInsert(dtx, utils.JSON{
 		"nameid": propertyId,
 		"type":   "INT",
@@ -122,7 +122,7 @@ func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, e
 }
 
 func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId string, value int64) (err error) {
-	v, err := json.Marshal(utils.JSON{"INT64": value})
+	v, err := json.Marshal(utils.JSON{"value": value})
 
 	_, err = pt.TxInsert(dtx, utils.JSON{
 		"nameid": propertyId,
@@ -139,7 +139,7 @@ func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId st
 	if err != nil {
 		return err
 	}
-	v, err := json.Marshal(utils.JSON{"JSON": value})
+	v, err := json.Marshal(utils.JSON{"value": value})
 
 	if property == nil {
 		_, err = pt.TxInsert(dtx, utils.JSON{
