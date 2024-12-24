@@ -71,12 +71,12 @@ func (c *Captcha) GenerateImage(captchaText string) ([]byte, error) {
 	dc.Shear(shearX, shearY)
 
 	// Add noise (random dots) ke background
-	for i := 0; i < 300; i++ {
-		x, y, r := rand.Float64()*width, rand.Float64()*height, rand.Float64()*2.5
-		dc.DrawCircle(x, y, r)
-		dc.Fill()
-	}
-
+	/*	for i := 0; i < 300; i++ {
+			x, y, r := rand.Float64()*width, rand.Float64()*height, rand.Float64()*2.5
+			dc.DrawCircle(x, y, r)
+			dc.Fill()
+		}
+	*/
 	if err := dc.LoadFontFace("./captcha.ttf", 52); err != nil {
 		return nil, err
 	}
