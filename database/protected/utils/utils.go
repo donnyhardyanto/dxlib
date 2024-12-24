@@ -46,6 +46,11 @@ func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping
 					if err != nil {
 						return nil, err
 					}
+				case "json":
+					v, err = utils.GetJSONFromV(v)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
