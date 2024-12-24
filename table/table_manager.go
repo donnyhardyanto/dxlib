@@ -9,6 +9,7 @@ import (
 type DXTableManager struct {
 	Tables                               map[string]*DXTable
 	RawTables                            map[string]*DXRawTable
+	PropertyTables                       map[string]*DXPropertyTable
 	StandardOperationResponsePossibility map[string]map[string]*api.DXAPIEndPointResponsePossibility
 }
 
@@ -49,6 +50,23 @@ func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName
 	return &t
 }
 
+func (tm *DXTableManager) NewPropertyTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForId string) *DXPropertyTable {
+	if tableListViewNameId == "" {
+		tableListViewNameId = tableNameId
+	}
+	t := DXPropertyTable{
+		DatabaseNameId:        databaseNameId,
+		NameId:                tableNameId,
+		ResultObjectName:      resultObjectName,
+		ListViewNameId:        tableListViewNameId,
+		FieldNameForRowId:     tableFieldNameForId,
+		FieldNameForRowNameId: tableFieldNameForRowNameId,
+	}
+	t.Database = database.Manager.Databases[databaseNameId]
+	tm.PropertyTables[tableNameId] = &t
+	return &t
+}
+
 func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForId string) *DXRawTable {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
@@ -70,8 +88,9 @@ var Manager DXTableManager
 
 func init() {
 	Manager = DXTableManager{
-		Tables:    map[string]*DXTable{},
-		RawTables: map[string]*DXRawTable{},
+		Tables:         map[string]*DXTable{},
+		RawTables:      map[string]*DXRawTable{},
+		PropertyTables: map[string]*DXPropertyTable{},
 		StandardOperationResponsePossibility: map[string]map[string]*api.DXAPIEndPointResponsePossibility{
 			"create": {
 				"success": &api.DXAPIEndPointResponsePossibility{
