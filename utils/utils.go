@@ -661,9 +661,12 @@ func GetJSONFromV(v any) (r JSON, err error) {
 }
 
 func GetArrayFromV(v any) (r []any, err error) {
+	if v == nil {
+		return nil, nil
+	}
 	rASBytes, ok := v.([]byte)
 	if !ok {
-		err = fmt.Errorf("VALUE_IS_NOT_JSON:%v", v)
+		err = fmt.Errorf("VALUE_IS_NOT_ARRAY_BYTE:%v", v)
 		return nil, err
 	}
 	r = []any{}
@@ -675,6 +678,9 @@ func GetArrayFromV(v any) (r []any, err error) {
 }
 
 func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
+	if kv == nil {
+		return nil, nil
+	}
 	r, ok := kv[key].(JSON)
 	if !ok {
 		rASBytes, ok := kv[key].([]byte)
