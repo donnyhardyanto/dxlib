@@ -603,10 +603,10 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 }
 
 func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callback DXDatabaseTxCallback) (err error) {
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return err
-	}
+	//err = d.CheckConnectionAndReconnect()
+	//	if err != nil {
+	//		return err
+	//	}
 	driverName := d.Connection.DriverName()
 	switch driverName {
 	case "oracle":
