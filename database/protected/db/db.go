@@ -7,10 +7,86 @@ import (
 	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
+	go_ora "github.com/sijms/go-ora/v2/network"
 	"strconv"
 	"strings"
 )
+
+type FieldsOrderBy map[string]string
+
+var (
+	oracleConnectionErrors = []int{
+		3113,  // End-of-file on communication channel
+		3114,  // Not connected to Oracle
+		12170, // TNS connect timeout
+		12541, // No listener
+		12543, // TNS destination host unreachable
+		12571, // TNS packet writer failure
+	}
+
+	mariadbConnectionErrors = []uint16{
+		1042, // Can't get hostname
+		1043, // Bad handshake
+		1044, // Access denied
+		1045, // Access denied
+		1047, // Connection refused
+		1129, // Host blocked
+		1130, // Not allowed to connect
+		2002, // Can't connect
+		2003, // Can't connect
+		2004, // Can't create TCP/IP socket
+		2005, // Unknown host
+		2006, // Server gone away
+	}
+)
+
+// IsConnectionError checks if the error is a database connection error
+func IsConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	switch e := err.(type) {
+	case *go_ora.OracleError: // Oracle
+		for _, code := range oracleConnectionErrors {
+			if e.ErrCode == code {
+				return true
+			}
+		}
+
+	case *pq.Error: // PostgreSQL
+		return e.Code.Class() == "08" // Class 08 - Connection Exception
+
+	case *mysql.MySQLError: // MariaDB/MySQL
+		for _, code := range mariadbConnectionErrors {
+			if e.Number == code {
+				return true
+			}
+		}
+
+	default: // SQL Server and generic checks
+		msg := err.Error()
+		connectionErrors := []string{
+			"connection reset",
+			"connection refused",
+			"connection closed",
+			"network error",
+			"dial tcp",
+			"broken pipe",
+		}
+
+		for _, errText := range connectionErrors {
+			if strings.Contains(strings.ToLower(msg), errText) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
 
 type RowsInfo struct {
 	Columns     []string
@@ -352,7 +428,7 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 }
 
 func SQLPartConstructSelect(driverName string, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, limit any, forUpdatePart any) (s string, err error) {
+	orderbyFieldNameDirections FieldsOrderBy, limit any, forUpdatePart any) (s string, err error) {
 	switch driverName {
 	case "sqlserver":
 		f := SQLPartFieldNames(fieldNames, driverName)
@@ -741,7 +817,7 @@ func _oracleSelectRaw(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.Field
 }
 
 func OracleSelect(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections FieldsOrderBy) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 
 	tableName = strings.ToUpper(tableName)
 	tableName = strings.ToUpper(tableName)
@@ -1315,8 +1391,8 @@ func ShouldSelectWhereId(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.Fi
 	return rowsInfo, r, err
 }
 
-func SelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+/*func SelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	driverName := db.DriverName()
 	switch driverName {
 	case "oracle":
@@ -1343,9 +1419,9 @@ func SelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMap
 	rowsInfo, r, err = NamedQueryRow(db, fieldTypeMapping, s, wKV)
 	return rowsInfo, r, err
 }
-
-func ShouldSelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+*/
+/*func ShouldSelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = SelectOne(db, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 	if err != nil {
 		return rowsInfo, r, err
@@ -1355,10 +1431,18 @@ func ShouldSelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldT
 		return rowsInfo, nil, err
 	}
 	return rowsInfo, r, nil
-}
+}*/
 
-func Select(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections map[string]string,
+func Select(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections FieldsOrderBy,
 	limit any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+
+	if fieldNames == nil {
+		fieldNames = []string{"*"}
+	}
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
 	driverName := db.DriverName()
 	switch driverName {
 	case "oracle":

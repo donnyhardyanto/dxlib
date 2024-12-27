@@ -76,7 +76,7 @@ func (t *DXTable) GetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r ut
 	rowsInfo, r, err = t.SelectOne(log, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
-	}, map[string]string{t.FieldNameForRowId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 
@@ -84,7 +84,7 @@ func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
-	}, map[string]string{t.FieldNameForRowId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 
@@ -92,7 +92,7 @@ func (t *DXTable) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.Row
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		"utag":       utag,
 		"is_deleted": false,
-	}, map[string]string{t.FieldNameForRowId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 
@@ -100,7 +100,7 @@ func (t *DXTable) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsI
 	rowsInfo, r, err = t.SelectOne(log, utils.JSON{
 		t.FieldNameForRowNameId: nameid,
 		"is_deleted":            false,
-	}, map[string]string{t.FieldNameForRowNameId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
 }
 
@@ -108,7 +108,7 @@ func (t *DXTable) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowNameId: nameid,
 		"is_deleted":            false,
-	}, map[string]string{t.FieldNameForRowNameId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
 }
 
@@ -407,10 +407,10 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) 
 }
 
 func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	return t.Select(log, nil, nil, map[string]string{t.FieldNameForRowId: "asc"}, nil)
+	return t.Select(log, nil, nil, nil, map[string]string{t.FieldNameForRowId: "asc"}, nil)
 }
 
-func (t *DXTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, summaryCalcRow utils.JSON, err error) {
+func (t *DXTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
@@ -420,7 +420,7 @@ func (t *DXTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, wher
 		}
 	}
 
-	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
+	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, summaryCalcRow, err
 }
 
@@ -439,12 +439,8 @@ func (t *DXTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, wher
 		return totalRows, summaryCalcRow, err
 	}
 */
-func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-
-	if fieldNames == nil {
-		fieldNames = &[]string{"*"}
-	}
+func (t *DXTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
@@ -455,8 +451,7 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldName
 		}
 	}
 
-	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, *fieldNames,
-		whereAndFieldNameValues, orderbyFieldNameDirections, limit)
+	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, t.FieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -464,20 +459,19 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldName
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func (t *DXTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return t.Database.ShouldSelectOne(t.ListViewNameId,
-		whereAndFieldNameValues, orderbyFieldNameDirections)
+	return t.Database.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, t.FieldTypeMapping)
 }
 
 func (t *DXTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -488,7 +482,7 @@ func (t *DXTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldName
 }
 
 func (t *DXTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -499,7 +493,7 @@ func (t *DXTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAnd
 }
 
 func (t *DXTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -510,7 +504,7 @@ func (t *DXTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues ut
 }
 
 func (t *DXTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -521,7 +515,7 @@ func (t *DXTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues
 }
 
 func (t *DXTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -752,79 +746,7 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) 
 	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
-/*
-	func (t *DXTable) RequestPagingList2(aepr *api.DXAPIEndPointRequest) (err error) {
-		p := aepr.GetParameterValues()
-
-		filter := p["filter"].(map[string]any)
-
-		builder := sqlbuilder.New(t.Database.DatabaseType)
-
-		opt := sqlbuilder.BuildOption{
-			BaseQuery: "SELECT * FROM users",
-			Filter:    filter,
-			OrderBy: map[string]any{
-				"id":         "asc",
-				"created_at": "desc nulls last",
-				"status":     true,  // ASC
-				"priority":   false, // DESC
-				"name":       nil,   // defaults to ASC
-			},
-			Page: pagebuilder.PageInfo{
-				Page:     1,
-				PageSize: 10,
-			},
-		}
-
-		query, args, err := builder.Build(opt)
-
-		f, err := sqlbuilder.TranslateFilter(filter)
-
-		orderBy := p["order_by"].(map[string]any)
-
-		sqlbuilder.TranslateOrderByMap(orderBy, t.Database.DatabaseType)
-		sqlOrderByMapStringString, err := sqlbuilder.TranslateOrderBy(orderBy, t.Database.Driver)
-
-		isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
-		if err != nil {
-			return err
-		}
-		if !isExistFilterOrderBy {
-			filterOrderBy = ""
-		}
-
-		isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
-		if err != nil {
-			return err
-		}
-		if !isExistFilterKeyValues {
-			filterKeyValues = nil
-		}
-
-		_, isDeletedIncluded, err := aepr.GetParameterValueAsBool("is_deleted", false)
-		if err != nil {
-			return err
-		}
-
-		if !isDeletedIncluded {
-			if filterWhere != "" {
-				filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
-			}
-
-			switch t.Database.DatabaseType.String() {
-			case "sqlserver":
-				filterWhere = filterWhere + "(is_deleted=0)"
-			case "postgres":
-				filterWhere = filterWhere + "(is_deleted=false)"
-			default:
-				filterWhere = filterWhere + "(is_deleted=0)"
-			}
-		}
-
-		return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
-	}
-*/
-func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
+func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -839,13 +761,13 @@ func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, 
 		}
 	}
 
-	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
+	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, t.FieldTypeMapping)
 }
 
 func (t *DXTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fieldValue string) (bool, error) {
 	_, r, err := t.SelectOne(log, utils.JSON{
 		fieldName: fieldValue,
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		return false, err
 	}

@@ -237,7 +237,7 @@ func TxShouldNamedQueryRow(log *log.DXLog, fieldTypeMapping databaseProtectedUti
 }
 
 /*func TxSelectWhereKeyValuesRows(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, nil, forUpdatePart)
 	if err != nil {
@@ -249,7 +249,7 @@ func TxShouldNamedQueryRow(log *log.DXLog, fieldTypeMapping databaseProtectedUti
 }*/
 
 func TxShouldSelectOne(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
@@ -266,7 +266,7 @@ func TxShouldSelectOne(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.F
 }
 
 func TxSelect(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
 	if err != nil {
@@ -278,7 +278,7 @@ func TxSelect(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeM
 }
 
 func TxSelectOne(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, autoRollback bool, tx *sqlx.Tx, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections map[string]string, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
@@ -394,6 +394,10 @@ func TxUpdate(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 }*/
 
 func TxDelete(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
 	driverName := tx.DriverName()
 	w := db.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	s := `delete from ` + tableName + ` where ` + w

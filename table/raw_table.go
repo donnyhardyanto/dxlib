@@ -50,14 +50,14 @@ func (t *DXRawTable) GetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r
 func (t *DXRawTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowId: id,
-	}, map[string]string{t.FieldNameForRowId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 
 func (t *DXRawTable) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		"utag": utag,
-	}, map[string]string{t.FieldNameForRowId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 
@@ -71,7 +71,7 @@ func (t *DXRawTable) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.Ro
 func (t *DXRawTable) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowNameId: nameid,
-	}, map[string]string{t.FieldNameForRowNameId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
 }
 
@@ -253,11 +253,11 @@ func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err erro
 }
 
 func (t *DXRawTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	return t.Select(log, nil, nil, nil, nil)
+	return t.Select(log, nil, nil, nil, nil, nil)
 }
 
-func (t *DXRawTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, summaryCalcRow utils.JSON, err error) {
-	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
+func (t *DXRawTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
+	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, summaryCalcRow, err
 }
 
@@ -268,15 +268,10 @@ func (t *DXRawTable) TxSelectCount(tx *database.DXDatabaseTx, summaryCalcFieldsP
 		return totalRows, summaryCalcRow, err
 	}
 */
-func (t *DXRawTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+func (t *DXRawTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
-	if fieldNames == nil {
-		fieldNames = &[]string{"*"}
-	}
-
-	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, *fieldNames,
-		whereAndFieldNameValues, orderbyFieldNameDirections, limit)
+	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, t.FieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -284,62 +279,37 @@ func (t *DXRawTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldN
 	return rowsInfo, r, err
 }
 
-func (t *DXRawTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func (t *DXRawTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
-
-	return t.Database.ShouldSelectOne(t.ListViewNameId,
-		whereAndFieldNameValues, orderbyFieldNameDirections)
+	return t.Database.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, t.FieldTypeMapping)
 }
 
 func (t *DXRawTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	return tx.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
 }
 func (t *DXRawTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	return tx.ShouldSelectOne(t.NameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
 func (t *DXRawTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	return tx.Select(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit, false)
 }
 
 func (t *DXRawTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	return tx.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
 }
 
 func (t *DXRawTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	return tx.SelectOne(t.NameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
@@ -514,7 +484,7 @@ func (t *DXRawTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err erro
 	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
-func (t *DXRawTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
+func (t *DXRawTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -532,7 +502,7 @@ func (t *DXRawTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSO
 		}
 	}
 
-	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
+	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, t.FieldTypeMapping)
 }
 
 func (t *DXRawTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fieldValue string) (bool, error) {

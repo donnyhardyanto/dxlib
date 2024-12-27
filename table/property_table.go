@@ -557,10 +557,10 @@ func (t *DXPropertyTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err
 }
 
 func (t *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	return t.Select(log, nil, nil, map[string]string{t.FieldNameForRowId: "asc"}, nil)
+	return t.Select(log, nil, nil, nil, map[string]string{t.FieldNameForRowId: "asc"}, nil)
 }
 
-func (t *DXPropertyTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, summaryCalcRow utils.JSON, err error) {
+func (t *DXPropertyTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
@@ -570,7 +570,7 @@ func (t *DXPropertyTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart stri
 		}
 	}
 
-	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
+	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, summaryCalcRow, err
 }
 
@@ -589,12 +589,8 @@ func (t *DXPropertyTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart stri
 		return totalRows, summaryCalcRow, err
 	}
 */
-func (t *DXPropertyTable) Select(log *log.DXLog, fieldNames *[]string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-
-	if fieldNames == nil {
-		fieldNames = &[]string{"*"}
-	}
+func (t *DXPropertyTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
@@ -605,8 +601,7 @@ func (t *DXPropertyTable) Select(log *log.DXLog, fieldNames *[]string, whereAndF
 		}
 	}
 
-	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, *fieldNames,
-		whereAndFieldNameValues, orderbyFieldNameDirections, limit)
+	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, t.FieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -615,30 +610,35 @@ func (t *DXPropertyTable) Select(log *log.DXLog, fieldNames *[]string, whereAndF
 }
 
 func (t *DXPropertyTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
-	whereAndFieldNameValues["is_deleted"] = false
+	_, ok := whereAndFieldNameValues["is_deleted"]
+	if !ok {
+		whereAndFieldNameValues["is_deleted"] = false
+	}
 
-	return t.Database.ShouldSelectOne(t.ListViewNameId,
-		whereAndFieldNameValues, orderbyFieldNameDirections)
+	return t.Database.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, t.FieldTypeMapping)
 }
 
 func (t *DXPropertyTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
-	whereAndFieldNameValues["is_deleted"] = false
+	_, ok := whereAndFieldNameValues["is_deleted"]
+	if !ok {
+		whereAndFieldNameValues["is_deleted"] = false
+	}
 
 	return tx.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
 }
 
 func (t *DXPropertyTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -649,34 +649,43 @@ func (t *DXPropertyTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, 
 }
 
 func (t *DXPropertyTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
-	whereAndFieldNameValues["is_deleted"] = false
+	_, ok := whereAndFieldNameValues["is_deleted"]
+	if !ok {
+		whereAndFieldNameValues["is_deleted"] = false
+	}
 
 	return tx.Select(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit, false)
 }
 
 func (t *DXPropertyTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
-	whereAndFieldNameValues["is_deleted"] = false
+	_, ok := whereAndFieldNameValues["is_deleted"]
+	if !ok {
+		whereAndFieldNameValues["is_deleted"] = false
+	}
 
 	return tx.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
 }
 
 func (t *DXPropertyTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections map[string]string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
-	whereAndFieldNameValues["is_deleted"] = false
+	_, ok := whereAndFieldNameValues["is_deleted"]
+	if !ok {
+		whereAndFieldNameValues["is_deleted"] = false
+	}
 
 	return tx.SelectOne(t.NameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
@@ -685,7 +694,10 @@ func (t *DXPropertyTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
-	whereAndFieldNameValues["is_deleted"] = false
+	_, ok := whereAndFieldNameValues["is_deleted"]
+	if !ok {
+		whereAndFieldNameValues["is_deleted"] = false
+	}
 
 	return tx.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
 }
@@ -809,20 +821,16 @@ func (t *DXPropertyTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err
 	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
-func (t *DXPropertyTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections map[string]string) (
+func (t *DXPropertyTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
-	whereAndFieldNameValues["is_deleted"] = false
-
-	if t.Database == nil {
-		err = t.Database.Connect()
-		if err != nil {
-			return nil, nil, err
-		}
+	_, ok := whereAndFieldNameValues["is_deleted"]
+	if !ok {
+		whereAndFieldNameValues["is_deleted"] = false
 	}
 
-	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
+	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, t.FieldTypeMapping)
 }
