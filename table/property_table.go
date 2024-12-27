@@ -623,7 +623,7 @@ func (t *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []
 	return t.Select(log, nil, nil, nil, map[string]string{t.FieldNameForRowId: "asc"}, nil)
 }
 
-func (t *DXPropertyTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
+/*func (t *DXPropertyTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
@@ -635,7 +635,7 @@ func (t *DXPropertyTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart stri
 
 	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, summaryCalcRow, err
-}
+}*/
 
 /*
 	func (t *DXPropertyTable) TxSelectCount(tx *database.DXDatabaseTx, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, summaryCalcRow utils.JSON, err error) {

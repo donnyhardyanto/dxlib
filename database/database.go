@@ -395,54 +395,41 @@ func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, er
 	return r, err
 }
 
-/*
-	func (d *DXDatabase) PropertyValue(key string) (value string, err error) {
-		//err = d.CheckConnectionAndReconnect()
-		//if err != nil {
-		//	return "", err
-		//}
-		_, resultData, err := db.ShouldSelectOne(d.Connection, nil, "properties", nil, utils.JSON{
-			"key": key,
-		}, nil, nil)
-		if err != nil {
-			return "", err
-		}
-		value = resultData["value"].(string)
-		return value, nil
-	}
-*/
 func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
-	//err = d.CheckConnectionAndReconnect()
-	//if err != nil {
-	//	return 0, err
-	//}
-	return db.Insert(d.Connection, tableName, fieldNameForRowId, keyValues)
+	for tryCount := 0; tryCount < 4; tryCount++ {
+		id, err = db.Insert(d.Connection, tableName, fieldNameForRowId, keyValues)
+		if err == nil {
+			return id, nil
+		}
+		log.Log.Warnf("INSERT_ERROR:%s=%v", tableName, err.Error())
+		if !db.IsConnectionError(err) {
+			return 0, err
+		}
+		err = d.CheckConnectionAndReconnect()
+		if err != nil {
+			log.Log.Warnf("RECONNECT_ERROR:%s", err.Error())
+		}
+	}
+
+	return 0, err
 }
 
 func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
-	//err = d.CheckConnectionAndReconnect()
-	//if err != nil {
-	//	return nil, err
-	//}
-	return db.Update(d.Connection, tableName, setKeyValues, whereKeyValues)
-}
-
-func (d *DXDatabase) ShouldSelectCount(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
-	totalRows, c, err = db.ShouldSelectCount(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
-	return totalRows, c, err
-}
-
-func (d *DXDatabase) ShouldSelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy, fieldTypeMapping utils2.FieldTypeMapping) (
-	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
-
-	rowsInfo, resultData, err = d.SelectOne(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, fieldTypeMapping)
-	if err != nil {
-		return nil, nil, err
+	for tryCount := 0; tryCount < 4; tryCount++ {
+		result, err = db.Update(d.Connection, tableName, setKeyValues, whereKeyValues)
+		if err == nil {
+			return result, nil
+		}
+		log.Log.Warnf("UPDATE_ERROR:%s=%v", tableName, err.Error())
+		if !db.IsConnectionError(err) {
+			return nil, err
+		}
+		err = d.CheckConnectionAndReconnect()
+		if err != nil {
+			log.Log.Warnf("RECONNECT_ERROR:%s", err.Error())
+		}
 	}
-	if resultData == nil {
-		return nil, nil, fmt.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", tableName)
-	}
-	return rowsInfo, resultData, err
+	return nil, err
 }
 
 func (d *DXDatabase) Select(tableName string, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
@@ -465,6 +452,24 @@ func (d *DXDatabase) Select(tableName string, showFieldNames []string, whereAndF
 	return nil, nil, err
 }
 
+/*func (d *DXDatabase) ShouldSelectCount(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
+	totalRows, c, err = db.ShouldSelectCount(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	return totalRows, c, err
+}*/
+
+func (d *DXDatabase) ShouldSelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy, fieldTypeMapping utils2.FieldTypeMapping) (
+	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
+
+	rowsInfo, resultData, err = d.SelectOne(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, fieldTypeMapping)
+	if err != nil {
+		return nil, nil, err
+	}
+	if resultData == nil {
+		return nil, nil, fmt.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", tableName)
+	}
+	return rowsInfo, resultData, err
+}
+
 func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections db.FieldsOrderBy, fieldTypeMapping utils2.FieldTypeMapping) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
@@ -485,7 +490,21 @@ func (d *DXDatabase) SoftDelete(tableName string, whereKeyValues utils.JSON) (re
 }
 
 func (d *DXDatabase) Delete(tableName string, whereKeyValues utils.JSON) (r sql.Result, err error) {
-	return db.Delete(d.Connection, tableName, whereKeyValues)
+	for tryCount := 0; tryCount < 4; tryCount++ {
+		r, err = db.Delete(d.Connection, tableName, whereKeyValues)
+		if err == nil {
+			return r, nil
+		}
+		log.Log.Warnf("DELETE_ERROR:%s=%v", tableName, err.Error())
+		if !db.IsConnectionError(err) {
+			return nil, err
+		}
+		err = d.CheckConnectionAndReconnect()
+		if err != nil {
+			log.Log.Warnf("RECONNECT_ERROR:%s", err.Error())
+		}
+	}
+	return nil, err
 }
 
 func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
