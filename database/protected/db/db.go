@@ -2,8 +2,10 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/database/database_type"
 	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -134,7 +136,25 @@ func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON, driverName strin
 	return r
 }
 
-func ExcludeSQLExpression(kv utils.JSON, driverName string) (r utils.JSON) {
+func ArrayToJSON[T any](arr []T) (string, error) {
+	jsonBytes, err := json.Marshal(arr)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal array: %w", err)
+	}
+	return string(jsonBytes), nil
+}
+
+// JSONToArray converts a JSON string back to an array
+func JSONToArray[T any](jsonStr string) ([]T, error) {
+	var arr []T
+	err := json.Unmarshal([]byte(jsonStr), &arr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal array: %w", err)
+	}
+	return arr, nil
+}
+
+func ExcludeSQLExpression(kv utils.JSON, driverName string) (r utils.JSON, err error) {
 	r = utils.JSON{}
 	for k, v := range kv {
 		switch driverName {
@@ -150,11 +170,23 @@ func ExcludeSQLExpression(kv utils.JSON, driverName string) (r utils.JSON) {
 			}
 		case SQLExpression:
 			break
+		case []string:
+			switch driverName {
+			case "postgresql":
+				r[k] = pq.Array(v.([]string))
+			default:
+				vx, err := ArrayToJSON[string](v.([]string))
+				if err != nil {
+					return r, err
+				}
+				r[k] = vx
+			}
+			break
 		default:
 			r[k] = v
 		}
 	}
-	return r
+	return r, nil
 }
 
 type SQLExpression struct {
@@ -952,15 +984,15 @@ func NamedQueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTy
 	return rowsInfo, r, nil
 }
 
-func QueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, arg any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func QueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, arg []any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+	r = []utils.JSON{}
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
 		return nil, r, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
-	r = []utils.JSON{}
-	rows, err := db.Queryx(query, arg)
+	rows, err := db.Queryx(query, arg...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1342,7 +1374,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rows
 	}
 */
 
-func QueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
+/*func QueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
 	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, err error) {
 	if returnFieldsQueryPart == `` {
 		returnFieldsQueryPart = `*`
@@ -1382,7 +1414,7 @@ func QueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils
 		return rowsInfo, rows, 0, 0, err
 	}
 	return rowsInfo, rows, totalRows, totalPage, err
-}
+}*/
 
 func ShouldSelectWhereId(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = ShouldNamedQueryRow(db, fieldTypeMapping, `SELECT * FROM `+tableName+` where `+databaseProtectedUtils.FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
@@ -1456,7 +1488,10 @@ func Select(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMappin
 	if err != nil {
 		return nil, nil, err
 	}
-	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+	wKV, err := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+	if err != nil {
+		return nil, nil, err
+	}
 	rowsInfo, r, err = NamedQueryRows(db, fieldTypeMapping, s, wKV)
 	return rowsInfo, r, err
 }
@@ -1490,7 +1525,10 @@ func SelectCount(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, wh
 	}
 
 	// Process arguments based on database type
-	args := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+	args, err := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+	if err != nil {
+		return 0, nil, err
+	}
 
 	// Special handling for different databases
 	switch driverName {
@@ -1580,7 +1618,10 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (
 	}
 	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	s := `DELETE FROM ` + tableName + ` where ` + w
-	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+	wKV, err := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
+	if err != nil {
+		return nil, err
+	}
 
 	err = sqlchecker.CheckAll(db.DriverName(), s, wKV)
 	if err != nil {
@@ -1632,7 +1673,69 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 		err = errors.New(`UNSUPPORTED_DATABASE_SQL_INSERT`)
 		return 0, err
 	}
-	kv := ExcludeSQLExpression(keyValues, driverName)
+	kv, err := ExcludeSQLExpression(keyValues, driverName)
+	if err != nil {
+		return 0, err
+	}
+
 	id, err = ShouldNamedQueryId(db, s, kv)
 	return id, err
+}
+
+func XInsert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
+	s := ``
+	driverName := db.DriverName()
+	switch driverName {
+	case "postgres":
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
+	case "sqlserver":
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.` + fieldNameForRowId + ` VALUES (` + fv + `)`
+	case "oracle":
+		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
+		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
+	default:
+		err = errors.New(`UNSUPPORTED_DATABASE_SQL_INSERT`)
+		return 0, err
+	}
+	kv, err := ExcludeSQLExpression(keyValues, driverName)
+	if err != nil {
+		return 0, err
+	}
+
+	newQuery, newArgs, err := database_type.ConvertParamsWithMap(s, kv, database_type.StringToDXDatabaseType(driverName))
+	if err != nil {
+		return 0, err
+	}
+
+	newId := int64(0)
+	switch driverName {
+	case "oracle":
+		newQuery = newQuery + ` INTO :` + fieldNameForRowId
+		newArgs = append(newArgs, sql.Named(fieldNameForRowId, sql.Out{Dest: &newId}))
+	}
+
+	_, r, err := QueryRows(db, nil, newQuery, newArgs)
+	if err != nil {
+		return 0, err
+	}
+
+	switch driverName {
+	case "oracle":
+		return newId, nil
+	}
+
+	if r == nil {
+		return 0, errors.New(`NO_ROWS_RETURNED_FROM_INSERT`)
+	}
+	if len(r) < 1 {
+		return 0, errors.New(`NO_ROWS_RETURNED_FROM_INSERT`)
+	}
+	firstRow := r[0]
+	id, ok := firstRow[fieldNameForRowId].(int64)
+	if !ok {
+		return 0, errors.New(`NO_ID_RETURNED_FROM_INSERT`)
+	}
+	return id, nil
 }

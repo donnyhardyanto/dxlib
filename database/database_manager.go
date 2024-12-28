@@ -18,13 +18,15 @@ func (dm *DXDatabaseManager) NewDatabase(nameId string, isConnectAtStart, mustBe
 	if dm.Databases[nameId] != nil {
 		return dm.Databases[nameId]
 	}
+	dbSemaphore := make(chan struct{}, 50)
+
 	d := DXDatabase{
-		NameId:           nameId,
-		IsConfigured:     false,
-		IsConnectAtStart: isConnectAtStart,
-		MustConnected:    mustBeConnected,
-		Connected:        false,
-		// CreateDatabaseScript: createDatabaseScript,
+		NameId:               nameId,
+		IsConfigured:         false,
+		IsConnectAtStart:     isConnectAtStart,
+		MustConnected:        mustBeConnected,
+		Connected:            false,
+		ConcurrencySemaphore: dbSemaphore,
 	}
 	dm.Databases[nameId] = &d
 	return &d

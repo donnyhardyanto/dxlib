@@ -113,7 +113,7 @@ func (t *DXTable) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db
 }
 
 func (t *DXTable) TxShouldGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
+	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
 	}, nil, nil, nil)
@@ -121,7 +121,7 @@ func (t *DXTable) TxShouldGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo
 }
 
 func (t *DXTable) TxGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.SelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
+	rowsInfo, r, err = tx.SelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
 		t.FieldNameForRowNameId: nameId,
 		"is_deleted":            false,
 	}, nil, nil, nil)
@@ -129,7 +129,7 @@ func (t *DXTable) TxGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsI
 }
 
 func (t *DXTable) TxShouldGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, []string{`*`}, utils.JSON{
+	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
 		t.FieldNameForRowNameId: nameId,
 		"is_deleted":            false,
 	}, nil, nil, nil)
@@ -451,7 +451,7 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameV
 		}
 	}
 
-	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, t.FieldTypeMapping)
+	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -467,7 +467,7 @@ func (t *DXTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return t.Database.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, t.FieldTypeMapping)
+	return t.Database.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 }
 
 func (t *DXTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
@@ -478,7 +478,7 @@ func (t *DXTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldName
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.ShouldSelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
+	return tx.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
 }
 
 func (t *DXTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
@@ -489,7 +489,7 @@ func (t *DXTable) TxShouldSelectOneForUpdate(tx *database.DXDatabaseTx, whereAnd
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.ShouldSelectOne(t.NameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
+	return tx.ShouldSelectOne(t.NameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
 func (t *DXTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
@@ -500,7 +500,7 @@ func (t *DXTable) TxSelect(tx *database.DXDatabaseTx, whereAndFieldNameValues ut
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.Select(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit, false)
+	return tx.Select(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit, false)
 }
 
 func (t *DXTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
@@ -511,7 +511,7 @@ func (t *DXTable) TxSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
+	return tx.SelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
 }
 
 func (t *DXTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
@@ -522,7 +522,7 @@ func (t *DXTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldN
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
-	return tx.SelectOne(t.NameId, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
+	return tx.SelectOne(t.NameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
 func (t *DXTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
@@ -761,7 +761,7 @@ func (t *DXTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, 
 		}
 	}
 
-	return t.Database.SelectOne(t.ListViewNameId, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, t.FieldTypeMapping)
+	return t.Database.SelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 }
 
 func (t *DXTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fieldValue string) (bool, error) {

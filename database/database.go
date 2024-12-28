@@ -47,6 +47,7 @@ type DXDatabase struct {
 	NonSensitiveConnectionString string
 	OnCannotConnect              DXDatabaseEventFunc
 	CreateScriptFiles            []string
+	ConcurrencySemaphore         chan struct{} // Adjust number based on your DB max_connections
 }
 
 func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel) (dtx *DXDatabaseTx, err error) {
@@ -432,8 +433,8 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 	return nil, err
 }
 
-func (d *DXDatabase) Select(tableName string, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
-	limit any, fieldTypeMapping utils2.FieldTypeMapping) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
+func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
+	limit any) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
 		rowsInfo, resultData, err = db.Select(d.Connection, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit)
@@ -457,10 +458,10 @@ func (d *DXDatabase) Select(tableName string, showFieldNames []string, whereAndF
 	return totalRows, c, err
 }*/
 
-func (d *DXDatabase) ShouldSelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy, fieldTypeMapping utils2.FieldTypeMapping) (
+func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
 
-	rowsInfo, resultData, err = d.SelectOne(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, fieldTypeMapping)
+	rowsInfo, resultData, err = d.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -470,10 +471,10 @@ func (d *DXDatabase) ShouldSelectOne(tableName string, fieldNames []string, wher
 	return rowsInfo, resultData, err
 }
 
-func (d *DXDatabase) SelectOne(tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy, fieldTypeMapping utils2.FieldTypeMapping) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
-	rowsInfo, rr, err := d.Select(tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, fieldTypeMapping)
+	rowsInfo, rr, err := d.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -578,18 +579,6 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 	default:
 		err = log.Log.FatalAndCreateErrorf("Driver %s is not supported", driverName)
 		return nil, err
-
-		/* this way is always fail in SQL Server, but success in Postgresql */
-		/*sqlScript, err := os.ReadFile(filename)
-		if err != nil {
-			return nil, err
-		}
-
-		// Execute the SQL script
-		r, err = d.Connection.Exec(string(sqlScript))
-		if err != nil {
-			return nil, err
-		}*/
 	}
 	log.Log.Info("SQL script executed successfully!")
 	return r, nil
