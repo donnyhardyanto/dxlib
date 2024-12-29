@@ -6,7 +6,7 @@ import (
 	"github.com/donnyhardyanto/dxlib"
 	"github.com/donnyhardyanto/dxlib/object_storage"
 	"github.com/donnyhardyanto/dxlib/vault"
-	"os"
+	"github.com/newrelic/go-agent/v3/newrelic"
 
 	"golang.org/x/sync/errgroup"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/redis"
 	"github.com/donnyhardyanto/dxlib/table"
 	"github.com/donnyhardyanto/dxlib/task"
+	"github.com/donnyhardyanto/dxlib/utils/os"
 )
 
 type DXAppArgCommandFunc func(s *DXApp, ac *DXAppArgCommand, T any) (err error)
@@ -300,6 +301,21 @@ func (a *DXApp) execute() (err error) {
 	return nil
 }
 
+func (a *DXApp) SetupNewRelicApplication() {
+	var err error
+	if core.IsNewRelicEnabled {
+		core.NewRelicApplication, err = newrelic.NewApplication(
+			newrelic.ConfigAppName(App.nameId),
+			newrelic.ConfigLicense(core.NewRelicLicense),
+			newrelic.ConfigDistributedTracerEnabled(true),
+		)
+		if err != nil {
+			log.Log.Panic("New Relic Application Error: ", err)
+		}
+	}
+	return
+}
+
 var App DXApp
 
 func Set(nameId, title, description string, isLoop bool, debugKey string, debugValue string) {
@@ -310,9 +326,10 @@ func Set(nameId, title, description string, isLoop bool, debugKey string, debugV
 	App.DebugKey = debugKey
 	App.DebugValue = debugValue
 	if App.DebugKey != "" {
-		dxlib.IsDebug = os.Getenv(App.DebugKey) == App.DebugValue
+		dxlib.IsDebug = os.GetEnvDefaultValue(App.DebugKey, "") == App.DebugValue
 	}
 	log.Log.Prefix = nameId
+	App.SetupNewRelicApplication()
 }
 
 func GetNameId() string {

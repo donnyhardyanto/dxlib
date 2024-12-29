@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/donnyhardyanto/dxlib"
+	"github.com/newrelic/go-agent/v3/newrelic"
+
 	"net"
 	"net/http"
 	"strings"
@@ -16,6 +18,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
+
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 	utilsJSON "github.com/donnyhardyanto/dxlib/utils/json"
 )
@@ -375,12 +378,33 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		})
 	}
 
+	// Handler wrapper that adds New Relic if enabled
+	wrapHandler := func(handler http.HandlerFunc, name string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if core.NewRelicApplication != nil {
+				txn := core.NewRelicApplication.StartTransaction(name)
+				defer txn.End()
+
+				r = newrelic.RequestWithTransactionContext(r, txn)
+				w = txn.SetWebResponse(w)
+				handler(w, r)
+				return
+			}
+			// If New Relic is not enabled, just call the handler directly
+			handler(w, r)
+		}
+	}
+
 	// Set up routes
 	for _, endpoint := range a.EndPoints {
 		p := endpoint
-		mux.Handle(p.Uri, corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerFunc := func(w http.ResponseWriter, r *http.Request) {
 			a.routeHandler(w, r, &p)
-		})))
+		}
+
+		// Always use the wrapper - it will handle both New Relic enabled and disabled cases
+		wrappedHandler := wrapHandler(handlerFunc, p.Uri)
+		mux.Handle(p.Uri, corsMiddleware(http.HandlerFunc(wrappedHandler)))
 	}
 
 	errorGroup.Go(func() error {
