@@ -112,7 +112,7 @@ func (osm *DXObjectStorageManager) LoadFromConfiguration(configurationNameId str
 	return nil
 }
 
-func (osm *DXObjectStorageManager) ConnectAllAtStart( /*configurationNameId string*/ ) (err error) {
+func (osm *DXObjectStorageManager) ConnectAllAtStart( /*configurationNameId string*/) (err error) {
 	if len(osm.ObjectStorages) > 0 {
 		log.Log.Info("Connecting to Database Manager... start")
 		for _, v := range osm.ObjectStorages {
@@ -133,9 +133,9 @@ func (osm *DXObjectStorageManager) ConnectAllAtStart( /*configurationNameId stri
 	return err
 }
 
-func (osm *DXObjectStorageManager) ConnectAll( /*configurationNameId string*/ ) (err error) {
+func (osm *DXObjectStorageManager) ConnectAll( /*configurationNameId string*/) (err error) {
 	for _, v := range osm.ObjectStorages {
-		err := v.ApplyFromConfiguration( /*configurationNameId*/ )
+		err := v.ApplyFromConfiguration( /*configurationNameId*/)
 		if err != nil {
 			err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
 			return err
@@ -249,6 +249,9 @@ func (r *DXObjectStorage) Connect() (err error) {
 					""),
 				Secure: r.UseSSL,
 			})
+		if err != nil {
+			return err
+		}
 		r.Client = minioClient
 		r.Connected = true
 		log.Log.Infof("Connecting to Object Storage %s at %s/%d... done CONNECTED", r.NameId, r.Address, ObjectStorageMaxFileSizeBytes)
