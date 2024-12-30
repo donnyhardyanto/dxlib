@@ -112,7 +112,7 @@ func (osm *DXObjectStorageManager) LoadFromConfiguration(configurationNameId str
 	return nil
 }
 
-func (osm *DXObjectStorageManager) ConnectAllAtStart( /*configurationNameId string*/) (err error) {
+func (osm *DXObjectStorageManager) ConnectAllAtStart() (err error) {
 	if len(osm.ObjectStorages) > 0 {
 		log.Log.Info("Connecting to Database Manager... start")
 		for _, v := range osm.ObjectStorages {
@@ -133,9 +133,9 @@ func (osm *DXObjectStorageManager) ConnectAllAtStart( /*configurationNameId stri
 	return err
 }
 
-func (osm *DXObjectStorageManager) ConnectAll( /*configurationNameId string*/) (err error) {
+func (osm *DXObjectStorageManager) ConnectAll() (err error) {
 	for _, v := range osm.ObjectStorages {
-		err := v.ApplyFromConfiguration( /*configurationNameId*/)
+		err := v.ApplyFromConfiguration()
 		if err != nil {
 			err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
 			return err
