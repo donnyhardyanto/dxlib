@@ -69,3 +69,21 @@ func GetEnvDefaultValueAsInt(key string, defaultValue int) int {
 	}
 	return valueInt
 }
+
+func GetEnvDefaultValueAsBool(key string, defaultValue bool) bool {
+	value, isPresent := os.LookupEnv(key)
+	if !isPresent {
+		return defaultValue
+	}
+	valueBool := strings.ToUpper(value) == "TRUE"
+	return valueBool
+}
+
+func GetEnvDefaultValueAsBool(key string, defaultValue bool) bool {
+	value, isPresent := os.LookupEnv(key)
+	if !isPresent {
+		return defaultValue
+	}
+	valueBool := strings.ToUpper(value) == "TRUE"
+	return valueBool
+}

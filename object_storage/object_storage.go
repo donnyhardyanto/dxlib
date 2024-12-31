@@ -223,6 +223,7 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 			return err
 		}
 		r.BasePath, ok = ObjectStorageConfiguration[`base_path`].(string)
+		r.UseSSL, ok = ObjectStorageConfiguration[`use_ssl`].(bool)
 		r.IsConfigured = true
 		log.Log.Infof("Configuring to ObjectStorage %s... done", r.NameId)
 	}
