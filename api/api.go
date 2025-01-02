@@ -75,6 +75,7 @@ func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
 
 func (a *DXAPI) PrintSpec() (s string, err error) {
 	s = "# API: " + a.NameId + "\n\n\n"
+	s += "## Version " + a.Version + "\n\n"
 	for _, v := range a.EndPoints {
 		spec, err := v.PrintSpec()
 		if err != nil {
