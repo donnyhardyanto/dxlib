@@ -51,7 +51,7 @@ func (dm *DXDatabaseManager) LoadFromConfiguration(configurationNameId string) (
 			mustConnected = false
 		}
 		databaseObject := dm.NewDatabase(k, isConnectAtStart, mustConnected)
-		err = databaseObject.ApplyFromConfiguration( /*configurationNameId*/ )
+		err = databaseObject.ApplyFromConfiguration()
 		if err != nil {
 			return err
 		}
@@ -59,11 +59,11 @@ func (dm *DXDatabaseManager) LoadFromConfiguration(configurationNameId string) (
 	return nil
 }
 
-func (dm *DXDatabaseManager) ConnectAllAtStart( /*configurationNameId string*/ ) (err error) {
+func (dm *DXDatabaseManager) ConnectAllAtStart() (err error) {
 	if len(dm.Databases) > 0 {
 		log.Log.Info("Connecting to Database Manager... start")
 		for _, v := range dm.Databases {
-			err := v.ApplyFromConfiguration( /* configurationNameId */ )
+			err := v.ApplyFromConfiguration()
 			if err != nil {
 				err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
 				return err
@@ -82,7 +82,7 @@ func (dm *DXDatabaseManager) ConnectAllAtStart( /*configurationNameId string*/ )
 
 func (dm *DXDatabaseManager) ConnectAll(configurationNameId string) (err error) {
 	for _, v := range dm.Databases {
-		err := v.ApplyFromConfiguration( /*configurationNameId*/ )
+		err := v.ApplyFromConfiguration()
 		if err != nil {
 			err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
 			return err
