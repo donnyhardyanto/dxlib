@@ -46,6 +46,7 @@ type DXAPIAuditLogEntry struct {
 type DXAuditLogHandler func(oldAuditLogId int64, parameters *DXAPIAuditLogEntry) (newAuditLogId int64, err error)
 
 type DXAPI struct {
+	Version                  string
 	NameId                   string
 	Address                  string
 	WriteTimeoutSec          int
@@ -95,6 +96,7 @@ type DXAPIManager struct {
 func (am *DXAPIManager) NewAPI(nameId string) (*DXAPI, error) {
 	ctx, cancel := context.WithCancel(am.Context)
 	a := DXAPI{
+		Version:   "1.0.0",
 		NameId:    nameId,
 		EndPoints: []DXAPIEndPoint{},
 		Context:   ctx,
