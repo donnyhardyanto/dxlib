@@ -440,7 +440,7 @@ func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JS
 	}
 */
 func (t *DXTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderByFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
@@ -451,7 +451,7 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameV
 		}
 	}
 
-	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit)
+	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, limit)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
