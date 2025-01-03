@@ -25,7 +25,31 @@ type DXPropertyTable struct {
 	FieldTypeMapping      databaseUtils.FieldTypeMapping
 }
 
-func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (string, error) {
+func GetAs[T any](l *log.DXLog, expectedType string, property map[string]any) (T, error) {
+	var zero T
+
+	actualType, ok := property["type"].(string)
+	if !ok {
+		return zero, l.ErrorAndCreateErrorf("INVALID_TYPE_FIELD_FORMAT: %T", property["type"])
+	}
+	if actualType != expectedType {
+		return zero, l.ErrorAndCreateErrorf("TYPE_MISMATCH_ERROR: EXPECTED_%s_GOT_%s", expectedType, actualType)
+	}
+
+	rawValue, ok := property["value"]
+	if !ok {
+		return zero, l.ErrorAndCreateErrorf("MISSING_VALUE_FIELD")
+	}
+
+	value, ok := rawValue.(T)
+	if !ok {
+		return zero, l.ErrorAndCreateErrorf("INVALID_VALUE_TYPE_FOR_%T", zero)
+	}
+
+	return value, nil
+}
+
+func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (vv string, err error) {
 	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -33,18 +57,31 @@ func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (string,
 		return "", err
 	}
 
-	aType, ok := v["type"].(string)
-	if !ok {
-		return "", l.ErrorAndCreateErrorf("PropertyGetAsString: type is not string: %v", v["type"])
+	vv, err = GetAs[string](l, "STRING", v)
+	if err != nil {
+		return "", err
 	}
 
-	value, err := utils.GetJSONFromKV(v, "value")
+	return vv, nil
+}
+
+func (pt *DXPropertyTable) GetAsStringDefault(l *log.DXLog, propertyId string, defaultValue string) (vv string, err error) {
+	_, v, err := pt.SelectOne(l, nil, utils.JSON{
+		"nameid": propertyId,
+	}, nil)
 	if err != nil {
-		return "", l.ErrorAndCreateErrorf("PropertyGetAsString:CAN_NOT_GET_JSON_VALUE:%v", err)
+		return "", err
 	}
-	vv, ok := value["value"].(string)
-	if !ok {
-		return "", l.ErrorAndCreateErrorf("PropertyGetAsString: value is not a number: %v", value[aType])
+	if v == nil {
+		err = pt.SetAsString(l, propertyId, defaultValue)
+		if err != nil {
+			return "", err
+		}
+		return defaultValue, nil
+	}
+	vv, err = GetAs[string](l, "STRING", v)
+	if err != nil {
+		return "", err
 	}
 
 	return vv, nil
@@ -80,7 +117,14 @@ func (pt *DXPropertyTable) GetAsInteger(l *log.DXLog, propertyId string) (int, e
 		return 0, err
 	}
 
-	aType, ok := v["type"].(string)
+	vv, err := GetAs[float64](l, "INT", v)
+	if err != nil {
+		return 0, err
+	}
+
+	return int(vv), nil
+
+	/*aType, ok := v["type"].(string)
 	if !ok {
 		return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: type is not string: %v", v["type"])
 	}
@@ -94,7 +138,7 @@ func (pt *DXPropertyTable) GetAsInteger(l *log.DXLog, propertyId string) (int, e
 		return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: value is not a number: %v", value[aType])
 	}
 
-	return int(vv), nil
+	return int(vv), nil*/
 }
 
 func (pt *DXPropertyTable) TxSetAsInteger(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
@@ -125,21 +169,28 @@ func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, e
 		return 0, err
 	}
 
-	aType, ok := v["type"].(string)
-	if !ok {
-		return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: type is not string: %v", v["type"])
-	}
-
-	value, err := utils.GetJSONFromKV(v, "value")
+	vv, err := GetAs[float64](l, "INT64", v)
 	if err != nil {
-		return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger:CAN_NOT_GET_JSON_VALUE:%v", err)
-	}
-	vv, ok := value["value"].(float64)
-	if !ok {
-		return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: value is not a number: %v", value[aType])
+		return 0, err
 	}
 
 	return int64(vv), nil
+
+	/*	aType, ok := v["type"].(string)
+		if !ok {
+			return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: type is not string: %v", v["type"])
+		}
+
+		value, err := utils.GetJSONFromKV(v, "value")
+		if err != nil {
+			return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger:CAN_NOT_GET_JSON_VALUE:%v", err)
+		}
+		vv, ok := value["value"].(float64)
+		if !ok {
+			return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: value is not a number: %v", value[aType])
+		}
+
+		return int64(vv), nil*/
 }
 
 func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId string, value int64) (err error) {
@@ -234,7 +285,14 @@ func (pt *DXPropertyTable) GetAsJSON(l *log.DXLog, propertyId string) (map[strin
 		return nil, err
 	}
 
-	aType, ok := v["type"].(string)
+	vv, err := GetAs[map[string]any](l, "JSON", v)
+	if err != nil {
+		return nil, err
+	}
+
+	return vv, nil
+
+	/*aType, ok := v["type"].(string)
 	if !ok {
 		return nil, l.ErrorAndCreateErrorf("PropertyGetAsJSON: type is not string: %v", v["type"])
 	}
@@ -248,7 +306,7 @@ func (pt *DXPropertyTable) GetAsJSON(l *log.DXLog, propertyId string) (map[strin
 		return nil, l.ErrorAndCreateErrorf("PropertyGetAsJSON: value is not a JSON: %v", value[aType])
 	}
 
-	return vv, nil
+	return vv, nil*/
 }
 
 func (pt *DXPropertyTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
