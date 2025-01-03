@@ -36,14 +36,14 @@ func GetAs[T any](l *log.DXLog, expectedType string, property map[string]any) (T
 		return zero, l.ErrorAndCreateErrorf("TYPE_MISMATCH_ERROR: EXPECTED_%s_GOT_%s", expectedType, actualType)
 	}
 
-	rawValue, ok := property["value"]
-	if !ok {
+	rawValue, err := utils.GetJSONFromKV(property, "value")
+	if err != nil {
 		return zero, l.ErrorAndCreateErrorf("MISSING_VALUE_FIELD")
 	}
 
-	value, ok := rawValue.(T)
+	value, ok := rawValue["value"].(T)
 	if !ok {
-		return zero, l.ErrorAndCreateErrorf("INVALID_VALUE_TYPE_FOR_%T", zero)
+		return zero, l.ErrorAndCreateErrorf("PropertyGetAsInteger:CAN_NOT_GET_JSON_VALUE:%v", err)
 	}
 
 	return value, nil

@@ -2,6 +2,7 @@ package object_storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/api"
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
@@ -13,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type DXObjectStorageType int64
@@ -279,18 +281,28 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 		fullPathObjectName += "/"
 	}
 	fullPathObjectName = fullPathObjectName + objectName
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 	info, err := r.Client.PutObject(
-		context.Background(),
+		ctx,
 		r.BucketName,
 		fullPathObjectName,
 		reader,
 		-1,
-		minio.PutObjectOptions{ContentType: contentType, UserMetadata: map[string]string{
-			"original_filename": originalFilename,
-		}},
+		minio.PutObjectOptions{
+			ContentType:      contentType,
+			DisableMultipart: true,
+			UserMetadata: map[string]string{
+				"original_filename": originalFilename,
+			}},
 	)
 	if err != nil {
-		return nil, err
+		var err2 minio.ErrorResponse
+		if errors.As(err, &err2) {
+			// Log specific MinIO error details
+			return nil, log.Log.ErrorAndCreateErrorf("MINIO_ERROR: %s - %s", err2.Code, err2.Message)
+		}
+		return nil, log.Log.ErrorAndCreateErrorf("UPLOAD_ERROR: %v", err)
 	}
 	return &info, nil
 }
