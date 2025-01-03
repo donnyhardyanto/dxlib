@@ -109,7 +109,7 @@ func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value 
 	return err
 }
 
-func (pt *DXPropertyTable) GetAsInteger(l *log.DXLog, propertyId string) (int, error) {
+func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error) {
 	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -141,7 +141,7 @@ func (pt *DXPropertyTable) GetAsInteger(l *log.DXLog, propertyId string) (int, e
 	return int(vv), nil*/
 }
 
-func (pt *DXPropertyTable) TxSetAsInteger(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
+func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	_, err = pt.TxInsert(dtx, utils.JSON{
 		"nameid": propertyId,
@@ -151,7 +151,7 @@ func (pt *DXPropertyTable) TxSetAsInteger(dtx *database.DXDatabaseTx, propertyId
 	return err
 }
 
-func (pt *DXPropertyTable) SetAsInteger(log *log.DXLog, propertyId string, value int) (err error) {
+func (pt *DXPropertyTable) SetAsInt(log *log.DXLog, propertyId string, value int) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	_, err = pt.Insert(log, utils.JSON{
 		"nameid": propertyId,
