@@ -455,4 +455,11 @@ import './libs/tweetnacl/nacl.js';
     }
 
 )
-(typeof module !== 'undefined' && module.exports ? module.exports : (self.dxlibv3 = self.dxlibv3 || {}));
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = dxlibv3;
+} else {
+    self.dxlibv3 = self.dxlibv3 || dxlibv3;
+}
+
+export default dxlibv3;
