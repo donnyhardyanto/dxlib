@@ -272,7 +272,7 @@ func (r *DXObjectStorage) Disconnect() (err error) {
 	return nil
 }
 
-func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, originalFilename string, contentType string) (uploadInfo *minio.UploadInfo, err error) {
+func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, originalFilename string, contentType string, disableMultipart bool, objectSize int64) (uploadInfo *minio.UploadInfo, err error) {
 	if r.Client == nil {
 		return nil, log.Log.ErrorAndCreateErrorf("CLIENT_IS_NIL")
 	}
@@ -288,10 +288,10 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 		r.BucketName,
 		fullPathObjectName,
 		reader,
-		-1,
+		objectSize,
 		minio.PutObjectOptions{
 			ContentType:      contentType,
-			DisableMultipart: false,
+			DisableMultipart: disableMultipart,
 			UserMetadata: map[string]string{
 				"original_filename": originalFilename,
 			}},
@@ -313,7 +313,7 @@ func (r *DXObjectStorage) ReceiveStreamObject(aepr *api.DXAPIEndPointRequest, fi
 
 	s := aepr.Request.Body
 
-	uploadInfo, err := r.UploadStream(s, filename, filename, "application/octet-stream")
+	uploadInfo, err := r.UploadStream(s, filename, filename, "application/octet-stream", false, bodyLen)
 	if err != nil {
 		return err
 	}
