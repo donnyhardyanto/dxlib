@@ -291,7 +291,7 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 		-1,
 		minio.PutObjectOptions{
 			ContentType:      contentType,
-			DisableMultipart: true,
+			DisableMultipart: false,
 			UserMetadata: map[string]string{
 				"original_filename": originalFilename,
 			}},
