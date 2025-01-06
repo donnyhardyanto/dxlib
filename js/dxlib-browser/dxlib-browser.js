@@ -1,6 +1,8 @@
 import './libs/tweetnacl/nacl.js';
 
-(function (dxlibv3) {
+const dxlib = {};
+
+(function (dxlib) {
         'use strict';
 
         class Ed25519 {
@@ -309,19 +311,19 @@ import './libs/tweetnacl/nacl.js';
         }
 
         async function packLVPayload(preKeyIndex, edSelfPrivateKey, encryptKey, arrayOfLvParams) {
-            let lvPackedPayload = dxlibv3.LV.combine(arrayOfLvParams);
+            let lvPackedPayload = dxlib.LV.combine(arrayOfLvParams);
             let lvPackedPayloadAsBytes = lvPackedPayload.marshalBinary();
 
-            let dataBlock = new dxlibv3.DataBlock(lvPackedPayloadAsBytes);
+            let dataBlock = new dxlib.DataBlock(lvPackedPayloadAsBytes);
             dataBlock.PreKey.setValue(preKeyIndex);
             let lvDataBlock = dataBlock.asLV();
             let lvDataBlockAsBytes = lvDataBlock.marshalBinary();
 
-            let encryptedLVDataBlockAsBytes = await dxlibv3.AES.encrypt(encryptKey, lvDataBlockAsBytes)
-            let lvEncryptedLVDataBlockAsBytes = new dxlibv3.LV(encryptedLVDataBlockAsBytes)
+            let encryptedLVDataBlockAsBytes = await dxlib.AES.encrypt(encryptKey, lvDataBlockAsBytes)
+            let lvEncryptedLVDataBlockAsBytes = new dxlib.LV(encryptedLVDataBlockAsBytes)
             let signature = Ed25519.sign(encryptedLVDataBlockAsBytes, edSelfPrivateKey)
-            let lvSignature = new dxlibv3.LV(signature)
-            let lvDataBlockEnvelope = dxlibv3.LV.combine([lvEncryptedLVDataBlockAsBytes, lvSignature])
+            let lvSignature = new dxlib.LV(signature)
+            let lvDataBlockEnvelope = dxlib.LV.combine([lvEncryptedLVDataBlockAsBytes, lvSignature])
             let lvDataBlockEnvelopeAsBytes = lvDataBlockEnvelope.marshalBinary()
             return bytesToHex(lvDataBlockEnvelopeAsBytes)
         }
@@ -443,23 +445,29 @@ import './libs/tweetnacl/nacl.js';
             return true;
         }
 
-        dxlibv3.Ed25519 = Ed25519;
-        dxlibv3.X25519 = X25519;
-        dxlibv3.LV = LV;
-        dxlibv3.DataBlock = DataBlock;
-        dxlibv3.AES = AES;
-        dxlibv3.packLVPayload = packLVPayload;
-        dxlibv3.unpackLVPayload = unpackLVPayload;
-        dxlibv3.bytesToHex = bytesToHex;
-        dxlibv3.hexToBytes = hexToBytes;
-    }
-
-)
+        dxlib.Ed25519 = Ed25519;
+        dxlib.X25519 = X25519;
+        dxlib.LV = LV;
+        dxlib.DataBlock = DataBlock;
+        dxlib.AES = AES;
+        dxlib.packLVPayload = packLVPayload;
+        dxlib.unpackLVPayload = unpackLVPayload;
+        dxlib.bytesToHex = bytesToHex;
+        dxlib.hexToBytes = hexToBytes;
+})(dxlib);
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = dxlibv3;
+    module.exports = dxlib;
 } else {
-    self.dxlibv3 = self.dxlibv3 || dxlibv3;
+    self.dxlib = self.dxlib || dxlib;
 }
 
-export default dxlibv3;
+export default dxlib;
+
+/*if (typeof module !== 'undefined' && module.exports) {
+    module.exports = dxlib;
+} else {
+    self.dxlib = self.dxlib || dxlib;
+}*/
+
+//export default dxlib;
