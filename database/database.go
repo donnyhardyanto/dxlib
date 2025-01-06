@@ -165,7 +165,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 		if err != nil {
 			return "", err
 		}
-		s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;encrypt=disable", host, portAsString, d.UserName, d.UserPassword, d.DatabaseName)
+		s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;encrypt=disable;client_encoding=UTF8", host, portAsString, d.UserName, d.UserPassword, d.DatabaseName)
 	case database_type.Oracle:
 		host, portAsString, err := net.SplitHostPort(d.Address)
 		if err != nil {
@@ -397,6 +397,12 @@ func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, er
 }
 
 func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
+	if d.Connection == nil {
+		err = d.Connect()
+		if err != nil {
+			return 0, err
+		}
+	}
 	for tryCount := 0; tryCount < 4; tryCount++ {
 		id, err = db.Insert(d.Connection, tableName, fieldNameForRowId, keyValues)
 		if err == nil {
@@ -435,6 +441,13 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 
 func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
 	limit any) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
+
+	if !d.Connected {
+		err = d.Connect()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
 		rowsInfo, resultData, err = db.Select(d.Connection, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit)

@@ -50,6 +50,7 @@ func GetAs[T any](l *log.DXLog, expectedType string, property map[string]any) (T
 }
 
 func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (vv string, err error) {
+
 	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -104,7 +105,7 @@ func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value 
 	_, err = pt.Insert(log, utils.JSON{
 		"nameid": propertyId,
 		"type":   "STRING",
-		"value":  v,
+		"value":  string(v),
 	})
 	return err
 }
@@ -741,6 +742,13 @@ func (pt *DXPropertyTable) ShouldSelectOne(log *log.DXLog, fieldNames []string, 
 		whereAndFieldNameValues["is_deleted"] = false
 	}
 
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+		err = pt.Database.Connect()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 	return pt.Database.ShouldSelectOne(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 }
 
