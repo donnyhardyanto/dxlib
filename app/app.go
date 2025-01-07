@@ -46,7 +46,7 @@ type DXAppCallbackFunc func() (err error)
 type DXAppEvent func() (err error)
 
 type DXApp struct {
-	nameId                   string
+	NameId                   string
 	Title                    string
 	Description              string
 	Version                  string
@@ -305,7 +305,7 @@ func (a *DXApp) SetupNewRelicApplication() {
 	var err error
 	if core.IsNewRelicEnabled {
 		core.NewRelicApplication, err = newrelic.NewApplication(
-			newrelic.ConfigAppName(App.nameId),
+			newrelic.ConfigAppName(App.NameId),
 			newrelic.ConfigLicense(core.NewRelicLicense),
 			newrelic.ConfigDistributedTracerEnabled(true),
 		)
@@ -319,7 +319,7 @@ func (a *DXApp) SetupNewRelicApplication() {
 var App DXApp
 
 func Set(nameId, title, description string, isLoop bool, debugKey string, debugValue string) {
-	App.nameId = nameId
+	App.NameId = nameId
 	App.Title = title
 	App.Description = description
 	App.IsLoop = isLoop
@@ -333,7 +333,7 @@ func Set(nameId, title, description string, isLoop bool, debugKey string, debugV
 }
 
 func GetNameId() string {
-	return App.nameId
+	return App.NameId
 }
 func init() {
 	App = DXApp{

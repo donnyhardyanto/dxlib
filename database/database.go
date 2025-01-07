@@ -50,11 +50,28 @@ type DXDatabase struct {
 	ConcurrencySemaphore         chan struct{} // Adjust number based on your DB max_connections
 }
 
+func (d *DXDatabase) EnsureConnection() (err error) {
+	if d.Connection == nil {
+		err = d.Connect()
+		if err != nil {
+			return err
+		}
+	}
+	if !d.Connected {
+		err = d.Connect()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel) (dtx *DXDatabaseTx, err error) {
-	err = d.CheckConnectionAndReconnect()
+	err = d.EnsureConnection()
 	if err != nil {
 		return nil, err
 	}
+
 	driverName := d.Connection.DriverName()
 	switch driverName {
 	case "oracle":
@@ -86,9 +103,9 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 }
 
 func (d *DXDatabase) CheckConnection() (err error) {
-	if d.Connection == nil {
-		d.Connected = false
-		return nil
+	err = d.EnsureConnection()
+	if err != nil {
+		return err
 	}
 
 	dbConn, err := d.Connection.Conn(context.Background())
@@ -139,6 +156,11 @@ func (d *DXDatabase) CheckConnectionAndReconnect() (err error) {
 }
 
 func (d *DXDatabase) ExecuteScript(s *DXDatabaseScript) (err error) {
+	err = d.EnsureConnection()
+	if err != nil {
+		return err
+	}
+
 	_, err = s.Execute(d)
 	if err != nil {
 		return err
@@ -356,6 +378,11 @@ func (d *DXDatabase) Disconnect() (err error) {
 }
 
 func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, err error) {
+	err = d.EnsureConnection()
+	if err != nil {
+		return nil, err
+	}
+
 	isDDL := utilsSql.IsDDL(statement)
 	if !isDDL {
 		query := pq.NewNamedParameterQuery(statement)
@@ -397,12 +424,11 @@ func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, er
 }
 
 func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
-	if d.Connection == nil {
-		err = d.Connect()
-		if err != nil {
-			return 0, err
-		}
+	err = d.EnsureConnection()
+	if err != nil {
+		return 0, err
 	}
+
 	for tryCount := 0; tryCount < 4; tryCount++ {
 		id, err = db.Insert(d.Connection, tableName, fieldNameForRowId, keyValues)
 		if err == nil {
@@ -422,6 +448,11 @@ func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValue
 }
 
 func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
+	err = d.EnsureConnection()
+	if err != nil {
+		return nil, err
+	}
+
 	for tryCount := 0; tryCount < 4; tryCount++ {
 		result, err = db.Update(d.Connection, tableName, setKeyValues, whereKeyValues)
 		if err == nil {
@@ -442,11 +473,9 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
 	limit any) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
 
-	if !d.Connected {
-		err = d.Connect()
-		if err != nil {
-			return nil, nil, err
-		}
+	err = d.EnsureConnection()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
@@ -504,6 +533,11 @@ func (d *DXDatabase) SoftDelete(tableName string, whereKeyValues utils.JSON) (re
 }
 
 func (d *DXDatabase) Delete(tableName string, whereKeyValues utils.JSON) (r sql.Result, err error) {
+	err = d.EnsureConnection()
+	if err != nil {
+		return nil, err
+	}
+
 	for tryCount := 0; tryCount < 4; tryCount++ {
 		r, err = db.Delete(d.Connection, tableName, whereKeyValues)
 		if err == nil {
@@ -522,16 +556,17 @@ func (d *DXDatabase) Delete(tableName string, whereKeyValues utils.JSON) (r sql.
 }
 
 func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
+	err = d.CheckConnectionAndReconnect()
+	if err != nil {
+		return nil, err
+	}
+
 	defer func() {
 		if err != nil {
 			log.Log.Errorf("Error executing file %s (%v)", filename, err.Error())
 		}
 	}()
 
-	err = d.CheckConnectionAndReconnect()
-	if err != nil {
-		return nil, err
-	}
 	driverName := d.Connection.DriverName()
 	switch driverName {
 	case "sqlserver", "postgres", "oracle":
@@ -599,12 +634,11 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 }
 
 func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
-	if !d.Connected {
-		err = d.Connect()
-		if err != nil {
-			return nil, err
-		}
+	err = d.EnsureConnection()
+	if err != nil {
+		return nil, err
 	}
+
 	rs = []sql.Result{}
 	for k, v := range d.CreateScriptFiles {
 		r, err := d.ExecuteFile(v)
@@ -624,10 +658,6 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 }
 
 func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callback DXDatabaseTxCallback) (err error) {
-	//err = d.CheckConnectionAndReconnect()
-	//	if err != nil {
-	//		return err
-	//	}
 	driverName := d.Connection.DriverName()
 	switch driverName {
 	case "oracle":

@@ -50,6 +50,10 @@ func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 		}
 	}
 
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
 		return 0, err
@@ -183,17 +187,6 @@ func (t *DXTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database
 }
 
 func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
-	//n := utils.NowAsString()
-	/*	if t.Database.DatabaseType.String() == "sqlserver" {
-		t, err := time.Parse(time.RFC3339, n)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return 0, err
-		}
-		// Format the time.Time value back into a string without the timezone offset
-		n = t.Format("2006-01-02 15:04:05")
-	}*/
-	//n := utils.NowAsString()
 	tt := time.Now().UTC()
 	newKeyValues["created_at"] = tt
 	newKeyValues["last_modified_at"] = tt
@@ -206,6 +199,10 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 		newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
 	}
 
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	return newId, err
 }
@@ -216,6 +213,10 @@ func (t *DXTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	return t.Database.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
@@ -224,6 +225,11 @@ func (t *DXTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues ut
 	if err != nil {
 		return nil, err
 	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
 		t.FieldNameForRowId: FieldValueForId,
 	})
@@ -250,6 +256,10 @@ func (t *DXTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues u
 			newKeyValues["last_modified_by_user_id"] = "0"
 			newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
 		}
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
@@ -329,6 +339,10 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 		}
 	}
 
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	_, err = db.Update(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
@@ -363,6 +377,11 @@ func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error)
 	if err != nil {
 		return err
 	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	_, err = db.Delete(t.Database.Connection, t.NameId, utils.JSON{
 		t.FieldNameForRowId: id,
 	})
@@ -415,9 +434,16 @@ func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JS
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
 		}
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
 		if t.Database.DatabaseType.String() == "sqlserver" {
 			whereAndFieldNameValues["is_deleted"] = 0
 		}
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
 	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
@@ -430,6 +456,11 @@ func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JS
 			whereAndFieldNameValues = utils.JSON{
 				"is_deleted": false,
 			}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 			if t.Database.DatabaseType.String() == "sqlserver" {
 				whereAndFieldNameValues["is_deleted"] = 0
 			}
@@ -446,9 +477,18 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameV
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
 		}
+
+		if t.Database == nil {
+			t.Database = database.Manager.Databases[t.DatabaseNameId]
+		}
+
 		if t.Database.DatabaseType.String() == "sqlserver" {
 			whereAndFieldNameValues["is_deleted"] = 0
 		}
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
 	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, limit)
@@ -466,6 +506,10 @@ func (t *DXTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.
 		whereAndFieldNameValues = utils.JSON{}
 	}
 	whereAndFieldNameValues["is_deleted"] = false
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
 
 	return t.Database.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 }
@@ -686,6 +730,10 @@ func (t *DXTable) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
 			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
 		}
 
+		if t.Database == nil {
+			t.Database = database.Manager.Databases[t.DatabaseNameId]
+		}
+
 		switch t.Database.DatabaseType.String() {
 		case "sqlserver":
 			filterWhere = filterWhere + "(is_deleted=0)"
@@ -733,6 +781,10 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) 
 			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
 		}
 
+		if t.Database == nil {
+			t.Database = database.Manager.Databases[t.DatabaseNameId]
+		}
+
 		switch t.Database.DatabaseType.String() {
 		case "sqlserver":
 			filterWhere = filterWhere + "(is_deleted=0)"
@@ -755,10 +807,7 @@ func (t *DXTable) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNa
 	whereAndFieldNameValues["is_deleted"] = false
 
 	if t.Database == nil {
-		err = t.Database.Connect()
-		if err != nil {
-			return nil, nil, err
-		}
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
 	return t.Database.SelectOne(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
@@ -822,6 +871,10 @@ func (t *DXTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err error
 	if !isDeletedIncluded {
 		if filterWhere != "" {
 			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
+		}
+
+		if t.Database == nil {
+			t.Database = database.Manager.Databases[t.DatabaseNameId]
 		}
 
 		switch t.Database.DatabaseType.String() {

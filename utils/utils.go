@@ -683,9 +683,14 @@ func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
 	}
 	r, ok := kv[key].(JSON)
 	if !ok {
-		rASBytes, ok := kv[key].([]byte)
-		if !ok {
-			err = fmt.Errorf("KEY_%S_IS_NOT_JSON", key)
+		var rASBytes []byte
+		switch value := kv[key].(type) {
+		case []byte:
+			rASBytes = value
+		case string:
+			rASBytes = []byte(value) // Convert string to []byte
+		default:
+			err = fmt.Errorf("KEY_%s_IS_NOT_JSON", key)
 			return nil, err
 		}
 		r = JSON{}

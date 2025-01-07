@@ -124,22 +124,6 @@ func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error
 	}
 
 	return int(vv), nil
-
-	/*aType, ok := v["type"].(string)
-	if !ok {
-		return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: type is not string: %v", v["type"])
-	}
-
-	value, err := utils.GetJSONFromKV(v, "value")
-	if err != nil {
-		return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger:CAN_NOT_GET_JSON_VALUE:%v", err)
-	}
-	vv, ok := value["value"].(float64)
-	if !ok {
-		return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: value is not a number: %v", value[aType])
-	}
-
-	return int(vv), nil*/
 }
 
 func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
@@ -176,22 +160,6 @@ func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, e
 	}
 
 	return int64(vv), nil
-
-	/*	aType, ok := v["type"].(string)
-		if !ok {
-			return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: type is not string: %v", v["type"])
-		}
-
-		value, err := utils.GetJSONFromKV(v, "value")
-		if err != nil {
-			return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger:CAN_NOT_GET_JSON_VALUE:%v", err)
-		}
-		vv, ok := value["value"].(float64)
-		if !ok {
-			return 0, l.ErrorAndCreateErrorf("PropertyGetAsInteger: value is not a number: %v", value[aType])
-		}
-
-		return int64(vv), nil*/
 }
 
 func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId string, value int64) (err error) {
@@ -292,22 +260,6 @@ func (pt *DXPropertyTable) GetAsJSON(l *log.DXLog, propertyId string) (map[strin
 	}
 
 	return vv, nil
-
-	/*aType, ok := v["type"].(string)
-	if !ok {
-		return nil, l.ErrorAndCreateErrorf("PropertyGetAsJSON: type is not string: %v", v["type"])
-	}
-
-	value, err := utils.GetJSONFromKV(v, "value")
-	if err != nil {
-		return nil, l.ErrorAndCreateErrorf("PropertyGetAsJSON:CAN_NOT_GET_JSON_VALUE:%v", err)
-	}
-	vv, ok := value["value"].(map[string]any)
-	if !ok {
-		return nil, l.ErrorAndCreateErrorf("PropertyGetAsJSON: value is not a JSON: %v", value[aType])
-	}
-
-	return vv, nil*/
 }
 
 func (pt *DXPropertyTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
@@ -332,6 +284,10 @@ func (pt *DXPropertyTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues
 			newKeyValues["last_modified_by_user_id"] = "0"
 			newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
 		}
+	}
+
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
 	}
 
 	newId, err = pt.Database.Insert(pt.NameId, pt.FieldNameForRowId, newKeyValues)
@@ -455,17 +411,6 @@ func (pt *DXPropertyTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx 
 }
 
 func (pt *DXPropertyTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
-	//n := utils.NowAsString()
-	/*	if pt.Database.DatabaseType.String() == "sqlserver" {
-		pt, err := time.Parse(time.RFC3339, n)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return 0, err
-		}
-		// Format the time.Time value back into a string without the timezone offset
-		n = pt.Format("2006-01-02 15:04:05")
-	}*/
-	//n := utils.NowAsString()
 	tt := time.Now().UTC()
 	newKeyValues["created_at"] = tt
 	newKeyValues["last_modified_at"] = tt
@@ -478,6 +423,9 @@ func (pt *DXPropertyTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newI
 		newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
 	}
 
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+	}
 	newId, err = pt.Database.Insert(pt.NameId, pt.FieldNameForRowId, newKeyValues)
 	return newId, err
 }
@@ -488,6 +436,9 @@ func (pt *DXPropertyTable) Update(l *log.DXLog, setKeyValues utils.JSON, whereAn
 	}
 	whereAndFieldNameValues["is_deleted"] = false
 
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+	}
 	return pt.Database.Update(pt.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
@@ -495,6 +446,10 @@ func (pt *DXPropertyTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKey
 	_, _, err = pt.ShouldGetById(l, FieldValueForId)
 	if err != nil {
 		return nil, err
+	}
+
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
 	}
 	return pt.Database.Update(pt.NameId, setKeyValues, utils.JSON{
 		pt.FieldNameForRowId: FieldValueForId,
@@ -524,6 +479,9 @@ func (pt *DXPropertyTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKe
 		}
 	}
 
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+	}
 	newId, err = pt.Database.Insert(pt.NameId, pt.FieldNameForRowId, newKeyValues)
 	return newId, err
 }
@@ -601,6 +559,9 @@ func (pt *DXPropertyTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newK
 		}
 	}
 
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+	}
 	_, err = db.Update(pt.Database.Connection, pt.NameId, newKeyValues, utils.JSON{
 		pt.FieldNameForRowId: id,
 		"is_deleted":         false,
@@ -634,6 +595,10 @@ func (pt *DXPropertyTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (e
 	_, _, err = pt.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return err
+	}
+
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
 	}
 	_, err = db.Delete(pt.Database.Connection, pt.NameId, utils.JSON{
 		pt.FieldNameForRowId: id,
@@ -718,11 +683,18 @@ func (pt *DXPropertyTable) Select(log *log.DXLog, fieldNames []string, whereAndF
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
 		}
+
+		if pt.Database == nil {
+			pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+		}
 		if pt.Database.DatabaseType.String() == "sqlserver" {
 			whereAndFieldNameValues["is_deleted"] = 0
 		}
 	}
 
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+	}
 	rowsInfo, r, err = pt.Database.Select(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit)
 	if err != nil {
 		return rowsInfo, nil, err
@@ -744,11 +716,8 @@ func (pt *DXPropertyTable) ShouldSelectOne(log *log.DXLog, fieldNames []string, 
 
 	if pt.Database == nil {
 		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
-		err = pt.Database.Connect()
-		if err != nil {
-			return nil, nil, err
-		}
 	}
+
 	return pt.Database.ShouldSelectOne(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 }
 
@@ -854,13 +823,6 @@ func (pt *DXPropertyTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, f
 		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
 	}
 
-	if !pt.Database.Connected {
-		err := pt.Database.Connect()
-		if err != nil {
-			return err
-		}
-	}
-
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
 	if err != nil {
 		return err
@@ -871,6 +833,12 @@ func (pt *DXPropertyTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, f
 		return err
 	}
 
+	if !pt.Database.Connected {
+		err := pt.Database.Connect()
+		if err != nil {
+			return err
+		}
+	}
 	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(pt.Database.Connection, pt.FieldTypeMapping, "", rowPerPage, pageIndex, "*", pt.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
@@ -937,6 +905,9 @@ func (pt *DXPropertyTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (er
 			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
 		}
 
+		if pt.Database == nil {
+			pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+		}
 		switch pt.Database.DatabaseType.String() {
 		case "sqlserver":
 			filterWhere = filterWhere + "(is_deleted=0)"
@@ -961,5 +932,8 @@ func (pt *DXPropertyTable) SelectOne(log *log.DXLog, fieldNames []string, whereA
 		whereAndFieldNameValues["is_deleted"] = false
 	}
 
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+	}
 	return pt.Database.SelectOne(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 }
