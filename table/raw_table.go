@@ -29,6 +29,10 @@ type DXRawTable struct {
 }
 
 func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
 		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:"+t.NameId+"="+err.Error())
@@ -107,6 +111,10 @@ func (t *DXRawTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *datab
 }
 
 func (t *DXRawTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	return newId, err
 }
@@ -114,6 +122,10 @@ func (t *DXRawTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int6
 func (t *DXRawTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
 	return t.Database.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
@@ -124,12 +136,18 @@ func (t *DXRawTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues
 	if err != nil {
 		return nil, err
 	}
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
 	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
 		t.FieldNameForRowId: FieldValueForId,
 	})
 }
 
 func (t *DXRawTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	return newId, err
 }
@@ -194,6 +212,10 @@ func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValu
 		}
 	}
 
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	_, err = db.Update(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
 		t.FieldNameForRowId: id,
 	})
@@ -227,6 +249,11 @@ func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err err
 	if err != nil {
 		return err
 	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	_, err = db.Delete(t.Database.Connection, t.NameId, utils.JSON{
 		t.FieldNameForRowId: id,
 	})
@@ -271,6 +298,10 @@ func (t *DXRawTable) TxSelectCount(tx *database.DXDatabaseTx, summaryCalcFieldsP
 func (t *DXRawTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
 	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit)
 	if err != nil {
 		return rowsInfo, nil, err
@@ -281,6 +312,10 @@ func (t *DXRawTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNa
 
 func (t *DXRawTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
 
 	return t.Database.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 }
@@ -563,6 +598,10 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 	if !isDeletedIncluded {
 		if filterWhere != "" {
 			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
+		}
+
+		if t.Database == nil {
+			t.Database = database.Manager.Databases[t.DatabaseNameId]
 		}
 
 		switch t.Database.DatabaseType.String() {
