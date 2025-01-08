@@ -80,19 +80,29 @@ func anyMerge(newerValue, olderValue any) any {
 	return newerValue
 }
 
-func GetBool(kv utils.JSON, k string) (v bool, err error) {
-	var z bool
-	switch kv[k].(type) {
+func GetBool(kv utils.JSON, k string) (bool, error) {
+	val, exists := kv[k]
+	if !exists {
+		return false, fmt.Errorf("key %q not found", k)
+	}
+
+	switch v := val.(type) {
 	case bool:
-		z = kv[k].(bool)
-	default:
-		var ok bool
-		z, ok = kv[k].(bool)
-		if !ok {
-			return false, fmt.Errorf("can not get %s as %T from %v", k, v, kv)
+		return v, nil
+	case int64, int32, int16, int8, int:
+		return v != 0, nil // converts any non-zero number to true
+	case float64, float32:
+		return v != 0, nil // handle floating point numbers
+	case string:
+		switch strings.ToLower(v) {
+		case "true", "1", "yes", "on":
+			return true, nil
+		case "false", "0", "no", "off":
+			return false, nil
 		}
 	}
-	return z, nil
+
+	return false, fmt.Errorf("cannot convert %T value %v to bool", val, val)
 }
 
 func GetString(kv utils.JSON, k string) (v string, err error) {

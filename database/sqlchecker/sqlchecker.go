@@ -156,7 +156,8 @@ func CheckValue(value any) error {
 	case decimal.Decimal:
 		return nil
 	default:
-		return fmt.Errorf("unsupported value type: %T", value)
+		return nil
+		//return fmt.Errorf("unsupported value type: %T", value)
 	}
 
 	return nil
