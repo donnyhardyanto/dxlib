@@ -1496,8 +1496,8 @@ func Select(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMappin
 	return rowsInfo, r, err
 }
 
-// SelectCount performs a count query with optional field summaries for multiple database types
-func SelectCount(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
+// Count performs a count query with optional field summaries for multiple database types
+func Count(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
 	joinSQLPart any) (totalRows int64, summaryRows utils.JSON, err error) {
 
 	driverName := db.DriverName()
@@ -1577,11 +1577,11 @@ func convertOracleTypes(rows utils.JSON) utils.JSON {
 	return result
 }
 
-// CountSelectOne performs a count query expecting exactly one row
-func CountSelectOne(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
+// CountOne performs a count query expecting exactly one row
+func CountOne(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
 	joinSQLPart any) (totalRows int64, summaryRows utils.JSON, err error) {
 
-	totalRows, summaryRows, err = SelectCount(db, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	totalRows, summaryRows, err = Count(db, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -1593,11 +1593,11 @@ func CountSelectOne(db *sqlx.DB, tableName string, summaryCalcFieldsPart string,
 	return totalRows, summaryRows, nil
 }
 
-// ShouldSelectCount performs a count query and ensures at least one row exists
-func ShouldSelectCount(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
+// ShouldCount performs a count query and ensures at least one row exists
+func ShouldCount(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON,
 	joinSQLPart any) (totalRows int64, summaryRows utils.JSON, err error) {
 
-	totalRows, summaryRows, err = SelectCount(db, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	totalRows, summaryRows, err = Count(db, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	if err != nil {
 		return 0, nil, err
 	}

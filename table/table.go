@@ -393,17 +393,38 @@ func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error)
 	return nil
 }
 
+func (t *DXTable) SoftDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
+	_, _, err = t.ShouldGetById(&aepr.Log, id)
+	if err != nil {
+		return err
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	_, err = db.Update(t.Database.Connection, t.NameId, utils.JSON{
+		"is_deleted": true,
+	}, utils.JSON{
+		t.FieldNameForRowId: id,
+	})
+	if err != nil {
+		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", t.NameId, err.Error())
+		return err
+	}
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
+	return nil
+}
+
 func (t *DXTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
 	}
 
-	newFieldValues := utils.JSON{
+	err = t.DoEdit(aepr, id, utils.JSON{
 		"is_deleted": true,
-	}
-
-	err = t.DoEdit(aepr, id, newFieldValues)
+	})
 	if err != nil {
 		aepr.Log.Errorf("Error at %s.RequestSoftDelete (%s) ", t.NameId, err.Error())
 		return err
@@ -429,14 +450,14 @@ func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JS
 	return t.Select(log, nil, nil, nil, map[string]string{t.FieldNameForRowId: "asc"}, nil)
 }
 
-/*func (t *DXTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
+func (t *DXTable) Count(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
 		}
-	if t.Database == nil {
-		t.Database = database.Manager.Databases[t.DatabaseNameId]
-	}
+		if t.Database == nil {
+			t.Database = database.Manager.Databases[t.DatabaseNameId]
+		}
 		if t.Database.DatabaseType.String() == "sqlserver" {
 			whereAndFieldNameValues["is_deleted"] = 0
 		}
@@ -446,9 +467,9 @@ func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JS
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
-	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	totalRows, summaryCalcRow, err = t.Database.CountOne(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, summaryCalcRow, err
-}*/
+}
 
 /*
 	func (t *DXTable) TxSelectCount(tx *database.DXDatabaseTx, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON) (totalRows int64, summaryCalcRow utils.JSON, err error) {
@@ -466,7 +487,7 @@ func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JS
 			}
 		}
 
-		totalRows, summaryCalcRow, err = tx.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
+		totalRows, summaryCalcRow, err = tx.ShouldCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
 		return totalRows, summaryCalcRow, err
 	}
 */

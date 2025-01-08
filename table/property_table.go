@@ -647,7 +647,7 @@ func (pt *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r [
 	return pt.Select(log, nil, nil, nil, map[string]string{pt.FieldNameForRowId: "asc"}, nil)
 }
 
-/*func (t *DXPropertyTable) SelectCount(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
+/*func (t *DXPropertyTable) Count(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
@@ -657,7 +657,7 @@ func (pt *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r [
 		}
 	}
 
-	totalRows, summaryCalcRow, err = t.Database.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	totalRows, summaryCalcRow, err = t.Database.ShouldCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, summaryCalcRow, err
 }*/
 
@@ -672,7 +672,7 @@ func (pt *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r [
 			}
 		}
 
-		totalRows, summaryCalcRow, err = tx.ShouldSelectCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
+		totalRows, summaryCalcRow, err = tx.ShouldCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
 		return totalRows, summaryCalcRow, err
 	}
 */
