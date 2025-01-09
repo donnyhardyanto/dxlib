@@ -495,10 +495,15 @@ func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeM
 	return nil, nil, err
 }
 
-/*func (d *DXDatabase) ShouldSelectCount(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
-	totalRows, c, err = db.ShouldSelectCount(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+func (d *DXDatabase) ShouldCount(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
+	totalRows, c, err = db.ShouldCount(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, c, err
-}*/
+}
+
+func (d *DXDatabase) CountOne(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
+	totalRows, c, err = db.CountOne(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	return totalRows, c, err
+}
 
 func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
