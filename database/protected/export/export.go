@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	_ "time/tzdata"
 )
 
 type ExportFormat string

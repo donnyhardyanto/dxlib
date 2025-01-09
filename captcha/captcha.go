@@ -2,13 +2,13 @@ package captcha
 
 import (
 	"bytes"
+	"github.com/fogleman/gg"
 	"image/color"
 	"image/png"
 	"math"
 	"math/rand"
 	"time"
-
-	"github.com/fogleman/gg"
+	_ "time/tzdata"
 )
 
 type ICaptcha interface {

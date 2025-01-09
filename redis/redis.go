@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-redis/redis/v8"
-	"time"
-
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
+	"github.com/go-redis/redis/v8"
+	"time"
+	_ "time/tzdata"
 )
 
 type DXRedis struct {

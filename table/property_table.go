@@ -12,6 +12,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
 	"time"
+	_ "time/tzdata"
 )
 
 type DXPropertyTable struct {

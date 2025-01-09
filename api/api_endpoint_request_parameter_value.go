@@ -6,6 +6,7 @@ import (
 	security "github.com/donnyhardyanto/dxlib/utils/security"
 	"strings"
 	"time"
+	_ "time/tzdata"
 )
 
 const ErrorMessageIncompatibleTypeReceived = "INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v"

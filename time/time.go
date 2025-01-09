@@ -1,6 +1,9 @@
 package time
 
-import "time"
+import (
+	"time"
+	_ "time/tzdata"
+)
 
 func LocationStartOfDayInUTC(timezone string) (time.Time, error) {
 	location, err := time.LoadLocation(timezone)

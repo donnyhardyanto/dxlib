@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	_ "time/tzdata"
 )
 
 type DXObjectStorageType int64

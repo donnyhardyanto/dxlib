@@ -3,14 +3,14 @@ package sso
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	"time"
-
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/redis"
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
+	"github.com/golang-jwt/jwt/v5"
+	"time"
+	_ "time/tzdata"
 )
 
 var OrganizationManager DXOrganizationsManager

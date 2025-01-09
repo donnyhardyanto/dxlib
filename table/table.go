@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	_ "time/tzdata"
 )
 
 type DXTable struct {

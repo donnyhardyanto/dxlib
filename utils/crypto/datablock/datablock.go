@@ -10,6 +10,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils/crypto/aes"
 	"github.com/donnyhardyanto/dxlib/utils/lv"
 	"time"
+	_ "time/tzdata"
 )
 
 var PayloadUnpackTTL = 5 * time.Minute

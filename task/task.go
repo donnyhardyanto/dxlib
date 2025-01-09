@@ -2,9 +2,9 @@ package task
 
 import (
 	"context"
-	"time"
-
 	"golang.org/x/sync/errgroup"
+	"time"
+	_ "time/tzdata"
 
 	"github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/core"

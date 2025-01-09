@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	_ "time/tzdata"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"

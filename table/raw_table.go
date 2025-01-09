@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	_ "time/tzdata"
 )
 
 type OnResultList func(listRow utils.JSON) (utils.JSON, error)

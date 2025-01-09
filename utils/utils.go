@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	_ "time/tzdata"
 )
 
 type JSON = map[string]any

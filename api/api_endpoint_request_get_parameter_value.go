@@ -4,6 +4,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
 	"time"
+	_ "time/tzdata"
 )
 
 func (aepr *DXAPIEndPointRequest) GetParameterValueEntry(k string) (val *DXAPIEndPointRequestParameterValue, err error) {
