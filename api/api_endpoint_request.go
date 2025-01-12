@@ -127,6 +127,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend
 	//	if dxlib.IsDebug {
 	s = utils.JSON{
 		"status":         http.StatusText(statusCode),
+		"status_code":    statusCode,
 		"reason":         errToSend.Error(),
 		"reason_message": errToSend.Error(),
 	}
@@ -148,6 +149,24 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 	if bodyAsJSON["status"] == nil {
 		bodyAsJSON["status"] = http.StatusText(statusCode)
 	}
+	if bodyAsJSON["status_code"] == nil {
+		bodyAsJSON["status_code"] = statusCode
+	}
+	if bodyAsJSON["reason"] == nil {
+		if statusCode == 200 {
+			bodyAsJSON["reason"] = "OK"
+		} else {
+			bodyAsJSON["reason"] = http.StatusText(statusCode)
+		}
+	}
+	if bodyAsJSON["reason_message"] == nil {
+		if statusCode == 200 {
+			bodyAsJSON["reason_message"] = "OK"
+		} else {
+			bodyAsJSON["reason_message"] = http.StatusText(statusCode)
+		}
+	}
+
 	jsonBytes, err = json.Marshal(bodyAsJSON)
 	if err != nil {
 		_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_MARSHAL_JSON=%s", err.Error())
