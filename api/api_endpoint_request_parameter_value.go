@@ -1,7 +1,8 @@
 package api
 
 import (
-	"errors"
+	"github.com/pkg/errors"
+
 	"github.com/donnyhardyanto/dxlib/utils"
 	security "github.com/donnyhardyanto/dxlib/utils/security"
 	"strings"

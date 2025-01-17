@@ -3,7 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
+	"github.com/pkg/errors"
+
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"

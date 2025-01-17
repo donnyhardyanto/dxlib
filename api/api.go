@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
-	"errors"
+	//"errors"
+	"fmt"
 	"github.com/donnyhardyanto/dxlib"
 	"github.com/newrelic/go-agent/v3/newrelic"
+	"github.com/pkg/errors"
 
 	"net"
 	"net/http"
@@ -297,9 +299,13 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		return
 	}
 
+	aepr.Log.Debugf("Middleware Start: %s", aepr.EndPoint.Uri)
+
 	for _, middleware := range p.Middlewares {
+
 		err = middleware(aepr)
 		if err != nil {
+			aepr.Log.Error(fmt.Sprintf("MIDDLEWARE_ERROR:\n%+v", errors.WithStack(err)))
 			err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "MIDDLEWARE_ERROR:%v ", err.Error())
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
@@ -311,6 +317,8 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		}
 
 	}
+
+	aepr.Log.Debugf("Middleware Done: %s", aepr.EndPoint.Uri)
 
 	if aepr.CurrentUser.Id != "" {
 		if a.OnAuditLogUserIdentified != nil {
@@ -332,6 +340,8 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	if p.OnExecute != nil {
 		err = p.OnExecute(aepr)
 		if err != nil {
+			aepr.Log.Error(fmt.Sprintf("ONEXECUTE_ERROR:\n%+v", errors.WithStack(err)))
+
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
 				aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())

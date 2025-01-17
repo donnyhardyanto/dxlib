@@ -43,6 +43,7 @@ type DXLog struct {
 }
 
 var Format DXLogFormat
+var OnError func(severity DXLogLevel, location string, text string, stack string) (err error)
 
 func NewLog(parentLog *DXLog, context context.Context, prefix string) DXLog {
 	if parentLog != nil {
@@ -76,6 +77,13 @@ func (l *DXLog) LogText(severity DXLogLevel, location string, text string) {
 		a.Fatalf("%s", text)
 	default:
 		a.Printf("%s", text)
+	}
+	if OnError != nil {
+		err2 := OnError(severity, location, text, stack)
+		if err2 != nil {
+			a.Warnf("ERROR_ON_ERROR_HANDLER: %+v", err2)
+		}
+
 	}
 }
 
