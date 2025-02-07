@@ -105,7 +105,7 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 		// Now you can range over the keys slice and use it to access the map
 		for _, k := range keys {
 			v := aep.ResponsePossibilities[k]
-			fmt.Println("Key:", k, "StatusCode:", aep.ResponsePossibilities[k].StatusCode)
+			//fmt.Println("Key:", k, "StatusCode:", aep.ResponsePossibilities[k].StatusCode)
 			s += fmt.Sprintf("    %s\n", k)
 			s += fmt.Sprintf("      Status Code: %d\n", v.StatusCode)
 			s += fmt.Sprintf("      Description: %s\n", v.Description)
