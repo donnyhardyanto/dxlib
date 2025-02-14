@@ -3,7 +3,7 @@ module github.com/donnyhardyanto/dxlib
 go 1.24.0
 
 require (
-	firebase.google.com/go/v4 v4.15.1
+	firebase.google.com/go/v4 v4.15.2
 	github.com/fogleman/gg v1.3.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.8.1
@@ -111,5 +111,7 @@ require (
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 )
+
+replace google.golang.org/grpc => google.golang.org/grpc v1.70.0
 
 //replace github.com/sijms/go-ora/v2 => ../go-ora/v2
