@@ -112,6 +112,4 @@ require (
 	google.golang.org/protobuf v1.36.5 // indirect
 )
 
-replace google.golang.org/grpc => google.golang.org/grpc v1.70.0
-
 //replace github.com/sijms/go-ora/v2 => ../go-ora/v2
