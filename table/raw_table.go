@@ -168,6 +168,19 @@ func (t *DXRawTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues
 	})
 }
 
+func (t *DXRawTable) UpdateOneByUid(l *log.DXLog, FieldValueForUid string, setKeyValues utils.JSON) (result sql.Result, err error) {
+	_, _, err = t.ShouldGetByUid(l, FieldValueForUid)
+	if err != nil {
+		return nil, err
+	}
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
+		t.FieldNameForRowUid: FieldValueForUid,
+	})
+}
+
 func (t *DXRawTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	if t.Database == nil {
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
@@ -183,6 +196,22 @@ func (t *DXRawTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 	}
 
 	rowsInfo, d, err := t.ShouldGetById(&aepr.Log, id)
+	if err != nil {
+		return err
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+
+	return nil
+}
+
+func (t *DXRawTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
+	if err != nil {
+		return err
+	}
+
+	rowsInfo, d, err := t.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -253,6 +282,35 @@ func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValu
 	return nil
 }
 
+func (t *DXRawTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, newKeyValues utils.JSON) (err error) {
+	_, _, err = t.ShouldGetByUid(&aepr.Log, uid)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range newKeyValues {
+		if v == nil {
+			delete(newKeyValues, k)
+		}
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	_, err = db.Update(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
+		t.FieldNameForRowUid: uid,
+	})
+	if err != nil {
+		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err.Error())
+		return err
+	}
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+		t.FieldNameForRowUid: uid,
+	}})
+	return nil
+}
+
 func (t *DXRawTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
@@ -265,6 +323,21 @@ func (t *DXRawTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	}
 
 	err = t.DoEdit(aepr, id, newFieldValues)
+	return err
+}
+
+func (t *DXRawTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
+	if err != nil {
+		return err
+	}
+
+	_, newFieldValues, err := aepr.GetParameterValueAsJSON("new")
+	if err != nil {
+		return err
+	}
+
+	err = t.DoEditByUid(aepr, uid, newFieldValues)
 	return err
 }
 
@@ -289,6 +362,27 @@ func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err err
 	return nil
 }
 
+func (t *DXRawTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string) (err error) {
+	_, _, err = t.ShouldGetByUid(&aepr.Log, uid)
+	if err != nil {
+		return err
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	_, err = db.Delete(t.Database.Connection, t.NameId, utils.JSON{
+		t.FieldNameForRowUid: uid,
+	})
+	if err != nil {
+		aepr.Log.Errorf("Error at %s.DoDeleteByUid (%s) ", t.NameId, err.Error())
+		return err
+	}
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
+	return nil
+}
+
 func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
@@ -298,6 +392,20 @@ func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err erro
 	err = t.DoDelete(aepr, id)
 	if err != nil {
 		aepr.Log.Errorf("Error at %s.RequestHardDelete (%s) ", t.NameId, err.Error())
+		return err
+	}
+	return err
+}
+
+func (t *DXRawTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
+	if err != nil {
+		return err
+	}
+
+	err = t.DoDeleteByUid(aepr, uid)
+	if err != nil {
+		aepr.Log.Errorf("Error at %s.RequestHardDeleteByUid (%s) ", t.NameId, err.Error())
 		return err
 	}
 	return err
