@@ -820,6 +820,33 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) 
 	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
+func (t *DXTable) RequestPagingListAll(aepr *api.DXAPIEndPointRequest) (err error) {
+	filterWhere := ""
+	filterOrderBy := ""
+	isDeletedIncluded := false
+
+	if !isDeletedIncluded {
+		if filterWhere != "" {
+			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
+		}
+
+		if t.Database == nil {
+			t.Database = database.Manager.Databases[t.DatabaseNameId]
+		}
+
+		switch t.Database.DatabaseType.String() {
+		case "sqlserver":
+			filterWhere = filterWhere + "(is_deleted=0)"
+		case "postgres":
+			filterWhere = filterWhere + "(is_deleted=false)"
+		default:
+			filterWhere = filterWhere + "(is_deleted=0)"
+		}
+	}
+
+	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, nil, nil)
+}
+
 func (t *DXTable) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 

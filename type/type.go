@@ -1,6 +1,6 @@
 package _type
 
-type TypeCompatibiliyMappingStruct struct {
+type TypeCompatibilityMappingStruct struct {
 	Api_parameter_type string
 	Go_type            string
 	Db_type_postgres   string
@@ -9,13 +9,13 @@ type TypeCompatibiliyMappingStruct struct {
 	Db_type_oracle     string
 }
 
-var Types []TypeCompatibiliyMappingStruct
+var Types []TypeCompatibilityMappingStruct
 
 func init() {
-	Types = []TypeCompatibiliyMappingStruct{}
-	var a TypeCompatibiliyMappingStruct
+	Types = []TypeCompatibilityMappingStruct{}
+	var a TypeCompatibilityMappingStruct
 
-	a = TypeCompatibiliyMappingStruct{
+	a = TypeCompatibilityMappingStruct{
 		Api_parameter_type: "string",
 		Go_type:            "string",
 		Db_type_postgres:   "VARCHAR(1024)",
@@ -25,7 +25,7 @@ func init() {
 	}
 	Types = append(Types, a)
 
-	a = TypeCompatibiliyMappingStruct{
+	a = TypeCompatibilityMappingStruct{
 		Api_parameter_type: "int",
 		Go_type:            "int",
 		Db_type_postgres:   "INT",
@@ -35,7 +35,7 @@ func init() {
 	}
 	Types = append(Types, a)
 
-	a = TypeCompatibiliyMappingStruct{
+	a = TypeCompatibilityMappingStruct{
 		Api_parameter_type: "bool",
 		Go_type:            "bool",
 		Db_type_postgres:   "BOOLEAN",
@@ -45,7 +45,7 @@ func init() {
 	}
 	Types = append(Types, a)
 
-	a = TypeCompatibiliyMappingStruct{
+	a = TypeCompatibilityMappingStruct{
 		Api_parameter_type: "float64",
 		Go_type:            "float64",
 		Db_type_postgres:   "FLOAT",
@@ -55,7 +55,7 @@ func init() {
 	}
 	Types = append(Types, a)
 
-	a = TypeCompatibiliyMappingStruct{
+	a = TypeCompatibilityMappingStruct{
 		Api_parameter_type: "[]byte",
 		Go_type:            "[]byte",
 		Db_type_postgres:   "BYTEA",
@@ -65,7 +65,7 @@ func init() {
 	}
 	Types = append(Types, a)
 
-	a = TypeCompatibiliyMappingStruct{
+	a = TypeCompatibilityMappingStruct{
 		Api_parameter_type: "time.Time",
 		Go_type:            "time.Time",
 		Db_type_postgres:   "TIMESTAMP",
@@ -73,5 +73,4 @@ func init() {
 		Db_type_mysql:      "DATETIME",
 		Db_type_oracle:     "TIMESTAMP",
 	}
-
 }
