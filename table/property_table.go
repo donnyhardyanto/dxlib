@@ -10,6 +10,7 @@ import (
 	databaseUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
 	"net/http"
 	"time"
 	_ "time/tzdata"
@@ -23,6 +24,7 @@ type DXPropertyTable struct {
 	ListViewNameId        string
 	FieldNameForRowId     string
 	FieldNameForRowNameId string
+	FieldNameForRowUid    string
 	FieldTypeMapping      databaseUtils.FieldTypeMapping
 }
 
@@ -295,8 +297,21 @@ func (pt *DXPropertyTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues
 	if err != nil {
 		return 0, err
 	}
+	_, n, err := pt.Database.SelectOne(pt.NameId, nil, []string{"uid"}, utils.JSON{
+		"id": newId,
+	}, nil, nil)
+	if err != nil {
+		return 0, err
+	}
+	uid, ok := n[pt.FieldNameForRowUid].(string)
+	if !ok {
+		return 0, errors.New("IMPOSSIBLE:UID")
+	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
-		pt.FieldNameForRowId: newId,
+		"data": utils.JSON{
+			pt.FieldNameForRowId:  newId,
+			pt.FieldNameForRowUid: uid,
+		},
 	})
 	return newId, nil
 }
@@ -313,6 +328,14 @@ func (pt *DXPropertyTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowId: id,
 		"is_deleted":         false,
+	}, map[string]string{pt.FieldNameForRowId: "asc"})
+	return rowsInfo, r, err
+}
+
+func (pt *DXPropertyTable) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
+		pt.FieldNameForRowUid: uid,
+		"is_deleted":          false,
 	}, map[string]string{pt.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
@@ -498,7 +521,23 @@ func (pt *DXPropertyTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err erro
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}})
+
+	return nil
+}
+
+func (pt *DXPropertyTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
+	if err != nil {
+		return err
+	}
+
+	rowsInfo, d, err := pt.ShouldGetByUid(&aepr.Log, uid)
+	if err != nil {
+		return err
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}})
 
 	return nil
 }
@@ -514,7 +553,7 @@ func (pt *DXPropertyTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}})
 
 	return nil
 }
@@ -530,7 +569,7 @@ func (pt *DXPropertyTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (er
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}})
 
 	return nil
 }
@@ -571,9 +610,9 @@ func (pt *DXPropertyTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newK
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", pt.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
 		pt.FieldNameForRowId: id,
-	})
+	}})
 	return nil
 }
 
@@ -858,13 +897,14 @@ func (pt *DXPropertyTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, f
 
 	}
 
-	data := utils.JSON{
+	data := utils.JSON{"data": utils.JSON{
 		"list": utils.JSON{
 			"rows":       list,
 			"total_rows": totalRows,
 			"total_page": totalPage,
 			"rows_info":  rowsInfo,
 		},
+	},
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)

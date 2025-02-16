@@ -33,7 +33,7 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 	return nil
 }
 
-func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForId string) *DXTable {
+func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string) *DXTable {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
@@ -42,15 +42,16 @@ func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName
 		NameId:                tableNameId,
 		ResultObjectName:      resultObjectName,
 		ListViewNameId:        tableListViewNameId,
-		FieldNameForRowId:     tableFieldNameForId,
+		FieldNameForRowId:     tableFieldNameForRowId,
 		FieldNameForRowNameId: tableFieldNameForRowNameId,
+		FieldNameForRowUid:    tableFieldNameForRowUid,
 	}
 	t.Database = database.Manager.Databases[databaseNameId]
 	tm.Tables[tableNameId] = &t
 	return &t
 }
 
-func (tm *DXTableManager) NewPropertyTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForId string) *DXPropertyTable {
+func (tm *DXTableManager) NewPropertyTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string) *DXPropertyTable {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
@@ -59,15 +60,16 @@ func (tm *DXTableManager) NewPropertyTable(databaseNameId, tableNameId, resultOb
 		NameId:                tableNameId,
 		ResultObjectName:      resultObjectName,
 		ListViewNameId:        tableListViewNameId,
-		FieldNameForRowId:     tableFieldNameForId,
+		FieldNameForRowId:     tableFieldNameForRowId,
 		FieldNameForRowNameId: tableFieldNameForRowNameId,
+		FieldNameForRowUid:    tableFieldNameForRowUid,
 	}
 	t.Database = database.Manager.Databases[databaseNameId]
 	tm.PropertyTables[tableNameId] = &t
 	return &t
 }
 
-func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForId string) *DXRawTable {
+func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string) *DXRawTable {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
@@ -76,8 +78,9 @@ func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectN
 		NameId:                tableNameId,
 		ResultObjectName:      resultObjectName,
 		ListViewNameId:        tableListViewNameId,
-		FieldNameForRowId:     tableFieldNameForId,
+		FieldNameForRowId:     tableFieldNameForRowId,
 		FieldNameForRowNameId: tableFieldNameForRowNameId,
+		FieldNameForRowUid:    tableFieldNameForRowUid,
 	}
 	t.Database = database.Manager.Databases[databaseNameId]
 	tm.RawTables[tableNameId] = &t

@@ -10,6 +10,7 @@ import (
 	databaseUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
 	"net/http"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ type DXTable struct {
 	ListViewNameId        string
 	FieldNameForRowId     string
 	FieldNameForRowNameId string
+	FieldNameForRowUid    string
 	FieldTypeMapping      databaseUtils.FieldTypeMapping
 }
 
@@ -59,9 +61,22 @@ func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	if err != nil {
 		return 0, err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
-		t.FieldNameForRowId: newId,
-	})
+
+	_, n, err := t.Database.SelectOne(t.NameId, nil, []string{"uid"}, utils.JSON{
+		"id": newId,
+	}, nil, nil)
+	if err != nil {
+		return 0, err
+	}
+	uid, ok := n[t.FieldNameForRowUid].(string)
+	if !ok {
+		return 0, errors.New("IMPOSSIBLE:UID")
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+		t.FieldNameForRowId:  newId,
+		t.FieldNameForRowUid: uid,
+	}})
 	return newId, nil
 }
 
@@ -70,9 +85,9 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	if err != nil {
 		return 0, err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
 		t.FieldNameForRowId: newId,
-	})
+	}})
 
 	return newId, nil
 }
@@ -93,6 +108,13 @@ func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo
 	return rowsInfo, r, err
 }
 
+func (t *DXTable) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.ShouldSelectOne(log, nil, utils.JSON{
+		t.FieldNameForRowUid: uid,
+		"is_deleted":         false,
+	}, map[string]string{t.FieldNameForRowId: "asc"})
+	return rowsInfo, r, err
+}
 func (t *DXTable) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		"utag":       utag,
@@ -278,7 +300,7 @@ func (t *DXTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
 
 	return nil
 }
@@ -294,7 +316,7 @@ func (t *DXTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err error
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
 
 	return nil
 }
@@ -310,7 +332,7 @@ func (t *DXTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) 
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
 
 	return nil
 }
@@ -352,9 +374,9 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
 		t.FieldNameForRowId: id,
-	})
+	}})
 	return nil
 }
 
@@ -649,9 +671,11 @@ func (t *DXTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere stri
 	}
 
 	data := utils.JSON{
-		"list": utils.JSON{
-			"rows":      list,
-			"rows_info": rowsInfo,
+		"data": utils.JSON{
+			"list": utils.JSON{
+				"rows":      list,
+				"rows_info": rowsInfo,
+			},
 		},
 	}
 
