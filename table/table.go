@@ -109,10 +109,10 @@ func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo
 }
 
 func (t *DXTable) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = t.ShouldSelectOne(log, nil, utils.JSON{
+	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowUid: uid,
 		"is_deleted":         false,
-	}, map[string]string{t.FieldNameForRowId: "asc"})
+	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 func (t *DXTable) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {

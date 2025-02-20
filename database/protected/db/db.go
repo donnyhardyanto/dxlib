@@ -1092,6 +1092,97 @@ func ShouldCountQuery(dbAppInstance *sqlx.DB, summaryCalcFieldsPart, fromQueryPa
 	return totalRows, summaryRows, nil
 }
 
+// QueryPaging updated to use the extracted count query function
+func QueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64,
+	returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
+	arg []any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
+
+	// Execute count query
+	totalRows, summaryRows, err = ShouldCountQuery(dbAppInstance, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart, arg)
+	if err != nil {
+		return nil, nil, 0, 0, nil, err
+	}
+
+	if returnFieldsQueryPart == "" {
+		returnFieldsQueryPart = "*"
+	}
+
+	effectiveWherePart := ""
+	if whereQueryPart != "" {
+		effectiveWherePart = " where " + whereQueryPart
+	}
+
+	effectiveJoinPart := ""
+	if joinQueryPart != "" {
+		effectiveJoinPart = " " + joinQueryPart
+	}
+
+	// Calculate total pages
+	if rowsPerPage == 0 {
+		totalPage = 1
+	} else {
+		totalPage = ((totalRows - 1) / rowsPerPage) + 1
+	}
+
+	driverName := dbAppInstance.DriverName()
+
+	query := ""
+	switch driverName {
+	case "sqlserver":
+		effectiveLimitPart := ""
+		if rowsPerPage > 0 {
+			effectiveLimitPart = " offset " + strconv.FormatInt(pageIndex*rowsPerPage, 10) +
+				" ROWS FETCH NEXT " + strconv.FormatInt(rowsPerPage, 10) + " ROWS ONLY"
+		}
+
+		if orderByQueryPart == "" {
+			orderByQueryPart = "1"
+		}
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + " order by " + orderByQueryPart + effectiveLimitPart
+
+	case "postgres":
+		effectiveLimitPart := ""
+		if rowsPerPage > 0 {
+			effectiveLimitPart = " limit " + strconv.FormatInt(rowsPerPage, 10) +
+				" offset " + strconv.FormatInt(pageIndex*rowsPerPage, 10)
+		}
+
+		effectiveOrderByPart := ""
+		if orderByQueryPart != "" {
+			effectiveOrderByPart = " order by " + orderByQueryPart
+		}
+
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + effectiveOrderByPart + effectiveLimitPart
+
+	case "oracle":
+		effectiveLimitPart := ""
+		if rowsPerPage > 0 {
+			effectiveLimitPart = " offset " + strconv.FormatInt(pageIndex*rowsPerPage, 10) +
+				" ROWS FETCH NEXT " + strconv.FormatInt(rowsPerPage, 10) + " ROWS ONLY"
+		}
+
+		effectiveOrderByPart := ""
+		if orderByQueryPart != "" {
+			effectiveOrderByPart = " order by " + orderByQueryPart
+		}
+
+		query = "select " + returnFieldsQueryPart + " from " + fromQueryPart +
+			effectiveWherePart + effectiveJoinPart + effectiveOrderByPart + effectiveLimitPart
+
+	default:
+		return rowsInfo, rows, 0, 0, summaryRows, errors.New("UNSUPPORTED_DATABASE_SQL_SELECT")
+	}
+
+	rowsInfo, rows, err = QueryRows(dbAppInstance, fieldTypeMapping, query, arg)
+	if err != nil {
+		return rowsInfo, rows, 0, 0, summaryRows, err
+	}
+
+	return rowsInfo, rows, totalRows, totalPage, summaryRows, err
+}
+
 // NamedQueryPaging updated to use the extracted count query function
 func NamedQueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64,
 	returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
