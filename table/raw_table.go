@@ -528,9 +528,11 @@ func (t *DXRawTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere s
 	}
 
 	data := utils.JSON{
-		"list": utils.JSON{
-			"rows":      list,
-			"rows_info": rowsInfo,
+		"data": utils.JSON{
+			"list": utils.JSON{
+				"rows":      list,
+				"rows_info": rowsInfo,
+			},
 		},
 	}
 
@@ -580,11 +582,13 @@ func (t *DXRawTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterW
 	}
 
 	data := utils.JSON{
-		"list": utils.JSON{
-			"rows":       list,
-			"total_rows": totalRows,
-			"total_page": totalPage,
-			"rows_info":  rowsInfo,
+		"data": utils.JSON{
+			"list": utils.JSON{
+				"rows":       list,
+				"total_rows": totalRows,
+				"total_page": totalPage,
+				"rows_info":  rowsInfo,
+			},
 		},
 	}
 

@@ -850,11 +850,13 @@ func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWher
 	}
 
 	data := utils.JSON{
-		"list": utils.JSON{
-			"rows":       list,
-			"total_rows": totalRows,
-			"total_page": totalPage,
-			"rows_info":  rowsInfo,
+		"data": utils.JSON{
+			"list": utils.JSON{
+				"rows":       list,
+				"total_rows": totalRows,
+				"total_page": totalPage,
+				"rows_info":  rowsInfo,
+			},
 		},
 	}
 
