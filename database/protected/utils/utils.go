@@ -271,7 +271,7 @@ func SQLBuildParameterizedWhereInClause(pv []any, fieldName string, values []str
 	// Quote each status and join them with commas
 	quotedStatuses := make([]string, len(values))
 	for i, status := range values {
-		quotedStatuses[i] = fmt.Sprintf(":%d", pn)
+		quotedStatuses[i] = fmt.Sprintf("?", pn)
 		pv = append(pv, status)
 		pn++
 	}
@@ -296,7 +296,7 @@ func SQLBuildParameterizedWhereInClauseInt64(pv []any, fieldName string, values 
 	// Quote each status and join them with commas
 	quotedStatuses := make([]string, len(values))
 	for i, status := range values {
-		quotedStatuses[i] = fmt.Sprintf(":%d", pn)
+		quotedStatuses[i] = fmt.Sprintf("?", pn)
 		pv = append(pv, status)
 		pn++
 	}
@@ -317,21 +317,3 @@ func SQLBuildWhereInClauseBool(fieldName string, values []bool) string {
 
 	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
 }
-
-/*
-func SQLBuildParameterizedWhereInClauseBool(pv []any, fieldName string, values []bool) string {
-	pn := len(pv)
-	pn++
-
-	// Quote each status and join them with commas
-	quotedStatuses := make([]string, len(values))
-	for i, status := range values {
-		if status {
-			quotedStatuses[i] = "1"
-		} else {
-			quotedStatuses[i] = "0"
-		}
-	}
-
-	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
-}*/
