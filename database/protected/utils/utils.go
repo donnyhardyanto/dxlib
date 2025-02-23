@@ -254,59 +254,101 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 		return nil*/
 }
 
+func SQLBuildParameterizedWhereClause(driverName string, pv *[]any, template string, values ...string) string {
+	if len(values) == 0 {
+		return ""
+	}
+
+	p := len(*pv)
+	result := template
+
+	for _, value := range values {
+		p++
+		var placeholder string
+		switch driverName {
+		case "postgres":
+			placeholder = fmt.Sprintf("$%d", p)
+		case "sqlserver":
+			placeholder = fmt.Sprintf("@%d", p)
+		case "oracle":
+			placeholder = fmt.Sprintf(":%d", p)
+		default: // mysql and others
+			placeholder = "?"
+		}
+
+		result = strings.Replace(result, "?", placeholder, 1)
+		*pv = append(*pv, value)
+	}
+
+	return result
+}
+
 func SQLBuildWhereInClause(fieldName string, values []string) string {
-	// Quote each status and join them with commas
-	quotedStatuses := make([]string, len(values))
+	l := len(values)
+	if l == 0 {
+		return ""
+	}
+	quotedStatuses := make([]string, l)
 	for i, status := range values {
 		quotedStatuses[i] = fmt.Sprintf("'%s'", status)
 	}
-
-	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
+	if l == 1 {
+		return fieldName + " = " + quotedStatuses[0]
+	}
+	return "(" + fieldName + " IN (" + strings.Join(quotedStatuses, ",") + "))"
 }
 
-func SQLBuildParameterizedWhereInClause(pv []any, fieldName string, values []string) string {
-	pn := len(pv)
-	pn++
-
-	// Quote each status and join them with commas
-	quotedStatuses := make([]string, len(values))
-	for i, status := range values {
-		quotedStatuses[i] = fmt.Sprintf("?", pn)
-		pv = append(pv, status)
-		pn++
+func SQLBuildParameterizedWhereInClause(driverName string, pv *[]any, fieldName string, values []string) string {
+	l := len(values)
+	if l == 0 {
+		return ""
 	}
-
+	p := len(*pv)
+	quotedStatuses := make([]string, l)
+	for i, value := range values {
+		p = p + 1
+		switch driverName {
+		case "postgres":
+			quotedStatuses[i] = fmt.Sprintf("$%d", p)
+		case "sqlserver":
+			quotedStatuses[i] = fmt.Sprintf("@%d", p)
+		case "oracle":
+			quotedStatuses[i] = fmt.Sprintf(":%d", p)
+		case "mysql":
+			quotedStatuses[i] = "?"
+		default:
+			quotedStatuses[i] = "?"
+		}
+		*pv = append(*pv, value)
+	}
+	if l == 1 {
+		return fieldName + " =" + quotedStatuses[0]
+	}
 	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
 }
 
 func SQLBuildWhereInClauseInt64(fieldName string, values []int64) string {
-	// Quote each status and join them with commas
-	quotedStatuses := make([]string, len(values))
-	for i, status := range values {
-		quotedStatuses[i] = fmt.Sprintf("%d", status)
+	l := len(values)
+	if l == 0 {
+		return ""
 	}
-
-	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
+	valueAsStrings := make([]string, l)
+	for i, value := range values {
+		valueAsStrings[i] = fmt.Sprintf("%d", value)
+	}
+	if l == 1 {
+		return fieldName + " = " + valueAsStrings[0]
+	}
+	return fieldName + " IN (" + strings.Join(valueAsStrings, ",") + ")"
 }
 
-func SQLBuildParameterizedWhereInClauseInt64(pv []any, fieldName string, values []int64) string {
-	pn := len(pv)
-	pn++
-
-	// Quote each status and join them with commas
-	quotedStatuses := make([]string, len(values))
-	for i, status := range values {
-		quotedStatuses[i] = fmt.Sprintf("?", pn)
-		pv = append(pv, status)
-		pn++
-	}
-
-	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
+func SQLBuildParameterizedWhereInClauseInt64(pv *[]any, fieldName string, values []int64) string {
+	return SQLBuildWhereInClauseInt64(fieldName, values)
 }
 
 func SQLBuildWhereInClauseBool(fieldName string, values []bool) string {
-	// Quote each status and join them with commas
-	quotedStatuses := make([]string, len(values))
+	l := len(values)
+	quotedStatuses := make([]string, l)
 	for i, status := range values {
 		if status {
 			quotedStatuses[i] = "1"
@@ -314,6 +356,11 @@ func SQLBuildWhereInClauseBool(fieldName string, values []bool) string {
 			quotedStatuses[i] = "0"
 		}
 	}
-
+	if l == 0 {
+		return ""
+	}
+	if l == 1 {
+		return fieldName + " = " + fmt.Sprintf("%t", values[0])
+	}
 	return fieldName + " IN (" + strings.Join(quotedStatuses, ",") + ")"
 }

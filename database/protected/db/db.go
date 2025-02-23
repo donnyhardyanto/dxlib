@@ -613,6 +613,75 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	}
 }
 
+func QueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, arg []any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	/*	var argAsArray []any
+		switch arg.(type) {
+		case map[string]any:
+			_, _, argAsArray = PrepareArrayArgs(arg.(map[string]any), db.DriverName())
+		}
+
+		stmt, err := db.PrepareNamed(query)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer stmt.Close()
+		xr, err := stmt.Query(argAsArray)
+		if err != nil {
+			return nil, nil, err
+		}
+		rows := xr*/
+	switch db.DriverName() {
+	case "oracle":
+		rowInfo, x, err := _oracleSelectRaw(db, fieldTypeMapping, query, arg)
+		if err != nil {
+			return nil, nil, err
+		}
+		if x == nil {
+			return rowInfo, nil, err
+		}
+		if len(x) < 1 {
+			return rowInfo, nil, err
+		}
+		return rowInfo, x[0], err
+	}
+
+	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+	}
+
+	rows, err := db.Queryx(query, arg...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+	rowsInfo = &RowsInfo{}
+	rowsInfo.Columns, err = rows.Columns()
+	if err != nil {
+		return nil, nil, err
+	}
+	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	if err != nil {
+		return rowsInfo, nil, err
+	}
+	for rows.Next() {
+		rowJSON := make(utils.JSON)
+		err = rows.MapScan(rowJSON)
+		if err != nil {
+			return nil, nil, err
+		}
+		rowJSON, err = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, err
+		}
+		return rowsInfo, rowJSON, nil
+	}
+
+	return rowsInfo, nil, nil
+}
+
 func NamedQueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, arg any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	/*	var argAsArray []any
 		switch arg.(type) {
@@ -680,6 +749,18 @@ func NamedQueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTyp
 	}
 
 	return rowsInfo, nil, nil
+}
+
+func ShouldQueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, args []any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = QueryRow(db, fieldTypeMapping, query, args)
+	if err != nil {
+		return rowsInfo, r, err
+	}
+	if r == nil {
+		err = errors.New(`ROW_MUST_EXIST:` + query)
+		return rowsInfo, r, err
+	}
+	return rowsInfo, r, nil
 }
 
 func ShouldNamedQueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, query string, args any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
@@ -1059,8 +1140,8 @@ func buildCountQuery(dbType string, summaryCalcFieldsPart, fromQueryPart, whereQ
 	return "select " + summaryCalcFields + " from " + fromQueryPart + effectiveWherePart + effectiveJoinPart, nil
 }
 
-// ShouldCountQuery executes the count query and returns the total rows and summary
-func ShouldCountQuery(dbAppInstance *sqlx.DB, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart string,
+// ShouldNamedCountQuery executes the count query and returns the total rows and summary
+func ShouldNamedCountQuery(dbAppInstance *sqlx.DB, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart string,
 	arg any) (totalRows int64, summaryRows utils.JSON, err error) {
 
 	driverName := dbAppInstance.DriverName()
@@ -1070,6 +1151,39 @@ func ShouldCountQuery(dbAppInstance *sqlx.DB, summaryCalcFieldsPart, fromQueryPa
 	}
 
 	_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, nil, countSQL, arg)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	// Handle different database types for total rows extraction
+	if driverName == "oracle" {
+		totalRowsAsAny, err := utils.ConvertToInterfaceInt64FromAny(summaryRows["s___total_rows"])
+		if err != nil {
+			return 0, summaryRows, err
+		}
+
+		totalRows, ok := totalRowsAsAny.(int64)
+		if !ok {
+			return 0, summaryRows, errors.New(fmt.Sprintf("CANT_CONVERT_TOTAL_ROWS_TO_INT64:%v", totalRowsAsAny))
+		}
+		return totalRows, summaryRows, nil
+	}
+
+	totalRows = summaryRows["s___total_rows"].(int64)
+	return totalRows, summaryRows, nil
+}
+
+// ShouldCountQuery executes the count query and returns the total rows and summary
+func ShouldCountQuery(dbAppInstance *sqlx.DB, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart string,
+	arg []any) (totalRows int64, summaryRows utils.JSON, err error) {
+
+	driverName := dbAppInstance.DriverName()
+	countSQL, err := buildCountQuery(driverName, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	_, summaryRows, err = ShouldQueryRow(dbAppInstance, nil, countSQL, arg)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -1189,7 +1303,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtected
 	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
 
 	// Execute count query
-	totalRows, summaryRows, err = ShouldCountQuery(dbAppInstance, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart, arg)
+	totalRows, summaryRows, err = ShouldNamedCountQuery(dbAppInstance, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart, arg)
 	if err != nil {
 		return nil, nil, 0, 0, nil, err
 	}
@@ -1624,7 +1738,7 @@ func Count(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAnd
 	// Special handling for different databases
 	switch driverName {
 	case "sqlserver", "postgres", "oracle", "mysql", "db2":
-		totalRows, summaryRows, err = ShouldCountQuery(
+		totalRows, summaryRows, err = ShouldNamedCountQuery(
 			db,
 			summaryCalcFieldsPart,
 			tableName,
