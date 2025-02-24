@@ -75,6 +75,6 @@ func GetEnvDefaultValueAsBool(key string, defaultValue bool) bool {
 	if !isPresent {
 		return defaultValue
 	}
-	valueBool := strings.ToUpper(value) == "TRUE"
+	valueBool := (strings.ToUpper(value) == "TRUE") || (value == "1")
 	return valueBool
 }
