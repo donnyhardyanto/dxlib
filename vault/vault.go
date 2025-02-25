@@ -3,6 +3,7 @@ package vault
 import (
 	"github.com/donnyhardyanto/dxlib/log"
 	vault "github.com/hashicorp/vault/api"
+	"strconv"
 	"strings"
 )
 
@@ -59,6 +60,32 @@ func (hv *DXHashicorpVault) Start() (err error) {
 	}
 	hv.Client.SetToken(hv.Token)
 	return nil
+}
+
+func (hv *DXHashicorpVault) ResolveAsInt64(v string) (vi int64, err error) {
+	s := hv.VaultMapString(&log.Log, v)
+	if s != "" {
+		parsedValue, parseErr := strconv.ParseInt(s, 10, 64)
+		if parseErr != nil {
+			err = parseErr
+			return 0, err
+		}
+		vi = parsedValue
+	}
+	return vi, nil
+}
+
+func (hv *DXHashicorpVault) ResolveAsInt(v string) (vi int32, err error) {
+	s := hv.VaultMapString(&log.Log, v)
+	if s != "" {
+		parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
+		if parseErr != nil {
+			err = parseErr
+			return 0, err
+		}
+		vi = int32(parsedValue)
+	}
+	return vi, nil
 }
 
 func (hv *DXHashicorpVault) ResolveAsString(v string) string {
