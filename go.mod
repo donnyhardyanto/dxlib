@@ -6,7 +6,7 @@ require (
 	firebase.google.com/go/v4 v4.15.2
 	github.com/fogleman/gg v1.3.0
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/go-sql-driver/mysql v1.8.1
+	github.com/go-sql-driver/mysql v1.9.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/vault/api v1.16.0
@@ -14,26 +14,26 @@ require (
 	github.com/knetic/go-namedparameterquery v0.0.0-20150709205813-b7327e472dfd
 	github.com/lib/pq v1.10.9
 	github.com/microsoft/go-mssqldb v1.8.0
-	github.com/minio/minio-go/v7 v7.0.85
+	github.com/minio/minio-go/v7 v7.0.87
 	github.com/newrelic/go-agent/v3 v3.36.0
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.4.0
-	github.com/sijms/go-ora/v2 v2.8.23
+	github.com/sijms/go-ora/v2 v2.8.24
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	github.com/xuri/excelize/v2 v2.9.0
 	go.opentelemetry.io/otel v1.34.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.35.0
 	golang.org/x/sync v0.11.0
 	golang.org/x/time v0.10.0
-	google.golang.org/api v0.221.0
+	google.golang.org/api v0.223.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	cel.dev/expr v0.20.0 // indirect
-	cloud.google.com/go v0.118.2 // indirect
-	cloud.google.com/go/auth v0.14.1 // indirect
+	cel.dev/expr v0.21.2 // indirect
+	cloud.google.com/go v0.118.3 // indirect
+	cloud.google.com/go/auth v0.15.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	cloud.google.com/go/firestore v1.18.0 // indirect
@@ -56,7 +56,7 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
@@ -77,8 +77,9 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/klauspost/compress v1.17.11 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
+	github.com/minio/crc64nvme v1.0.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -101,13 +102,13 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	golang.org/x/image v0.24.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/oauth2 v0.26.0 // indirect
+	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/appengine/v2 v2.0.6 // indirect
-	google.golang.org/genproto v0.0.0-20250212204824-5a70512c5d8b // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250212204824-5a70512c5d8b // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250212204824-5a70512c5d8b // indirect
+	google.golang.org/genproto v0.0.0-20250224174004-546df14abb99 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250224174004-546df14abb99 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250224174004-546df14abb99 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 )
