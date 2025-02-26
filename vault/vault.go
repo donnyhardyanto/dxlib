@@ -10,6 +10,8 @@ import (
 type DXVaultInterface interface {
 	Start() (err error)
 	ResolveAsString(v string) string
+	ResolveAsInt(v string) int
+	ResolveAsInt64(v string) int64
 }
 
 type DXVault struct {
@@ -62,30 +64,32 @@ func (hv *DXHashicorpVault) Start() (err error) {
 	return nil
 }
 
-func (hv *DXHashicorpVault) ResolveAsInt64(v string) (vi int64, err error) {
+func (hv *DXHashicorpVault) ResolveAsInt64(v string) int64 {
+	vi := int64(0)
 	s := hv.VaultMapString(&log.Log, v)
 	if s != "" {
 		parsedValue, parseErr := strconv.ParseInt(s, 10, 64)
 		if parseErr != nil {
-			err = parseErr
-			return 0, err
+			panic(parseErr)
+			return 0
 		}
 		vi = parsedValue
 	}
-	return vi, nil
+	return vi
 }
 
-func (hv *DXHashicorpVault) ResolveAsInt(v string) (vi int32, err error) {
+func (hv *DXHashicorpVault) ResolveAsInt(v string) int {
+	vi := int(0)
 	s := hv.VaultMapString(&log.Log, v)
 	if s != "" {
 		parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
 		if parseErr != nil {
-			err = parseErr
-			return 0, err
+			panic(parseErr)
+			return 0
 		}
-		vi = int32(parsedValue)
+		vi = int(parsedValue)
 	}
-	return vi, nil
+	return vi
 }
 
 func (hv *DXHashicorpVault) ResolveAsString(v string) string {
