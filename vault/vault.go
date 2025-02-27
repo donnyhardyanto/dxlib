@@ -26,14 +26,13 @@ type DXVault struct {
 type Prefix map[string]*DXVault
 
 func NewVaultVendor(vendor string, address string, token string, prefix string, path string) *DXVault {
-	v := &DXVault{
+	return &DXVault{
 		Vendor:  vendor,
 		Address: address,
 		Token:   token,
 		Prefix:  prefix,
 		Path:    path,
 	}
-	return v
 }
 
 type DXHashicorpVault struct {
@@ -41,6 +40,7 @@ type DXHashicorpVault struct {
 	Client *vault.Client
 }
 
+/*
 func NewHashiCorpVault(address string, token string, prefix string, path string) *DXHashicorpVault {
 	v := &DXHashicorpVault{
 		DXVault: DXVault{
@@ -50,6 +50,19 @@ func NewHashiCorpVault(address string, token string, prefix string, path string)
 			Prefix:  prefix,
 			Path:    path,
 		},
+	}
+	return v
+}*/
+
+func NewHashiCorpVault(address string, token string, prefix string, path string) *DXHashicorpVault {
+	v := &DXHashicorpVault{
+		DXVault: *NewVaultVendor(
+			"HASHICORP-VAULT",
+			address,
+			token,
+			prefix,
+			path,
+		),
 	}
 	return v
 }
@@ -80,7 +93,7 @@ func (hv *DXHashicorpVault) ResolveAsInt64(v string) int64 {
 }
 
 func (hv *DXHashicorpVault) ResolveAsInt(v string) int {
-	vi := int(0)
+	vi := 0
 	s := hv.VaultMapString(&log.Log, v)
 	if s != "" {
 		parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
@@ -93,8 +106,8 @@ func (hv *DXHashicorpVault) ResolveAsInt(v string) int {
 	return vi
 }
 
-func (hv *DXHashicorpVault) ResolveStringAsBool(v string) bool {
-	vi := int(0)
+func (hv *DXHashicorpVault) ResolveAsBool(v string) bool {
+	vi := 0
 	s := hv.VaultMapString(&log.Log, v)
 	if s != "" {
 		parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
