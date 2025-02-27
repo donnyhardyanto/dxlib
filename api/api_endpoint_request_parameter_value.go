@@ -124,6 +124,10 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			if rawValueType != "string" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
+		case "email":
+			if rawValueType != "string" {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			}
 		case "array":
 			if rawValueType != "[]interface {}" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
@@ -211,6 +215,18 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		aeprpv.Value = s
+		return nil
+	case "email":
+		s, ok := aeprpv.RawValue.(string)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		if s != "" {
+			if !FormatEMailCheckValid(s) {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_EMAIL_FORMAT:%s", s)
+			}
 		}
 		aeprpv.Value = s
 		return nil
