@@ -12,6 +12,7 @@ type DXVaultInterface interface {
 	ResolveAsString(v string) string
 	ResolveAsInt(v string) int
 	ResolveAsInt64(v string) int64
+	ResolveAsBool(v string) bool
 }
 
 type DXVault struct {
@@ -90,6 +91,24 @@ func (hv *DXHashicorpVault) ResolveAsInt(v string) int {
 		vi = int(parsedValue)
 	}
 	return vi
+}
+
+func (hv *DXHashicorpVault) ResolveStringAsBool(v string) bool {
+	vi := int(0)
+	s := hv.VaultMapString(&log.Log, v)
+	if s != "" {
+		parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
+		if parseErr != nil {
+			panic(parseErr)
+			return false
+		}
+		vi = int(parsedValue)
+	}
+	if vi == 0 {
+		return false
+	} else {
+		return true
+	}
 }
 
 func (hv *DXHashicorpVault) ResolveAsString(v string) string {
