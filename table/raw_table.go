@@ -38,7 +38,7 @@ func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValue
 
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
-		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "ERROR_INSERTING_TABLE:"+t.NameId+"="+err.Error())
+		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "", "ERROR_INSERTING_TABLE:"+t.NameId+"="+err.Error())
 	}
 
 	_, n, err := t.Database.SelectOne(t.NameId, nil, []string{"uid"}, utils.JSON{
@@ -725,7 +725,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 
 	_, format, err := aepr.GetParameterValueAsString("format")
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `FORMAT_PARAMETER_ERROR:%s`, err.Error())
+		return aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `FORMAT_PARAMETER_ERROR:%s`, err.Error())
 	}
 
 	format = strings.ToLower(format)

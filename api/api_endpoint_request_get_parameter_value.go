@@ -55,7 +55,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsAny(k string) (isExist bool
 	if valAsAny == nil {
 		if !valEntry.Metadata.IsNullable {
 			if valEntry.Metadata.IsMustExist {
-				err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, `REQUEST_FIELD_VALUE_IS_NOT_EXIST:%s`, k)
+				err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `REQUEST_FIELD_VALUE_IS_NOT_EXIST:%s`, k)
 				return false, nil, err
 			}
 		}
@@ -75,7 +75,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsNullableString(k string, de
 				} else {
 					v1, ok := defaultValue[0].(string)
 					if !ok {
-						err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `PARAMETER_DEFAULT_VALUE_IS_NOT_STRING:%s=%v`, k, v1)
+						err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `PARAMETER_DEFAULT_VALUE_IS_NOT_STRING:%s=%v`, k, v1)
 						return false, nil, err
 					}
 					return false, &v1, nil
@@ -88,7 +88,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsNullableString(k string, de
 	}
 	v1, ok := valAsAny.(string)
 	if !ok {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `REQUEST_FIELD_VALUE_IS_NOT_STRING:%s=(%v)`, k, valAsAny)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `REQUEST_FIELD_VALUE_IS_NOT_STRING:%s=(%v)`, k, valAsAny)
 		return true, nil, err
 	}
 	return true, &v1, nil
@@ -102,7 +102,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string, defaultVal
 			if len(defaultValue) > 0 {
 				v1, ok := defaultValue[0].(string)
 				if !ok {
-					err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `PARAMETER_DEFAULT_VALUE_IS_NOT_STRING:%s=%v`, k, v1)
+					err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `PARAMETER_DEFAULT_VALUE_IS_NOT_STRING:%s=%v`, k, v1)
 					return false, ``, err
 				}
 			}
@@ -113,7 +113,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string, defaultVal
 	}
 	v1, ok := valAsAny.(string)
 	if !ok {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `REQUEST_FIELD_VALUE_IS_NOT_STRING:%s=(%v)`, k, valAsAny)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `REQUEST_FIELD_VALUE_IS_NOT_STRING:%s=(%v)`, k, valAsAny)
 		return true, "", err
 	}
 	return true, v1, nil
@@ -130,7 +130,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsNullableInt64(k string, def
 				} else {
 					v1, ok := defaultValue[0].(int64)
 					if !ok {
-						err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `PARAMETER_DEFAULT_VALUE_IS_NOT_NULLABLE_INT64:%s=%v`, k, v1)
+						err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `PARAMETER_DEFAULT_VALUE_IS_NOT_NULLABLE_INT64:%s=%v`, k, v1)
 						return false, nil, err
 					}
 					return false, &v1, nil
@@ -143,7 +143,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsNullableInt64(k string, def
 	}
 	v1, ok := valAsAny.(int64)
 	if !ok {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `REQUEST_FIELD_VALUE_IS_NOT_NULLABLE_INT64:%s=(%v)`, k, valAsAny)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `REQUEST_FIELD_VALUE_IS_NOT_NULLABLE_INT64:%s=(%v)`, k, valAsAny)
 		return true, nil, err
 	}
 	return true, &v1, nil
@@ -159,7 +159,7 @@ func getParameterValue[A any](aepr *DXAPIEndPointRequest, k string, defaultValue
 	}
 	val, ok := valAsAny.(A)
 	if !ok {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, `REQUEST_FIELD_VALUE_IS_NOT_TYPE:%s!=%T (%v)`, k, val, valAsAny)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `REQUEST_FIELD_VALUE_IS_NOT_TYPE:%s!=%T (%v)`, k, val, valAsAny)
 		return true, val, err
 	}
 	return true, val, nil

@@ -289,7 +289,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	err = aepr.PreProcessRequest()
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "PREPROCESS_REQUEST_ERROR:%v ", err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "PREPROCESS_REQUEST_ERROR:%v ", err.Error())
 		requestDump, err2 := aepr.RequestDump()
 		if err2 != nil {
 			aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())
@@ -306,7 +306,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		err = middleware(aepr)
 		if err != nil {
 			aepr.Log.Error(fmt.Sprintf("MIDDLEWARE_ERROR:\n%+v", errors.WithStack(err)))
-			err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "MIDDLEWARE_ERROR:%v ", err.Error())
+			err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "MIDDLEWARE_ERROR:%v ", err.Error())
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
 				aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())
@@ -350,7 +350,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			aepr.Log.Errorf("ONEXECUTE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
 
 			if !aepr.ResponseHeaderSent {
-				err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "ONEXECUTE_ERROR:%v", err.Error())
+				err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "ONEXECUTE_ERROR:%v", err.Error())
 				return
 			}
 		} else {

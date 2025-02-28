@@ -165,7 +165,7 @@ func (osm *DXObjectStorageManager) FindObjectStorageAndReceiveObject(aepr *api.D
 	// Get the object storage objectStorage using the bucket_nameid
 	objectStorage, exists := osm.ObjectStorages[nameid]
 	if !exists {
-		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
 	}
 
 	err = objectStorage.ReceiveStreamObject(aepr, filename)
@@ -179,7 +179,7 @@ func (osm *DXObjectStorageManager) FindObjectStorageAndSendObject(aepr *api.DXAP
 	// Get the object storage objectStorage using the bucket_nameid
 	objectStorage, exists := osm.ObjectStorages[nameid]
 	if !exists {
-		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "OBJECT_STORAGE_NAME_NOT_FOUND:%s", nameid)
 	}
 
 	err = objectStorage.SendStreamObject(aepr, filename)
@@ -347,10 +347,10 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	// Get the object storage bucket using the bucket_name
 	object, err := r.DownloadStream(filename)
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "ERROR_IN_DOWNLOAD_STREAM:%s", err.Error())
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "ERROR_IN_DOWNLOAD_STREAM:%s", err.Error())
 	}
 	if object == nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "OBJECT_IS_NIL:%s", r.NameId)
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "OBJECT_IS_NIL:%s", r.NameId)
 	}
 
 	objectInfo, err := object.Stat()
@@ -387,7 +387,7 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	// Send the object stream
 	_, err = io.Copy(responseWriter, reader)
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "SEND_STREAM_ERROR:%s", err.Error())
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "SEND_STREAM_ERROR:%s", err.Error())
 	}
 	aepr.ResponseHeaderSent = true
 	aepr.ResponseBodySent = true
