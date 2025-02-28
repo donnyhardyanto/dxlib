@@ -258,7 +258,7 @@ func (r *DXObjectStorage) Connect() (err error) {
 		}
 		r.Client = minioClient
 		r.Connected = true
-		log.Log.Infof("Connecting to Object Storage %s at %s/%s:MaxFileSize=%d... done CONNECTED", r.NameId, r.Address, r.BucketName, ObjectStorageMaxFileSizeBytes)
+		log.Log.Infof("Connecting to Object Storage %s at %s/%s... done CONNECTED", r.NameId, r.Address, r.BucketName)
 	}
 	return nil
 }

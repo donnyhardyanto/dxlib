@@ -244,6 +244,18 @@ func (aepr *DXAPIEndPointRequest) NewAPIEndPointRequestParameter(aepp DXAPIEndPo
 }
 
 func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
+	if aepr.EndPoint.RequestMaxContentLength > 0 {
+		if aepr.Request.ContentLength > aepr.EndPoint.RequestMaxContentLength {
+			return aepr.WriteResponseAndNewErrorf(http.StatusRequestEntityTooLarge, "", "REQUEST_MAX_CONTENT_LENGTH_EXCEEDED:%d<%d", aepr.EndPoint.RequestMaxContentLength, aepr.Request.ContentLength)
+		}
+	}
+	aepr.ParameterValues = map[string]*DXAPIEndPointRequestParameterValue{}
+	aepr.CurrentUser = DXAPIUser{}
+	aepr.LocalData = map[string]any{}
+	aepr.ErrorMessage = []string{}
+	aepr.ResponseHeaderSent = false
+	aepr.ResponseBodySent = false
+	aepr.RequestBodyAsBytes = nil
 	if aepr.Request.Method != aepr.EndPoint.Method {
 		if aepr.Request.Method == "OPTIONS" {
 			aepr.WriteResponseAsBytes(http.StatusOK, nil, []byte(``))

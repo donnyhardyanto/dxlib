@@ -215,26 +215,27 @@ func GetIPAddress(r *http.Request) string {
 func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType DXAPIEndPointType,
 	contentType utilsHttp.RequestContentType, parameters []DXAPIEndPointParameter, onExecute DXAPIEndPointExecuteFunc,
 	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DXAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc,
-	privileges []string) *DXAPIEndPoint {
+	privileges []string, requestMaxContentLength int64) *DXAPIEndPoint {
 
 	t := a.FindEndPointByURI(uri)
 	if t != nil {
 		log.Log.Fatalf("Duplicate endpoint uri %s", uri)
 	}
 	ae := DXAPIEndPoint{
-		Owner:                 a,
-		Title:                 title,
-		Description:           description,
-		Uri:                   uri,
-		Method:                method,
-		EndPointType:          endPointType,
-		RequestContentType:    contentType,
-		Parameters:            parameters,
-		OnExecute:             onExecute,
-		OnWSLoop:              onWSLoop,
-		ResponsePossibilities: responsePossibilities,
-		Middlewares:           middlewares,
-		Privileges:            privileges,
+		Owner:                   a,
+		Title:                   title,
+		Description:             description,
+		Uri:                     uri,
+		Method:                  method,
+		EndPointType:            endPointType,
+		RequestContentType:      contentType,
+		Parameters:              parameters,
+		OnExecute:               onExecute,
+		OnWSLoop:                onWSLoop,
+		ResponsePossibilities:   responsePossibilities,
+		Middlewares:             middlewares,
+		Privileges:              privileges,
+		RequestMaxContentLength: requestMaxContentLength,
 	}
 	a.EndPoints = append(a.EndPoints, ae)
 	return &ae

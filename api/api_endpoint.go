@@ -62,19 +62,20 @@ type DXAPIEndPointResponsePossibility struct {
 type DXAPIEndPointExecuteFunc func(aepr *DXAPIEndPointRequest) (err error)
 
 type DXAPIEndPoint struct {
-	Owner                 *DXAPI
-	Title                 string
-	Uri                   string
-	Method                string
-	EndPointType          DXAPIEndPointType
-	Description           string
-	RequestContentType    utilsHttp.RequestContentType
-	Parameters            []DXAPIEndPointParameter
-	OnExecute             DXAPIEndPointExecuteFunc
-	OnWSLoop              DXAPIEndPointExecuteFunc
-	ResponsePossibilities map[string]*DXAPIEndPointResponsePossibility
-	Middlewares           []DXAPIEndPointExecuteFunc
-	Privileges            []string
+	Owner                   *DXAPI
+	Title                   string
+	Uri                     string
+	Method                  string
+	EndPointType            DXAPIEndPointType
+	Description             string
+	RequestContentType      utilsHttp.RequestContentType
+	Parameters              []DXAPIEndPointParameter
+	OnExecute               DXAPIEndPointExecuteFunc
+	OnWSLoop                DXAPIEndPointExecuteFunc
+	ResponsePossibilities   map[string]*DXAPIEndPointResponsePossibility
+	Middlewares             []DXAPIEndPointExecuteFunc
+	Privileges              []string
+	RequestMaxContentLength int64
 }
 
 func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
@@ -85,6 +86,7 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 		s += fmt.Sprintf("####  URI: %s\n", aep.Uri)
 		s += fmt.Sprintf("####  Method: %s\n", aep.Method)
 		s += fmt.Sprintf("####  Request Content Type: %s\n", aep.RequestContentType)
+		s += fmt.Sprintf("####  Request Content Length: %d\n", aep.RequestMaxContentLength)
 		s += "####  Parameters:\n"
 		for _, p := range aep.Parameters {
 			s += p.PrintSpec(4)
