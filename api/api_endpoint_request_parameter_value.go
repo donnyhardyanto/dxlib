@@ -128,6 +128,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			if rawValueType != "string" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
+		case "phonenumber":
+			if rawValueType != "string" {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			}
+		case "npwp":
+			if rawValueType != "string" {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			}
 		case "array":
 			if rawValueType != "[]interface {}" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
@@ -226,6 +234,30 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		if s != "" {
 			if !FormatEMailCheckValid(s) {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_EMAIL_FORMAT:%s", s)
+			}
+		}
+		aeprpv.Value = s
+		return nil
+	case "phonenumber":
+		s, ok := aeprpv.RawValue.(string)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		if s != "" {
+			if !FormatPhoneNumberCheckValid(s) {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_PHONENUMBER_FORMAT:%s", s)
+			}
+		}
+		aeprpv.Value = s
+		return nil
+	case "npwp":
+		s, ok := aeprpv.RawValue.(string)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		if s != "" {
+			if !FormatNPWPorNIKCheckValid(s) {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_NPWP_FORMAT:%s", s)
 			}
 		}
 		aeprpv.Value = s
