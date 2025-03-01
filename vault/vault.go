@@ -137,6 +137,7 @@ func (hv *DXHashicorpVault) ResolveAsString(v string) string {
 func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
+		fmt.Sprintf("GetStringOrDefault/hv.VaultGetData=%s", err.Error())
 		panic(err)
 	}
 	dv, ok := data[v]
