@@ -76,6 +76,7 @@ type DXAPIEndPoint struct {
 	Middlewares             []DXAPIEndPointExecuteFunc
 	Privileges              []string
 	RequestMaxContentLength int64
+	RateLimitGroupNameId    string
 }
 
 func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
@@ -193,7 +194,7 @@ func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId, a
 func (aep *DXAPIEndPoint) NewEndPointRequest(context context.Context, w http.ResponseWriter, r *http.Request) *DXAPIEndPointRequest {
 	er := &DXAPIEndPointRequest{
 		Context:         context,
-		_responseWriter: &w,
+		ResponseWriter:  &w,
 		Request:         r,
 		EndPoint:        aep,
 		ParameterValues: map[string]*DXAPIEndPointRequestParameterValue{},

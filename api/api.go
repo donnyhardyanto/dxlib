@@ -215,7 +215,7 @@ func GetIPAddress(r *http.Request) string {
 func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType DXAPIEndPointType,
 	contentType utilsHttp.RequestContentType, parameters []DXAPIEndPointParameter, onExecute DXAPIEndPointExecuteFunc,
 	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DXAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc,
-	privileges []string, requestMaxContentLength int64) *DXAPIEndPoint {
+	privileges []string, requestMaxContentLength int64, rateLimitGroupNameId string) *DXAPIEndPoint {
 
 	t := a.FindEndPointByURI(uri)
 	if t != nil {
@@ -236,6 +236,7 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 		Middlewares:             middlewares,
 		Privileges:              privileges,
 		RequestMaxContentLength: requestMaxContentLength,
+		RateLimitGroupNameId:    rateLimitGroupNameId,
 	}
 	a.EndPoints = append(a.EndPoints, ae)
 	return &ae

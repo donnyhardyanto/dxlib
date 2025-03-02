@@ -28,16 +28,15 @@ type DXAPIEndPointRequest struct {
 	Log                    log.DXLog
 	Request                *http.Request
 	RequestBodyAsBytes     []byte
-	_responseWriter        *http.ResponseWriter
+	ResponseWriter         *http.ResponseWriter
 	_responseErrorAsString string
 	ResponseStatusCode     int
-	//ResponseBodyAsBytes []byte
-	ErrorMessage       []string
-	CurrentUser        DXAPIUser
-	LocalData          map[string]any
-	ResponseHeaderSent bool
-	ResponseBodySent   bool
-	SuppressLogDump    bool
+	ErrorMessage           []string
+	CurrentUser            DXAPIUser
+	LocalData              map[string]any
+	ResponseHeaderSent     bool
+	ResponseBodySent       bool
+	SuppressLogDump        bool
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
@@ -102,7 +101,7 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 }
 
 func (aepr *DXAPIEndPointRequest) GetResponseWriter() *http.ResponseWriter {
-	return aepr._responseWriter
+	return aepr.ResponseWriter
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, responseMessage string, msg string, data ...any) (err error) {

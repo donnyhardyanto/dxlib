@@ -335,6 +335,7 @@ func Set(nameId, title, description string, isLoop bool, debugKey string, debugV
 func GetNameId() string {
 	return App.NameId
 }
+
 func init() {
 	App = DXApp{
 		Args: DXAppArgs{
