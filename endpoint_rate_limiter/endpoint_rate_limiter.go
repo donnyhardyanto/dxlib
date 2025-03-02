@@ -65,6 +65,11 @@ func (e *EndpointRateLimiter) getBlockKey(groupNameId, identifier string) string
 func (e *EndpointRateLimiter) IsAllowed(ctx context.Context, groupNameId, identifier string) (bool, error) {
 	config := e.getConfig(groupNameId)
 
+	// bypass if 0
+	if config.MaxAttempts == 0 {
+		return true, nil
+	}
+
 	// Check if the identifier is blocked for this API
 	blockedKey := e.getBlockKey(groupNameId, identifier)
 	p := *(e.RedisInstance)
