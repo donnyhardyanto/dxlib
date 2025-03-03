@@ -11,11 +11,17 @@ const FormatEmailMaxLength = 254
 const FormatPhoneNumberMinimumLength = 3
 const FormatPhoneNumberMaxLength = 25
 
-// NPWP (with separators) is 22 characters long - XX.XXX.XXX.X-XXX.XXX
-const FormatNPWPWithSeparatorsLength = 22
+const (
+	// NPWP (with separators) can be 20 or 22 characters long
+	// 15 digits: XX.XXX.XXX.X-XXX.XX
+	// 16 digits: XX.XXX.XXX.X-XXX.XXX
+	FormatNPWPWithSeparatorsLengthShort = 20
+	FormatNPWPWithSeparatorsLengthLong  = 22
 
-// NPWP without separators is 16 digits long
-const FormatNPWPDigitsLength = 16
+	// NPWP without separators can be 15 or 16 digits long
+	FormatNPWPDigitsLengthShort = 15
+	FormatNPWPDigitsLengthLong  = 16
+)
 
 // NIK is 16 digits long
 const FormatNIKLength = 16
@@ -133,15 +139,16 @@ func FormatNPWPorNIKCheckValid(s string) bool {
 	// Remove all non-digit characters to check digit count
 	digitsOnly := regexp.MustCompile(`[^0-9]`).ReplaceAllString(s, "")
 
-	// Check if it's an NPWP (15 digits)
-	if len(digitsOnly) == FormatNPWPDigitsLength {
+	// Check if it's an NPWP (15 or 16 digits)
+	if len(digitsOnly) == FormatNPWPDigitsLengthShort || len(digitsOnly) == FormatNPWPDigitsLengthLong {
 		// If it contains separators, validate the format
 		if strings.Contains(s, ".") || strings.Contains(s, "-") {
-			pattern := `^\d{2}\.\d{3}\.\d{3}\.\d{1}-\d{3}\.\d{3}$`
+			// Pattern for both 15 and 16 digit formats
+			pattern := `^\d{2}\.\d{3}\.\d{3}\.\d{1}-\d{3}\.\d{2,3}$`
 			regex := regexp.MustCompile(pattern)
 			return regex.MatchString(s)
 		}
-		// If it's just digits without separators, it's valid
+		// If no separators, the digits-only string is valid
 		return true
 	}
 
@@ -173,32 +180,4 @@ func FormatNPWPorNIKCheckValid(s string) bool {
 
 	// Neither NPWP nor NIK
 	return false
-}
-
-// FormatNPWP formats a string as NPWP if it has the correct number of digits
-func FormatNPWP(s string) string {
-	// Remove all non-digit characters
-	digitsOnly := regexp.MustCompile(`[^0-9]`).ReplaceAllString(s, "")
-
-	if len(digitsOnly) == FormatNPWPDigitsLength {
-		return digitsOnly[0:2] + "." + digitsOnly[2:5] + "." + digitsOnly[5:8] + "." + digitsOnly[8:9] + "-" + digitsOnly[9:12] + "." + digitsOnly[12:15]
-	}
-
-	return s
-}
-
-// NormalizeNPWPorNIK normalizes an NPWP or NIK string
-// For NPWP: Removes all non-digit characters and formats with separators
-// For NIK: Removes all non-digit characters
-func NormalizeNPWPorNIK(s string) string {
-	// Remove all non-digit characters
-	digitsOnly := regexp.MustCompile(`[^0-9]`).ReplaceAllString(s, "")
-
-	// If it's an NPWP length, format it with separators
-	if len(digitsOnly) == FormatNPWPDigitsLength {
-		return FormatNPWP(digitsOnly)
-	}
-
-	// For NIK, return just the digits
-	return digitsOnly
 }
