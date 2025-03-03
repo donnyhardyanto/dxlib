@@ -62,7 +62,7 @@ func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValue
 }
 
 func (t *DXRawTable) GetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = t.SelectOne(log, utils.JSON{
+	rowsInfo, r, err = t.SelectOne(log, nil, utils.JSON{
 		t.FieldNameForRowId: id,
 	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
@@ -90,7 +90,7 @@ func (t *DXRawTable) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.
 }
 
 func (t *DXRawTable) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = t.SelectOne(log, utils.JSON{
+	rowsInfo, r, err = t.SelectOne(log, nil, utils.JSON{
 		t.FieldNameForRowNameId: nameid,
 	}, nil, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
@@ -655,7 +655,7 @@ func (t *DXRawTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err erro
 	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
-func (t *DXRawTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
+func (t *DXRawTable) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
@@ -673,11 +673,11 @@ func (t *DXRawTable) SelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSO
 		}
 	}
 
-	return t.Database.SelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
+	return t.Database.SelectOne(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
 }
 
 func (t *DXRawTable) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fieldValue string) (bool, error) {
-	_, r, err := t.SelectOne(log, utils.JSON{
+	_, r, err := t.SelectOne(log, nil, utils.JSON{
 		fieldName: fieldValue,
 	}, nil, nil)
 	if err != nil {
