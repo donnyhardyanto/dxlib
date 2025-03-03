@@ -11,11 +11,11 @@ const FormatEmailMaxLength = 254
 const FormatPhoneNumberMinimumLength = 3
 const FormatPhoneNumberMaxLength = 25
 
-// NPWP (with separators) is 20 characters long - XX.XXX.XXX.X-XXX.XXX
-const FormatNPWPWithSeparatorsLength = 20
+// NPWP (with separators) is 22 characters long - XX.XXX.XXX.X-XXX.XXX
+const FormatNPWPWithSeparatorsLength = 22
 
-// NPWP without separators is 15 digits long
-const FormatNPWPDigitsLength = 15
+// NPWP without separators is 16 digits long
+const FormatNPWPDigitsLength = 16
 
 // NIK is 16 digits long
 const FormatNIKLength = 16
