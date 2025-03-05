@@ -61,7 +61,7 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 
 func ResponseBodyToJSON(t *testing.T, r *http.Response) (utils.JSON, error) {
 	if r.StatusCode != http.StatusOK {
-		err := fmt.Errorf("response status code is not 200 (%v)", r.StatusCode)
+		err := errors.Errorf("response status code is not 200 (%v)", r.StatusCode)
 		t.Log(err.Error())
 		t.FailNow()
 		return nil, err

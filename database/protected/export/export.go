@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 	"os"
 	"path/filepath"
@@ -34,7 +35,7 @@ func ExportQueryResults(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOpt
 
 	dir := filepath.Dir(opts.FilePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
+		return errors.Errorf("failed to create directory: %w", err)
 	}
 
 	switch opts.Format {
@@ -43,7 +44,7 @@ func ExportQueryResults(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOpt
 	case XLS:
 		return exportToXLS(rowsInfo, rows, opts)
 	default:
-		return fmt.Errorf("unsupported export format: %s", opts.Format)
+		return errors.Errorf("unsupported export format: %s", opts.Format)
 	}
 }
 
@@ -63,14 +64,14 @@ func ExportToStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions
 		data, err := exportToXLSStream(rowsInfo, rows, opts)
 		return data, contentType, err
 	default:
-		return nil, "", fmt.Errorf("unsupported export format: %s", opts.Format)
+		return nil, "", errors.Errorf("unsupported export format: %s", opts.Format)
 	}
 }
 
 func exportToCSV(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
 	file, err := os.Create(opts.FilePath)
 	if err != nil {
-		return fmt.Errorf("failed to create CSV file: %w", err)
+		return errors.Errorf("failed to create CSV file: %w", err)
 	}
 	defer file.Close()
 
@@ -78,7 +79,7 @@ func exportToCSV(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) e
 	defer writer.Flush()
 
 	if err := writer.Write(rowsInfo.Columns); err != nil {
-		return fmt.Errorf("failed to write CSV headers: %w", err)
+		return errors.Errorf("failed to write CSV headers: %w", err)
 	}
 
 	for _, row := range rows {
@@ -87,7 +88,7 @@ func exportToCSV(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) e
 			record[i] = formatValue(row[col], opts.DateFormat)
 		}
 		if err := writer.Write(record); err != nil {
-			return fmt.Errorf("failed to write CSV record: %w", err)
+			return errors.Errorf("failed to write CSV record: %w", err)
 		}
 	}
 
@@ -99,7 +100,7 @@ func exportToCSVStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOpti
 	writer := csv.NewWriter(buf)
 
 	if err := writer.Write(rowsInfo.Columns); err != nil {
-		return nil, fmt.Errorf("failed to write CSV headers: %w", err)
+		return nil, errors.Errorf("failed to write CSV headers: %w", err)
 	}
 
 	for _, row := range rows {
@@ -108,7 +109,7 @@ func exportToCSVStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOpti
 			record[i] = formatValue(row[col], opts.DateFormat)
 		}
 		if err := writer.Write(record); err != nil {
-			return nil, fmt.Errorf("failed to write CSV record: %w", err)
+			return nil, errors.Errorf("failed to write CSV record: %w", err)
 		}
 	}
 	writer.Flush()
@@ -141,7 +142,7 @@ func exportToXLSStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOpti
 
 	buf, err := f.WriteToBuffer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to write Excel to buffer: %w", err)
+		return nil, errors.Errorf("failed to write Excel to buffer: %w", err)
 	}
 	return buf.Bytes(), nil
 }
@@ -156,10 +157,10 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.RowsInfo, rows []utils.JSON,
 	for i, col := range rowsInfo.Columns {
 		cellName, err := excelize.CoordinatesToCellName(i+1, 1)
 		if err != nil {
-			return fmt.Errorf("invalid cell coordinates: %w", err)
+			return errors.Errorf("invalid cell coordinates: %w", err)
 		}
 		if err := f.SetCellValue(sheetName, cellName, col); err != nil {
-			return fmt.Errorf("failed to write header: %w", err)
+			return errors.Errorf("failed to write header: %w", err)
 		}
 	}
 
@@ -168,10 +169,10 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.RowsInfo, rows []utils.JSON,
 		for colIdx, col := range rowsInfo.Columns {
 			cellName, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
 			if err != nil {
-				return fmt.Errorf("invalid cell coordinates: %w", err)
+				return errors.Errorf("invalid cell coordinates: %w", err)
 			}
 			if err := f.SetCellValue(sheetName, cellName, formatValue(row[col], opts.DateFormat)); err != nil {
-				return fmt.Errorf("failed to write cell value: %w", err)
+				return errors.Errorf("failed to write cell value: %w", err)
 			}
 		}
 	}
@@ -184,7 +185,7 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.RowsInfo, rows []utils.JSON,
 	})
 	if err == nil {
 		if err := f.SetRowStyle(sheetName, 1, 1, style); err != nil {
-			return fmt.Errorf("failed to apply header style: %w", err)
+			return errors.Errorf("failed to apply header style: %w", err)
 		}
 	}
 
@@ -192,10 +193,10 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.RowsInfo, rows []utils.JSON,
 	for i := range rowsInfo.Columns {
 		col, err := excelize.ColumnNumberToName(i + 1)
 		if err != nil {
-			return fmt.Errorf("invalid column number: %w", err)
+			return errors.Errorf("invalid column number: %w", err)
 		}
 		if err := f.SetColWidth(sheetName, col, col, 15); err != nil {
-			return fmt.Errorf("failed to set column width: %w", err)
+			return errors.Errorf("failed to set column width: %w", err)
 		}
 	}
 

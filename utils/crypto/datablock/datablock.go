@@ -5,10 +5,10 @@ import (
 	"crypto/ed25519"
 	"crypto/sha512"
 	"encoding/hex"
-	"errors"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/donnyhardyanto/dxlib/utils/crypto/aes"
 	"github.com/donnyhardyanto/dxlib/utils/lv"
+	"github.com/pkg/errors"
 	"time"
 	_ "time/tzdata"
 )

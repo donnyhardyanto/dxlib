@@ -2,7 +2,7 @@ package sqlfile
 
 import (
 	"database/sql"
-	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"strings"
 )
@@ -101,7 +101,7 @@ func (s *SqlFile) Directory(dir string) error {
 	}
 
 	if !foundSQL {
-		return fmt.Errorf("no SQL files found in directory %s", dir)
+		return errors.Errorf("no SQL files found in directory %s", dir)
 	}
 
 	return nil
@@ -265,7 +265,7 @@ func removeComments(content string) string {
 func load(path string) ([]string, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
+		return nil, errors.Errorf("failed to read file %s: %w", path, err)
 	}
 
 	// Remove comments while preserving newlines
@@ -280,12 +280,12 @@ func load(path string) ([]string, error) {
 // Exec executes SQL statements
 func (s *SqlFile) Exec(db *sql.DB) (res []sql.Result, err error) {
 	if db == nil {
-		return nil, fmt.Errorf("nil database connection")
+		return nil, errors.Errorf("nil database connection")
 	}
 
 	tx, err := db.Begin()
 	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, errors.Errorf("failed to begin transaction: %w", err)
 	}
 	defer saveTx(tx, &err)
 
@@ -298,7 +298,7 @@ func (s *SqlFile) Exec(db *sql.DB) (res []sql.Result, err error) {
 
 		r, err := tx.Exec(query)
 		if err != nil {
-			return nil, fmt.Errorf("SQL error: %w\nQuery: %s", err, query)
+			return nil, errors.Errorf("SQL error: %w\nQuery: %s", err, query)
 		}
 		results = append(results, r)
 	}

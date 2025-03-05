@@ -2,7 +2,6 @@ package object_storage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/api"
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
@@ -11,6 +10,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strings"
@@ -88,7 +88,7 @@ func (osm *DXObjectStorageManager) NewObjectStorage(nameId string, isConnectAtSt
 func (osm *DXObjectStorageManager) LoadFromConfiguration(configurationNameId string) (err error) {
 	configuration, ok := dxlibv3Configuration.Manager.Configurations[configurationNameId]
 	if !ok {
-		return fmt.Errorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
+		return errors.Errorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
 	}
 	isConnectAtStart := false
 	mustConnected := false

@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	//"errors"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -342,7 +341,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	if p.OnExecute != nil {
 		err = p.OnExecute(aepr)
 		if err != nil {
-			aepr.Log.Error(fmt.Sprintf("ONEXECUTE_ERROR:\n%+v", errors.WithStack(err)))
+			aepr.Log.Errorf("ONEXECUTE_ERROR:\n%+v\n", err)
 
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {

@@ -514,7 +514,7 @@ func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping utils2.F
 		return nil, nil, err
 	}
 	if resultData == nil {
-		return nil, nil, fmt.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", tableName)
+		return nil, nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", tableName)
 	}
 	return rowsInfo, resultData, err
 }

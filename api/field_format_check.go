@@ -1,7 +1,7 @@
 package api
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -104,7 +104,7 @@ func FormatPhoneNumberCheckValid(s string) bool {
 // Helper function to normalize phone numbers to E.164 format
 func NormalizePhoneNumber(s string) (string, error) {
 	if !FormatPhoneNumberCheckValid(s) {
-		return "", fmt.Errorf("invalid phone number format")
+		return "", errors.Errorf("invalid phone number format")
 	}
 
 	// Remove all non-digit characters except leading +

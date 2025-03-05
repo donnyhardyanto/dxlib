@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/core"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"runtime/debug"
 )
@@ -124,7 +125,7 @@ func (l *DXLog) Warnf(text string, v ...any) {
 }
 
 func (l *DXLog) WarnAndCreateErrorf(text string, v ...any) (err error) {
-	err = fmt.Errorf(text, v...)
+	err = errors.Errorf(text, v...)
 	l.LogText(DXLogLevelWarn, ``, err.Error())
 	return err
 }
@@ -139,7 +140,7 @@ func (l *DXLog) Errorf(text string, v ...any) {
 }
 
 func (l *DXLog) ErrorAndCreateErrorf(text string, v ...any) (err error) {
-	err = fmt.Errorf(text, v...)
+	err = errors.Errorf(text, v...)
 	l.Error(err.Error())
 	return err
 }
@@ -153,7 +154,7 @@ func (l *DXLog) Fatalf(text string, v ...any) {
 }
 
 func (l *DXLog) FatalAndCreateErrorf(text string, v ...any) (err error) {
-	err = fmt.Errorf(text, v...)
+	err = errors.Errorf(text, v...)
 	l.Fatal(err.Error())
 	return err
 }
@@ -163,7 +164,7 @@ func (l *DXLog) Panic(location string, err error) {
 }
 
 func (l *DXLog) PanicAndCreateErrorf(location, text string, v ...any) (err error) {
-	err = fmt.Errorf(text, v...)
+	err = errors.Errorf(text, v...)
 	l.Panic(location, err)
 	return err
 }

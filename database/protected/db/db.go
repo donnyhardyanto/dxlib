@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/database/database_type"
 	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 	go_ora "github.com/sijms/go-ora/v2/network"
 	"strconv"
 	"strings"
@@ -139,7 +139,7 @@ func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON, driverName strin
 func ArrayToJSON[T any](arr []T) (string, error) {
 	jsonBytes, err := json.Marshal(arr)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal array: %w", err)
+		return "", errors.Errorf("failed to marshal array: %w", err)
 	}
 	return string(jsonBytes), nil
 }
@@ -149,7 +149,7 @@ func JSONToArray[T any](jsonStr string) ([]T, error) {
 	var arr []T
 	err := json.Unmarshal([]byte(jsonStr), &arr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal array: %w", err)
+		return nil, errors.Errorf("failed to unmarshal array: %w", err)
 	}
 	return arr, nil
 }
@@ -332,7 +332,7 @@ func validateOrderDirection(direction string) (string, error) {
 	case "": // Default to ASC if empty
 		return "ASC", nil
 	default:
-		return "", fmt.Errorf("invalid sort direction: %s. Must be ASC or DESC", direction)
+		return "", errors.Errorf("invalid sort direction: %s. Must be ASC or DESC", direction)
 	}
 }
 
@@ -351,7 +351,7 @@ func formatOrderByField(field string, direction string, driverName string) (stri
 	case "sqlserver":
 		// SQL Server supports NULLS LAST/FIRST but needs specific syntax
 		if strings.Contains(strings.ToLower(field), "nulls") {
-			return "", fmt.Errorf("SQL Server doesn't support NULLS FIRST/LAST in ORDER BY directly")
+			return "", errors.Errorf("SQL Server doesn't support NULLS FIRST/LAST in ORDER BY directly")
 		}
 		return field + " " + validDirection, nil
 
@@ -389,7 +389,7 @@ func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, drive
 	for field, direction := range orderbyKeyValues {
 		formattedPart, err := formatOrderByField(field, direction, driverName)
 		if err != nil {
-			return "", fmt.Errorf("error formatting ORDER BY for field %s: %w", field, err)
+			return "", errors.Errorf("error formatting ORDER BY for field %s: %w", field, err)
 		}
 		orderParts = append(orderParts, formattedPart)
 	}
@@ -647,7 +647,7 @@ func QueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapp
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	rows, err := db.Queryx(query, arg...)
@@ -716,7 +716,7 @@ func NamedQueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTyp
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	rows, err := db.NamedQuery(query, arg)
@@ -798,7 +798,7 @@ func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId stri
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, fieldArgs)
 	if err != nil {
-		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return 0, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	// Execute the statement
@@ -831,7 +831,7 @@ func OracleDelete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.J
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, fieldArgs)
 	if err != nil {
-		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	// Execute the statement
@@ -870,7 +870,7 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, setFieldArgs)
 	if err != nil {
-		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	// Execute the statement
@@ -892,7 +892,7 @@ func _oracleSelectRaw(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.Field
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, fieldArgs)
 	if err != nil {
-		return nil, r, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	// Execute the statement
@@ -997,7 +997,7 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 
 	err := sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
-		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return 0, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
 	rows, err := db.NamedQuery(query, arg)
@@ -1031,7 +1031,7 @@ func NamedQueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTy
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
-		return nil, r, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
 	rows, err := db.NamedQuery(query, arg)
@@ -1070,7 +1070,7 @@ func QueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMap
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
-		return nil, r, fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
 	rows, err := db.Queryx(query, arg...)
@@ -1747,7 +1747,7 @@ func Count(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAnd
 			args,
 		)
 		if err != nil {
-			return 0, nil, fmt.Errorf("count query failed for %s: %w", driverName, err)
+			return 0, nil, errors.Errorf("count query failed for %s: %w", driverName, err)
 		}
 
 		// Special handling for Oracle's number types
@@ -1756,7 +1756,7 @@ func Count(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAnd
 		}
 
 	default:
-		return 0, nil, fmt.Errorf("unsupported database type: %s", driverName)
+		return 0, nil, errors.Errorf("unsupported database type: %s", driverName)
 	}
 
 	return totalRows, summaryRows, nil
@@ -1792,7 +1792,7 @@ func CountOne(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, where
 	}
 
 	if totalRows != 1 {
-		return totalRows, summaryRows, fmt.Errorf("expected exactly one row, got %d rows", totalRows)
+		return totalRows, summaryRows, errors.Errorf("expected exactly one row, got %d rows", totalRows)
 	}
 
 	return totalRows, summaryRows, nil
@@ -1808,7 +1808,7 @@ func ShouldCount(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, wh
 	}
 
 	if totalRows == 0 {
-		return 0, nil, fmt.Errorf("NO_ROWS_FOUND:%s", tableName)
+		return 0, nil, errors.Errorf("NO_ROWS_FOUND:%s", tableName)
 	}
 
 	return totalRows, summaryRows, nil
@@ -1830,7 +1830,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (
 
 	err = sqlchecker.CheckAll(db.DriverName(), s, wKV)
 	if err != nil {
-		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	r, err = db.NamedExec(s, wKV)
@@ -1851,7 +1851,7 @@ func Update(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValu
 
 	err = sqlchecker.CheckAll(db.DriverName(), s, joinedKeyValues)
 	if err != nil {
-		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	result, err = db.NamedExec(s, joinedKeyValues)

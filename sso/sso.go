@@ -80,12 +80,12 @@ func (om *DXOrganizationsManager) NewOrganization(nameid string) *DXOrganization
 func (om *DXOrganizationsManager) GetValidOrganizationAndApplication(organizationNameId, applicationNameid string) (org *DXOrganization, applicationSettings utils.JSON, err error) {
 	organization, ok := om.Organizations[organizationNameId]
 	if !ok {
-		err = fmt.Errorf("invalid Organization nameId %s", organizationNameId)
+		err = errors.Errorf("invalid Organization nameId %s", organizationNameId)
 		return nil, nil, err
 	}
 	applicationSettings, ok = (*organization).Applications[applicationNameid].(utils.JSON)
 	if !ok {
-		err = fmt.Errorf("invalid FCMApplication nameId %s for Organization %s", applicationNameid, organizationNameId)
+		err = errors.Errorf("invalid FCMApplication nameId %s for Organization %s", applicationNameid, organizationNameId)
 		return nil, nil, err
 	}
 	return organization, applicationSettings, nil

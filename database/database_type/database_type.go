@@ -3,6 +3,7 @@ package database_type
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"regexp"
 	"strconv"
@@ -195,7 +196,7 @@ func parseJSONArrayToStringArray(jsonStr string) ([]string, error) {
 	var arr []string
 	err := json.Unmarshal([]byte(jsonStr), &arr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse JSON array: %w", err)
+		return nil, errors.Errorf("failed to parse JSON array: %w", err)
 	}
 	return arr, nil
 }
@@ -326,7 +327,7 @@ func ConvertParamsWithMap(query string, params map[string]any, dbType DXDatabase
 	for _, match := range matches {
 		name := match[1:]
 		if _, exists := params[name]; !exists {
-			return "", nil, fmt.Errorf("parameter %s not found in params map", name)
+			return "", nil, errors.Errorf("parameter %s not found in params map", name)
 		}
 	}
 

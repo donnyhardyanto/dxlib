@@ -2,7 +2,7 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 

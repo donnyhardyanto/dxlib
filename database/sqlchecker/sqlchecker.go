@@ -4,6 +4,7 @@ package sqlchecker
 import (
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/database/database_type"
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"regexp"
 	"strings"
@@ -73,29 +74,29 @@ var (
 // CheckIdentifier validates table and column names
 func CheckIdentifier(identifier string, dialect database_type.DXDatabaseType) error {
 	if identifier == "" {
-		return fmt.Errorf("identifier cannot be empty")
+		return errors.Errorf("identifier cannot be empty")
 	}
 
 	// Handle qualified names (e.g., schema.table.column)
 	parts := strings.Split(identifier, ".")
 	for _, part := range parts {
 		if part == "" {
-			return fmt.Errorf("empty part in identifier %q", identifier)
+			return errors.Errorf("empty part in identifier %q", identifier)
 		}
 
 		// Check pattern
 		if !identifierPattern.MatchString(part) {
-			return fmt.Errorf("invalid identifier format: %s", part)
+			return errors.Errorf("invalid identifier format: %s", part)
 		}
 
 		// Check length
 		if maxLen := maxIdentifierLengths[dialect]; len(part) > maxLen {
-			return fmt.Errorf("identifier %q exceeds maximum length of %d for dialect %s", part, maxLen, dialect)
+			return errors.Errorf("identifier %q exceeds maximum length of %d for dialect %s", part, maxLen, dialect)
 		}
 
 		// Check for suspicious patterns
 		if err := checkSuspiciousQueryPatterns(part, false); err != nil {
-			return fmt.Errorf("invalid identifier %q: %w", part, err)
+			return errors.Errorf("invalid identifier %q: %w", part, err)
 		}
 	}
 
@@ -107,7 +108,7 @@ func CheckOperator(operator string, dialect database_type.DXDatabaseType) error 
 	op := strings.ToLower(strings.TrimSpace(operator))
 	if ops, ok := validOperators[dialect]; ok {
 		if !ops[op] {
-			return fmt.Errorf("operator %q not supported for dialect %s", operator, dialect)
+			return errors.Errorf("operator %q not supported for dialect %s", operator, dialect)
 		}
 	}
 	return nil
@@ -158,7 +159,7 @@ func CheckValue(value any) error {
 		return nil
 	default:
 		return nil
-		//return fmt.Errorf("unsupported value type: %T", value)
+		//return errors.Errorf("unsupported value type: %T", value)
 	}
 
 	return nil
@@ -215,7 +216,7 @@ func CheckLikePattern(query string) error {
 
 		// Check wildcard count
 		if strings.Count(pattern, "%") > 5 {
-			return fmt.Errorf("too many wildcards in LIKE pattern")
+			return errors.Errorf("too many wildcards in LIKE pattern")
 		}
 	}
 
@@ -225,7 +226,7 @@ func CheckLikePattern(query string) error {
 // CheckOrderBy validates ORDER BY expressions
 func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 	if expr == "" {
-		return fmt.Errorf("empty order by expression")
+		return errors.Errorf("empty order by expression")
 	}
 
 	for _, part := range strings.Split(expr, ",") {
@@ -237,26 +238,26 @@ func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 		// Split into field and direction
 		tokens := strings.Fields(part)
 		if len(tokens) == 0 {
-			return fmt.Errorf("empty order by part")
+			return errors.Errorf("empty order by part")
 		}
 
 		// Check field name
 		if err := CheckIdentifier(tokens[0], dialect); err != nil {
-			return fmt.Errorf("invalid field in order by: %w", err)
+			return errors.Errorf("invalid field in order by: %w", err)
 		}
 
 		// Check direction if specified
 		if len(tokens) > 1 {
 			dir := strings.ToUpper(tokens[1])
 			if dir != "ASC" && dir != "DESC" {
-				return fmt.Errorf("invalid sort direction: %s", tokens[1])
+				return errors.Errorf("invalid sort direction: %s", tokens[1])
 			}
 		}
 
 		// Check for NULLS FIRST/LAST if present
 		if len(tokens) > 2 {
 			if tokens[2] != "NULLS" || len(tokens) < 4 || (tokens[3] != "FIRST" && tokens[3] != "LAST") {
-				return fmt.Errorf("invalid NULLS FIRST/LAST syntax")
+				return errors.Errorf("invalid NULLS FIRST/LAST syntax")
 			}
 		}
 	}
@@ -267,19 +268,19 @@ func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 // CheckBaseQuery validates the base query for suspicious patterns
 func CheckBaseQuery(query string, dialect database_type.DXDatabaseType) error {
 	if query == "" {
-		return fmt.Errorf("empty query")
+		return errors.Errorf("empty query")
 	}
 
 	loweredQuery := strings.ToLower(query)
 
 	// Check for multiple statements
 	if strings.Count(query, ";") > 0 {
-		return fmt.Errorf("multiple statements not allowed")
+		return errors.Errorf("multiple statements not allowed")
 	}
 
 	// Check for suspicious patterns
 	if err := checkSuspiciousQueryPatterns(loweredQuery, false); err != nil {
-		return fmt.Errorf("query validation failed: %w", err)
+		return errors.Errorf("query validation failed: %w", err)
 	}
 
 	return nil
@@ -293,7 +294,7 @@ func checkStringValue(value string) error {
 	// Check for suspicious patterns
 	for _, pattern := range suspiciousValuePatterns {
 		if strings.Contains(lowered, pattern) {
-			return fmt.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
+			return errors.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
 		}
 	}*/
 	return nil
@@ -311,7 +312,7 @@ func checkSuspiciousQueryPatterns(value string, ignoreInComments bool) error {
 		// Use a more specific logic to avoid false positives
 
 		if regexp.MustCompile(pattern).MatchString(lowered) {
-			return fmt.Errorf("suspicious pattern detected: %s", pattern)
+			return errors.Errorf("suspicious pattern detected: %s", pattern)
 		}
 
 	}
@@ -324,19 +325,19 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	}
 	err = CheckBaseQuery(query, database_type.StringToDXDatabaseType(dbDriverName))
 	if err != nil {
-		return fmt.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
 	err = CheckValue(arg)
 	if err != nil {
-		return fmt.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w", err)
+		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w", err)
 	}
 
 	// Check LIKE patterns
 	if strings.Contains(query, "LIKE") {
 		err = CheckLikePattern(query)
 		if err != nil {
-			return fmt.Errorf("SQL_INJECTION_DETECTED:LIKE_PATTERN_VALIDATION_FAILED: %w", err)
+			return errors.Errorf("SQL_INJECTION_DETECTED:LIKE_PATTERN_VALIDATION_FAILED: %w", err)
 		}
 	}
 
@@ -344,7 +345,7 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	if strings.Contains(query, "ORDER BY") {
 		err = CheckOrderBy(query, database_type.StringToDXDatabaseType(dbDriverName))
 		if err != nil {
-			return fmt.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %w", err)
+			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %w", err)
 		}
 	}
 
@@ -380,13 +381,13 @@ func ValidateAndSanitizeOrderBy(orderBy string) (string, error) {
 		// Split into field and direction
 		components := strings.Fields(part)
 		if len(components) == 0 || len(components) > 2 {
-			return "", fmt.Errorf("invalid order by format: %s", part)
+			return "", errors.Errorf("invalid order by format: %s", part)
 		}
 
 		// Validate field name (only allow alphanumeric and underscore)
 		field := strings.ToLower(components[0])
 		if !allowedFields[field] {
-			return "", fmt.Errorf("invalid field name: %s", field)
+			return "", errors.Errorf("invalid field name: %s", field)
 		}
 
 		// Validate direction if provided
@@ -394,7 +395,7 @@ func ValidateAndSanitizeOrderBy(orderBy string) (string, error) {
 		if len(components) == 2 {
 			dir := strings.ToUpper(components[1])
 			if dir != "ASC" && dir != "DESC" {
-				return "", fmt.Errorf("invalid sort direction: %s", components[1])
+				return "", errors.Errorf("invalid sort direction: %s", components[1])
 			}
 			direction = dir
 		}

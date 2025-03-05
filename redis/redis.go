@@ -3,14 +3,13 @@ package redis
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/go-redis/redis/v8"
+	"github.com/pkg/errors"
 	"time"
 	_ "time/tzdata"
 )
@@ -56,7 +55,7 @@ func (rs *DXRedisManager) NewRedis(nameId string, isConnectAtStart, mustConnecte
 func (rs *DXRedisManager) LoadFromConfiguration(configurationNameId string) (err error) {
 	configuration, ok := dxlibv3Configuration.Manager.Configurations[configurationNameId]
 	if !ok {
-		return fmt.Errorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
+		return errors.Errorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
 	}
 	isConnectAtStart := false
 	mustConnected := false

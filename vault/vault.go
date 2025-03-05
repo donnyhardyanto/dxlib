@@ -5,6 +5,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	vault "github.com/hashicorp/vault/api"
+	"github.com/pkg/errors"
 	"strconv"
 	"strings"
 )
@@ -146,7 +147,7 @@ func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	}
 	dvv, ok := dv.(string)
 	if !ok {
-		err = fmt.Errorf("vault data is not string: %s=%v", v, dv)
+		err = errors.Errorf("vault data is not string: %s=%v", v, dv)
 		panic(err)
 	}
 	return dvv

@@ -6,6 +6,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -130,11 +131,11 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
         `
 		_, err = db.Exec(query, dbName)
 	default:
-		return fmt.Errorf("unsupported database driver: %s", driverName)
+		return errors.Errorf("unsupported database driver: %s", driverName)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to kill connections: %w", err)
+		return errors.Errorf("failed to kill connections: %w", err)
 	}
 	return nil
 }
@@ -205,12 +206,12 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
             END;
         `, dbName, dbName, dbName)
 	default:
-		return fmt.Errorf("unsupported database driver: %s", driverName)
+		return errors.Errorf("unsupported database driver: %s", driverName)
 	}
 
 	_, err = db.Exec(query)
 	if err != nil {
-		return fmt.Errorf("failed to drop database: %w", err)
+		return errors.Errorf("failed to drop database: %w", err)
 	}
 
 	return nil
@@ -236,12 +237,12 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
             END;
         `, dbName, dbName, dbName)
 	default:
-		return fmt.Errorf("unsupported database driver: %s", driverName)
+		return errors.Errorf("unsupported database driver: %s", driverName)
 	}
 
 	_, err := db.Exec(query)
 	if err != nil {
-		return fmt.Errorf("failed to create database/user: %w", err)
+		return errors.Errorf("failed to create database/user: %w", err)
 	}
 
 	return nil
@@ -249,7 +250,7 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 		query := fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)
 		_, err := db.Exec(query)
 		if err != nil {
-			return fmt.Errorf("failed to create database: %w", err)
+			return errors.Errorf("failed to create database: %w", err)
 		}
 		return nil*/
 }

@@ -6,9 +6,9 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/pkg/errors"
 	"go/types"
 	"math"
 	"net"
@@ -160,11 +160,11 @@ func GetValueFromNestedMap(data map[string]interface{}, key string) (interface{}
 	for _, k := range keys {
 		valueMap, ok := value.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("key %s does not exist", k)
+			return nil, errors.Errorf("key %s does not exist", k)
 		}
 		value, ok = valueMap[k]
 		if !ok {
-			return nil, fmt.Errorf("key %s does not exist", k)
+			return nil, errors.Errorf("key %s does not exist", k)
 		}
 	}
 	return value, nil
@@ -464,7 +464,7 @@ func ShouldStrictJSONToMapStringString(kv JSON) (r map[string]string, err error)
 		case string:
 			r[k] = v.(string)
 		default:
-			err = fmt.Errorf("error convert JSON to Map[string]string")
+			err = errors.Errorf("error convert JSON to Map[string]string")
 			return nil, err
 		}
 	}
@@ -649,7 +649,7 @@ func GetJSONFromV(v any) (r JSON, err error) {
 	if !ok {
 		rASBytes, ok := v.([]byte)
 		if !ok {
-			err = fmt.Errorf("VALUE_IS_NOT_JSON:%v", v)
+			err = errors.Errorf("VALUE_IS_NOT_JSON:%v", v)
 			return nil, err
 		}
 		r = JSON{}
@@ -667,7 +667,7 @@ func GetArrayFromV(v any) (r []any, err error) {
 	}
 	rASBytes, ok := v.([]byte)
 	if !ok {
-		err = fmt.Errorf("VALUE_IS_NOT_ARRAY_BYTE:%v", v)
+		err = errors.Errorf("VALUE_IS_NOT_ARRAY_BYTE:%v", v)
 		return nil, err
 	}
 	r = []any{}
@@ -691,7 +691,7 @@ func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
 		case string:
 			rASBytes = []byte(value) // Convert string to []byte
 		default:
-			err = fmt.Errorf("KEY_%s_IS_NOT_JSON", key)
+			err = errors.Errorf("KEY_%s_IS_NOT_JSON", key)
 			return nil, err
 		}
 		r = JSON{}
@@ -731,7 +731,7 @@ func GetMapValue[T any](m map[string]any, key string) (exist bool, value T, err 
 	// Attempt type assertion
 	typedValue, ok := rawValue.(T)
 	if !ok {
-		return true, value, fmt.Errorf("value for key '%s' cannot be converted to requested type", key)
+		return true, value, errors.Errorf("value for key '%s' cannot be converted to requested type", key)
 	}
 
 	return true, typedValue, nil

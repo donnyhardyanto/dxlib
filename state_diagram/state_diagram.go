@@ -1,8 +1,8 @@
 package state_diagram
 
 import (
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"time"
 	_ "time/tzdata"
 )

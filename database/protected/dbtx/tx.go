@@ -2,11 +2,11 @@ package dbtx
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
@@ -82,7 +82,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 func TxNamedQuery(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, args any) (rows *sqlx.Rows, err error) {
 	err = sqlchecker.CheckAll(tx.DriverName(), query, args)
 	if err != nil {
-		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	rows, err = tx.NamedQuery(query, args)
@@ -101,7 +101,7 @@ func TxNamedQuery(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, 
 func TxNamedExec(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, args any) (r sql.Result, err error) {
 	err = sqlchecker.CheckAll(tx.DriverName(), query, args)
 	if err != nil {
-		return nil, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return nil, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	r, err = tx.NamedExec(query, args)
@@ -253,7 +253,7 @@ func TxShouldSelectOne(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.F
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
-		err := fmt.Errorf(`%s:%s`, err, tableName)
+		err := errors.Errorf(`%s:%s`, err, tableName)
 		return rowsInfo, nil, err
 	}
 	wKV, err := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
@@ -263,7 +263,7 @@ func TxShouldSelectOne(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.F
 
 	rowsInfo, r, err = TxShouldNamedQueryRow(log, fieldTypeMapping, autoRollback, tx, s, wKV)
 	if err != nil {
-		err := fmt.Errorf(`%s:%s`, err, tableName)
+		err := errors.Errorf(`%s:%s`, err, tableName)
 		return rowsInfo, nil, err
 	}
 	return rowsInfo, r, err
@@ -324,7 +324,7 @@ func OracleTxInsertReturning(tx *sqlx.Tx, tableName string, fieldNameForRowId st
 
 	err = sqlchecker.CheckAll(tx.DriverName(), query, fieldArgs)
 	if err != nil {
-		return 0, fmt.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
+		return 0, errors.Errorf("SQL_INJECTION_DETECTED:VALIDATION_FAILED: %w", err)
 	}
 
 	// Execute the statement

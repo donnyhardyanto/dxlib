@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -84,7 +85,7 @@ func anyMerge(newerValue, olderValue any) any {
 func GetBool(kv utils.JSON, k string) (bool, error) {
 	val, exists := kv[k]
 	if !exists {
-		return false, fmt.Errorf("key %q not found", k)
+		return false, errors.Errorf("key %q not found", k)
 	}
 
 	switch v := val.(type) {
@@ -103,7 +104,7 @@ func GetBool(kv utils.JSON, k string) (bool, error) {
 		}
 	}
 
-	return false, fmt.Errorf("cannot convert %T value %v to bool", val, val)
+	return false, errors.Errorf("cannot convert %T value %v to bool", val, val)
 }
 
 func GetString(kv utils.JSON, k string) (v string, err error) {
@@ -115,7 +116,7 @@ func GetString(kv utils.JSON, k string) (v string, err error) {
 		var ok bool
 		z, ok = kv[k].(string)
 		if !ok {
-			return "", fmt.Errorf("can not get %s as %T from %v", k, v, kv)
+			return "", errors.Errorf("can not get %s as %T from %v", k, v, kv)
 		}
 	}
 	return z, nil
@@ -136,7 +137,7 @@ func GetNumber[A Number](kv utils.JSON, k string) (v A, err error) {
 		var ok bool
 		z, ok = kv[k].(float64)
 		if !ok {
-			return 0, fmt.Errorf("can not get %s as %T from %v", k, v, kv)
+			return 0, errors.Errorf("can not get %s as %T from %v", k, v, kv)
 		}
 	}
 	y := A(z)
@@ -218,7 +219,7 @@ func GetTime(kv utils.JSON, k string) (v time.Time, err error) {
 		var ok bool
 		z, ok = kv[k].(time.Time)
 		if !ok {
-			return time.Time{}, fmt.Errorf("can not get %s as %T from %v", k, v, kv)
+			return time.Time{}, errors.Errorf("can not get %s as %T from %v", k, v, kv)
 		}
 	}
 	return z, nil
@@ -275,7 +276,7 @@ func GetValueWithFieldPathString(fieldPath string, data utils.JSON) (any, error)
 	for i, v := range path {
 		r, ok = d[v]
 		if !ok {
-			err := fmt.Errorf(`GetValueWithFieldPathString: Part %d:'%s' from %s not found `, i, v, fieldPath)
+			err := errors.Errorf(`GetValueWithFieldPathString: Part %d:'%s' from %s not found `, i, v, fieldPath)
 			return nil, err
 		}
 		switch r.(type) {
@@ -294,7 +295,7 @@ func getValueByFieldPathMap(dataPath utils.JSON, data utils.JSON) (r any, err er
 	for k, v := range dataPath {
 		d, ok = data[k]
 		if !ok {
-			return nil, fmt.Errorf("path not valid %s", k)
+			return nil, errors.Errorf("path not valid %s", k)
 		}
 		switch v.(type) {
 		case utils.JSON:
@@ -303,7 +304,7 @@ func getValueByFieldPathMap(dataPath utils.JSON, data utils.JSON) (r any, err er
 				r, err = getValueByFieldPathMap(v.(utils.JSON), d.(utils.JSON))
 
 			default:
-				return nil, fmt.Errorf(`type does not match v=%T with d=%T`, v, d)
+				return nil, errors.Errorf(`type does not match v=%T with d=%T`, v, d)
 			}
 		default:
 			return d, nil
