@@ -716,10 +716,10 @@ func Int64SliceToStrings(nums []int64) []string {
 // - exists: True if the key exists in the map
 // - value: The typed value if key exists and type assertion succeeds, nil otherwise
 // - err: Error if type assertion fails for existing key
-func GetMapValue[T any](m map[string]any, key string) (exists bool, value T, err error) {
-	// Check if key exists
-	rawValue, keyExists := m[key]
-	if !keyExists {
+func GetMapValue[T any](m map[string]any, key string) (exist bool, value T, err error) {
+	// Check if key exist
+	rawValue, keyExist := m[key]
+	if !keyExist {
 		return false, value, nil
 	}
 
@@ -746,4 +746,18 @@ func ExtractMapValue[T any](m *map[string]any, key string) (exists bool, value T
 		delete(*m, key)
 	}
 	return exists, value, nil
+}
+
+func GetMapValueFromArrayOfJSON[T any](a []map[string]any, key string) (values []T, error error) {
+	values = []T{}
+	for _, m := range a {
+		isExist, value, err := GetMapValue[T](m, key)
+		if isExist {
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, value)
+		}
+	}
+	return values, nil
 }
