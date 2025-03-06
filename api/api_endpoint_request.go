@@ -14,10 +14,13 @@ import (
 )
 
 type DXAPIUser struct {
-	Id       string `json:"id"`
-	Uid      string `json:"uid"`
-	LoginId  string `json:"loginid"`
-	FullName string `json:"fullname"`
+	Id               string
+	Uid              string
+	LoginId          string
+	FullName         string
+	OrganizationId   string
+	OrganizationUid  string
+	OrganizationName string
 }
 
 type DXAPIEndPointRequest struct {
