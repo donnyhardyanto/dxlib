@@ -13,6 +13,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -778,4 +779,20 @@ func RemoveDuplicates[T comparable](slice []T) []T {
 	}
 
 	return result
+}
+
+func GetBuildTime() string {
+	// Try to get VCS timestamp from build info
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.time" {
+				// Parse and format the time to ensure consistent output
+				if t, err := time.Parse(time.RFC3339, setting.Value); err == nil {
+					return t.Format(time.RFC3339)
+				}
+				return setting.Value
+			}
+		}
+	}
+	return ""
 }
