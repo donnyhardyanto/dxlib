@@ -761,3 +761,21 @@ func GetMapValueFromArrayOfJSON[T any](a []map[string]any, key string) (values [
 	}
 	return values, nil
 }
+
+// RemoveDuplicates removes duplicate values from a slice of any comparable type
+func RemoveDuplicates[T comparable](slice []T) []T {
+	// Create a map to track seen values
+	seen := make(map[T]bool)
+	result := make([]T, 0)
+
+	// Iterate through the slice
+	for _, value := range slice {
+		// If the value hasn't been seen before, add it to result
+		if !seen[value] {
+			seen[value] = true
+			result = append(result, value)
+		}
+	}
+
+	return result
+}

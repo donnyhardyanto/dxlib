@@ -91,8 +91,8 @@ func IsConnectionError(err error) bool {
 }
 
 type RowsInfo struct {
-	Columns     []string
-	ColumnTypes []*sql.ColumnType
+	Columns []string
+	//	ColumnTypes []*sql.ColumnType
 }
 
 func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON, driverName string) (r utils.JSON) {
@@ -662,10 +662,10 @@ func QueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapp
 	if err != nil {
 		return nil, nil, err
 	}
-	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	if err != nil {
-		return rowsInfo, nil, err
-	}
+	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	//if err != nil {
+	//	return rowsInfo, nil, err
+	//}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
@@ -731,10 +731,10 @@ func NamedQueryRow(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTyp
 	if err != nil {
 		return nil, nil, err
 	}
-	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	if err != nil {
-		return rowsInfo, nil, err
-	}
+	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	//if err != nil {
+	//	return rowsInfo, nil, err
+	//}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
@@ -910,10 +910,10 @@ func _oracleSelectRaw(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.Field
 	if err != nil {
 		return nil, r, err
 	}
-	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	if err != nil {
-		return rowsInfo, r, err
-	}
+	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	//if err != nil {
+	//	return rowsInfo, r, err
+	//}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
@@ -1046,10 +1046,10 @@ func NamedQueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTy
 	if err != nil {
 		return nil, r, err
 	}
-	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	if err != nil {
-		return rowsInfo, r, err
-	}
+	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	//if err != nil {
+	//	return rowsInfo, r, err
+	//}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
@@ -1083,12 +1083,12 @@ func QueryRows(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMap
 	rowsInfo = &RowsInfo{}
 	rowsInfo.Columns, err = rows.Columns()
 	if err != nil {
-		return nil, r, err
-	}
-	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	if err != nil {
 		return rowsInfo, r, err
 	}
+	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	/*	if err != nil {
+		return rowsInfo, r, err
+	}*/
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)

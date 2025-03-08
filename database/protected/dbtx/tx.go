@@ -159,10 +159,10 @@ func TxNamedQueryRows(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.Fi
 	if err != nil {
 		return nil, r, err
 	}
-	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	if err != nil {
-		return rowsInfo, r, err
-	}
+	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	//if err != nil {
+	//	return rowsInfo, r, err
+	//}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
@@ -196,10 +196,10 @@ func TxNamedQueryRow(log *log.DXLog, fieldTypeMapping databaseProtectedUtils.Fie
 	if err != nil {
 		return nil, r, err
 	}
-	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	if err != nil {
-		return rowsInfo, r, err
-	}
+	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
+	//if err != nil {
+	//	return rowsInfo, r, err
+	//}
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
