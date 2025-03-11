@@ -10,6 +10,7 @@ import (
 	utils2 "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
+	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
 	"net/http"
 	"strings"
@@ -20,15 +21,16 @@ import (
 type OnResultList func(listRow utils.JSON) (utils.JSON, error)
 
 type DXRawTable struct {
-	DatabaseNameId        string
-	Database              *database.DXDatabase
-	NameId                string
-	ResultObjectName      string
-	ListViewNameId        string
-	FieldNameForRowId     string
-	FieldNameForRowNameId string
-	FieldNameForRowUid    string
-	FieldTypeMapping      utils2.FieldTypeMapping
+	DatabaseNameId             string
+	Database                   *database.DXDatabase
+	NameId                     string
+	ResultObjectName           string
+	ListViewNameId             string
+	FieldNameForRowId          string
+	FieldNameForRowNameId      string
+	FieldNameForRowUid         string
+	FieldTypeMapping           utils2.FieldTypeMapping
+	ResponseEnvelopeObjectName string
 }
 
 func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
@@ -41,22 +43,26 @@ func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValue
 		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "", "ERROR_INSERTING_TABLE:"+t.NameId+"="+err.Error())
 	}
 
-	_, n, err := t.Database.SelectOne(t.NameId, nil, []string{"uid"}, utils.JSON{
-		"id": newId,
-	}, nil, nil)
-	if err != nil {
-		return 0, err
+	p := utils.JSON{
+		t.FieldNameForRowId: newId,
 	}
-	uid, ok := n[t.FieldNameForRowUid].(string)
-	if !ok {
-		return 0, errors.New("IMPOSSIBLE:UID")
+
+	if t.FieldNameForRowUid != "" {
+		_, n, err := t.Database.SelectOne(t.ListViewNameId, nil, nil, utils.JSON{
+			"id": newId,
+		}, nil, nil)
+		if err != nil {
+			return 0, err
+		}
+		uid, ok := n[t.FieldNameForRowUid].(string)
+		if !ok {
+			return 0, errors.New("IMPOSSIBLE:UID")
+		}
+		p[t.FieldNameForRowUid] = uid
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
-		"data": utils.JSON{
-			t.FieldNameForRowId:  newId,
-			t.FieldNameForRowUid: uid,
-		},
-	})
+
+	data := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, p)
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
 
 	return newId, err
 }
@@ -200,7 +206,7 @@ func (t *DXRawTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -216,7 +222,7 @@ func (t *DXRawTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -232,7 +238,7 @@ func (t *DXRawTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err er
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -248,7 +254,7 @@ func (t *DXRawTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err erro
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -276,9 +282,10 @@ func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValu
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
 		t.FieldNameForRowId: id,
-	}})
+	},
+	))
 	return nil
 }
 
@@ -305,9 +312,10 @@ func (t *DXRawTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, new
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
 		t.FieldNameForRowUid: uid,
-	}})
+	},
+	))
 	return nil
 }
 
@@ -412,7 +420,7 @@ func (t *DXRawTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err
 }
 
 func (t *DXRawTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	return t.Select(log, nil, nil, nil, nil, nil)
+	return t.Select(log, nil, nil, nil, nil, nil, nil)
 }
 
 /*func (t *DXRawTable) Count(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
@@ -428,13 +436,13 @@ func (t *DXRawTable) TxSelectCount(tx *database.DXDatabaseTx, summaryCalcFieldsP
 	}
 */
 func (t *DXRawTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if t.Database == nil {
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
-	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit)
+	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
 	if err != nil {
 		return rowsInfo, nil, err
 	}

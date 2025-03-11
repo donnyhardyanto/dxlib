@@ -30,6 +30,8 @@ const (
 	DXAPIDefaultReadTimeoutSec  = 300
 )
 
+var UseResponseDataObject = true
+
 type DXAPIAuditLogEntry struct {
 	StartTime    time.Time `json:"start_time,omitempty"`
 	EndTime      time.Time `json:"end_time,omitempty"`

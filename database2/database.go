@@ -1,21 +1,21 @@
-package database
+package database2
 
 import (
 	"context"
 	"database/sql"
+	"github.com/donnyhardyanto/dxlib/database/protected/db"
+	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/pkg/errors"
+	goOra "github.com/sijms/go-ora/v2"
 
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
 	utils2 "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	pq "github.com/knetic/go-namedparameterquery"
 	_ "github.com/lib/pq"
-	mssql "github.com/microsoft/go-mssqldb"
+	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/sijms/go-ora/v2"
-	goOra "github.com/sijms/go-ora/v2"
 	"net"
 	"strconv"
 	"strings"
@@ -23,13 +23,31 @@ import (
 	_ "time/tzdata"
 
 	"github.com/donnyhardyanto/dxlib/configuration"
-	"github.com/donnyhardyanto/dxlib/database/database_type"
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
-	utilsSql "github.com/donnyhardyanto/dxlib/utils/security"
 )
 
 type DXDatabaseEventFunc func(dm *DXDatabase, err error)
+
+type DXDatabaseTx struct {
+	*sqlx.Tx
+	Log *log.DXLog
+}
+type DXDatabaseTxCallback func(dtx *DXDatabaseTx) (err error)
+
+type DXDatabaseTxIsolationLevel = sql.IsolationLevel
+
+const (
+	LevelDefault DXDatabaseTxIsolationLevel = iota
+	LevelReadUncommitted
+	LevelReadCommitted
+	LevelWriteCommitted
+	LevelRepeatableRead
+	LevelSnapshot
+	LevelSerializable
+	LevelLinearizable
+)
 
 type DXDatabase struct {
 	NameId                       string
@@ -374,52 +392,6 @@ func (d *DXDatabase) Disconnect() (err error) {
 		log.Log.Infof("Disconnecting to database %s/%s... done DISCONNECTED", d.NameId, d.NonSensitiveConnectionString)
 	}
 	return nil
-}
-
-func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, err error) {
-	err = d.EnsureConnection()
-	if err != nil {
-		return nil, err
-	}
-
-	isDDL := utilsSql.IsDDL(statement)
-	if !isDDL {
-		query := pq.NewNamedParameterQuery(statement)
-		query.SetValuesFromMap(parameters)
-		s := query.GetParsedQuery()
-		p := query.GetParsedParameters()
-		r, err = d.Connection.Exec(s, p...)
-		return r, err
-	}
-	s := statement
-	for k, v := range parameters {
-		vs := ""
-		switch v.(type) {
-		case string:
-			// for Postgresql is "
-			vs = fmt.Sprintf(`"%s"`, v)
-		case int, int8, int16, int32, int64:
-			vs = strconv.FormatInt(v.(int64), 10)
-		case float32, float64:
-			vs = fmt.Sprintf("%f", v)
-		}
-		s = strings.Replace(s, `:`+strings.ToUpper(k), vs, -1)
-	}
-	r, err = d.Connection.Exec(s)
-	if err != nil {
-		if d.Connected {
-			return nil, err
-		}
-		err = d.CheckConnectionAndReconnect()
-		if err != nil {
-			return nil, err
-		}
-		r, err = d.Connection.Exec(s)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return r, err
 }
 
 func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {

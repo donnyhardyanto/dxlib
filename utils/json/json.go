@@ -17,6 +17,13 @@ type Number interface {
 	int | int8 | int16 | int32 | int64 | float32 | float64
 }
 
+func Encapsulate(envelopeName string, data utils.JSON) utils.JSON {
+	if envelopeName == "" {
+		return data
+	}
+	return utils.JSON{envelopeName: data}
+}
+
 func PrettyPrint(v utils.JSON) (string, error) {
 	vAsString, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {

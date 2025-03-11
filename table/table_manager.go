@@ -33,54 +33,57 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 	return nil
 }
 
-func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string) *DXTable {
+func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXTable {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
 	t := DXTable{
-		DatabaseNameId:        databaseNameId,
-		NameId:                tableNameId,
-		ResultObjectName:      resultObjectName,
-		ListViewNameId:        tableListViewNameId,
-		FieldNameForRowId:     tableFieldNameForRowId,
-		FieldNameForRowNameId: tableFieldNameForRowNameId,
-		FieldNameForRowUid:    tableFieldNameForRowUid,
+		DatabaseNameId:             databaseNameId,
+		NameId:                     tableNameId,
+		ResultObjectName:           resultObjectName,
+		ListViewNameId:             tableListViewNameId,
+		FieldNameForRowId:          tableFieldNameForRowId,
+		FieldNameForRowNameId:      tableFieldNameForRowNameId,
+		FieldNameForRowUid:         tableFieldNameForRowUid,
+		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 	}
 	t.Database = database.Manager.Databases[databaseNameId]
 	tm.Tables[tableNameId] = &t
 	return &t
 }
 
-func (tm *DXTableManager) NewPropertyTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string) *DXPropertyTable {
+func (tm *DXTableManager) NewPropertyTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXPropertyTable {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
 	t := DXPropertyTable{
-		DatabaseNameId:        databaseNameId,
-		NameId:                tableNameId,
-		ResultObjectName:      resultObjectName,
-		ListViewNameId:        tableListViewNameId,
-		FieldNameForRowId:     tableFieldNameForRowId,
-		FieldNameForRowNameId: tableFieldNameForRowNameId,
-		FieldNameForRowUid:    tableFieldNameForRowUid,
+		DatabaseNameId:             databaseNameId,
+		NameId:                     tableNameId,
+		ResultObjectName:           resultObjectName,
+		ListViewNameId:             tableListViewNameId,
+		FieldNameForRowId:          tableFieldNameForRowId,
+		FieldNameForRowNameId:      tableFieldNameForRowNameId,
+		FieldNameForRowUid:         tableFieldNameForRowUid,
+		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 	}
 	t.Database = database.Manager.Databases[databaseNameId]
 	tm.PropertyTables[tableNameId] = &t
 	return &t
 }
 
-func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string) *DXRawTable {
+func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXRawTable {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
 	t := DXRawTable{
-		DatabaseNameId:        databaseNameId,
-		NameId:                tableNameId,
-		ResultObjectName:      resultObjectName,
-		ListViewNameId:        tableListViewNameId,
-		FieldNameForRowId:     tableFieldNameForRowId,
-		FieldNameForRowNameId: tableFieldNameForRowNameId,
-		FieldNameForRowUid:    tableFieldNameForRowUid,
+		DatabaseNameId:             databaseNameId,
+		NameId:                     tableNameId,
+		ResultObjectName:           resultObjectName,
+		ListViewNameId:             tableListViewNameId,
+		FieldNameForRowId:          tableFieldNameForRowId,
+		FieldNameForRowNameId:      tableFieldNameForRowNameId,
+		FieldNameForRowUid:         tableFieldNameForRowUid,
+		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 	}
 	t.Database = database.Manager.Databases[databaseNameId]
 	tm.RawTables[tableNameId] = &t

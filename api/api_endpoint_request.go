@@ -108,11 +108,16 @@ func (aepr *DXAPIEndPointRequest) GetResponseWriter() *http.ResponseWriter {
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, responseMessage string, msg string, data ...any) (err error) {
-	err = aepr.Log.WarnAndCreateErrorf(msg, data...)
 	if responseMessage == "" {
 		responseMessage = strings.ToUpper(http.StatusText(statusCode))
 	}
-	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage)
+	if msg == "" {
+		msg = responseMessage
+	}
+	err = aepr.Log.WarnAndCreateErrorf(msg, data...)
+	if aepr.ResponseHeaderSent {
+	}
+	aepr.WriteResponseAsErrorMessage(statusCode, fmt.Sprintf(responseMessage, data))
 	return err
 }
 

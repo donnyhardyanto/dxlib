@@ -10,6 +10,7 @@ import (
 	databaseUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
+	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
 	"net/http"
 	"time"
@@ -17,15 +18,16 @@ import (
 )
 
 type DXPropertyTable struct {
-	DatabaseNameId        string
-	Database              *database.DXDatabase
-	NameId                string
-	ResultObjectName      string
-	ListViewNameId        string
-	FieldNameForRowId     string
-	FieldNameForRowNameId string
-	FieldNameForRowUid    string
-	FieldTypeMapping      databaseUtils.FieldTypeMapping
+	DatabaseNameId             string
+	Database                   *database.DXDatabase
+	NameId                     string
+	ResultObjectName           string
+	ListViewNameId             string
+	FieldNameForRowId          string
+	FieldNameForRowNameId      string
+	FieldNameForRowUid         string
+	FieldTypeMapping           databaseUtils.FieldTypeMapping
+	ResponseEnvelopeObjectName string
 }
 
 func GetAs[T any](l *log.DXLog, expectedType string, property map[string]any) (T, error) {
@@ -297,22 +299,28 @@ func (pt *DXPropertyTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues
 	if err != nil {
 		return 0, err
 	}
-	_, n, err := pt.Database.SelectOne(pt.NameId, nil, []string{"uid"}, utils.JSON{
-		"id": newId,
-	}, nil, nil)
-	if err != nil {
-		return 0, err
+
+	p := utils.JSON{
+		pt.FieldNameForRowId: newId,
 	}
-	uid, ok := n[pt.FieldNameForRowUid].(string)
-	if !ok {
-		return 0, errors.New("IMPOSSIBLE:UID")
+
+	if pt.FieldNameForRowUid != "" {
+		_, n, err := pt.Database.SelectOne(pt.ListViewNameId, nil, nil, utils.JSON{
+			"id": newId,
+		}, nil, nil)
+		if err != nil {
+			return 0, err
+		}
+		uid, ok := n[pt.FieldNameForRowUid].(string)
+		if !ok {
+			return 0, errors.New("IMPOSSIBLE:UID")
+		}
+		p[pt.FieldNameForRowUid] = uid
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
-		"data": utils.JSON{
-			pt.FieldNameForRowId:  newId,
-			pt.FieldNameForRowUid: uid,
-		},
-	})
+
+	data := utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, p)
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
+
 	return newId, nil
 }
 
@@ -521,7 +529,7 @@ func (pt *DXPropertyTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err erro
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -537,7 +545,7 @@ func (pt *DXPropertyTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -553,7 +561,7 @@ func (pt *DXPropertyTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -569,7 +577,7 @@ func (pt *DXPropertyTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (er
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -610,9 +618,10 @@ func (pt *DXPropertyTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newK
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", pt.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{
 		pt.FieldNameForRowId: id,
-	}})
+	},
+	))
 	return nil
 }
 
@@ -652,9 +661,10 @@ func (pt *DXPropertyTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid strin
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", pt.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{
 		pt.FieldNameForRowUid: uid,
-	}})
+	},
+	))
 	return nil
 }
 
@@ -793,7 +803,7 @@ func (pt *DXPropertyTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest
 }
 
 func (pt *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-	return pt.Select(log, nil, nil, nil, map[string]string{pt.FieldNameForRowId: "asc"}, nil)
+	return pt.Select(log, nil, nil, nil, map[string]string{pt.FieldNameForRowId: "asc"}, nil, nil)
 }
 
 /*func (t *DXPropertyTable) Count(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
@@ -801,12 +811,12 @@ func (pt *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r [
 		whereAndFieldNameValues = utils.JSON{
 			"is_deleted": false,
 		}
-		if t.Database.DatabaseType.String() == "sqlserver" {
+		if pt.Database.DatabaseType.String() == "sqlserver" {
 			whereAndFieldNameValues["is_deleted"] = 0
 		}
 	}
 
-	totalRows, summaryCalcRow, err = t.Database.ShouldCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	totalRows, summaryCalcRow, err = pt.Database.ShouldCount(pt.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, summaryCalcRow, err
 }*/
 
@@ -816,17 +826,17 @@ func (pt *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r [
 			whereAndFieldNameValues = utils.JSON{
 				"is_deleted": false,
 			}
-			if t.Database.DatabaseType.String() == "sqlserver" {
+			if pt.Database.DatabaseType.String() == "sqlserver" {
 				whereAndFieldNameValues["is_deleted"] = 0
 			}
 		}
 
-		totalRows, summaryCalcRow, err = tx.ShouldCount(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
+		totalRows, summaryCalcRow, err = tx.ShouldCount(pt.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues)
 		return totalRows, summaryCalcRow, err
 	}
 */
 func (pt *DXPropertyTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy, limit any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections db.FieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
@@ -844,7 +854,7 @@ func (pt *DXPropertyTable) Select(log *log.DXLog, fieldNames []string, whereAndF
 	if pt.Database == nil {
 		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
 	}
-	rowsInfo, r, err = pt.Database.Select(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit)
+	rowsInfo, r, err = pt.Database.Select(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -1006,15 +1016,14 @@ func (pt *DXPropertyTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, f
 
 	}
 
-	data := utils.JSON{"data": utils.JSON{
+	data := utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{
 		"list": utils.JSON{
 			"rows":       list,
 			"total_rows": totalRows,
 			"total_page": totalPage,
 			"rows_info":  rowsInfo,
 		},
-	},
-	}
+	})
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
 

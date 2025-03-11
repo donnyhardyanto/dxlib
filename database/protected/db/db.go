@@ -297,30 +297,6 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 	return strings.Join(conditions, " AND ")
 }
 
-/*func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string) (s string) {
-	andFieldNameValues := ``
-	for k, v := range whereKeyValues {
-		switch driverName {
-		case "oracle":
-			k = strings.ToUpper(k)
-		}
-		if andFieldNameValues != `` {
-			andFieldNameValues = andFieldNameValues + ` and `
-		}
-		if v == nil {
-			andFieldNameValues = andFieldNameValues + k + ` is null `
-		} else {
-			switch v.(type) {
-			case SQLExpression:
-				andFieldNameValues = andFieldNameValues + v.(SQLExpression).String()
-			default:
-				andFieldNameValues = andFieldNameValues + k + `=:` + k
-			}
-		}
-	}
-	return andFieldNameValues
-}*/
-
 // validateOrderDirection ensures the order direction is valid
 func validateOrderDirection(direction string) (string, error) {
 	// Normalize the direction to uppercase for comparison
@@ -397,22 +373,6 @@ func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, drive
 	return strings.Join(orderParts, ", "), nil
 }
 
-/*
-	func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, driverName string) (s string) {
-		orderbyFieldNameDirections := ``
-		for k, v := range orderbyKeyValues {
-			switch driverName {
-			case "oracle":
-				k = strings.ToUpper(k)
-			}
-			if orderbyFieldNameDirections != `` {
-				orderbyFieldNameDirections = orderbyFieldNameDirections + `, `
-			}
-			orderbyFieldNameDirections = orderbyFieldNameDirections + k + ` ` + v
-		}
-		return orderbyFieldNameDirections
-	}
-*/
 func SQLPartSetFieldNameValues(setKeyValues utils.JSON, driverName string) (newSetKeyValues utils.JSON, s string) {
 	setFieldNameValues := ``
 	newSetKeyValues = utils.JSON{}
@@ -956,41 +916,6 @@ func OracleSelect(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldType
 	query := fmt.Sprintf("SELECT %s from %s %s %s %s", fieldNamesStr, tableName, whereClause, orderByClause, limitClause)
 
 	return _oracleSelectRaw(db, fieldTypeMapping, query, fieldArgs)
-	/*stmt, err := db.Prepare(query)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer stmt.Close()
-
-	// Execute the statement
-	arows, err := stmt.Query(fieldArgs...)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer func() {
-		_ = arows.Close()
-	}()
-	rows := sqlx.Rows{Rows: arows}
-
-	rowsInfo = &RowsInfo{}
-	rowsInfo.Columns, err = rows.Columns()
-	if err != nil {
-		return nil, r, err
-	}
-	rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	if err != nil {
-		return rowsInfo, r, err
-	}
-	for rows.Next() {
-		rowJSON := make(utils.JSON)
-		err = rows.MapScan(rowJSON)
-		if err != nil {
-			return nil, nil, err
-		}
-		rowJSON = databaseProtectedUtils.DeformatKeys(rowJSON, db.DriverName())
-		r = append(r, rowJSON)
-	}
-	return rowsInfo, r, nil*/
 }
 
 func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
@@ -1454,173 +1379,6 @@ func NamedQueryList(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUt
 	return rowsInfo, rows, err
 }
 
-/*
-func NamedQueryPaging(dbAppInstance *sqlx.DB, summaryCalcFieldsPart string, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
-
-		arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, summaryRows utils.JSON, err error) {
-		if returnFieldsQueryPart == `` {
-			returnFieldsQueryPart = `*`
-		}
-		effectiveWhereQueryPart := ``
-		if whereQueryPart != `` {
-			effectiveWhereQueryPart = ` where ` + whereQueryPart
-		}
-
-		effectiveJoinQueryPart := ``
-		if joinQueryPart != `` {
-			effectiveJoinQueryPart = ` ` + joinQueryPart
-		}
-
-		query := ``
-		switch dbAppInstance.DriverName() {
-		case "sqlserver":
-			summaryCalcFields := `cast(count(*) as bigint) as "s___total_rows"`
-			if summaryCalcFieldsPart != `` {
-				summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
-			}
-			countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-			_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
-			if err != nil {
-				return nil, nil, 0, 0, nil, err
-			}
-
-			totalRows = summaryRows[`s___total_rows`].(int64)
-
-			effectiveLimitQueryPart := ``
-			if rowsPerPage == 0 {
-				totalPage = 1
-			} else {
-				totalPage = ((totalRows - 1) / rowsPerPage) + 1
-				effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
-			}
-
-			effectiveOrderByQueryPart := ``
-			if orderByQueryPart == `` {
-				orderByQueryPart = `1`
-			}
-			effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-
-			query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
-		case "postgres":
-			summaryCalcFields := `cast(count(*) as bigint) as s___total_rows`
-			if summaryCalcFieldsPart != `` {
-				summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
-			}
-			countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-			_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
-			if err != nil {
-				return nil, nil, 0, 0, nil, err
-			}
-
-			totalRows = summaryRows[`s___total_rows`].(int64)
-
-			effectiveLimitQueryPart := ``
-			if rowsPerPage == 0 {
-				totalPage = 1
-			} else {
-				totalPage = ((totalRows - 1) / rowsPerPage) + 1
-				effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
-			}
-
-			effectiveOrderByQueryPart := ``
-			if orderByQueryPart != `` {
-				effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-			}
-
-			query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
-		case "oracle":
-			summaryCalcFields := `count(*) as "s___total_rows"`
-			if summaryCalcFieldsPart != `` {
-				summaryCalcFields = summaryCalcFields + `,` + summaryCalcFieldsPart
-			}
-			countSQL := `select ` + summaryCalcFields + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-			_, summaryRows, err = ShouldNamedQueryRow(dbAppInstance, countSQL, arg)
-			if err != nil {
-				return nil, nil, 0, 0, nil, err
-			}
-
-			totalRowsAsAny, err := utils.ConvertToInterfaceInt64FromAny(summaryRows[`s___total_rows`])
-			if err != nil {
-				return nil, nil, 0, 0, nil, err
-			}
-
-			ok := true
-			totalRows, ok = totalRowsAsAny.(int64)
-			if !ok {
-				return nil, nil, 0, 0, nil, errors.New(fmt.Sprintf(`CANT_CONVERT_TOTAL_ROWS_TO_INT64:%v`, totalRowsAsAny))
-			}
-
-			effectiveLimitQueryPart := ``
-			if rowsPerPage == 0 {
-				totalPage = 1
-			} else {
-				totalPage = ((totalRows - 1) / rowsPerPage) + 1
-				effectiveLimitQueryPart = ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10) + ` ROWS FETCH NEXT ` + strconv.FormatInt(rowsPerPage, 10) + ` ROWS ONLY`
-			}
-
-			effectiveOrderByQueryPart := ``
-			if orderByQueryPart != `` {
-				effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-			}
-
-			query = `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
-		default:
-			err = errors.New(`UNSUPPORTED_DATABASE_SQL_SELECT`)
-			if err != nil {
-				return rowsInfo, rows, 0, 0, summaryRows, err
-			}
-		}
-
-		rowsInfo, rows, err = NamedQueryRows(dbAppInstance, query, arg)
-		if err != nil {
-			return rowsInfo, rows, 0, 0, summaryRows, err
-		}
-		return rowsInfo, rows, totalRows, totalPage, summaryRows, err
-	}
-*/
-
-/*func QueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, rowsPerPage int64, pageIndex int64, returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
-	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, totalRows int64, totalPage int64, err error) {
-	if returnFieldsQueryPart == `` {
-		returnFieldsQueryPart = `*`
-	}
-	effectiveWhereQueryPart := ``
-	if whereQueryPart != `` {
-		effectiveWhereQueryPart = ` where ` + whereQueryPart
-	}
-
-	effectiveJoinQueryPart := ``
-	if joinQueryPart != `` {
-		effectiveJoinQueryPart = ` ` + joinQueryPart
-	}
-
-	countSQL := `SELECT COUNT(*) FROM ` + fromQueryPart + effectiveWhereQueryPart + effectiveJoinQueryPart
-	totalRows, err = ShouldNamedQueryId(dbAppInstance, countSQL, arg)
-	if err != nil {
-		return nil, nil, 0, 0, err
-	}
-
-	effectiveLimitQueryPart := ``
-	if rowsPerPage == 0 {
-		totalPage = 1
-	} else {
-		totalPage = ((totalRows - 1) / rowsPerPage) + 1
-		effectiveLimitQueryPart = ` limit ` + strconv.FormatInt(rowsPerPage, 10) + ` offset ` + strconv.FormatInt(pageIndex*rowsPerPage, 10)
-	}
-
-	effectiveOrderByQueryPart := ``
-	if orderByQueryPart != `` {
-		effectiveOrderByQueryPart = ` order by ` + orderByQueryPart
-	}
-
-	query := `select ` + returnFieldsQueryPart + ` from ` + fromQueryPart + effectiveWhereQueryPart + effectiveOrderByQueryPart + effectiveLimitQueryPart
-	rowsInfo, rows, err = QueryRows(dbAppInstance, fieldTypeMapping, query, arg)
-	if err != nil {
-		return rowsInfo, rows, 0, 0, err
-	}
-	return rowsInfo, rows, totalRows, totalPage, err
-}*/
-
 func ShouldSelectWhereId(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = ShouldNamedQueryRow(db, fieldTypeMapping, `SELECT * FROM `+tableName+` where `+databaseProtectedUtils.FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
 		`id`: idValue,
@@ -1628,50 +1386,8 @@ func ShouldSelectWhereId(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.Fi
 	return rowsInfo, r, err
 }
 
-/*func SelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	driverName := db.DriverName()
-	switch driverName {
-	case "oracle":
-		rowsInfo, rx, err := OracleSelect(db, fieldTypeMapping, tableName,
-			fieldNames, whereAndFieldNameValues,
-			joinSQLPart,
-			orderbyFieldNameDirections)
-		if err != nil {
-			return rowsInfo, nil, err
-		}
-		if rx == nil {
-			return rowsInfo, nil, err
-		}
-		if len(rx) < 1 {
-			return rowsInfo, nil, err
-		}
-		return rowsInfo, rx[0], err
-	}
-	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	wKV := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
-	rowsInfo, r, err = NamedQueryRow(db, fieldTypeMapping, s, wKV)
-	return rowsInfo, r, err
-}
-*/
-/*func ShouldSelectOne(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = SelectOne(db, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
-	if err != nil {
-		return rowsInfo, r, err
-	}
-	if r == nil {
-		err = errors.New("ROW_MUST_EXIST:" + tableName)
-		return rowsInfo, nil, err
-	}
-	return rowsInfo, r, nil
-}*/
-
 func Select(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMapping, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections FieldsOrderBy,
-	limit any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+	limit any, forUpdatePart any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
 		fieldNames = []string{"*"}
@@ -1689,7 +1405,7 @@ func Select(db *sqlx.DB, fieldTypeMapping databaseProtectedUtils.FieldTypeMappin
 			orderbyFieldNameDirections)
 		return rowsInfo, r, err
 	}
-	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, nil)
+	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
 	if err != nil {
 		return nil, nil, err
 	}

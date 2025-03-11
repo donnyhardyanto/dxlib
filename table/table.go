@@ -10,6 +10,7 @@ import (
 	databaseUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
+	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
 	"net/http"
 	"strings"
@@ -18,15 +19,16 @@ import (
 )
 
 type DXTable struct {
-	DatabaseNameId        string
-	Database              *database.DXDatabase
-	NameId                string
-	ResultObjectName      string
-	ListViewNameId        string
-	FieldNameForRowId     string
-	FieldNameForRowNameId string
-	FieldNameForRowUid    string
-	FieldTypeMapping      databaseUtils.FieldTypeMapping
+	DatabaseNameId             string
+	Database                   *database.DXDatabase
+	NameId                     string
+	ResultObjectName           string
+	ListViewNameId             string
+	FieldNameForRowId          string
+	FieldNameForRowNameId      string
+	FieldNameForRowUid         string
+	FieldTypeMapping           databaseUtils.FieldTypeMapping
+	ResponseEnvelopeObjectName string
 }
 
 func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
@@ -62,21 +64,27 @@ func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 		return 0, err
 	}
 
-	_, n, err := t.Database.SelectOne(t.NameId, nil, []string{"uid"}, utils.JSON{
-		"id": newId,
-	}, nil, nil)
-	if err != nil {
-		return 0, err
-	}
-	uid, ok := n[t.FieldNameForRowUid].(string)
-	if !ok {
-		return 0, errors.New("IMPOSSIBLE:UID")
+	p := utils.JSON{
+		t.FieldNameForRowId: newId,
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
-		t.FieldNameForRowId:  newId,
-		t.FieldNameForRowUid: uid,
-	}})
+	if t.FieldNameForRowUid != "" {
+		_, n, err := t.Database.SelectOne(t.ListViewNameId, nil, nil, utils.JSON{
+			"id": newId,
+		}, nil, nil)
+		if err != nil {
+			return 0, err
+		}
+		uid, ok := n[t.FieldNameForRowUid].(string)
+		if !ok {
+			return 0, errors.New("IMPOSSIBLE:UID")
+		}
+		p[t.FieldNameForRowUid] = uid
+	}
+
+	data := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, p)
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
+
 	return newId, nil
 }
 
@@ -85,9 +93,10 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 	if err != nil {
 		return 0, err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
 		t.FieldNameForRowId: newId,
-	}})
+	},
+	))
 
 	return newId, nil
 }
@@ -300,7 +309,7 @@ func (t *DXTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -316,7 +325,7 @@ func (t *DXTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -332,7 +341,7 @@ func (t *DXTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err error
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -348,7 +357,7 @@ func (t *DXTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) 
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
 
 	return nil
 }
@@ -390,9 +399,10 @@ func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues 
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
 		t.FieldNameForRowId: id,
-	}})
+	},
+	))
 	return nil
 }
 
@@ -433,9 +443,10 @@ func (t *DXTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, newKey
 		aepr.Log.Errorf("Error at %s.DoEdit (%s) ", t.NameId, err.Error())
 		return err
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"data": utils.JSON{
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
 		t.FieldNameForRowUid: uid,
-	}})
+	},
+	))
 	return nil
 }
 
@@ -660,7 +671,8 @@ func (t *DXTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameV
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
-	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, limit)
+	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues,
+		joinSQLPart, orderByFieldNameDirections, limit, nil)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -795,14 +807,12 @@ func (t *DXTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere stri
 
 	}
 
-	data := utils.JSON{
-		"data": utils.JSON{
-			"list": utils.JSON{
-				"rows":      list,
-				"rows_info": rowsInfo,
-			},
+	data := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		"list": utils.JSON{
+			"rows":      list,
+			"rows_info": rowsInfo,
 		},
-	}
+	})
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
 
