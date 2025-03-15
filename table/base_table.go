@@ -5,7 +5,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
-	utils2 "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -32,7 +31,7 @@ type DXBaseTable struct {
 	FieldNameForRowUid         string
 	FieldNameForRowUtag        string
 	ResponseEnvelopeObjectName string
-	FieldTypeMapping           utils2.FieldTypeMapping
+	FieldTypeMapping           db.FieldTypeMapping
 	OnBeforeInsert             func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
 }
 

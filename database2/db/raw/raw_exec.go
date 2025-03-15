@@ -1,20 +1,16 @@
-package db
+package raw
 
 import (
 	"database/sql"
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"strings"
 )
 
-type ExecResult struct {
-	LastInsertId int64
-	RowsAffected int64
-}
-
-func RawExec(db *sqlx.DB, query string, arg []any) (r *ExecResult, err error) {
+func RawExec(db *sqlx.DB, query string, arg []any) (r *database_type.ExecResult, err error) {
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
@@ -38,13 +34,13 @@ func RawExec(db *sqlx.DB, query string, arg []any) (r *ExecResult, err error) {
 		rowsAffected = 0
 	}
 
-	return &ExecResult{
+	return &database_type.ExecResult{
 		LastInsertId: lastInsertId,
 		RowsAffected: rowsAffected,
 	}, nil
 }
 
-func RawTxExec(tx *sqlx.Tx, query string, arg []any) (*ExecResult, error) {
+func RawTxExec(tx *sqlx.Tx, query string, arg []any) (*database_type.ExecResult, error) {
 	err := sqlchecker.CheckAll(tx.DriverName(), query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
@@ -68,13 +64,13 @@ func RawTxExec(tx *sqlx.Tx, query string, arg []any) (*ExecResult, error) {
 		rowsAffected = 0
 	}
 
-	return &ExecResult{
+	return &database_type.ExecResult{
 		LastInsertId: lastInsertId,
 		RowsAffected: rowsAffected,
 	}, nil
 }
 
-func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (r *ExecResult, err error) {
+func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (r *database_type.ExecResult, err error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
@@ -130,7 +126,7 @@ func TxExec(
 	tx *sqlx.Tx,
 	sqlStatement string,
 	sqlArguments utils.JSON,
-) (*ExecResult, error) {
+) (*database_type.ExecResult, error) {
 	var (
 		modifiedSQL string
 		args        []interface{}

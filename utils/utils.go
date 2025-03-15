@@ -23,6 +23,33 @@ import (
 
 type JSON = map[string]any
 
+func ArrayToJSON[T any](arr []T) (string, error) {
+	jsonBytes, err := json.Marshal(arr)
+	if err != nil {
+		return "", errors.Errorf("failed to marshal array: %w", err)
+	}
+	return string(jsonBytes), nil
+}
+
+func ArrayStringToJSON(arr []string) string {
+	jsonBytes, _ := json.Marshal(arr)
+	return string(jsonBytes)
+}
+func ArrayIntToJSON(arr []int) string {
+	jsonBytes, err := json.Marshal(arr)
+	if err != nil {
+		return "[]" // Return empty array in extremely unlikely error case
+	}
+	return string(jsonBytes)
+}
+func ArrayInt64ToJSON(arr []int64) string {
+	jsonBytes, _ := json.Marshal(arr)
+	return string(jsonBytes)
+}
+func ArrayFloat64ToJSON(arr []float64) string {
+	jsonBytes, _ := json.Marshal(arr)
+	return string(jsonBytes)
+}
 func StringToJSON(s string) (JSON, error) {
 	v := JSON{}
 	err := json.Unmarshal([]byte(s), &v)
@@ -795,4 +822,32 @@ func GetBuildTime() string {
 		}
 	}
 	return ""
+}
+
+// ConvertToInt64 converts various types to int64
+func ConvertToInt64(value interface{}) (int64, error) {
+	switch v := value.(type) {
+	case int64:
+		return v, nil
+	case int:
+		return int64(v), nil
+	case int32:
+		return int64(v), nil
+	case float64:
+		return int64(v), nil
+	case string:
+		parsed, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert string count to int64")
+		}
+		return parsed, nil
+	case []byte:
+		parsed, err := strconv.ParseInt(string(v), 10, 64)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert []byte count to int64")
+		}
+		return parsed, nil
+	default:
+		return 0, errors.Errorf("unexpected count value type: %T", value)
+	}
 }

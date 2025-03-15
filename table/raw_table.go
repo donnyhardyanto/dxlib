@@ -7,7 +7,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database/protected/export"
-	utils2 "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -29,7 +28,7 @@ type DXRawTable struct {
 	FieldNameForRowId          string
 	FieldNameForRowNameId      string
 	FieldNameForRowUid         string
-	FieldTypeMapping           utils2.FieldTypeMapping
+	FieldTypeMapping           db.FieldTypeMapping
 	ResponseEnvelopeObjectName string
 }
 

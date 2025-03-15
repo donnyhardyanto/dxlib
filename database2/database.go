@@ -3,14 +3,14 @@ package database2
 import (
 	"context"
 	"database/sql"
-	"github.com/donnyhardyanto/dxlib/database/protected/db"
+	oldDb "github.com/donnyhardyanto/dxlib/database/protected/db"
+
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/pkg/errors"
 	goOra "github.com/sijms/go-ora/v2"
 
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
-	utils2 "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -401,12 +401,12 @@ func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValue
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		id, err = db.Insert(d.Connection, tableName, fieldNameForRowId, keyValues)
+		id, err = oldDb.Insert(d.Connection, tableName, fieldNameForRowId, keyValues)
 		if err == nil {
 			return id, nil
 		}
 		log.Log.Warnf("INSERT_ERROR:%s=%v", tableName, err.Error())
-		if !db.IsConnectionError(err) {
+		if !oldDb.IsConnectionError(err) {
 			return 0, err
 		}
 		err = d.CheckConnectionAndReconnect()
@@ -425,12 +425,12 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		result, err = db.Update(d.Connection, tableName, setKeyValues, whereKeyValues)
+		result, err = oldDb.Update(d.Connection, tableName, setKeyValues, whereKeyValues)
 		if err == nil {
 			return result, nil
 		}
 		log.Log.Warnf("UPDATE_ERROR:%s=%v", tableName, err.Error())
-		if !db.IsConnectionError(err) {
+		if !oldDb.IsConnectionError(err) {
 			return nil, err
 		}
 		err = d.CheckConnectionAndReconnect()
@@ -439,67 +439,6 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 		}
 	}
 	return nil, err
-}
-
-func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
-	limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
-
-	err = d.EnsureConnection()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for tryCount := 0; tryCount < 4; tryCount++ {
-		rowsInfo, resultData, err = db.Select(d.Connection, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
-		if err == nil {
-			return rowsInfo, resultData, nil
-		}
-		log.Log.Warnf("SELECT_ERROR:%s=%v", tableName, err.Error())
-		if !db.IsConnectionError(err) {
-			return nil, nil, err
-		}
-		err = d.CheckConnectionAndReconnect()
-		if err != nil {
-			log.Log.Warnf("RECONNECT_ERROR:%s", err.Error())
-		}
-	}
-	return nil, nil, err
-}
-
-func (d *DXDatabase) ShouldCount(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
-	totalRows, c, err = db.ShouldCount(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
-	return totalRows, c, err
-}
-
-func (d *DXDatabase) CountOne(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
-	totalRows, c, err = db.CountOne(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
-	return totalRows, c, err
-}
-
-func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
-	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
-
-	rowsInfo, resultData, err = d.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
-	if err != nil {
-		return nil, nil, err
-	}
-	if resultData == nil {
-		return nil, nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", tableName)
-	}
-	return rowsInfo, resultData, err
-}
-
-func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-
-	rowsInfo, rr, err := d.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(rr) == 0 {
-		return nil, nil, nil
-	}
-	return rowsInfo, rr[0], nil
 }
 
 func (d *DXDatabase) SoftDelete(tableName string, whereKeyValues utils.JSON) (result sql.Result, err error) {
@@ -515,12 +454,12 @@ func (d *DXDatabase) Delete(tableName string, whereKeyValues utils.JSON) (r sql.
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		r, err = db.Delete(d.Connection, tableName, whereKeyValues)
+		r, err = oldDb.Delete(d.Connection, tableName, whereKeyValues)
 		if err == nil {
 			return r, nil
 		}
 		log.Log.Warnf("DELETE_ERROR:%s=%v", tableName, err.Error())
-		if !db.IsConnectionError(err) {
+		if !oldDb.IsConnectionError(err) {
 			return nil, err
 		}
 		err = d.CheckConnectionAndReconnect()

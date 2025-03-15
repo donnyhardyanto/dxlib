@@ -7,7 +7,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
-	databaseUtils "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -26,7 +25,7 @@ type DXPropertyTable struct {
 	FieldNameForRowId          string
 	FieldNameForRowNameId      string
 	FieldNameForRowUid         string
-	FieldTypeMapping           databaseUtils.FieldTypeMapping
+	FieldTypeMapping           db.FieldTypeMapping
 	ResponseEnvelopeObjectName string
 }
 

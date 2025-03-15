@@ -6,7 +6,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/dbtx"
-	"github.com/donnyhardyanto/dxlib/database/protected/utils"
+	"github.com/donnyhardyanto/dxlib/database2/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/table"
 	utilsOs "github.com/donnyhardyanto/dxlib/utils/os"

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
-	utils2 "github.com/donnyhardyanto/dxlib/database/protected/utils"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"
@@ -469,7 +468,7 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 	return nil, err
 }
 
-func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
+func (d *DXDatabase) Select(tableName string, fieldTypeMapping db.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
 	limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
 
 	err = d.EnsureConnection()
@@ -504,7 +503,7 @@ func (d *DXDatabase) CountOne(tableName string, summaryCalcFieldsPart string, wh
 	return totalRows, c, err
 }
 
-func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
+func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping db.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
 
 	rowsInfo, resultData, err = d.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
@@ -517,7 +516,7 @@ func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping utils2.F
 	return rowsInfo, resultData, err
 }
 
-func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping db.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	rowsInfo, rr, err := d.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
