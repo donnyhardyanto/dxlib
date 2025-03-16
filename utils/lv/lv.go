@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
 )
 
 //var MAX_SIZE uint32 = 2147483647
@@ -71,7 +72,7 @@ func (lv *LV) Expand() ([]*LV, error) {
 func (lv *LV) SetValue(data any) error {
 	d, err := utils.AnyToBytes(data)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	lv.Value = d
 	lv.Length = uint32(len(d))
@@ -99,7 +100,7 @@ func (lv *LV) UnmarshalBinary(data []byte) error {
 	buf := bytes.NewReader(data)
 	err := lv.UnmarshalBinaryFromReader(buf)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -107,13 +108,13 @@ func (lv *LV) UnmarshalBinary(data []byte) error {
 func (lv *LV) UnmarshalBinaryFromReader(r *bytes.Reader) error {
 	err := binary.Read(r, binary.BigEndian, &lv.Length)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	lv.Value = make([]byte, lv.Length)
 	err = binary.Read(r, binary.BigEndian, &lv.Value)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }

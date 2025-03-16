@@ -42,13 +42,14 @@ func (bt *DXBaseTable) DbEnsureInitialize() error {
 	if bt.Database == nil {
 		bt.Database = database.Manager.Databases[bt.DatabaseNameId]
 		if bt.Database == nil {
-			return errors.Errorf("database not found: %s", bt.DatabaseNameId)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("database not found: %s", bt.DatabaseNameId)
 		}
 	}
 	if !bt.Database.Connected {
 		err := bt.Database.Connect()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -104,12 +105,12 @@ func (bt *DXBaseTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err e
 
 	// Ensure database is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	_, _, err = bt.ShouldGetById(&aepr.Log, id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	_, err = db.Delete(bt.Database.Connection, bt.NameId, utils.JSON{
@@ -117,7 +118,7 @@ func (bt *DXBaseTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err e
 	})
 	if err != nil {
 		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", bt.NameId, err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
 	return nil
@@ -127,12 +128,12 @@ func (bt *DXBaseTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string)
 
 	// Ensure database is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	_, _, err = bt.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	_, err = db.Delete(bt.Database.Connection, bt.NameId, utils.JSON{
@@ -140,7 +141,7 @@ func (bt *DXBaseTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string)
 	})
 	if err != nil {
 		aepr.Log.Errorf("Error at %s.DoDeleteByUid (%s) ", bt.NameId, err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
 	return nil

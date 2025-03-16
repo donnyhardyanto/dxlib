@@ -5,6 +5,7 @@ import (
 	"fmt"
 	dxRedis "github.com/donnyhardyanto/dxlib/redis"
 	"github.com/go-redis/redis/v8"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -87,7 +88,7 @@ func (e *EndpointRateLimiter) IsAllowed(ctx context.Context, groupNameId, identi
 	if err == redis.Nil {
 		// Key doesn't exist, first attempt
 		err = p.Connection.Set(ctx, attemptsKey, 1, config.TimeWindow).Err()
-		return err == nil, err
+		return errors.Wrap(err, "error occured") == nil, err
 	}
 	if err != nil {
 		return false, err
@@ -107,7 +108,7 @@ func (e *EndpointRateLimiter) IsAllowed(ctx context.Context, groupNameId, identi
 
 	// Increment attempts
 	err = p.Connection.Incr(ctx, attemptsKey).Err()
-	return err == nil, err
+	return errors.Wrap(err, "error occured") == nil, err
 }
 
 // Reset clears the rate limit counters and blocked status for a specific identifier and API
@@ -120,7 +121,7 @@ func (e *EndpointRateLimiter) Reset(ctx context.Context, groupNameId, identifier
 	pipe.Del(ctx, attemptsKey)
 	pipe.Del(ctx, blockedKey)
 	_, err := pipe.Exec(ctx)
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 // GetRemainingAttempts returns the number of remaining attempts for an identifier on a specific API
@@ -152,7 +153,7 @@ func (e *EndpointRateLimiter) ResetAll(ctx context.Context, groupNameId string) 
 	for {
 		keys, cursor, err = p.Connection.Scan(ctx, cursor, pattern, 100).Result()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 
 		if len(keys) > 0 {
@@ -163,7 +164,7 @@ func (e *EndpointRateLimiter) ResetAll(ctx context.Context, groupNameId string) 
 			}
 			_, err = pipe.Exec(ctx)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 

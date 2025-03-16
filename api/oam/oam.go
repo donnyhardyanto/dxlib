@@ -2,6 +2,7 @@ package oam
 
 import (
 	"github.com/donnyhardyanto/dxlib/api"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 )
@@ -38,5 +39,5 @@ func Ping(aepr *api.DXAPIEndPointRequest) (err error) {
 	data, err := Echo(aepr.Request)
 	aepr.Log.Infof("Receive (%v): %v", err, data)
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
-	return err
+	return errors.Wrap(err, "error occured")
 }

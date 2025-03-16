@@ -57,7 +57,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 				} else {
 					err = childValue.SetRawValue(jv, aVariablePath)
 					if err != nil {
-						return err
+						return errors.Wrap(err, "error occured")
 					}
 				}
 			}
@@ -113,7 +113,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			for _, v := range aeprpv.Children {
 				err = v.Validate()
 				if err != nil {
-					return err
+					return errors.Wrap(err, "error occured")
 				}
 			}
 		case "json-passthrough":

@@ -96,7 +96,7 @@ func (osm *DXObjectStorageManager) LoadFromConfiguration(configurationNameId str
 		d, ok := v.(utils.JSON)
 		if !ok {
 			err := log.Log.ErrorAndCreateErrorf("Cannot read %s as JSON", k)
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		isConnectAtStart, ok = d[`is_connect_at_start`].(bool)
 		if !ok {
@@ -109,7 +109,7 @@ func (osm *DXObjectStorageManager) LoadFromConfiguration(configurationNameId str
 		ObjectStorageObject := osm.NewObjectStorage(k, isConnectAtStart, mustConnected)
 		err := ObjectStorageObject.ApplyFromConfiguration()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -122,18 +122,18 @@ func (osm *DXObjectStorageManager) ConnectAllAtStart() (err error) {
 			err := v.ApplyFromConfiguration()
 			if err != nil {
 				err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 			if v.IsConnectAtStart {
 				err = v.Connect()
 				if err != nil {
-					return err
+					return errors.Wrap(err, "error occured")
 				}
 			}
 		}
 		log.Log.Info("Connecting to Database Manager... done")
 	}
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (osm *DXObjectStorageManager) ConnectAll() (err error) {
@@ -141,24 +141,24 @@ func (osm *DXObjectStorageManager) ConnectAll() (err error) {
 		err := v.ApplyFromConfiguration()
 		if err != nil {
 			err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		err = v.Connect()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (osm *DXObjectStorageManager) DisconnectAll() (err error) {
 	for _, v := range osm.ObjectStorages {
 		err = v.Disconnect()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (osm *DXObjectStorageManager) FindObjectStorageAndReceiveObject(aepr *api.DXAPIEndPointRequest, nameid string, filename string) (err error) {
@@ -170,7 +170,7 @@ func (osm *DXObjectStorageManager) FindObjectStorageAndReceiveObject(aepr *api.D
 
 	err = objectStorage.ReceiveStreamObject(aepr, filename)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -184,7 +184,7 @@ func (osm *DXObjectStorageManager) FindObjectStorageAndSendObject(aepr *api.DXAP
 
 	err = objectStorage.SendStreamObject(aepr, filename)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -195,27 +195,27 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 		configurationData, ok := dxlibv3Configuration.Manager.Configurations[`object_storage`]
 		if !ok {
 			err = log.Log.PanicAndCreateErrorf("DXObjectStorage/ApplyFromConfiguration/1", "ObjectStorage configuration not found")
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		m := *(configurationData.Data)
 		ObjectStorageConfiguration, ok := m[r.NameId].(utils.JSON)
 		if !ok {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("ObjectStorage %s configuration not found", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			} else {
 				err := log.Log.WarnAndCreateErrorf("Manager is unusable, ObjectStorage %s configuration not found", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 		r.Address, ok = ObjectStorageConfiguration[`address`].(string)
 		if !ok {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Mandatory address field in ObjectStorage %s configuration not exist", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in ObjectStorage %s configuration not exist", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 		r.UserName, r.HasUserName = ObjectStorageConfiguration[`user_name`].(string)
@@ -223,7 +223,7 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 		r.BucketName, ok = ObjectStorageConfiguration[`bucket_name`].(string)
 		if !ok {
 			err := log.Log.ErrorAndCreateErrorf("Mandatory bucket_name field in object storage ObjectStorage %s configuration not exist.", r.NameId)
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		r.BasePath, ok = ObjectStorageConfiguration[`base_path`].(string)
 		r.UseSSL, ok = ObjectStorageConfiguration[`use_ssl`].(bool)
@@ -240,7 +240,7 @@ func (r *DXObjectStorage) Connect() (err error) {
 		err := r.ApplyFromConfiguration()
 		if err != nil {
 			log.Log.Errorf("Cannot configure to Object Storage %s to connect (%s)", r.NameId, err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		log.Log.Infof("Connecting to Object Storage %s at %s/%s... start", r.NameId, r.Address, r.BucketName)
 
@@ -254,7 +254,7 @@ func (r *DXObjectStorage) Connect() (err error) {
 				Secure: r.UseSSL,
 			})
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		r.Client = minioClient
 		r.Connected = true
@@ -316,7 +316,7 @@ func (r *DXObjectStorage) ReceiveStreamObject(aepr *api.DXAPIEndPointRequest, fi
 
 	uploadInfo, err := r.UploadStream(s, filename, filename, "application/octet-stream", false, bodyLen)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	aepr.Log.Infof("Upload info result: %v", uploadInfo)
 	return nil
@@ -355,7 +355,7 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 
 	objectInfo, err := object.Stat()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	originalFilename, ok := objectInfo.UserMetadata["filename"]

@@ -608,7 +608,8 @@ func isReservedKeyword(dialect database_type.DXDatabaseType, word string) bool {
 // CheckIdentifier validates table and column names according to database-specific rules
 func CheckIdentifier(dialect database_type.DXDatabaseType, identifier string) error {
 	if identifier == "" {
-		return errors.Errorf("identifier cannot be empty")
+		return errors.Wrap(err, "error occured")
+		ors.Errorf("identifier cannot be empty")
 	}
 
 	// Check for quoted identifiers
@@ -633,12 +634,14 @@ func CheckIdentifier(dialect database_type.DXDatabaseType, identifier string) er
 
 		// For quoted identifiers, mainly check length and basic sanity
 		if content == "" {
-			return errors.Errorf("empty quoted identifier")
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("empty quoted identifier")
 		}
 
 		// Check length
 		if maxLen := maxIdentifierLengths[dialect]; len(content) > maxLen {
-			return errors.Errorf("quoted identifier %q exceeds maximum length of %d for dialect %s",
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("quoted identifier %q exceeds maximum length of %d for dialect %s",
 				identifier, maxLen, dialect)
 		}
 
@@ -649,13 +652,15 @@ func CheckIdentifier(dialect database_type.DXDatabaseType, identifier string) er
 			// e.g., "column""name" is valid and represents: column"name
 			// Verify this pattern
 			if !strings.Contains(content, string(quoteChar)+string(quoteChar)) {
-				return errors.Errorf("invalid quote character in identifier without proper escaping")
+				return errors.Wrap(err, "error occured")
+				ors.Errorf("invalid quote character in identifier without proper escaping")
 			}
 		}
 
 		// Still check for suspicious patterns, as even quoted identifiers shouldn't contain SQL injection
 		if err := checkSuspiciousQueryPatterns(content, false); err != nil {
-			return errors.Errorf("potentially dangerous quoted identifier: %w", err)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("potentially dangerous quoted identifier: %w", err)
 		}
 
 		return nil
@@ -665,28 +670,33 @@ func CheckIdentifier(dialect database_type.DXDatabaseType, identifier string) er
 	parts := strings.Split(identifier, ".")
 	for _, part := range parts {
 		if part == "" {
-			return errors.Errorf("empty part in identifier %q", identifier)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("empty part in identifier %q", identifier)
 		}
 
 		// Get the appropriate pattern for this dialect
 		pattern, exists := identifierPatterns[dialect]
 		if !exists {
-			return errors.Errorf("unknown database dialect: %s", dialect)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("unknown database dialect: %s", dialect)
 		}
 
 		// Check pattern for unquoted identifiers
 		if !pattern.MatchString(part) {
-			return errors.Errorf("invalid identifier format for %s: %s", dialect, part)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("invalid identifier format for %s: %s", dialect, part)
 		}
 
 		// Check if identifier is a reserved keyword
 		if isReservedKeyword(dialect, part) {
-			return errors.Errorf("identifier %q is a reserved keyword in %s", part, dialect)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("identifier %q is a reserved keyword in %s", part, dialect)
 		}
 
 		// Check length
 		if maxLen := maxIdentifierLengths[dialect]; len(part) > maxLen {
-			return errors.Errorf("identifier %q exceeds maximum length of %d for dialect %s",
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("identifier %q exceeds maximum length of %d for dialect %s",
 				part, maxLen, dialect)
 		}
 	}
@@ -699,7 +709,8 @@ func CheckOperator(operator string, dialect database_type.DXDatabaseType) error 
 	op := strings.ToLower(strings.TrimSpace(operator))
 	if ops, ok := validOperators[dialect]; ok {
 		if !ops[op] {
-			return errors.Errorf("operator %q not supported for dialect %s", operator, dialect)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("operator %q not supported for dialect %s", operator, dialect)
 		}
 	}
 	return nil
@@ -720,13 +731,13 @@ func CheckValue(value any) error {
 	case []any:
 		for _, item := range v {
 			if err := CheckValue(item); err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 	case []string:
 		for _, item := range v {
 			if err := CheckValue(item); err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 	case []uint8, []uint64, []int64, []int32, []int16, []int8, []int, []float64, []float32, []bool:
@@ -738,10 +749,10 @@ func CheckValue(value any) error {
 		// Handle JSONB data type
 		for key, val := range v {
 			if err := CheckIdentifier(database_type.PostgreSQL, key); err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 			if err := CheckValue(val); err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 	case time.Time:
@@ -750,7 +761,7 @@ func CheckValue(value any) error {
 		return nil
 	default:
 		return nil
-		//return errors.Errorf("unsupported value type: %T", value)
+		//return errors.Wrap(err, "error occured")ors.Errorf("unsupported value type: %T", value)
 	}
 
 	return nil
@@ -802,12 +813,13 @@ func CheckLikePattern(query string) error {
 
 		// Check the actual pattern
 		if err := checkStringValue(pattern); err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 
 		// Check wildcard count
 		if strings.Count(pattern, "%") > 5 {
-			return errors.Errorf("too many wildcards in LIKE pattern")
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("too many wildcards in LIKE pattern")
 		}
 	}
 
@@ -817,7 +829,8 @@ func CheckLikePattern(query string) error {
 // CheckOrderBy validates ORDER BY expressions
 func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 	if expr == "" {
-		return errors.Errorf("empty order by expression")
+		return errors.Wrap(err, "error occured")
+		ors.Errorf("empty order by expression")
 	}
 
 	for _, part := range strings.Split(expr, ",") {
@@ -829,26 +842,30 @@ func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 		// Split into field and direction
 		tokens := strings.Fields(part)
 		if len(tokens) == 0 {
-			return errors.Errorf("empty order by part")
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("empty order by part")
 		}
 
 		// Check field name
 		if err := CheckIdentifier(dialect, tokens[0]); err != nil {
-			return errors.Wrap(err, fmt.Sprintf("invalid field in order by: ", err.Error()))
+			return errors.Wrap(err, "error occured")
+			ors.Wrap(err, fmt.Sprintf("invalid field in order by: ", err.Error()))
 		}
 
 		// Check direction if specified
 		if len(tokens) > 1 {
 			dir := strings.ToUpper(tokens[1])
 			if dir != "ASC" && dir != "DESC" {
-				return errors.Errorf("invalid sort direction: %s", tokens[1])
+				return errors.Wrap(err, "error occured")
+				ors.Errorf("invalid sort direction: %s", tokens[1])
 			}
 		}
 
 		// Check for NULLS FIRST/LAST if present
 		if len(tokens) > 2 {
 			if tokens[2] != "NULLS" || len(tokens) < 4 || (tokens[3] != "FIRST" && tokens[3] != "LAST") {
-				return errors.Errorf("invalid NULLS FIRST/LAST syntax")
+				return errors.Wrap(err, "error occured")
+				ors.Errorf("invalid NULLS FIRST/LAST syntax")
 			}
 		}
 	}
@@ -859,19 +876,22 @@ func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 // CheckBaseQuery validates the base query for suspicious patterns
 func CheckBaseQuery(query string, dialect database_type.DXDatabaseType) error {
 	if query == "" {
-		return errors.Errorf("empty query")
+		return errors.Wrap(err, "error occured")
+		ors.Errorf("empty query")
 	}
 
 	loweredQuery := strings.ToLower(query)
 
 	// Check for multiple statements
 	if strings.Count(query, ";") > 0 {
-		return errors.Errorf("multiple statements not allowed")
+		return errors.Wrap(err, "error occured")
+		ors.Errorf("multiple statements not allowed")
 	}
 
 	// Check for suspicious patterns
 	if err := checkSuspiciousQueryPatterns(loweredQuery, false); err != nil {
-		return errors.Errorf("query validation failed: %w", err)
+		return errors.Wrap(err, "error occured")
+		ors.Errorf("query validation failed: %w", err)
 	}
 
 	return nil
@@ -885,7 +905,7 @@ func checkStringValue(value string) error {
 	// Check for suspicious patterns
 	for _, pattern := range suspiciousValuePatterns {
 		if strings.Contains(lowered, pattern) {
-			return errors.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
+			return errors.Wrap(err, "error occured")ors.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
 		}
 	}*/
 	return nil
@@ -903,7 +923,8 @@ func checkSuspiciousQueryPatterns(value string, ignoreInComments bool) error {
 		// Use a more specific logic to avoid false positives
 
 		if regexp.MustCompile(pattern).MatchString(lowered) {
-			return errors.Errorf("suspicious pattern detected: %s", pattern)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("suspicious pattern detected: %s", pattern)
 		}
 
 	}
@@ -916,19 +937,22 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	}
 	err = CheckBaseQuery(query, database_type.StringToDXDatabaseType(dbDriverName))
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return errors.Wrap(err, "error occured")
+		ors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
 	err = CheckValue(arg)
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w", err)
+		return errors.Wrap(err, "error occured")
+		ors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w", err)
 	}
 
 	// Check LIKE patterns
 	if strings.Contains(query, "LIKE") {
 		err = CheckLikePattern(query)
 		if err != nil {
-			return errors.Errorf("SQL_INJECTION_DETECTED:LIKE_PATTERN_VALIDATION_FAILED: %w", err)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("SQL_INJECTION_DETECTED:LIKE_PATTERN_VALIDATION_FAILED: %w", err)
 		}
 	}
 
@@ -936,7 +960,8 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	if strings.Contains(query, "ORDER BY") {
 		err = CheckOrderBy(query, database_type.StringToDXDatabaseType(dbDriverName))
 		if err != nil {
-			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %w", err)
+			return errors.Wrap(err, "error occured")
+			ors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %w", err)
 		}
 	}
 

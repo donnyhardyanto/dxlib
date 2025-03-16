@@ -127,7 +127,7 @@ func (l *DXLog) Warnf(text string, v ...any) {
 func (l *DXLog) WarnAndCreateErrorf(text string, v ...any) (err error) {
 	err = errors.Errorf(text, v...)
 	l.LogText(DXLogLevelWarn, ``, err.Error())
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (l *DXLog) Error(text string) {
@@ -142,7 +142,7 @@ func (l *DXLog) Errorf(text string, v ...any) {
 func (l *DXLog) ErrorAndCreateErrorf(text string, v ...any) (err error) {
 	err = errors.Errorf(text, v...)
 	l.Error(err.Error())
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (l *DXLog) Fatal(text string) {
@@ -156,7 +156,7 @@ func (l *DXLog) Fatalf(text string, v ...any) {
 func (l *DXLog) FatalAndCreateErrorf(text string, v ...any) (err error) {
 	err = errors.Errorf(text, v...)
 	l.Fatal(err.Error())
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (l *DXLog) Panic(location string, err error) {
@@ -166,7 +166,7 @@ func (l *DXLog) Panic(location string, err error) {
 func (l *DXLog) PanicAndCreateErrorf(location, text string, v ...any) (err error) {
 	err = errors.Errorf(text, v...)
 	l.Panic(location, err)
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 var Log DXLog

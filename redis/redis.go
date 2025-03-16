@@ -63,7 +63,7 @@ func (rs *DXRedisManager) LoadFromConfiguration(configurationNameId string) (err
 		d, ok := v.(utils.JSON)
 		if !ok {
 			err := log.Log.ErrorAndCreateErrorf("Cannot read %s as JSON", k)
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		isConnectAtStart, ok = d[`is_connect_at_start`].(bool)
 		if !ok {
@@ -76,7 +76,7 @@ func (rs *DXRedisManager) LoadFromConfiguration(configurationNameId string) (err
 		redisObject := rs.NewRedis(k, isConnectAtStart, mustConnected)
 		err := redisObject.ApplyFromConfiguration()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -89,7 +89,7 @@ func (rs *DXRedisManager) ConnectAllAtStart() (err error) {
 			if v.IsConnectAtStart {
 				err = v.Connect()
 				if err != nil {
-					return err
+					return errors.Wrap(err, "error occured")
 				}
 			}
 		}
@@ -102,7 +102,7 @@ func (rs *DXRedisManager) ConnectAll() (err error) {
 	for _, v := range rs.Redises {
 		err = v.Connect()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -113,7 +113,7 @@ func (rs *DXRedisManager) DisconnectAll() (err error) {
 	for _, v := range rs.Redises {
 		err = v.Disconnect()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -125,27 +125,27 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		configurationData, ok := dxlibv3Configuration.Manager.Configurations[`redis`]
 		if !ok {
 			err = log.Log.PanicAndCreateErrorf("DXRedis/ApplyFromConfiguration/1", "Redises configuration not found")
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		m := *(configurationData.Data)
 		redisConfiguration, ok := m[r.NameId].(utils.JSON)
 		if !ok {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Redis %s configuration not found", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			} else {
 				err := log.Log.WarnAndCreateErrorf("Manager is unusable, Redis %s configuration not found", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 		r.Address, ok = redisConfiguration[`address`].(string)
 		if !ok {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Mandatory address field in Redis %s configuration not exist", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in Redis %s configuration not exist", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 		r.UserName, r.HasUserName = redisConfiguration[`user_name`].(string)
@@ -154,10 +154,10 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		if err != nil {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Mandatory database_index field in Redis %s configuration not exist, check configuration and make sure it was integer not a string", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in Redis %s configuration not exist", r.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 		r.IsConfigured = true
@@ -171,7 +171,7 @@ func (r *DXRedis) Connect() (err error) {
 		err := r.ApplyFromConfiguration()
 		if err != nil {
 			log.Log.Errorf("Cannot configure to Redis %s to connect (%s)", r.NameId, err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		log.Log.Infof("Connecting to Redis %s at %s/%d... start", r.NameId, r.Address, r.DatabaseIndex)
 		redisRingOptions := &redis.RingOptions{
@@ -194,7 +194,7 @@ func (r *DXRedis) Connect() (err error) {
 				return nil
 			} else {
 				log.Log.Errorf("Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 		r.Connection = connection
@@ -207,7 +207,7 @@ func (r *DXRedis) Connect() (err error) {
 func (r *DXRedis) Ping() (err error) {
 	err = r.Connection.Ping(r.Context).Err()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	return nil
@@ -217,13 +217,13 @@ func (r *DXRedis) Set(key string, value utils.JSON, expirationDuration time.Dura
 	valueAsBytes, err := json.Marshal(value)
 	if err != nil {
 		log.Log.Errorf("Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	err = r.Connection.Set(r.Context, key, valueAsBytes, expirationDuration).Err()
 	if err != nil {
 		log.Log.Errorf("Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -284,7 +284,7 @@ func (r *DXRedis) Delete(key string) (err error) {
 	_, err = r.Connection.Del(r.Context, key).Result()
 	if err != nil {
 		log.Log.Errorf("Error in deleting key Redis %s k/v (%v) %s", r.NameId, err, key)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -296,7 +296,7 @@ func (r *DXRedis) Disconnect() (err error) {
 		err := c.Close()
 		if err != nil {
 			log.Log.Errorf("Disconnecting to Redis %s at %s/%d error (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		r.Connection = nil
 		r.Connected = false

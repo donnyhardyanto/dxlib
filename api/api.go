@@ -71,10 +71,10 @@ var SpecFormat = "MarkDown"
 func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
 	s, err := a.PrintSpec()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	aepr.WriteResponseAsString(http.StatusOK, nil, s)
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (a *DXAPI) PrintSpec() (s string, err error) {
@@ -124,11 +124,11 @@ func (am *DXAPIManager) LoadFromConfiguration(configurationNameId string) (err e
 		}
 		apiObject, err := am.NewAPI(k)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		err = apiObject.ApplyConfigurations(configurationNameId)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -154,7 +154,7 @@ func (am *DXAPIManager) StartAll(errorGroup *errgroup.Group, errorGroupContext c
 	for _, v := range am.APIs {
 		err := v.StartAndWait(am.ErrorGroup)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -163,30 +163,30 @@ func (am *DXAPIManager) StartAll(errorGroup *errgroup.Group, errorGroupContext c
 func (am *DXAPIManager) StopAll() (err error) {
 	am.ErrorGroupContext.Done()
 	err = am.ErrorGroup.Wait()
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	configuration, ok := dxlibConfiguration.Manager.Configurations[configurationNameId]
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	c := *configuration.Data
 	c1, ok := c[a.NameId].(utils.JSON)
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s.%s", configurationNameId, a.NameId)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	a.Address, ok = c1[`address`].(string)
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s.%s/address", configurationNameId, a.NameId)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	a.WriteTimeoutSec = utilsJSON.GetNumberWithDefault(c1, `writetimeout-sec`, DXAPIDefaultWriteTimeoutSec)
 	a.ReadTimeoutSec = utilsJSON.GetNumberWithDefault(c1, `readtimeout-sec`, DXAPIDefaultReadTimeoutSec)
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (a *DXAPI) FindEndPointByURI(uri string) *DXAPIEndPoint {
@@ -433,7 +433,7 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		}
 		a.RuntimeIsActive = false
 		log.Log.Infof("Listening at %s... stopped", a.Address)
-		return err
+		return errors.Wrap(err, "error occured")
 	})
 
 	return nil
@@ -443,7 +443,7 @@ func (a *DXAPI) StartShutdown() (err error) {
 	if a.RuntimeIsActive {
 		log.Log.Infof("Shutdown api %s start...", a.NameId)
 		err = a.HTTPServer.Shutdown(core.RootContext)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }

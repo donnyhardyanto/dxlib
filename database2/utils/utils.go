@@ -117,7 +117,7 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 	err = KillConnections(db, dbName)
 	if err != nil {
 		log.Log.Errorf("Failed to kill connections: %s", err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	var query string
@@ -191,7 +191,7 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 		query := fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)
 		_, err := db.Exec(query)
 		if err != nil {
-			return errors.Errorf("failed to create database: %w", err)
+			return errors.Wrap(err, "error occured")ors.Errorf("failed to create database: %w", err)
 		}
 		return nil*/
 }

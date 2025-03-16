@@ -7,6 +7,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 )
 
 type DXDatabaseTxCallback func(dtx *DXDatabaseTx) (err error)
@@ -33,7 +34,7 @@ func (dtx *DXDatabaseTx) Commit() (err error) {
 	err = dtx.Tx.Commit()
 	if err != nil {
 		dtx.Log.Errorf("TX_ERROR_IN_COMMIT: (%v)", err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -42,7 +43,7 @@ func (dtx *DXDatabaseTx) Rollback() (err error) {
 	err = dtx.Tx.Rollback()
 	if err != nil {
 		dtx.Log.Errorf("TX_ERROR_IN_ROLLBACK: (%v)", err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }

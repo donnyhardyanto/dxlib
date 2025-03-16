@@ -26,7 +26,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 		})
 		if err != nil {
 			log.Error(err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		err = callback(tx, log)
 		if err != nil {
@@ -35,7 +35,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 			if errTx != nil {
 				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 			}
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		err = tx.Commit()
 		if err != nil {
@@ -44,7 +44,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 			if errTx != nil {
 				log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
 			}
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 
 		return nil
@@ -55,7 +55,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 	})
 	if err != nil {
 		log.Error(err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	err = callback(tx, log)
 	if err != nil {
@@ -64,7 +64,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 		if errTx != nil {
 			log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 		}
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	err = tx.Commit()
 	if err != nil {
@@ -73,7 +73,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 		if errTx != nil {
 			log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
 		}
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	return nil

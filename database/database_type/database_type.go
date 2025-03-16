@@ -189,7 +189,7 @@ func isJSONArray(str string) bool {
 	// Try to unmarshal to verify it's a valid JSON array
 	var arr []interface{}
 	err := json.Unmarshal([]byte(str), &arr)
-	return err == nil
+	return errors.Wrap(err, "error occured") == nil
 }
 
 func parseJSONArrayToStringArray(jsonStr string) ([]string, error) {

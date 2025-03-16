@@ -5,6 +5,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
 )
 
 type DXDatabaseSQLExpression = db.SQLExpression
@@ -40,7 +41,7 @@ func (dm *DXDatabaseManager) LoadFromConfiguration(configurationNameId string) (
 		d, ok := v.(utils.JSON)
 		if !ok {
 			err := log.Log.ErrorAndCreateErrorf("Cannot read %s as JSON", k)
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		isConnectAtStart, ok = d[`is_connect_at_start`].(bool)
 		if !ok {
@@ -53,7 +54,7 @@ func (dm *DXDatabaseManager) LoadFromConfiguration(configurationNameId string) (
 		databaseObject := dm.NewDatabase(k, isConnectAtStart, mustConnected)
 		err = databaseObject.ApplyFromConfiguration()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -66,18 +67,18 @@ func (dm *DXDatabaseManager) ConnectAllAtStart() (err error) {
 			err := v.ApplyFromConfiguration()
 			if err != nil {
 				err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 			if v.IsConnectAtStart {
 				err = v.Connect()
 				if err != nil {
-					return err
+					return errors.Wrap(err, "error occured")
 				}
 			}
 		}
 		log.Log.Info("Connecting to Database Manager... done")
 	}
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (dm *DXDatabaseManager) ConnectAll(configurationNameId string) (err error) {
@@ -85,24 +86,24 @@ func (dm *DXDatabaseManager) ConnectAll(configurationNameId string) (err error) 
 		err := v.ApplyFromConfiguration()
 		if err != nil {
 			err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		err = v.Connect()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (dm *DXDatabaseManager) DisconnectAll() (err error) {
 	for _, v := range dm.Databases {
 		err = v.Disconnect()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 var Manager DXDatabaseManager

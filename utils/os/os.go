@@ -1,6 +1,7 @@
 package os
 
 import (
+	"github.com/pkg/errors"
 	"os"
 	"strconv"
 )
@@ -15,12 +16,12 @@ func LoadEnvFile(filename string) error {
 	if os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	file, err := os.Open(filename)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	defer func(file *os.File) {
 		err := file.Close()
@@ -39,12 +40,12 @@ func LoadEnvFile(filename string) error {
 		key, value := parts[0], parts[1]
 		err := os.Setenv(key, value)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	return nil

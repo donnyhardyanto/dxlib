@@ -66,7 +66,7 @@ func (db *DataBlock) SetTimeNow() error {
 	tAsBytes := []byte(tAsString)
 	err := db.Time.SetValue(tAsBytes)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -74,7 +74,7 @@ func (db *DataBlock) SetTimeNow() error {
 func (db *DataBlock) GenerateNonce() (err error) {
 	err = db.Nonce.SetValue(utils.RandomData(32))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -82,11 +82,11 @@ func (db *DataBlock) GenerateNonce() (err error) {
 func (db *DataBlock) SetDataValue(data any) (err error) {
 	err = db.Data.SetValue(data)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	err = db.GenerateDataHash()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -96,7 +96,7 @@ func (db *DataBlock) GenerateDataHash() (err error) {
 	x := sha512.Sum512(dataAsBytes)
 	err = db.DataHash.SetValue(x[:])
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }

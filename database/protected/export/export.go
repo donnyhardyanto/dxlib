@@ -126,7 +126,7 @@ func exportToXLS(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) e
 	}()
 
 	if err := writeXLSContent(f, rowsInfo, rows, opts); err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	return f.SaveAs(opts.FilePath)

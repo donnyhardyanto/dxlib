@@ -65,7 +65,8 @@ func (sd *StateDiagram) GetStateAsStrings() []string {
 
 func (sd *StateDiagram) SetState(stateNameId string) (err error) {
 	if !sd.IsStateNameIdExist(stateNameId) {
-		return errors.New("STATE_NAME_ID_NOT_FOUND")
+		return errors.Wrap(err, "error occured")
+		ors.New("STATE_NAME_ID_NOT_FOUND")
 	}
 	sd.CurrentState = stateNameId
 	return nil
@@ -73,7 +74,8 @@ func (sd *StateDiagram) SetState(stateNameId string) (err error) {
 
 func (sd *StateDiagram) Action(actionNameId string, actorNameId string) (err error) {
 	if sd.CurrentState == "" {
-		return errors.New("CURRENT_STATE_NOT_SET")
+		return errors.Wrap(err, "error occured")
+		ors.New("CURRENT_STATE_NOT_SET")
 	}
 	for _, connection := range sd.Connections {
 		if connection.FromStateNameId == sd.CurrentState && connection.ActionNameId == actionNameId {
@@ -105,7 +107,8 @@ func (sd *StateDiagram) Action(actionNameId string, actorNameId string) (err err
 			return nil
 		}
 	}
-	return errors.New("ACTION_NOT_FOUND")
+	return errors.Wrap(err, "error occured")
+	ors.New("ACTION_NOT_FOUND")
 }
 
 func (sd *StateDiagram) GetState() string {

@@ -7,6 +7,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/object_storage"
 	"github.com/donnyhardyanto/dxlib/vault"
 	"github.com/newrelic/go-agent/v3/newrelic"
+	"github.com/pkg/errors"
 
 	"golang.org/x/sync/errgroup"
 
@@ -81,7 +82,7 @@ func (a *DXApp) Run() (err error) {
 		err = a.InitVault.Start()
 		if err != nil {
 			log.Log.Error(err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
@@ -89,21 +90,21 @@ func (a *DXApp) Run() (err error) {
 		err := a.OnDefine()
 		if err != nil {
 			log.Log.Error(err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	if a.OnDefineConfiguration != nil {
 		err := a.OnDefineConfiguration()
 		if err != nil {
 			log.Log.Error(err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
 	err = a.execute()
 	if err != nil {
 		log.Log.Error(err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
@@ -111,34 +112,34 @@ func (a *DXApp) Run() (err error) {
 func (a *DXApp) loadConfiguration() (err error) {
 	err = configuration.Manager.Load()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	_, a.IsRedisExist = configuration.Manager.Configurations["redis"]
 	if a.IsRedisExist {
 		err = redis.Manager.LoadFromConfiguration("redis")
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	_, a.IsStorageExist = configuration.Manager.Configurations["storage"]
 	if a.IsStorageExist {
 		err = database.Manager.LoadFromConfiguration("storage")
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	_, a.IsObjectStorageExist = configuration.Manager.Configurations["object_storage"]
 	if a.IsObjectStorageExist {
 		err = object_storage.Manager.LoadFromConfiguration("object_storage")
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	_, a.IsAPIExist = configuration.Manager.Configurations["api"]
 	if a.IsAPIExist {
 		err = api.Manager.LoadFromConfiguration("api")
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil
@@ -147,35 +148,35 @@ func (a *DXApp) start() (err error) {
 	log.Log.Info(fmt.Sprintf("%v %v %v", a.Title, a.Version, a.Description))
 	err = a.loadConfiguration()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	if a.IsRedisExist {
 		err = redis.Manager.ConnectAllAtStart()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	if a.IsStorageExist {
 		err = database.Manager.ConnectAllAtStart()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		err := table.Manager.ConnectAll()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		if a.OnStartStorageReady != nil {
 			err = a.OnStartStorageReady()
 			if err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 	}
 	if a.IsObjectStorageExist {
 		err = object_storage.Manager.ConnectAllAtStart()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
@@ -183,7 +184,7 @@ func (a *DXApp) start() (err error) {
 		err = a.OnDefineSetVariables()
 		if err != nil {
 			log.Log.Error(err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
@@ -191,14 +192,14 @@ func (a *DXApp) start() (err error) {
 		err = a.OnDefineAPIEndPoints()
 		if err != nil {
 			log.Log.Error(err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
 	if a.IsAPIExist {
 		err = api.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
@@ -207,14 +208,14 @@ func (a *DXApp) start() (err error) {
 	if a.IsTaskExist {
 		err = task.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
 	if a.OnAfterConfigurationStartAll != nil {
 		err = a.OnAfterConfigurationStartAll()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
@@ -226,37 +227,37 @@ func (a *DXApp) Stop() (err error) {
 	if a.OnStopping != nil {
 		err := a.OnStopping()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	if a.IsTaskExist {
 		err = task.Manager.StopAll()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	if a.IsAPIExist {
 		err = api.Manager.StopAll()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	if a.IsRedisExist {
 		err = redis.Manager.DisconnectAll()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	if a.IsStorageExist {
 		err = database.Manager.DisconnectAll()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	if a.IsObjectStorageExist {
 		err = object_storage.Manager.DisconnectAll()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	log.Log.Info("Stopped")
@@ -268,7 +269,7 @@ func (a *DXApp) execute() (err error) {
 	a.RuntimeErrorGroup, a.RuntimeErrorGroupContext = errgroup.WithContext(core.RootContext)
 	err = a.start()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	if a.IsLoop {
 		defer func() {
@@ -286,7 +287,7 @@ func (a *DXApp) execute() (err error) {
 		err = a.OnExecute()
 		if err != nil {
 			log.Log.Infof("onExecute error (%v)", err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 
@@ -295,7 +296,7 @@ func (a *DXApp) execute() (err error) {
 		err = a.RuntimeErrorGroup.Wait()
 		if err != nil {
 			log.Log.Infof("Exit reason: %v", err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strings"
@@ -118,7 +119,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 	if aepr.ResponseHeaderSent {
 	}
 	aepr.WriteResponseAsErrorMessage(statusCode, fmt.Sprintf(responseMessage, data))
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsString(statusCode int, header map[string]string, s string) {
@@ -308,7 +309,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 				err = rpv.Validate()
 				if err != nil {
 					aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
-					return err
+					return errors.Wrap(err, "error occured")
 				}
 			}
 		}
@@ -327,7 +328,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 					err = rpv.Validate()
 					if err != nil {
 						aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
-						return err
+						return errors.Wrap(err, "error occured")
 					}
 				}
 			}
@@ -340,7 +341,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 	default:
 		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `Request method is not supported yet (%v)`, aepr.EndPoint.Method)
 	}
-	return err
+	return errors.Wrap(err, "error occured")
 }
 
 func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (err error) {
@@ -395,7 +396,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			err = rpv.Validate()
 			if err != nil {
 				aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 	}

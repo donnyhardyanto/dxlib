@@ -104,7 +104,7 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 	var dtx *database.DXDatabaseTx
 	dtx, err = db.TransactionBegin(sql.LevelReadCommitted)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	defer dtx.Finish(&log.Log, err)
@@ -116,7 +116,7 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 		"is_ok": true,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	log.Log.Infof("Update result aId2: %v", aId)
@@ -130,7 +130,7 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 		"is_ok": false,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	log.Log.Infof("Update result aId2: %v", aId2)
@@ -142,7 +142,7 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 		"id": aId,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	_, err = table1.TxHardDelete(dtx, map[string]any{
@@ -167,11 +167,11 @@ func doOnAfterConfigurationStartAll() (err error) {
 	   	err = dbP1.Connect()
 	   	if err != nil {
 	   		log.Log.Errorf("Failed to connect to database %s: %s", dbP1.DatabaseName, err.Error())
-	   		return err
+	   		return errors.Wrap(err, "error occured")
 	   	}
 	   	_, err = dbP1.Execute("EXEC inv.CreateTransaction @stagTransactionId=1", nil)
 	   	if err != nil {
-	   		return err
+	   		return errors.Wrap(err, "error occured")
 	   	}*/
 
 	dbP1 := database.Manager.Databases[`p1`]
@@ -180,7 +180,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 	err = dbP1.Connect()
 	if err != nil {
 		log.Log.Errorf("Failed to connect to database %s: %s", dbP1.DatabaseName, err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	_ = utils.DropDatabase(dbSystem.Connection, dbP1.DatabaseName)
@@ -194,12 +194,12 @@ func doOnAfterConfigurationStartAll() (err error) {
 
 	err = testTableFunction(dbP1)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	/*var dtx1 *database.DXDatabaseTx
 	dtx1, err = dbP1.TransactionBegin(sql.LevelReadCommitted)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	{
 		defer dtx1.Finish(&log.Log, err)
@@ -211,7 +211,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 			"is_ok": true,
 		})
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 
 		tableTable1 := table.Manager.NewTable(dbP1.NameId, "test1.test1_table", "test1",
@@ -223,7 +223,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 			"id": aId,
 		})
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 
 		log.Log.Infof("Update result: %v", r)
@@ -235,7 +235,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 	err = dbP2.Connect()
 	if err != nil {
 		log.Log.Errorf("Failed to connect to database %s: %s", dbP2.DatabaseName, err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	_ = utils.DropDatabase(dbP2System.Connection, dbP2.DatabaseName)
@@ -248,13 +248,13 @@ func doOnAfterConfigurationStartAll() (err error) {
 
 	err = testTableFunction(dbP2)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	/*
 		var dtx2 *database.DXDatabaseTx
 		dtx2, err = dbP2.TransactionBegin(sql.LevelReadCommitted)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		{
 			defer dtx2.Finish(&log.Log, err)
@@ -266,7 +266,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 				"is_ok": true,
 			})
 			if err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 
 			tableTable2 := table.Manager.NewTable(dbP2.NameId, "test1.test1_table", "test1",
@@ -278,7 +278,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 				"id": aId,
 			})
 			if err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 
 			log.Log.Infof("Update result: %v", r)
@@ -291,7 +291,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 	err = dbP3.Connect()
 	if err != nil {
 		log.Log.Errorf("Failed to connect to database %s: %s", dbP2.DatabaseName, err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	_ = utils.DropDatabase(dbP3System.Connection, dbP3.DatabaseName)

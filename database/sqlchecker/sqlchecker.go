@@ -129,13 +129,13 @@ func CheckValue(value any) error {
 	case []any:
 		for _, item := range v {
 			if err := CheckValue(item); err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 	case []string:
 		for _, item := range v {
 			if err := CheckValue(item); err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 	case []uint8, []uint64, []int64, []int32, []int16, []int8, []int, []float64, []float32, []bool:
@@ -147,10 +147,10 @@ func CheckValue(value any) error {
 		// Handle JSONB data type
 		for key, val := range v {
 			if err := CheckIdentifier(key, database_type.PostgreSQL); err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 			if err := CheckValue(val); err != nil {
-				return err
+				return errors.Wrap(err, "error occured")
 			}
 		}
 	case time.Time:
@@ -159,7 +159,7 @@ func CheckValue(value any) error {
 		return nil
 	default:
 		return nil
-		//return errors.Errorf("unsupported value type: %T", value)
+		//return errors.Wrap(err, "error occured")ors.Errorf("unsupported value type: %T", value)
 	}
 
 	return nil
@@ -211,7 +211,7 @@ func CheckLikePattern(query string) error {
 
 		// Check the actual pattern
 		if err := checkStringValue(pattern); err != nil {
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 
 		// Check wildcard count
@@ -294,7 +294,7 @@ func checkStringValue(value string) error {
 	// Check for suspicious patterns
 	for _, pattern := range suspiciousValuePatterns {
 		if strings.Contains(lowered, pattern) {
-			return errors.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
+			return errors.Wrap(err, "error occured")ors.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
 		}
 	}*/
 	return nil

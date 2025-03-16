@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 	"os"
 
@@ -115,29 +116,29 @@ func (c *DXConfiguration) LoadFromFile() (err error) {
 	if err != nil {
 		if c.MustExist {
 			log.Log.Fatalf("Can not reading file %s, please check the file exists and has permission to be read. (%v)", c.Filename, err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		log.Log.Warnf("Can not reading file %s, please check the file exists and has permission to be read.", c.Filename)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	switch c.FileFormat {
 	case "json":
 		v, err := c.ByteArrayJSONToJSON(content)
 		if err != nil {
 			log.Log.Fatalf("Can not parsing file %s, please check the file content (%v)", c.Filename, err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		*c.Data = json2.DeepMerge(v, *c.Data)
 	case "yaml":
 		v, err := c.ByteArrayYAMLToJSON(content)
 		if err != nil {
 			log.Log.Fatalf("Can not parsing file %s, please check the file content (%v)", c.Filename, err.Error())
-			return err
+			return errors.Wrap(err, "error occured")
 		}
 		*c.Data = json2.DeepMerge(v, *c.Data)
 	default:
 		err = log.Log.PanicAndCreateErrorf("DXConfiguration/Load/1", "unknown file format: %s", c.FileFormat)
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	log.Log.Infof("Reading file %s... done", c.Filename)
 	return nil

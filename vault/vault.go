@@ -79,7 +79,7 @@ func (hv *DXHashicorpVault) Start() (err error) {
 	config.Address = hv.Address
 	hv.Client, err = vault.NewClient(config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	hv.Client.SetToken(hv.Token)
 	return nil

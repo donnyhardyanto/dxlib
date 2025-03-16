@@ -547,7 +547,7 @@ func AskForConfirmation(key1 string, key2 string) (err error) {
 	userInputConfirmationKey1, err := reader.ReadString('\n')
 	if err != nil {
 		log.Log.Errorf("Failed to input confirmation key 1: %s", err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	userInputConfirmationKey1 = strings.TrimSpace(userInputConfirmationKey1)
 
@@ -555,17 +555,17 @@ func AskForConfirmation(key1 string, key2 string) (err error) {
 	userInputConfirmationKey2, err := reader.ReadString('\n')
 	if err != nil {
 		log.Log.Errorf("Failed to input confirmation key 2: %s", err.Error())
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	userInputConfirmationKey2 = strings.TrimSpace(userInputConfirmationKey2)
 
 	if userInputConfirmationKey1 != key1 {
 		err := log.Log.ErrorAndCreateErrorf("Confirmation key mismatch")
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 	if userInputConfirmationKey2 != key2 {
 		err := log.Log.ErrorAndCreateErrorf("Confirmation key mismatch")
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
 	return nil

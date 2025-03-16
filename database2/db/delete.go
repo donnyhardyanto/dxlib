@@ -31,7 +31,7 @@ import (
 //   - PostgreSQL/MariaDB: RETURNING clause
 //   - SQL Server: OUTPUT clause
 //   - Oracle: RETURNING INTO clause
-//   - MySQL: Not supported for DELETE (will return error if requested)
+//   - MySQL: Not supported for DELETE (will return errors.Wrap(err, "error occured")or if requested)
 func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	// Basic input validation
 	if db == nil {
