@@ -3,74 +3,41 @@ package raw
 import (
 	"database/sql"
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"strings"
 )
 
-func RawExec(db *sqlx.DB, query string, arg []any) (r *database_type.ExecResult, err error) {
+func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
-	result, err := db.Exec(query, arg...)
+	result, err = db.Exec(query, arg...)
 	if err != nil {
 		return nil, err
 	}
 
-	lastInsertId, err := result.LastInsertId()
-	if err != nil {
-		// Some databases or operations might not support LastInsertId
-		// Just ignore the error and return 0
-		lastInsertId = 0
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		// This should rarely happen, but handle it anyway
-		rowsAffected = 0
-	}
-
-	return &database_type.ExecResult{
-		LastInsertId: lastInsertId,
-		RowsAffected: rowsAffected,
-	}, nil
+	return result, nil
 }
 
-func RawTxExec(tx *sqlx.Tx, query string, arg []any) (*database_type.ExecResult, error) {
-	err := sqlchecker.CheckAll(tx.DriverName(), query, arg)
+func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err error) {
+	err = sqlchecker.CheckAll(tx.DriverName(), query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
 
-	result, err := tx.Exec(query, arg...)
+	result, err = tx.Exec(query, arg...)
 	if err != nil {
 		return nil, err
 	}
 
-	lastInsertId, err := result.LastInsertId()
-	if err != nil {
-		// Some databases or operations might not support LastInsertId
-		// Just ignore the error and return 0
-		lastInsertId = 0
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		// This should rarely happen, but handle it anyway
-		rowsAffected = 0
-	}
-
-	return &database_type.ExecResult{
-		LastInsertId: lastInsertId,
-		RowsAffected: rowsAffected,
-	}, nil
+	return result, nil
 }
 
-func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (r *database_type.ExecResult, err error) {
+func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql.Result, err error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
@@ -126,11 +93,10 @@ func TxExec(
 	tx *sqlx.Tx,
 	sqlStatement string,
 	sqlArguments utils.JSON,
-) (*database_type.ExecResult, error) {
+) (result sql.Result, err error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
-		err         error
 	)
 
 	// Get the driver name from the tx connection

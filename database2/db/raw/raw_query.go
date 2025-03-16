@@ -2,15 +2,16 @@ package raw
 
 import (
 	"database/sql"
-	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
+	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"strings"
 )
 
-func RawQueryRows(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, query string, arg []any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func RawQueryRows(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, query string, arg []any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
@@ -25,7 +26,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, query s
 	defer func() {
 		_ = rows.Close()
 	}()
-	rowsInfo = &RowsInfo{}
+	rowsInfo = &database_type.RowsInfo{}
 	rowsInfo.Columns, err = rows.Columns()
 	if err != nil {
 		return rowsInfo, r, err
@@ -49,7 +50,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, query s
 	return rowsInfo, r, nil
 }
 
-func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, query string, arg []any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, query string, arg []any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 
 	err = sqlchecker.CheckAll(tx.DriverName(), query, arg)
@@ -64,7 +65,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, query
 	defer func() {
 		_ = rows.Close()
 	}()
-	rowsInfo = &RowsInfo{}
+	rowsInfo = &database_type.RowsInfo{}
 	rowsInfo.Columns, err = rows.Columns()
 	if err != nil {
 		return rowsInfo, r, err
@@ -93,7 +94,7 @@ func QueryRows(
 	fieldTypeMapping utils2.FieldTypeMapping,
 	sqlStatement string,
 	sqlArguments utils.JSON,
-) (*RowsInfo, []utils.JSON, error) {
+) (*database_type.RowsInfo, []utils.JSON, error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
@@ -151,7 +152,7 @@ func TxQueryRows(
 	fieldTypeMapping utils2.FieldTypeMapping,
 	sqlStatement string,
 	sqlArguments utils.JSON,
-) (*RowsInfo, []utils.JSON, error) {
+) (*database_type.RowsInfo, []utils.JSON, error) {
 	var (
 		modifiedSQL string
 		args        []interface{}

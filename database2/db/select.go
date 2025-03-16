@@ -103,7 +103,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 
 	// Common parts preparation
 	f := SQLPartFieldNames(fieldNames, driverName)
-	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
+	w := utils2.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	effectiveWhere := ``
 	if w != `` {
 		effectiveWhere = ` where ` + w
@@ -247,7 +247,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
-	groupByFields []string, havingClause string, withCTE string) (rowsInfo *raw.RowsInfo, r []utils.JSON, err error) {
+	groupByFields []string, havingClause string, withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
 		fieldNames = []string{"*"}
@@ -302,7 +302,7 @@ func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
-	groupByFields []string, havingClause string, withCTE string) (rowsInfo *raw.RowsInfo, r []utils.JSON, err error) {
+	groupByFields []string, havingClause string, withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
 		fieldNames = []string{"*"}
@@ -401,7 +401,7 @@ func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
 func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections utils2.FieldsOrderBy,
-	limit any, offset any, forUpdatePart any) (rowsInfo *raw.RowsInfo, r []utils.JSON, err error) {
+	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	return BaseSelect(db, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, orderbyFieldNameDirections, limit, offset, forUpdatePart, nil, "", "")
@@ -431,7 +431,7 @@ func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName str
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
 func TxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections utils2.FieldsOrderBy,
-	limit any, offset any, forUpdatePart any) (rowsInfo *raw.RowsInfo, r []utils.JSON, err error) {
+	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	return BaseTxSelect(tx, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, orderbyFieldNameDirections, limit, offset, forUpdatePart, nil, "", "")

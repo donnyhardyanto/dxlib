@@ -12,16 +12,6 @@ type DXDatabaseScript struct {
 	Files              []string
 }
 
-func (dm *DXDatabaseManager) NewDatabaseScript(nameId string, files []string) *DXDatabaseScript {
-	ds := DXDatabaseScript{
-		Owner:  dm,
-		NameId: nameId,
-		Files:  files,
-	}
-	dm.Scripts[nameId] = &ds
-	return &ds
-}
-
 func (ds *DXDatabaseScript) ExecuteFile(d *DXDatabase, filename string) (r sql.Result, err error) {
 	log.Log.Infof("Executing SQL file %s... start", filename)
 	r, err = d.ExecuteFile(filename)

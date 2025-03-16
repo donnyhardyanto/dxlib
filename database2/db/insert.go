@@ -47,13 +47,13 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 // Returns:
 //   - returningFieldValues: Map of field names to their values after insert
 //   - err: Error if any occurred
-func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (returningFieldValues utils.JSON, err error) {
+func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
 	// Basic input validation
 	if db == nil {
-		return nil, errors.New("database connection is nil")
+		return nil, nil, errors.New("database connection is nil")
 	}
 	if tableName == "" {
-		return nil, errors.New("table name cannot be empty")
+		return nil, nil, errors.New("table name cannot be empty")
 	}
 
 	// Get the database driver name
@@ -62,20 +62,20 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 
 	// Validate table name explicitly
 	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
-		return nil, errors.Wrap(err, "invalid table name")
+		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
 	// Validate field names in setFieldValues
 	for fieldName := range setFieldValues {
 		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
-			return nil, errors.Wrapf(err, "invalid field name: %s", fieldName)
+			return nil, nil, errors.Wrapf(err, "invalid field name: %s", fieldName)
 		}
 	}
 
 	// Validate returning field names
 	for _, fieldName := range returningFieldNames {
 		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
-			return nil, errors.Wrapf(err, "invalid returning field name: %s", fieldName)
+			return nil, nil, errors.Wrapf(err, "invalid returning field name: %s", fieldName)
 		}
 	}
 
@@ -96,8 +96,8 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 
 	// If no returning keys requested, simply execute the insert
 	if returningFieldNames == nil || len(returningFieldNames) == 0 {
-		_, err := raw.Exec(db, baseSQL, setFieldValues)
-		return returningFieldValues, err
+		result, err := raw.Exec(db, baseSQL, setFieldValues)
+		return result, returningFieldValues, err
 	}
 
 	// Handle database-specific RETURNING clauses
@@ -107,7 +107,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
 		_, rows, err := raw.QueryRows(db, nil, sqlStatement, setFieldValues)
 		if err != nil {
-			return nil, errors.Wrap(err, "error executing insert with RETURNING clause")
+			return nil, nil, errors.Wrap(err, "error executing insert with RETURNING clause")
 		}
 
 		if len(rows) > 0 {
@@ -135,7 +135,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 
 		_, rows, err := raw.QueryRows(db, nil, sqlStatement, setFieldValues)
 		if err != nil {
-			return nil, errors.Wrap(err, "error executing insert with OUTPUT clause")
+			return nil, nil, errors.Wrap(err, "error executing insert with OUTPUT clause")
 		}
 
 		if len(rows) > 0 {
@@ -172,9 +172,9 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 			strings.Join(returningIntoFields, ", "))
 
 		// Execute directly for Oracle with output parameters
-		_, err = db.Exec(sqlStatement, namedArgs...)
+		result, err = db.Exec(sqlStatement, namedArgs...)
 		if err != nil {
-			return nil, errors.Wrap(err, "error executing oracle insert with RETURNING INTO")
+			return nil, nil, errors.Wrap(err, "error executing oracle insert with RETURNING INTO")
 		}
 
 		// Extract output parameters
@@ -202,14 +202,18 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 		// MySQL doesn't support RETURNING, so we need to do a separate query
 		result, err := raw.Exec(db, baseSQL, setFieldValues)
 		if err != nil {
-			return nil, errors.Wrap(err, "error executing mysql insert")
+			return nil, nil, errors.Wrap(err, "error executing mysql insert")
 		}
 
+		lastInsertId, err := result.LastInsertId()
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "error getting last insert ID")
+		}
 		// Get the last insert ID and check if it's valid
-		if result.LastInsertId <= 0 {
+		if lastInsertId <= 0 {
 			// Some tables might not have auto-increment IDs, so this isn't always an error
 			// Just return empty map if that's what the user wants
-			return returningFieldValues, nil
+			return result, returningFieldValues, nil
 		}
 
 		// Use first common ID field name
@@ -270,19 +274,19 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 
 	default:
 		// Unsupported database type
-		return nil, errors.Errorf("unsupported database driver: %s", driverName)
+		return nil, nil, errors.Errorf("unsupported database driver: %s", driverName)
 	}
 
-	return returningFieldValues, nil
+	return result, returningFieldValues, nil
 }
 
-func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (returningFieldValues utils.JSON, err error) {
+func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
 	// Basic input validation
 	if tx == nil {
-		return nil, errors.New("database transaction connection is nil")
+		return nil, nil, errors.New("database transaction connection is nil")
 	}
 	if tableName == "" {
-		return nil, errors.New("table name cannot be empty")
+		return nil, nil, errors.New("table name cannot be empty")
 	}
 
 	// Get the database driver name
@@ -291,20 +295,20 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 
 	// Validate table name explicitly
 	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
-		return nil, errors.Wrap(err, "invalid table name")
+		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
 	// Validate field names in setFieldValues
 	for fieldName := range setFieldValues {
 		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
-			return nil, errors.Wrapf(err, "invalid field name: %s", fieldName)
+			return nil, nil, errors.Wrapf(err, "invalid field name: %s", fieldName)
 		}
 	}
 
 	// Validate returning field names
 	for _, fieldName := range returningFieldNames {
 		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
-			return nil, errors.Wrapf(err, "invalid returning field name: %s", fieldName)
+			return nil, nil, errors.Wrapf(err, "invalid returning field name: %s", fieldName)
 		}
 	}
 
@@ -325,8 +329,8 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 
 	// If no returning keys requested, simply execute the insert
 	if returningFieldNames == nil || len(returningFieldNames) == 0 {
-		_, err := raw.TxExec(tx, baseSQL, setFieldValues)
-		return returningFieldValues, err
+		result, err := raw.TxExec(tx, baseSQL, setFieldValues)
+		return result, returningFieldValues, err
 	}
 
 	// Handle database-specific RETURNING clauses
@@ -336,7 +340,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
 		_, rows, err := raw.TxQueryRows(tx, nil, sqlStatement, setFieldValues)
 		if err != nil {
-			return nil, errors.Wrap(err, "error executing insert with RETURNING clause")
+			return nil, nil, errors.Wrap(err, "error executing insert with RETURNING clause")
 		}
 
 		if len(rows) > 0 {
@@ -364,7 +368,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 
 		_, rows, err := raw.TxQueryRows(tx, nil, sqlStatement, setFieldValues)
 		if err != nil {
-			return nil, errors.Wrap(err, "error executing insert with OUTPUT clause")
+			return nil, nil, errors.Wrap(err, "error executing insert with OUTPUT clause")
 		}
 
 		if len(rows) > 0 {
@@ -403,7 +407,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 		// Execute directly for Oracle with output parameters
 		_, err = tx.Exec(sqlStatement, namedArgs...)
 		if err != nil {
-			return nil, errors.Wrap(err, "error executing oracle insert with RETURNING INTO")
+			return nil, nil, errors.Wrap(err, "error executing oracle insert with RETURNING INTO")
 		}
 
 		// Extract output parameters
@@ -431,14 +435,18 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 		// MySQL doesn't support RETURNING, so we need to do a separate query
 		result, err := raw.TxExec(tx, baseSQL, setFieldValues)
 		if err != nil {
-			return nil, errors.Wrap(err, "error executing mysql insert")
+			return nil, nil, errors.Wrap(err, "error executing mysql insert")
 		}
 
+		lastInsertId, err := result.LastInsertId()
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "error getting last insert ID")
+		}
 		// Get the last insert ID and check if it's valid
-		if result.LastInsertId <= 0 {
+		if lastInsertId <= 0 {
 			// Some tables might not have auto-increment IDs, so this isn't always an error
 			// Just return empty map if that's what the user wants
-			return returningFieldValues, nil
+			return result, returningFieldValues, nil
 		}
 
 		// Use first common ID field name
@@ -499,8 +507,8 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 
 	default:
 		// Unsupported database type
-		return nil, errors.Errorf("unsupported database driver: %s", driverName)
+		return nil, nil, errors.Errorf("unsupported database driver: %s", driverName)
 	}
 
-	return returningFieldValues, nil
+	return result, returningFieldValues, nil
 }

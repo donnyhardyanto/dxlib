@@ -3,8 +3,6 @@ package database2
 import (
 	"context"
 	"database/sql"
-	oldDb "github.com/donnyhardyanto/dxlib/database/protected/db"
-
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/pkg/errors"
 	goOra "github.com/sijms/go-ora/v2"
@@ -394,82 +392,6 @@ func (d *DXDatabase) Disconnect() (err error) {
 	return nil
 }
 
-func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
-	err = d.EnsureConnection()
-	if err != nil {
-		return 0, err
-	}
-
-	for tryCount := 0; tryCount < 4; tryCount++ {
-		id, err = oldDb.Insert(d.Connection, tableName, fieldNameForRowId, keyValues)
-		if err == nil {
-			return id, nil
-		}
-		log.Log.Warnf("INSERT_ERROR:%s=%v", tableName, err.Error())
-		if !oldDb.IsConnectionError(err) {
-			return 0, err
-		}
-		err = d.CheckConnectionAndReconnect()
-		if err != nil {
-			log.Log.Warnf("RECONNECT_ERROR:%s", err.Error())
-		}
-	}
-
-	return 0, err
-}
-
-func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (result sql.Result, err error) {
-	err = d.EnsureConnection()
-	if err != nil {
-		return nil, err
-	}
-
-	for tryCount := 0; tryCount < 4; tryCount++ {
-		result, err = oldDb.Update(d.Connection, tableName, setKeyValues, whereKeyValues)
-		if err == nil {
-			return result, nil
-		}
-		log.Log.Warnf("UPDATE_ERROR:%s=%v", tableName, err.Error())
-		if !oldDb.IsConnectionError(err) {
-			return nil, err
-		}
-		err = d.CheckConnectionAndReconnect()
-		if err != nil {
-			log.Log.Warnf("RECONNECT_ERROR:%s", err.Error())
-		}
-	}
-	return nil, err
-}
-
-func (d *DXDatabase) SoftDelete(tableName string, whereKeyValues utils.JSON) (result sql.Result, err error) {
-	return d.Update(tableName, utils.JSON{
-		`is_deleted`: true,
-	}, whereKeyValues)
-}
-
-func (d *DXDatabase) Delete(tableName string, whereKeyValues utils.JSON) (r sql.Result, err error) {
-	err = d.EnsureConnection()
-	if err != nil {
-		return nil, err
-	}
-
-	for tryCount := 0; tryCount < 4; tryCount++ {
-		r, err = oldDb.Delete(d.Connection, tableName, whereKeyValues)
-		if err == nil {
-			return r, nil
-		}
-		log.Log.Warnf("DELETE_ERROR:%s=%v", tableName, err.Error())
-		if !oldDb.IsConnectionError(err) {
-			return nil, err
-		}
-		err = d.CheckConnectionAndReconnect()
-		if err != nil {
-			log.Log.Warnf("RECONNECT_ERROR:%s", err.Error())
-		}
-	}
-	return nil, err
-}
-
 func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 	err = d.CheckConnectionAndReconnect()
 	if err != nil {
@@ -486,19 +408,6 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 	switch driverName {
 	case "sqlserver", "postgres", "oracle":
 		log.Log.Infof("Executing SQL file %s... start", filename)
-		/*		fs := sqlfile.SqlFile{}
-				err = fs.File(filename)
-				if err != nil {
-					log.Log.Panic("DXDatabaseScript/ExecuteFile/1", err)
-					return nil, err
-				}
-				rs, err := fs.Exec(d.Connection.DB)
-				if err != nil {
-					log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err.Error())
-					return rs[0], err
-				}
-				log.Log.Infof("Executing SQL file %s... done", filename)
-				return rs[0], nil*/
 
 		sqlFile := sqlfile.New()
 
@@ -514,31 +423,6 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 			return nil, err
 		}
 
-		/*sqlFile := sqlfile.NewSQLFile()
-
-		// Load single file
-		err = sqlFile.File(filename)
-		if err != nil {
-			return nil, err
-		}
-
-		// Execute the queries
-		err = sqlFile.Execute(d.Connection.DB)
-		if err != nil {
-			return nil, err
-		}
-		*/
-		/*sf := sqlfile.New()
-		err := sf.File(filename)
-		if err != nil {
-			return nil, err
-		}
-
-		results, err := sf.Exec(d.Connection.DB)
-		if err != nil {
-			return nil, err
-		}
-		*/
 	default:
 		err = log.Log.FatalAndCreateErrorf("Driver %s is not supported", driverName)
 		return nil, err

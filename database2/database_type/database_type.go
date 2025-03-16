@@ -68,8 +68,3 @@ type RowsInfo struct {
 	Columns []string
 	//	ColumnTypes []*sql.ColumnType
 }
-
-type ExecResult struct {
-	LastInsertId int64
-	RowsAffected int64
-}

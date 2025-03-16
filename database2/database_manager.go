@@ -2,12 +2,9 @@ package database2
 
 import (
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
-	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
-
-type DXDatabaseSQLExpression = db.SQLExpression
 
 type DXDatabaseManager struct {
 	Databases map[string]*DXDatabase
@@ -103,6 +100,16 @@ func (dm *DXDatabaseManager) DisconnectAll() (err error) {
 		}
 	}
 	return err
+}
+
+func (dm *DXDatabaseManager) NewDatabaseScript(nameId string, files []string) *DXDatabaseScript {
+	ds := DXDatabaseScript{
+		Owner:  dm,
+		NameId: nameId,
+		Files:  files,
+	}
+	dm.Scripts[nameId] = &ds
+	return &ds
 }
 
 var Manager DXDatabaseManager
