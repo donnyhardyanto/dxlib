@@ -330,7 +330,10 @@ func (t *DXRawTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	}
 
 	err = t.DoEdit(aepr, id, newFieldValues)
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (t *DXRawTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -345,7 +348,10 @@ func (t *DXRawTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error
 	}
 
 	err = t.DoEditByUid(aepr, uid, newFieldValues)
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
@@ -401,7 +407,7 @@ func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err erro
 		aepr.Log.Errorf("Error at %s.RequestHardDelete (%s) ", t.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (t *DXRawTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -415,7 +421,7 @@ func (t *DXRawTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err
 		aepr.Log.Errorf("Error at %s.RequestHardDeleteByUid (%s) ", t.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (t *DXRawTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
@@ -702,8 +708,10 @@ func (t *DXRawTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 		p[k] = v.Value
 	}
 	_, err = t.RequestDoCreate(aepr, p)
-
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err error) {

@@ -100,7 +100,10 @@ func (pt *DXPropertyTable) TxSetAsString(dtx *database.DXDatabaseTx, propertyId 
 		"type":   "STRING",
 		"value":  v,
 	})
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value string) (err error) {
@@ -111,7 +114,10 @@ func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value 
 		"type":   "STRING",
 		"value":  string(v),
 	})
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error) {
@@ -137,7 +143,10 @@ func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId str
 		"type":   "INT",
 		"value":  v,
 	})
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) SetAsInt(log *log.DXLog, propertyId string, value int) (err error) {
@@ -147,7 +156,10 @@ func (pt *DXPropertyTable) SetAsInt(log *log.DXLog, propertyId string, value int
 		"type":   "INT",
 		"value":  v,
 	})
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, error) {
@@ -174,7 +186,10 @@ func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId s
 		"type":   "INT64",
 		"value":  v,
 	})
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value int64) (err error) {
@@ -185,7 +200,10 @@ func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value i
 		"type":   "INT64",
 		"value":  v,
 	})
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) (err error) {
@@ -662,8 +680,7 @@ func (pt *DXPropertyTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid strin
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{
 		pt.FieldNameForRowUid: uid,
-	},
-	))
+	}))
 	return nil
 }
 
@@ -679,7 +696,10 @@ func (pt *DXPropertyTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err erro
 	}
 
 	err = pt.DoEdit(aepr, id, newFieldValues)
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -694,7 +714,10 @@ func (pt *DXPropertyTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err
 	}
 
 	err = pt.DoEditByUid(aepr, uid, newFieldValues)
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
@@ -752,7 +775,10 @@ func (pt *DXPropertyTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (er
 		aepr.Log.Errorf("Error at %s.RequestSoftDelete (%s) ", pt.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (pt *DXPropertyTable) RequestSoftDeleteById(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -770,7 +796,7 @@ func (pt *DXPropertyTable) RequestSoftDeleteById(aepr *api.DXAPIEndPointRequest)
 		aepr.Log.Errorf("Error at %s.RequestSoftDelete (%s) ", pt.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (pt *DXPropertyTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -784,7 +810,7 @@ func (pt *DXPropertyTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (er
 		aepr.Log.Errorf("Error at %s.RequestHardDelete (%s) ", pt.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (pt *DXPropertyTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -798,7 +824,7 @@ func (pt *DXPropertyTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest
 		aepr.Log.Errorf("Error at %s.RequestHardDelete (%s) ", pt.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (pt *DXPropertyTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {

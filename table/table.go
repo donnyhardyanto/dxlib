@@ -461,7 +461,10 @@ func (t *DXTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	}
 
 	err = t.DoEdit(aepr, id, newFieldValues)
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -476,7 +479,10 @@ func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	}
 
 	err = t.DoEditByUid(aepr, uid, newFieldValues)
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (t *DXTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
@@ -557,7 +563,7 @@ func (t *DXTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (err error) 
 		aepr.Log.Errorf("Error at %s.RequestSoftDelete (%s) ", t.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (t *DXTable) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -573,7 +579,7 @@ func (t *DXTable) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) (err er
 		aepr.Log.Errorf("Error at %s.RequestSoftDelete (%s) ", t.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -587,7 +593,7 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) 
 		aepr.Log.Errorf("Error at %s.RequestHardDelete (%s) ", t.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (t *DXTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -601,7 +607,7 @@ func (t *DXTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err er
 		aepr.Log.Errorf("Error at %s.RequestHardDelete (%s) ", t.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (t *DXTable) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
@@ -1042,7 +1048,10 @@ func (t *DXTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 	}
 	_, err = t.DoCreate(aepr, p)
 
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
 func (t *DXTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err error) {
