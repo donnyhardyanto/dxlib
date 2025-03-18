@@ -73,7 +73,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 		}
 	}
 	if aeprpv.Metadata.Type == "array-json-template" {
-		jsonArrayValue, ok := rv.([]map[string]any)
+		jsonArrayValue, ok := rv.([]any)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
 		}
@@ -81,7 +81,11 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 			for _, v := range aeprpv.Metadata.Children {
 				childValue := aeprpv.NewArrayChild(v)
 				aVariablePath := fmt.Sprint("[%d]", i) + "." + v.NameId
-				jv, ok := j[v.NameId]
+				jj, ok := j.(map[string]interface{})
+				if !ok {
+					return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
+				}
+				jv, ok := jj[v.NameId]
 				if !ok {
 					if v.IsMustExist {
 						return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", aVariablePath)
