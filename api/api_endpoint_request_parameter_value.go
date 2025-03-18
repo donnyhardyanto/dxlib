@@ -140,6 +140,17 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			if rawValueType != "[]interface {}" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
+		case "array-json-template":
+			if rawValueType != "[]interface {}" {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			}
+			// ?
+			for _, v := range aeprpv.Children {
+				err = v.Validate()
+				if err != nil {
+					return errors.Wrap(err, "error occured")
+				}
+			}
 		case "array-string":
 			if rawValueType != "[]interface {}" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
@@ -335,6 +346,29 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
 		aeprpv.Value = s
+		return nil
+	case "array-json-template":
+		rawSlice, ok := aeprpv.RawValue.([]any)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+
+		// Convert []any to []map[string]any
+		a := make([]map[string]any, len(rawSlice))
+		for i, v := range rawSlice {
+			str, ok := v.(map[string]any)
+			if !ok {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			}
+
+			s := map[string]any{}
+			for _, mv := range aeprpv.Metadata.Children {
+				s[mv.NameId] = str[mv.NameId]
+			}
+
+			a[i] = s
+		}
+		aeprpv.Value = a
 		return nil
 	case "array-string":
 		rawSlice, ok := aeprpv.RawValue.([]any)
