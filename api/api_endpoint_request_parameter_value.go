@@ -1,24 +1,27 @@
 package api
 
 import (
-	"github.com/pkg/errors"
-
-	"github.com/donnyhardyanto/dxlib/utils"
+	"fmt"
 	security "github.com/donnyhardyanto/dxlib/utils/security"
+	"github.com/pkg/errors"
 	"strings"
 	"time"
+
+	"github.com/donnyhardyanto/dxlib/utils"
 	_ "time/tzdata"
 )
 
 const ErrorMessageIncompatibleTypeReceived = "INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v"
 
 type DXAPIEndPointRequestParameterValue struct {
-	Owner    *DXAPIEndPointRequest
-	Parent   *DXAPIEndPointRequestParameterValue
-	Value    any
-	RawValue any
-	Metadata DXAPIEndPointParameter
-	Children map[string]*DXAPIEndPointRequestParameterValue
+	Owner           *DXAPIEndPointRequest
+	Parent          *DXAPIEndPointRequestParameterValue
+	Value           any
+	RawValue        any
+	Metadata        DXAPIEndPointParameter
+	IsArrayChildren bool
+	Children        map[string]*DXAPIEndPointRequestParameterValue
+	ArrayChildren   []*DXAPIEndPointRequestParameterValue
 	//	ErrValidate error
 }
 
@@ -38,6 +41,13 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) NewChild(aepp DXAPIEndPointPar
 	return &child
 }
 
+func (aeprpv *DXAPIEndPointRequestParameterValue) NewArrayChild(aepp DXAPIEndPointParameter) *DXAPIEndPointRequestParameterValue {
+	aeprpv.IsArrayChildren = true
+	child := DXAPIEndPointRequestParameterValue{Owner: aeprpv.Owner, Metadata: aepp}
+	child.Parent = aeprpv
+	aeprpv.ArrayChildren = append(aeprpv.ArrayChildren, &child)
+	return &child
+}
 func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePath string) (err error) {
 	aeprpv.RawValue = rv
 	if aeprpv.Metadata.Type == "json" {
@@ -46,10 +56,32 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
 		}
 		for _, v := range aeprpv.Metadata.Children {
-			{
-				childValue := aeprpv.NewChild(v)
-				aVariablePath := variablePath + "." + v.NameId
-				jv, ok := jsonValue[v.NameId]
+			childValue := aeprpv.NewChild(v)
+			aVariablePath := variablePath + "." + v.NameId
+			jv, ok := jsonValue[v.NameId]
+			if !ok {
+				if v.IsMustExist {
+					return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", aVariablePath)
+				}
+			} else {
+				err = childValue.SetRawValue(jv, aVariablePath)
+				if err != nil {
+					return errors.Wrap(err, "error occured")
+				}
+			}
+
+		}
+	}
+	if aeprpv.Metadata.Type == "array-json-template" {
+		jsonArrayValue, ok := rv.([]map[string]any)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
+		}
+		for i, j := range jsonArrayValue {
+			for _, v := range aeprpv.Metadata.Children {
+				childValue := aeprpv.NewArrayChild(v)
+				aVariablePath := fmt.Sprint("[%d]", i) + "." + v.NameId
+				jv, ok := j[v.NameId]
 				if !ok {
 					if v.IsMustExist {
 						return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", aVariablePath)
@@ -80,7 +112,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 	if aeprpv.Metadata.Type != rawValueType {
 		switch aeprpv.Metadata.Type {
 		case "nullable-int64":
-		case "int64", "int64p":
+		case "int64", "int64zp", "int64p":
 			if rawValueType == "float64" {
 				if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
 					return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
@@ -144,11 +176,12 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			if rawValueType != "[]interface {}" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
-			// ?
-			for _, v := range aeprpv.Children {
-				err = v.Validate()
-				if err != nil {
-					return errors.Wrap(err, "error occured")
+			for _, j := range aeprpv.ArrayChildren {
+				for _, v := range j.Children {
+					err = v.Validate()
+					if err != nil {
+						return errors.Wrap(err, "error occured")
+					}
 				}
 			}
 		case "array-string":
@@ -407,8 +440,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		return nil
 	case "iso8601":
 		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
-		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
-		but the code is conformed to the standard. Only the documentation is incorrect.
+		   The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
+		   but the code is conformed to the standard. Only the documentation is incorrect.
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
@@ -425,8 +458,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		return nil
 	case "date":
 		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
-		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
-		but the code is conformed to the standard. Only the documentation is incorrect.
+		   The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
+		   but the code is conformed to the standard. Only the documentation is incorrect.
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
@@ -440,8 +473,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		return nil
 	case "time":
 		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
-		The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
-		but the code is conformed to the standard. Only the documentation is incorrect.
+		   The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
+		   but the code is conformed to the standard. Only the documentation is incorrect.
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
