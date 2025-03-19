@@ -392,34 +392,15 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		aeprpv.Value = s
 		return nil
 	case "array-json-template":
-		rawSlice, ok := aeprpv.RawValue.([]any)
-		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		s := []utils.JSON{}
+		for _, v := range aeprpv.ArrayChildren {
+			err = v.Validate()
+			if err != nil {
+				return errors.Wrap(err, "error occured")
+			}
+			s = append(s, v.Value.(utils.JSON))
 		}
-
-		// Convert []any to []map[string]any
-		a := make([]map[string]any, len(rawSlice))
-		for i, v := range rawSlice {
-			str, ok := v.(map[string]any)
-			if !ok {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
-			}
-
-			s := map[string]any{}
-			for _, mv := range aeprpv.Metadata.Children {
-				s[mv.NameId] = str[mv.NameId]
-			}
-
-			a[i] = s
-
-			for _, v := range aeprpv.ArrayChildren {
-				err = v.Validate()
-				if err != nil {
-					return errors.Wrap(err, "error occured")
-				}
-			}
-		}
-		aeprpv.Value = a
+		aeprpv.Value = s
 		return nil
 	case "array-string":
 		rawSlice, ok := aeprpv.RawValue.([]any)
