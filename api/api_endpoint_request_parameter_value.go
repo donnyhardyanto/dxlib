@@ -239,6 +239,17 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			return nil
 		}
 		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+	case "int64zp":
+		t, ok := aeprpv.RawValue.(float64)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		v := int64(t)
+		if v >= 0 {
+			aeprpv.Value = v
+			return nil
+		}
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	case "float64":
 		v, ok := aeprpv.RawValue.(float64)
 		if !ok {
