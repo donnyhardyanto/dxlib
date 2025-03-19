@@ -83,6 +83,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 				Owner:    aeprpv.Owner,
 				Parent:   aeprpv,
 				Metadata: aeprpv.Metadata,
+				RawValue: jj,
 			}
 			containerObj.Metadata.Type = "json"
 			containerObj.Metadata.NameId = aVariablePath
