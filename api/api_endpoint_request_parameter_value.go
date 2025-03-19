@@ -21,7 +21,7 @@ type DXAPIEndPointRequestParameterValue struct {
 	Metadata        DXAPIEndPointParameter
 	IsArrayChildren bool
 	Children        map[string]*DXAPIEndPointRequestParameterValue
-	ArrayChildren   []*DXAPIEndPointRequestParameterValue
+	ArrayChildren   []DXAPIEndPointRequestParameterValue
 	//	ErrValidate error
 }
 
@@ -41,13 +41,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) NewChild(aepp DXAPIEndPointPar
 	return &child
 }
 
-func (aeprpv *DXAPIEndPointRequestParameterValue) NewArrayChild(aepp DXAPIEndPointParameter) *DXAPIEndPointRequestParameterValue {
-	aeprpv.IsArrayChildren = true
-	child := DXAPIEndPointRequestParameterValue{Owner: aeprpv.Owner, Metadata: aepp}
-	child.Parent = aeprpv
-	aeprpv.ArrayChildren = append(aeprpv.ArrayChildren, &child)
-	return &child
-}
 func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePath string) (err error) {
 	aeprpv.RawValue = rv
 	if aeprpv.Metadata.Type == "json" {
@@ -78,13 +71,26 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
 		}
 		for i, j := range jsonArrayValue {
-			for _, v := range aeprpv.Metadata.Children {
-				childValue := aeprpv.NewArrayChild(v)
-				aVariablePath := fmt.Sprint("[%d]", i) + "." + v.NameId
-				jj, ok := j.(map[string]interface{})
-				if !ok {
-					return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
-				}
+			aVariablePath := fmt.Sprintf("%s[%d]", variablePath, i)
+
+			jj, ok := j.(map[string]interface{})
+			if !ok {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, aVariablePath, aeprpv.Metadata.Type, utils.TypeAsString(j), j)
+			}
+
+			// Create a new object for each array element that will hold all children
+			containerObj := DXAPIEndPointRequestParameterValue{
+				Owner:    aeprpv.Owner,
+				Parent:   aeprpv,
+				Metadata: aeprpv.Metadata,
+			}
+			containerObj.Metadata.Type = "json"
+			containerObj.Metadata.NameId = aVariablePath
+
+			for _, v := range containerObj.Metadata.Children {
+				childValue := containerObj.NewChild(v)
+				aVariablePath := fmt.Sprintf("%s[%d].%s", variablePath, i, v.NameId)
+
 				jv, ok := jj[v.NameId]
 				if !ok {
 					if v.IsMustExist {
@@ -97,6 +103,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 					}
 				}
 			}
+
+			aeprpv.ArrayChildren = append(aeprpv.ArrayChildren, containerObj)
+
 		}
 	}
 	return nil
@@ -181,11 +190,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
 			for _, j := range aeprpv.ArrayChildren {
-				for _, v := range j.Children {
-					err = v.Validate()
-					if err != nil {
-						return errors.Wrap(err, "error occured")
-					}
+				err = j.Validate()
+				if err != nil {
+					return errors.Wrap(err, "error occured")
 				}
 			}
 		case "array-string":
@@ -404,6 +411,13 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			}
 
 			a[i] = s
+
+			for _, v := range aeprpv.ArrayChildren {
+				err = v.Validate()
+				if err != nil {
+					return errors.Wrap(err, "error occured")
+				}
+			}
 		}
 		aeprpv.Value = a
 		return nil
