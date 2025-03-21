@@ -46,7 +46,7 @@ func SQLPartFieldNames(fieldNames []string, driverName string) (s string) {
 // SQLPartOrderByFieldNameDirections generates ORDER BY clause for different database types
 //
 // Parameters:
-//   - orderbyKeyValues: Map of field names to sort directions
+//   - orderByKeyValues: Map of field names to sort directions
 //   - driverName: Database driver name for proper identifier formatting
 //
 // Returns:
@@ -55,14 +55,14 @@ func SQLPartFieldNames(fieldNames []string, driverName string) (s string) {
 //
 // The function formats each field and direction according to database-specific rules
 // and joins them with commas
-func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, driverName string) (string, error) {
-	if len(orderbyKeyValues) == 0 {
+func SQLPartOrderByFieldNameDirections(orderByKeyValues map[string]string, driverName string) (string, error) {
+	if len(orderByKeyValues) == 0 {
 		return "", nil
 	}
 
 	var orderParts []string
 
-	for fieldName, direction := range orderbyKeyValues {
+	for fieldName, direction := range orderByKeyValues {
 		formattedPart, err := utils2.DbDriverFormatOrderByFieldName(driverName, fieldName, direction)
 		if err != nil {
 			return "", errors.Errorf("error formatting ORDER BY for fieldName %s: %w", fieldName, err)
@@ -81,7 +81,7 @@ func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, drive
 //   - fieldNames: Fields to select (use []string{"*"} for all fields)
 //   - whereAndFieldNameValues: Conditions for filtering results
 //   - joinSQLPart: Optional JOIN clause
-//   - orderbyFieldNameDirections: Optional ORDER BY specifications
+//   - orderByFieldNameDirections: Optional ORDER BY specifications
 //   - limit: Maximum number of rows to return
 //   - offset: Number of rows to skip before returning results
 //   - forUpdatePart: Whether to lock rows with FOR UPDATE
@@ -98,7 +98,7 @@ func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, drive
 // formatting requirements.
 func SQLPartConstructSelect(driverName string, tableName string, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
+	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
 	groupByFields []string, havingClause string, withCTE string) (s string, err error) {
 
 	// Common parts preparation
@@ -114,7 +114,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		j = ` ` + joinSQLPart.(string)
 	}
 
-	o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+	o, err := SQLPartOrderByFieldNameDirections(orderByFieldNameDirections, driverName)
 	if err != nil {
 		return ``, err
 	}
@@ -189,7 +189,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	}
 
 	// Generate database-specific limit and offset clauses
-	effectiveLimitOffsetClause, additionalOrderBy, err := utils2.DBDriverGenerateLimitOffsetClause(driverName, limitAsInt64, offsetAsInt64, limit != nil, effectiveOrderBy, orderbyFieldNameDirections)
+	effectiveLimitOffsetClause, additionalOrderBy, err := utils2.DBDriverGenerateLimitOffsetClause(driverName, limitAsInt64, offsetAsInt64, limit != nil, effectiveOrderBy, orderByFieldNameDirections)
 	if err != nil {
 		return ``, err
 	}
@@ -216,7 +216,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 //   - fieldNames: Fields to select (use []string{"*"} for all fields)
 //   - whereAndFieldNameValues: Conditions for filtering results (nil for no conditions)
 //   - joinSQLPart: Optional JOIN clause (nil for no joins)
-//   - orderbyFieldNameDirections: Optional ORDER BY specifications (nil for no ordering)
+//   - orderByFieldNameDirections: Optional ORDER BY specifications (nil for no ordering)
 //   - limit: Maximum number of rows to return (nil for no limit)
 //   - offset: Number of rows to skip before returning results (nil for no offset)
 //   - forUpdatePart: Whether to lock rows with FOR UPDATE (nil or false for no locking)
@@ -246,7 +246,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 //	// Generates: WITH recent_orders AS (SELECT * FROM orders WHERE order_date > '2023-01-01') SELECT * FROM recent_orders
 func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
+	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
 	groupByFields []string, havingClause string, withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
@@ -259,7 +259,7 @@ func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 	driverName := db.DriverName()
 
 	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues,
-		joinSQLPart, orderbyFieldNameDirections, limit, offset, forUpdatePart,
+		joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart,
 		groupByFields, havingClause, withCTE)
 	if err != nil {
 		return nil, nil, err
@@ -284,7 +284,7 @@ func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 //   - fieldNames: Fields to select (use []string{"*"} for all fields)
 //   - whereAndFieldNameValues: Conditions for filtering results (nil for no conditions)
 //   - joinSQLPart: Optional JOIN clause (nil for no joins)
-//   - orderbyFieldNameDirections: Optional ORDER BY specifications (nil for no ordering)
+//   - orderByFieldNameDirections: Optional ORDER BY specifications (nil for no ordering)
 //   - limit: Maximum number of rows to return (nil for no limit)
 //   - offset: Number of rows to skip before returning results (nil for no offset)
 //   - forUpdatePart: Whether to lock rows with FOR UPDATE (nil or false for no locking)
@@ -301,7 +301,7 @@ func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 // allowing for consistent reads and potential row locking when used with forUpdatePart=true
 func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
+	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
 	groupByFields []string, havingClause string, withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
@@ -346,7 +346,7 @@ func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 	}
 
 	// Validate ORDER BY field names
-	for fieldName := range orderbyFieldNameDirections {
+	for fieldName := range orderByFieldNameDirections {
 		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid ORDER BY field name: %s", fieldName)
 		}
@@ -362,7 +362,7 @@ func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 	}
 
 	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues,
-		joinSQLPart, orderbyFieldNameDirections, limit, offset, forUpdatePart,
+		joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart,
 		groupByFields, havingClause, withCTE)
 	if err != nil {
 		return nil, nil, err
@@ -387,7 +387,7 @@ func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 //   - fieldNames: Fields to select
 //   - whereAndFieldNameValues: Conditions for filtering results
 //   - joinSQLPart: Optional JOIN clause
-//   - orderbyFieldNameDirections: Optional ORDER BY specifications
+//   - orderByFieldNameDirections: Optional ORDER BY specifications
 //   - limit: Maximum number of rows to return
 //   - offset: Number of rows to skip before returning results
 //   - forUpdatePart: Whether to lock rows with FOR UPDATE
@@ -400,11 +400,11 @@ func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 // This function is a backward-compatible wrapper around BaseSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
 func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections utils2.FieldsOrderBy,
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections utils2.FieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	return BaseSelect(db, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
-		joinSQLPart, orderbyFieldNameDirections, limit, offset, forUpdatePart, nil, "", "")
+		joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart, nil, "", "")
 }
 
 // TxSelect is a transaction-based version of the Select function that maintains compatibility with existing code.
@@ -417,7 +417,7 @@ func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName str
 //   - fieldNames: Fields to select
 //   - whereAndFieldNameValues: Conditions for filtering results
 //   - joinSQLPart: Optional JOIN clause
-//   - orderbyFieldNameDirections: Optional ORDER BY specifications
+//   - orderByFieldNameDirections: Optional ORDER BY specifications
 //   - limit: Maximum number of rows to return
 //   - offset: Number of rows to skip before returning results
 //   - forUpdatePart: Whether to lock rows with FOR UPDATE
@@ -430,11 +430,11 @@ func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName str
 // This function is a transaction-based wrapper around BaseTxSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
 func TxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections utils2.FieldsOrderBy,
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections utils2.FieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	return BaseTxSelect(tx, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
-		joinSQLPart, orderbyFieldNameDirections, limit, offset, forUpdatePart, nil, "", "")
+		joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart, nil, "", "")
 }
 
 // isSubquery checks if a string is likely a SQL subquery rather than a table name
@@ -520,10 +520,10 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpr string, whereAndFieldN
 	joinSQLPart any, groupByFields []string, havingClause string, withCTE string) (count int64, err error) {
 
 	// Determine if this is a subquery
-	isSubq := isSubquery(tableOrSubquery)
+	isSubquery := isSubquery(tableOrSubquery)
 
 	// When using a subquery, we shouldn't apply WHERE conditions to the outer query
-	if isSubq && whereAndFieldNameValues != nil && len(whereAndFieldNameValues) > 0 {
+	if isSubquery && whereAndFieldNameValues != nil && len(whereAndFieldNameValues) > 0 {
 		return 0, errors.New("cannot apply WHERE conditions to outer level of a subquery; include them in the subquery instead")
 	}
 
@@ -535,7 +535,7 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpr string, whereAndFieldN
 
 	// For subqueries, wrap them properly
 	effectiveTable := tableOrSubquery
-	if isSubq {
+	if isSubquery {
 		// Create a unique alias
 		uniqueSuffix := "__sq_" + strconv.FormatInt(time.Now().UnixNano(), 36)
 
@@ -599,10 +599,10 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpr string, whereAndFiel
 	joinSQLPart any, groupByFields []string, havingClause string, withCTE string) (count int64, err error) {
 
 	// Determine if this is a subquery
-	isSubq := isSubquery(tableOrSubquery)
+	isSubquery := isSubquery(tableOrSubquery)
 
 	// When using a subquery, we shouldn't apply WHERE conditions to the outer query
-	if isSubq && whereAndFieldNameValues != nil && len(whereAndFieldNameValues) > 0 {
+	if isSubquery && whereAndFieldNameValues != nil && len(whereAndFieldNameValues) > 0 {
 		return 0, errors.New("cannot apply WHERE conditions to outer level of a subquery; include them in the subquery instead")
 	}
 
@@ -614,7 +614,7 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpr string, whereAndFiel
 
 	// For subqueries, wrap them properly
 	effectiveTable := tableOrSubquery
-	if isSubq {
+	if isSubquery {
 		// Create a unique alias
 		uniqueSuffix := "__sq_" + strconv.FormatInt(time.Now().UnixNano(), 36)
 

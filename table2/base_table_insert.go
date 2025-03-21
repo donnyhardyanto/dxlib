@@ -1,9 +1,12 @@
 package table
 
 import (
+	"github.com/donnyhardyanto/dxlib/api"
 	database "github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/utils"
+	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
+	"net/http"
 )
 
 func (bt *DXBaseTable) Insert(newKeyValues utils.JSON) (newId int64, newUid string, err error) {
@@ -12,62 +15,104 @@ func (bt *DXBaseTable) Insert(newKeyValues utils.JSON) (newId int64, newUid stri
 		return 0, "", err
 	}
 
-	var p []string
+	var returningFieldNames []string
 	if bt.FieldNameForRowId != "" {
-		p = append(p, bt.FieldNameForRowId)
+		returningFieldNames = append(returningFieldNames, bt.FieldNameForRowId)
 	}
 	if bt.FieldNameForRowUid != "" {
-		p = append(p, bt.FieldNameForRowUid)
+		returningFieldNames = append(returningFieldNames, bt.FieldNameForRowUid)
 	}
-	r, err := bt.Database.Insert(bt.NameId, newKeyValues, p)
+
+	_, returningFieldValues, err := bt.Database.Insert(bt.NameId, newKeyValues, returningFieldNames)
 	if err != nil {
 		return 0, "", err
 	}
-	ok := false
+	var ok bool
 	if bt.FieldNameForRowId != "" {
-		newId, ok = r[bt.FieldNameForRowId].(int64)
+		newId, ok = returningFieldValues[bt.FieldNameForRowId].(int64)
 		if !ok {
-			return 0, "", errors.New("IMPOSSIBLE:ID_IN_INT64_NOT_FOUND")
+			return 0, "", errors.New("IMPOSSIBLE:INSERT_NOT_RETURNING_ID")
 		}
 	}
 	if bt.FieldNameForRowUid != "" {
-		newUid, ok = r[bt.FieldNameForRowUid].(string)
+		newUid, ok = returningFieldValues[bt.FieldNameForRowUid].(string)
 		if !ok {
-			return 0, "", errors.New("IMPOSSIBLE:UID_IN_STRING_NOT_FOUND")
+			return 0, "", errors.New("IMPOSSIBLE:INSERT_NOT_RETURNING_UID")
 		}
 	}
-	return newId, newUid, err
+
+	return newId, newUid, nil
+}
+
+func (bt *DXBaseTable) DoRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (err error) {
+
+	// Execute OnBeforeInsert callback if provided
+	if bt.OnBeforeInsert != nil {
+		if err := bt.OnBeforeInsert(aepr, newKeyValues); err != nil {
+			return err
+		}
+	}
+
+	newId, newUid, err := bt.Insert(newKeyValues)
+	if err != nil {
+		return err
+	}
+
+	data := utilsJson.Encapsulate(bt.ResponseEnvelopeObjectName, utils.JSON{
+		bt.FieldNameForRowId:  newId,
+		bt.FieldNameForRowUid: newUid,
+	})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
+
+	return nil
+}
+
+// Note: New name is RequestInsert, the RequestCreate is depreciated
+
+func (bt *DXBaseTable) RequestInsert(aepr *api.DXAPIEndPointRequest) (err error) {
+	p := map[string]interface{}{}
+	for k, v := range aepr.ParameterValues {
+		p[k] = v.Value
+	}
+	err = bt.DoRequestInsert(aepr, p)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Note: New name is RequestInsert, the RequestCreate is depreciated
+
+func (bt *DXBaseTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
+	return bt.RequestInsert(aepr)
 }
 
 func (bt *DXBaseTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, newUid string, err error) {
-	// Ensure database is initialized
-	if err := bt.DbEnsureInitialize(); err != nil {
-		return 0, "", err
-	}
-
-	var p []string
+	var returningFieldNames []string
 	if bt.FieldNameForRowId != "" {
-		p = append(p, bt.FieldNameForRowId)
+		returningFieldNames = append(returningFieldNames, bt.FieldNameForRowId)
 	}
 	if bt.FieldNameForRowUid != "" {
-		p = append(p, bt.FieldNameForRowUid)
+		returningFieldNames = append(returningFieldNames, bt.FieldNameForRowUid)
 	}
-	r, err := tx.Insert(bt.NameId, newKeyValues, p)
+
+	_, returningFieldValues, err := tx.Insert(bt.NameId, newKeyValues, returningFieldNames)
 	if err != nil {
 		return 0, "", err
 	}
-	ok := false
+	var ok bool
 	if bt.FieldNameForRowId != "" {
-		newId, ok = r[bt.FieldNameForRowId].(int64)
+		newId, ok = returningFieldValues[bt.FieldNameForRowId].(int64)
 		if !ok {
-			return 0, "", errors.New("IMPOSSIBLE:ID_IN_INT64_NOT_FOUND")
+			return 0, "", errors.New("IMPOSSIBLE:INSERT_NOT_RETURNING_ID")
 		}
 	}
 	if bt.FieldNameForRowUid != "" {
-		newUid, ok = r[bt.FieldNameForRowUid].(string)
+		newUid, ok = returningFieldValues[bt.FieldNameForRowUid].(string)
 		if !ok {
-			return 0, "", errors.New("IMPOSSIBLE:UID_IN_STRING_NOT_FOUND")
+			return 0, "", errors.New("IMPOSSIBLE:INSERT_NOT_RETURNING_UID")
 		}
 	}
-	return newId, newUid, err
+
+	return newId, newUid, nil
 }

@@ -354,7 +354,7 @@ func (d *DXDatabase) Connect() (err error) {
 				return nil
 			} else {
 				log.Log.Errorf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
-				return errors.Wrap(err, "error occured")
+				return errors.Wrap(err, "error when opering database connection")
 			}
 		}
 		d.Connection = connection

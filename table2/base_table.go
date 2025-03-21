@@ -3,19 +3,16 @@ package table
 import (
 	"github.com/donnyhardyanto/dxlib/api"
 	database "github.com/donnyhardyanto/dxlib/database2"
-	"github.com/donnyhardyanto/dxlib/database2/db"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
-	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
-	"net/http"
 	"time"
 )
 
 type TableInterface interface {
 	Initialize() TableInterface
 	DbEnsureInitialize() error
-	DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error)
+	DoRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, newUid string, err error)
 }
 
 // DXBaseTable contains common fields for all table types
@@ -32,18 +29,18 @@ type DXBaseTable struct {
 	ResponseEnvelopeObjectName string
 	FieldTypeMapping           utils2.FieldTypeMapping
 	OnBeforeInsert             func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
+	OnBeforeUpdate             func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
 }
 
 func (bt *DXBaseTable) Initialize() TableInterface {
 	return bt
 }
 
-func (bt *DXBaseTable) DbEnsureInitialize() error {
+func (bt *DXBaseTable) DbEnsureInitialize() (err error) {
 	if bt.Database == nil {
 		bt.Database = database.Manager.Databases[bt.DatabaseNameId]
 		if bt.Database == nil {
-			return errors.Wrap(err, "error occured")
-			ors.Errorf("database not found: %s", bt.DatabaseNameId)
+			return errors.Errorf("database not found: %s", bt.DatabaseNameId)
 		}
 	}
 	if !bt.Database.Connected {
@@ -52,98 +49,6 @@ func (bt *DXBaseTable) DbEnsureInitialize() error {
 			return errors.Wrap(err, "error occured")
 		}
 	}
-	return nil
-}
-
-func (bt *DXBaseTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
-	// Execute OnBeforeInsert callback if provided
-	if bt.OnBeforeInsert != nil {
-		if err := bt.OnBeforeInsert(aepr, newKeyValues); err != nil {
-			return 0, err
-		}
-	}
-
-	// Ensure database is initialized
-	if err := bt.DbEnsureInitialize(); err != nil {
-		return 0, err
-	}
-
-	// Perform the insertion
-	newId, err = bt.Database.Insert(bt.NameId, bt.FieldNameForRowId, newKeyValues)
-	if err != nil {
-		return 0, err
-	}
-
-	// Prepare response
-	p := utils.JSON{
-		bt.FieldNameForRowId: newId,
-	}
-
-	// Handle UID if needed
-	if bt.FieldNameForRowUid != "" {
-		_, n, err := bt.Database.SelectOne(bt.ListViewNameId, nil, nil, utils.JSON{
-			"id": newId,
-		}, nil, nil)
-		if err != nil {
-			return 0, err
-		}
-		uid, ok := n[bt.FieldNameForRowUid].(string)
-		if !ok {
-			return 0, errors.New("IMPOSSIBLE:UID")
-		}
-		p[bt.FieldNameForRowUid] = uid
-	}
-
-	// Write response
-	data := utilsJson.Encapsulate(bt.ResponseEnvelopeObjectName, p)
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
-
-	return newId, nil
-}
-
-func (bt *DXBaseTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
-
-	// Ensure database is initialized
-	if err := bt.DbEnsureInitialize(); err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-
-	_, _, err = bt.ShouldGetById(&aepr.Log, id)
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-
-	_, err = db.Delete(bt.Database.Connection, bt.NameId, utils.JSON{
-		bt.FieldNameForRowId: id,
-	})
-	if err != nil {
-		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", bt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
-	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
-	return nil
-}
-
-func (bt *DXBaseTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string) (err error) {
-
-	// Ensure database is initialized
-	if err := bt.DbEnsureInitialize(); err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-
-	_, _, err = bt.ShouldGetByUid(&aepr.Log, uid)
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-
-	_, err = db.Delete(bt.Database.Connection, bt.NameId, utils.JSON{
-		bt.FieldNameForRowUid: uid,
-	})
-	if err != nil {
-		aepr.Log.Errorf("Error at %s.DoDeleteByUid (%s) ", bt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
-	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
 	return nil
 }
 
@@ -187,6 +92,6 @@ func (bt *DXTable2) Initialize() TableInterface {
 	return bt
 }
 
-type DXProperyTable2 struct {
+type DXPropertyTable2 struct {
 	DXTable2
 }
