@@ -96,7 +96,7 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 }
 
 func (l *DXLog) Trace(text string) {
-	l.LogText(nil, DXLogLevelTrace, l.Prefix, text, nil)
+	l.LogText(nil, DXLogLevelTrace, l.Prefix, text)
 }
 
 func (l *DXLog) Tracef(text string, v ...any) {
@@ -105,7 +105,7 @@ func (l *DXLog) Tracef(text string, v ...any) {
 }
 
 func (l *DXLog) Debug(text string) {
-	l.LogText(nil, DXLogLevelDebug, l.Prefix, text, nil)
+	l.LogText(nil, DXLogLevelDebug, l.Prefix, text)
 }
 
 func (l *DXLog) Debugf(text string, v ...any) {
@@ -114,7 +114,7 @@ func (l *DXLog) Debugf(text string, v ...any) {
 }
 
 func (l *DXLog) Info(text string) {
-	l.LogText(nil, DXLogLevelInfo, l.Prefix, text, nil)
+	l.LogText(nil, DXLogLevelInfo, l.Prefix, text)
 }
 
 func (l *DXLog) Infof(text string, v ...any) {
@@ -123,7 +123,7 @@ func (l *DXLog) Infof(text string, v ...any) {
 }
 
 func (l *DXLog) Warn(text string) {
-	l.LogText(nil, DXLogLevelWarn, l.Prefix, text, nil)
+	l.LogText(nil, DXLogLevelWarn, l.Prefix, text)
 }
 
 func (l *DXLog) Warnf(text string, v ...any) {
