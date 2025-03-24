@@ -44,7 +44,7 @@ type DXLog struct {
 }
 
 var Format DXLogFormat
-var OnError func(severity DXLogLevel, location string, text string, stack string) (err error)
+var OnError func(errPrev error, severity DXLogLevel, location string, text string, stack string) (err error)
 
 func NewLog(parentLog *DXLog, context context.Context, prefix string) DXLog {
 	if parentLog != nil {
@@ -56,8 +56,15 @@ func NewLog(parentLog *DXLog, context context.Context, prefix string) DXLog {
 	return l
 }
 
-func (l *DXLog) LogText(severity DXLogLevel, location string, text string) {
+func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text string, v ...any) {
 	stack := ``
+	text = fmt.Sprintf(text, v...)
+	if err != nil {
+		location = l.Prefix
+		stack = fmt.Sprintf("%+v", err)
+		text = text + "\n" + err.Error()
+	}
+
 	a := logrus.WithFields(logrus.Fields{"prefix": l.Prefix, "location": location})
 	switch severity {
 	case DXLogLevelTrace:
@@ -80,7 +87,7 @@ func (l *DXLog) LogText(severity DXLogLevel, location string, text string) {
 		a.Printf("%s", text)
 	}
 	if OnError != nil {
-		err2 := OnError(severity, location, text, stack)
+		err2 := OnError(err, severity, location, text, stack)
 		if err2 != nil {
 			a.Warnf("ERROR_ON_ERROR_HANDLER: %+v", err2)
 		}
@@ -89,7 +96,7 @@ func (l *DXLog) LogText(severity DXLogLevel, location string, text string) {
 }
 
 func (l *DXLog) Trace(text string) {
-	l.LogText(DXLogLevelTrace, ``, text)
+	l.LogText(nil, DXLogLevelTrace, l.Prefix, text, nil)
 }
 
 func (l *DXLog) Tracef(text string, v ...any) {
@@ -98,7 +105,7 @@ func (l *DXLog) Tracef(text string, v ...any) {
 }
 
 func (l *DXLog) Debug(text string) {
-	l.LogText(DXLogLevelDebug, ``, text)
+	l.LogText(nil, DXLogLevelDebug, l.Prefix, text, nil)
 }
 
 func (l *DXLog) Debugf(text string, v ...any) {
@@ -107,7 +114,7 @@ func (l *DXLog) Debugf(text string, v ...any) {
 }
 
 func (l *DXLog) Info(text string) {
-	l.LogText(DXLogLevelInfo, ``, text)
+	l.LogText(nil, DXLogLevelInfo, l.Prefix, text, nil)
 }
 
 func (l *DXLog) Infof(text string, v ...any) {
@@ -116,7 +123,7 @@ func (l *DXLog) Infof(text string, v ...any) {
 }
 
 func (l *DXLog) Warn(text string) {
-	l.LogText(DXLogLevelWarn, ``, text)
+	l.LogText(nil, DXLogLevelWarn, l.Prefix, text, nil)
 }
 
 func (l *DXLog) Warnf(text string, v ...any) {
@@ -126,27 +133,27 @@ func (l *DXLog) Warnf(text string, v ...any) {
 
 func (l *DXLog) WarnAndCreateErrorf(text string, v ...any) (err error) {
 	err = errors.Errorf(text, v...)
-	l.LogText(DXLogLevelWarn, ``, err.Error())
+	l.LogText(err, DXLogLevelWarn, "", "")
 	return err
 }
 
-func (l *DXLog) Error(text string) {
-	l.LogText(DXLogLevelError, ``, text)
+func (l *DXLog) Error(text string, err error) {
+	l.LogText(err, DXLogLevelError, l.Prefix, text, err)
 }
 
-func (l *DXLog) Errorf(text string, v ...any) {
+func (l *DXLog) Errorf(err error, text string, v ...any) {
 	t := fmt.Sprintf(text, v...)
-	l.Error(t)
+	l.Error(t, err)
 }
 
 func (l *DXLog) ErrorAndCreateErrorf(text string, v ...any) (err error) {
 	err = errors.Errorf(text, v...)
-	l.Error(err.Error())
+	l.Error(fmt.Sprintf(text, v...), err)
 	return err
 }
 
 func (l *DXLog) Fatal(text string) {
-	l.LogText(DXLogLevelFatal, ``, text)
+	l.LogText(nil, DXLogLevelFatal, l.Prefix, text, nil)
 }
 
 func (l *DXLog) Fatalf(text string, v ...any) {
@@ -160,7 +167,7 @@ func (l *DXLog) FatalAndCreateErrorf(text string, v ...any) (err error) {
 }
 
 func (l *DXLog) Panic(location string, err error) {
-	l.LogText(DXLogLevelPanic, location, err.Error())
+	l.LogText(err, DXLogLevelPanic, location, "", err)
 }
 
 func (l *DXLog) PanicAndCreateErrorf(location, text string, v ...any) (err error) {

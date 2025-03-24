@@ -227,7 +227,7 @@ func (bt *DXBaseTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err e
 		bt.FieldNameForRowId: id,
 	})
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.DoDelete (%s) ", bt.NameId, err.Error())
+		aepr.Log.Errorf(err, "Error at %s.DoDelete (%s) ", bt.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
@@ -250,7 +250,7 @@ func (bt *DXBaseTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string)
 		bt.FieldNameForRowUid: uid,
 	})
 	if err != nil {
-		aepr.Log.Errorf("Error at %s.DoDeleteByUid (%s) ", bt.NameId, err.Error())
+		aepr.Log.Errorf(err, "Error at %s.DoDeleteByUid (%s) ", bt.NameId, err.Error())
 		return errors.Wrap(err, "error occured")
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)

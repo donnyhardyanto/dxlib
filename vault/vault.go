@@ -216,7 +216,7 @@ func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []s
 	if check {
 		secret, err := hv.Client.Logical().Read(hv.Path)
 		if err != nil {
-			log.Errorf("Unable to read credentials from Vault: %v", err.Error())
+			log.Errorf(err, "Unable to read credentials from Vault")
 			return nil, err
 		}
 		var results []string

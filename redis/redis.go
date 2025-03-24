@@ -170,8 +170,7 @@ func (r *DXRedis) Connect() (err error) {
 	if !r.Connected {
 		err := r.ApplyFromConfiguration()
 		if err != nil {
-			log.Log.Errorf("Cannot configure to Redis %s to connect (%s)", r.NameId, err.Error())
-			return errors.Wrap(err, "error occured")
+			return errors.Wrapf(err, "Cannot configure to Redis %s to connect (%s)", r.NameId, err.Error())
 		}
 		log.Log.Infof("Connecting to Redis %s at %s/%d... start", r.NameId, r.Address, r.DatabaseIndex)
 		redisRingOptions := &redis.RingOptions{
@@ -193,8 +192,7 @@ func (r *DXRedis) Connect() (err error) {
 				log.Log.Fatalf("Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
 				return nil
 			} else {
-				log.Log.Errorf("Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
-				return errors.Wrap(err, "error occured")
+				return errors.Wrapf(err, "Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
 			}
 		}
 		r.Connection = connection
@@ -216,14 +214,12 @@ func (r *DXRedis) Ping() (err error) {
 func (r *DXRedis) Set(key string, value utils.JSON, expirationDuration time.Duration) (err error) {
 	valueAsBytes, err := json.Marshal(value)
 	if err != nil {
-		log.Log.Errorf("Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
-		return errors.Wrap(err, "error occured")
+		return errors.Wrapf(err, "Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
 	}
 
 	err = r.Connection.Set(r.Context, key, valueAsBytes, expirationDuration).Err()
 	if err != nil {
-		log.Log.Errorf("Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
-		return errors.Wrap(err, "error occured")
+		return errors.Wrapf(err, "Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
 	}
 	return nil
 }
@@ -234,13 +230,11 @@ func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
 		if errors.Is(err, redis.Nil) {
 			return nil, nil
 		}
-		log.Log.Errorf("Cannot get to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
-		return nil, err
+		return nil, errors.Wrapf(err, "Cannot get to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
 	}
 	err = json.Unmarshal(valueAsBytes, &value)
 	if err != nil {
-		log.Log.Errorf("Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
-		return nil, err
+		return nil, errors.Wrapf(err, "Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
 	}
 	return value, nil
 }
@@ -251,13 +245,11 @@ func (r *DXRedis) GetEx(key string, duration time.Duration) (value utils.JSON, e
 		if errors.Is(err, redis.Nil) {
 			return nil, nil
 		}
-		log.Log.Errorf("Cannot get to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
-		return nil, err
+		return nil, errors.Wrapf(err, "Cannot get to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
 	}
 	err = json.Unmarshal(valueAsBytes, &value)
 	if err != nil {
-		log.Log.Errorf("Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
-		return nil, err
+		return nil, errors.Wrapf(err, "Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
 	}
 	return value, nil
 }
@@ -265,17 +257,14 @@ func (r *DXRedis) MustGet(key string) (value utils.JSON, err error) {
 	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			log.Log.Errorf("Cannot find keyin Redis %s (%s) %s", r.NameId, err.Error(), key)
-			return nil, err
+			return nil, errors.Wrapf(err, "Cannot find keyin Redis %s (%s) %s", r.NameId, err.Error(), key)
 		} else {
-			log.Log.Errorf("Cannot get k/v to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
-			return nil, err
+			return nil, errors.Wrapf(err, "Cannot get k/v to Redis %s k/v (%s) %s", r.NameId, err.Error(), key)
 		}
 	}
 	err = json.Unmarshal(valueAsBytes, &value)
 	if err != nil {
-		log.Log.Errorf("Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
-		return nil, err
+		return nil, errors.Wrapf(err, "Cannot unmarshall from bytes in Redis %s k/v (%s) %s/%v", r.NameId, err.Error(), key, valueAsBytes)
 	}
 	return value, nil
 }
@@ -283,8 +272,7 @@ func (r *DXRedis) MustGet(key string) (value utils.JSON, err error) {
 func (r *DXRedis) Delete(key string) (err error) {
 	_, err = r.Connection.Del(r.Context, key).Result()
 	if err != nil {
-		log.Log.Errorf("Error in deleting key Redis %s k/v (%v) %s", r.NameId, err, key)
-		return errors.Wrap(err, "error occured")
+		return errors.Wrapf(err, "Error in deleting key Redis %s k/v (%v) %s", r.NameId, err, key)
 	}
 	return nil
 }
@@ -295,8 +283,7 @@ func (r *DXRedis) Disconnect() (err error) {
 		c := r.Connection
 		err := c.Close()
 		if err != nil {
-			log.Log.Errorf("Disconnecting to Redis %s at %s/%d error (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
-			return errors.Wrap(err, "error occured")
+			return errors.Wrapf(err, "Disconnecting to Redis %s at %s/%d error (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
 		}
 		r.Connection = nil
 		r.Connected = false

@@ -93,14 +93,6 @@ func (t *DXRawTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFie
 	return tx.SelectOne(t.NameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
-func (t *DXRawTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
-
-	return tx.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
-}
-
 func (t *DXRawTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}

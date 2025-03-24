@@ -33,7 +33,7 @@ type DXDatabaseTx struct {
 func (dtx *DXDatabaseTx) Commit() (err error) {
 	err = dtx.Tx.Commit()
 	if err != nil {
-		dtx.Log.Errorf("TX_ERROR_IN_COMMIT: (%v)", err.Error())
+		dtx.Log.Errorf(err, "TX_ERROR_IN_COMMIT: (%v)", err.Error())
 		return errors.Wrap(err, "error occured")
 	}
 	return nil
@@ -42,7 +42,7 @@ func (dtx *DXDatabaseTx) Commit() (err error) {
 func (dtx *DXDatabaseTx) Rollback() (err error) {
 	err = dtx.Tx.Rollback()
 	if err != nil {
-		dtx.Log.Errorf("TX_ERROR_IN_ROLLBACK: (%v)", err.Error())
+		dtx.Log.Errorf(err, "TX_ERROR_IN_ROLLBACK: (%v)", err.Error())
 		return errors.Wrap(err, "error occured")
 	}
 	return nil
@@ -52,12 +52,12 @@ func (dtx *DXDatabaseTx) Finish(log *log.DXLog, err error) {
 	if err != nil {
 		err2 := dtx.Rollback()
 		if err2 != nil {
-			log.Errorf("ROLLBACK_ERROR:%v", err2)
+			log.Errorf(err, "ROLLBACK_ERROR:%+v", err2)
 		}
 	} else {
 		err2 := dtx.Commit()
 		if err2 != nil {
-			log.Errorf("ROLLBACK_ERROR:%v", err2)
+			log.Errorf(err2, "ROLLBACK_ERROR:%+v", err2)
 		}
 	}
 }

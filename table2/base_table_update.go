@@ -3,6 +3,7 @@ package table
 import (
 	"database/sql"
 	"github.com/donnyhardyanto/dxlib/api"
+	database "github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
@@ -100,4 +101,12 @@ func (bt *DXBaseTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err err
 		return err
 	}
 	return nil
+}
+
+func (bt *DXBaseTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	return tx.Update(bt.NameId, setKeyValues, whereAndFieldNameValues)
 }

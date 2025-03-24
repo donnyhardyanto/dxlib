@@ -54,13 +54,13 @@ func (d *DXDatabase) EnsureConnection() (err error) {
 	if d.Connection == nil {
 		err = d.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "error occurred in Connect()")
 		}
 	}
 	if !d.Connected {
 		err = d.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "error occurred")
 		}
 	}
 	return nil
@@ -336,7 +336,7 @@ func (d *DXDatabase) Connect() (err error) {
 				log.Log.Fatalf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return nil
 			} else {
-				log.Log.Errorf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
+				log.Log.Errorf(err, "Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return errors.Wrap(err, "error occured")
 			}
 		}
@@ -350,7 +350,7 @@ func (d *DXDatabase) Connect() (err error) {
 				log.Log.Fatalf("Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return nil
 			} else {
-				log.Log.Errorf("Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
+				log.Log.Errorf(err, "Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return errors.Wrap(err, "error occured")
 			}
 		}
@@ -365,7 +365,7 @@ func (d *DXDatabase) Disconnect() (err error) {
 		log.Log.Infof("Disconnecting to database %s/%s... start", d.NameId, d.NonSensitiveConnectionString)
 		err := (*d.Connection).Close()
 		if err != nil {
-			log.Log.Errorf("Disconnecting to database %s/%s error (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
+			log.Log.Errorf(err, "Disconnecting to database %s/%s error (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 			return errors.Wrap(err, "error occured")
 		}
 		d.Connection = nil
@@ -468,7 +468,7 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 	return nil, err
 }
 
-func (d *DXDatabase) Select(tableName string, fieldTypeMapping db.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy,
+func (d *DXDatabase) Select(tableName string, fieldTypeMapping db.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections db.FieldsOrderBy,
 	limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
 
 	err = d.EnsureConnection()
@@ -477,7 +477,7 @@ func (d *DXDatabase) Select(tableName string, fieldTypeMapping db.FieldTypeMappi
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		rowsInfo, resultData, err = db.Select(d.Connection, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
+		rowsInfo, resultData, err = db.Select(d.Connection, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, limit, forUpdatePart)
 		if err == nil {
 			return rowsInfo, resultData, nil
 		}
@@ -503,10 +503,10 @@ func (d *DXDatabase) CountOne(tableName string, summaryCalcFieldsPart string, wh
 	return totalRows, c, err
 }
 
-func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping db.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections db.FieldsOrderBy) (
+func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping db.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections db.FieldsOrderBy) (
 	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
 
-	rowsInfo, resultData, err = d.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
+	rowsInfo, resultData, err = d.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -566,7 +566,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 
 	defer func() {
 		if err != nil {
-			log.Log.Errorf("Error executing file %s (%v)", filename, err.Error())
+			log.Log.Errorf(err, "Error executing file %s (%v)", filename, err.Error())
 		}
 	}()
 
@@ -646,10 +646,10 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 	for k, v := range d.CreateScriptFiles {
 		r, err := d.ExecuteFile(v)
 		if err != nil {
-			log.Log.Errorf("Error executing file %d:'%s' (%s)", k, v, err.Error())
+			log.Log.Errorf(err, "Error executing file %d:'%s' (%s)", k, v, err.Error())
 			var sqlErr mssql.Error
 			if errors.As(err, &sqlErr) {
-				log.Log.Errorf("SQL Server Error Number: %d, State: %d, FCMMessage: %s",
+				log.Log.Errorf(err, "SQL Server Error Number: %d, State: %d, FCMMessage: %s",
 					sqlErr.Number, sqlErr.State, sqlErr.Message)
 			}
 			return rs, err
@@ -666,24 +666,24 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	case "oracle":
 		tx, err := d.TransactionBegin(isolationLevel)
 		if err != nil {
-			log.Error(err.Error())
+			log.Error(err.Error(), err)
 			return errors.Wrap(err, "error occured")
 		}
 		err = callback(tx)
 		if err != nil {
-			log.Errorf(`TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
+			log.Errorf(err, `TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+				log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 			}
 			return errors.Wrap(err, "error occured")
 		}
 		err = tx.Commit()
 		if err != nil {
-			log.Errorf(`TX_ERROR_IN_COMMITT: (%v)`, err.Error())
+			log.Errorf(err, `TX_ERROR_IN_COMMITT: (%v)`, err.Error())
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
+				log.Errorf(errTx, `ErrorInCommitRollback: (%v)`, errTx.Error())
 			}
 			return errors.Wrap(err, "error occured")
 		}
@@ -696,7 +696,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		ReadOnly:  false,
 	})
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(err.Error(), err)
 		return errors.Wrap(err, "error occured")
 	}
 	dtx := &DXDatabaseTx{
@@ -705,19 +705,19 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	}
 	err = callback(dtx)
 	if err != nil {
-		log.Errorf(`TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
+		log.Errorf(err, `TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+			log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
 		}
 		return errors.Wrap(err, "error occured")
 	}
 	err = dtx.Tx.Commit()
 	if err != nil {
-		log.Errorf(`TX_ERROR_IN_COMMIT: (%v)`, err.Error())
+		log.Errorf(err, `TX_ERROR_IN_COMMIT: (%v)`, err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
+			log.Errorf(errTx, `ErrorInCommitRollback: (%v)`, errTx.Error())
 		}
 		return errors.Wrap(err, "error occured")
 	}

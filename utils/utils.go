@@ -546,7 +546,7 @@ func AskForConfirmation(key1 string, key2 string) (err error) {
 	log.Log.Warnf("Input confirmation key 1?")
 	userInputConfirmationKey1, err := reader.ReadString('\n')
 	if err != nil {
-		log.Log.Errorf("Failed to input confirmation key 1: %s", err.Error())
+		log.Log.Errorf(err, "Failed to input confirmation key 1")
 		return errors.Wrap(err, "error occured")
 	}
 	userInputConfirmationKey1 = strings.TrimSpace(userInputConfirmationKey1)
@@ -554,7 +554,7 @@ func AskForConfirmation(key1 string, key2 string) (err error) {
 	log.Log.Warnf("Input the input confirmation key 2 to confirm:")
 	userInputConfirmationKey2, err := reader.ReadString('\n')
 	if err != nil {
-		log.Log.Errorf("Failed to input confirmation key 2: %s", err.Error())
+		log.Log.Errorf(err, "Failed to input confirmation key 2")
 		return errors.Wrap(err, "error occured")
 	}
 	userInputConfirmationKey2 = strings.TrimSpace(userInputConfirmationKey2)

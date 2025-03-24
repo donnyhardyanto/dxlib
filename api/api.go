@@ -71,10 +71,10 @@ var SpecFormat = "MarkDown"
 func (a *DXAPI) APIHandlerPrintSpec(aepr *DXAPIEndPointRequest) (err error) {
 	s, err := a.PrintSpec()
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsString(http.StatusOK, nil, s)
-	return errors.Wrap(err, "error occured")
+	return err
 }
 
 func (a *DXAPI) PrintSpec() (s string, err error) {
@@ -124,11 +124,11 @@ func (am *DXAPIManager) LoadFromConfiguration(configurationNameId string) (err e
 		}
 		apiObject, err := am.NewAPI(k)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		err = apiObject.ApplyConfigurations(configurationNameId)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	return nil
@@ -154,7 +154,7 @@ func (am *DXAPIManager) StartAll(errorGroup *errgroup.Group, errorGroupContext c
 	for _, v := range am.APIs {
 		err := v.StartAndWait(am.ErrorGroup)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "error occurred in StartAndWait()")
 		}
 	}
 	return nil
@@ -163,30 +163,33 @@ func (am *DXAPIManager) StartAll(errorGroup *errgroup.Group, errorGroupContext c
 func (am *DXAPIManager) StopAll() (err error) {
 	am.ErrorGroupContext.Done()
 	err = am.ErrorGroup.Wait()
-	return errors.Wrap(err, "error occured")
+	if err != nil {
+		return errors.Wrap(err, "error occurred in Wait()")
+	}
+	return nil
 }
 
 func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	configuration, ok := dxlibConfiguration.Manager.Configurations[configurationNameId]
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s", configurationNameId)
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	c := *configuration.Data
 	c1, ok := c[a.NameId].(utils.JSON)
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s.%s", configurationNameId, a.NameId)
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	a.Address, ok = c1[`address`].(string)
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s.%s/address", configurationNameId, a.NameId)
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	a.WriteTimeoutSec = utilsJSON.GetNumberWithDefault(c1, `writetimeout-sec`, DXAPIDefaultWriteTimeoutSec)
 	a.ReadTimeoutSec = utilsJSON.GetNumberWithDefault(c1, `readtimeout-sec`, DXAPIDefaultReadTimeoutSec)
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (a *DXAPI) FindEndPointByURI(uri string) *DXAPIEndPoint {
@@ -292,13 +295,13 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	err = aepr.PreProcessRequest()
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "PREPROCESS_REQUEST_ERROR:%v ", err.Error())
-		requestDump, err2 := aepr.RequestDump()
+		aepr.WriteResponseAsError(http.StatusBadRequest, err)
+		requestDump, err2 := aepr.RequestDumpAsString()
 		if err2 != nil {
-			aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())
+			aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR")
 			return
 		}
-		aepr.Log.Errorf("ONPREPROCESSREQUEST_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
+		aepr.Log.Errorf(err, "ONPREPROCESSREQUEST_ERROR\nRaw Request:\n%s\n", requestDump)
 		return
 	}
 
@@ -308,14 +311,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 		err = middleware(aepr)
 		if err != nil {
-			aepr.Log.Error(fmt.Sprintf("MIDDLEWARE_ERROR:\n%+v", errors.WithStack(err)))
-			err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "MIDDLEWARE_ERROR:%v ", err.Error())
+			err3 := errors.Wrap(err, fmt.Sprintf("MIDDLEWARE_ERROR:\n%+v", err))
+			aepr.WriteResponseAsError(http.StatusBadRequest, err3)
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())
+				aepr.Log.Errorf(err2, `REQUEST_DUMP_ERROR:%v`, err2.Error())
 				return
 			}
-			aepr.Log.Errorf("ONMIDDLEWARE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
+			aepr.Log.Errorf(err3, "ONMIDDLEWARE_ERROR:%v\nRaw Request :\n%v\n", err3, string(requestDump))
 			return
 		}
 
@@ -343,14 +346,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	if p.OnExecute != nil {
 		err = p.OnExecute(aepr)
 		if err != nil {
-			aepr.Log.Errorf("ONEXECUTE_ERROR:\n%+v\n", err)
+			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:\n%+v\n", err)
 
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(`REQUEST_DUMP_ERROR:%v`, err2.Error())
+				aepr.Log.Errorf(err2, `REQUEST_DUMP_ERROR:%+v`, err2)
 				return
 			}
-			aepr.Log.Errorf("ONEXECUTE_ERROR:%v\nRaw Request :\n%v\n", err, string(requestDump))
+			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:%v\nRaw Request :\n%+v\n", err, string(requestDump))
 
 			if !aepr.ResponseHeaderSent {
 				err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "ONEXECUTE_ERROR:%v", err.Error())
@@ -429,11 +432,11 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		log.Log.Infof("Listening at %s... start", a.Address)
 		err := a.HTTPServer.ListenAndServe()
 		if (err != nil) && (!errors.Is(err, http.ErrServerClosed)) {
-			log.Log.Errorf("HTTP server error: %v", err.Error())
+			log.Log.Errorf(err, "HTTP server error: %+v", err)
 		}
 		a.RuntimeIsActive = false
 		log.Log.Infof("Listening at %s... stopped", a.Address)
-		return errors.Wrap(err, "error occured")
+		return nil
 	})
 
 	return nil
@@ -443,7 +446,10 @@ func (a *DXAPI) StartShutdown() (err error) {
 	if a.RuntimeIsActive {
 		log.Log.Infof("Shutdown api %s start...", a.NameId)
 		err = a.HTTPServer.Shutdown(core.RootContext)
-		return errors.Wrap(err, "error occured")
+		if err != nil {
+			return errors.Wrap(err, "error occurred in HTTPServer.Shutdown()")
+		}
+		return nil
 	}
 	return nil
 }

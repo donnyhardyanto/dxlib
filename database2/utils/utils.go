@@ -71,7 +71,9 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
           AND pid <> pg_backend_pid();
     `, dbName)
 		_, err = db.Exec(query)
-
+		if err != nil {
+			return errors.Errorf("failed to kill connections: %w", err)
+		}
 	case "sqlserver":
 		query := fmt.Sprintf(`
             USE master;
@@ -83,6 +85,9 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
             EXEC(@kill);
         `, dbName)
 		_, err = db.Exec(query)
+		if err != nil {
+			return errors.Errorf("failed to kill connections: %w", err)
+		}
 	case "godror", "oracle":
 		// For Oracle, we use ALTER SYSTEM KILL SESSION
 		query := `
@@ -94,13 +99,13 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
             END;
         `
 		_, err = db.Exec(query, dbName)
+		if err != nil {
+			return errors.Errorf("failed to kill connections: %w", err)
+		}
 	default:
 		return errors.Errorf("unsupported database driver: %s", driverName)
 	}
 
-	if err != nil {
-		return errors.Errorf("failed to kill connections: %w", err)
-	}
 	return nil
 }
 
@@ -116,7 +121,7 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 	// Kill all connections to the target database
 	err = KillConnections(db, dbName)
 	if err != nil {
-		log.Log.Errorf("Failed to kill connections: %s", err.Error())
+		log.Log.Errorf(err, "Failed to kill connections")
 		return errors.Wrap(err, "error occured")
 	}
 

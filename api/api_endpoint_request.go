@@ -104,6 +104,11 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+func (aepr *DXAPIEndPointRequest) RequestDumpAsString() (string, error) {
+	b, err := aepr.RequestDump()
+	return string(b), err
+}
+
 func (aepr *DXAPIEndPointRequest) GetResponseWriter() *http.ResponseWriter {
 	return aepr.ResponseWriter
 }
@@ -116,10 +121,8 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 		msg = responseMessage
 	}
 	err = aepr.Log.WarnAndCreateErrorf(msg, data...)
-	if aepr.ResponseHeaderSent {
-	}
 	aepr.WriteResponseAsErrorMessage(statusCode, fmt.Sprintf(responseMessage, data))
-	return errors.Wrap(err, "error occured")
+	return err
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsString(statusCode int, header map[string]string, s string) {

@@ -81,7 +81,7 @@ func (a *DXApp) Run() (err error) {
 	if a.InitVault != nil {
 		err = a.InitVault.Start()
 		if err != nil {
-			log.Log.Error(err.Error())
+			log.Log.Error(err.Error(), err)
 			return errors.Wrap(err, "error occured")
 		}
 	}
@@ -89,21 +89,21 @@ func (a *DXApp) Run() (err error) {
 	if a.OnDefine != nil {
 		err := a.OnDefine()
 		if err != nil {
-			log.Log.Error(err.Error())
+			log.Log.Error(err.Error(), err)
 			return errors.Wrap(err, "error occured")
 		}
 	}
 	if a.OnDefineConfiguration != nil {
 		err := a.OnDefineConfiguration()
 		if err != nil {
-			log.Log.Error(err.Error())
+			log.Log.Error(err.Error(), err)
 			return errors.Wrap(err, "error occured")
 		}
 	}
 
 	err = a.execute()
 	if err != nil {
-		log.Log.Error(err.Error())
+		log.Log.Error(err.Error(), err)
 		return errors.Wrap(err, "error occured")
 	}
 	return nil
@@ -183,7 +183,7 @@ func (a *DXApp) start() (err error) {
 	if a.OnDefineSetVariables != nil {
 		err = a.OnDefineSetVariables()
 		if err != nil {
-			log.Log.Error(err.Error())
+			log.Log.Error(err.Error(), err)
 			return errors.Wrap(err, "error occured")
 		}
 	}
@@ -191,7 +191,7 @@ func (a *DXApp) start() (err error) {
 	if a.OnDefineAPIEndPoints != nil {
 		err = a.OnDefineAPIEndPoints()
 		if err != nil {
-			log.Log.Error(err.Error())
+			log.Log.Error(err.Error(), err)
 			return errors.Wrap(err, "error occured")
 		}
 	}

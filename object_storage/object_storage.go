@@ -239,7 +239,7 @@ func (r *DXObjectStorage) Connect() (err error) {
 	if !r.Connected {
 		err := r.ApplyFromConfiguration()
 		if err != nil {
-			log.Log.Errorf("Cannot configure to Object Storage %s to connect (%s)", r.NameId, err.Error())
+			log.Log.Errorf(err, "Cannot configure to Object Storage %s to connect (%s)", r.NameId, err.Error())
 			return errors.Wrap(err, "error occured")
 		}
 		log.Log.Infof("Connecting to Object Storage %s at %s/%s... start", r.NameId, r.Address, r.BucketName)
@@ -379,7 +379,7 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 		}()
 		_, err := io.Copy(writer, object)
 		if err != nil {
-			aepr.Log.Errorf("PIPE_COPY_ERROR: %s", err.Error())
+			aepr.Log.Errorf(err, "PIPE_COPY_ERROR: %s", err.Error())
 		}
 		_ = object.Close()
 	}()
