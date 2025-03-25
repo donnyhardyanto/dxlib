@@ -202,7 +202,7 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 
 	valid := ed25519.Verify(peerPublicKey, lvEncryptedData.Value, lvSignature.Value)
 	if !valid {
-		return nil, errors.New(`INVALID_SIGNATURE`)
+		return nil, errors.New("INVALID_SIGNATURE")
 	}
 
 	decryptedData, err := aes.DecryptAES(decryptKey, lvEncryptedData.Value)
@@ -227,17 +227,17 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 	}
 
 	if time.Now().Sub(parsedTimestamp) > PayloadUnpackTTL {
-		return nil, errors.New(`TIME_EXPIRED`)
+		return nil, errors.New("TIME_EXPIRED")
 	}
 
 	dataBlockPreKeyIndex := string(dataBlock.PreKey.Value)
 
 	if dataBlockPreKeyIndex != preKeyIndex {
-		return nil, errors.New(`INVALID_PREKEY`)
+		return nil, errors.New("INVALID_PREKEY")
 	}
 
 	if dataBlock.CheckDataHash() == false {
-		return nil, errors.New(`INVALID_DATA_HASH`)
+		return nil, errors.New("INVALID_DATA_HASH")
 	}
 
 	lvCombinedPayloadAsBytes := dataBlock.Data.Value

@@ -18,11 +18,11 @@ var AllowRisk = false
 // Regular expressions for unquoted identifiers by database type
 var (
 	identifierPatterns = map[database_type.DXDatabaseType]*regexp.Regexp{
-		database_type.PostgreSQL: regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`),
-		database_type.MySQL:      regexp.MustCompile(`^[a-zA-Z0-9_$]+$`),
-		database_type.MariaDb:    regexp.MustCompile(`^[a-zA-Z0-9_$]+$`),
-		database_type.SQLServer:  regexp.MustCompile(`^[a-zA-Z@#_][a-zA-Z0-9@#_$]*$`),
-		database_type.Oracle:     regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_$#]*$`),
+		database_type.PostgreSQL: regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$"),
+		database_type.MySQL:      regexp.MustCompile("^[a-zA-Z0-9_$]+$"),
+		database_type.MariaDb:    regexp.MustCompile("^[a-zA-Z0-9_$]+$"),
+		database_type.SQLServer:  regexp.MustCompile("^[a-zA-Z@#_][a-zA-Z0-9@#_$]*$"),
+		database_type.Oracle:     regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_$#]*$"),
 	}
 
 	// QuoteCharacters defines the start and end quote characters for different databases
@@ -35,12 +35,12 @@ var (
 			End:   []rune{'"'},
 		},
 		database_type.MySQL: {
-			Start: []rune{'`'},
-			End:   []rune{'`'},
+			Start: []rune{'"'},
+			End:   []rune{'"'},
 		},
 		database_type.MariaDb: {
-			Start: []rune{'`'},
-			End:   []rune{'`'},
+			Start: []rune{'"'},
+			End:   []rune{'"'},
 		},
 		database_type.SQLServer: {
 			Start: []rune{'[', '"'},
@@ -521,17 +521,17 @@ var (
 
 	// Suspicious patterns that might indicate SQL injection
 	suspiciousRegexQueryPatterns = []string{
-		"--", `"\/\*`, `\*\/`, ";",
-		`\bunion\b`, `\bdrop\b`,
-		`\bexec\b`, `\bexecute\b`, `\btruncate\b`,
-		`\bcreate\b`, `\balter\b`, `\bgrant\b`,
-		`\brevoke\b`, `\bcommit\b`, `\brollback\b`,
-		`\binto outfile\b`, `\binto dumpfile\b`,
-		`\bload_file\b`, `\bsleep\b`, `\bbenchmark\b`,
-		`\bwaitfor\b`, `\bdelay\b`, `\bsys_eval\b`,
-		`\binformation_schema\b`, `\bsysobjects\b`,
-		`\bxp_\w*\b`, `\bsp_\w*\b`, `\bdeclare\b`,
-		`\d+=\d+`,
+		"--", "", \/\*", "\*\/", "; ",
+		"\bunion\b", "\bdrop\b",
+		"\bexec\b", "\bexecute\b", "\btruncate\b",
+		"\bcreate\b", "\balter\b", "\bgrant\b",
+		"\brevoke\b", "\bcommit\b", "\brollback\b",
+		"\binto outfile\b", "\binto dumpfile\b",
+		"\bload_file\b", "\bsleep\b", "\bbenchmark\b",
+		"\bwaitfor\b", "\bdelay\b", "\bsys_eval\b",
+		"\binformation_schema\b", "\bsysobjects\b",
+		"\bxp_\w*\b", "\bsp_\w*\b", "\bdeclare\b",
+		"\d+=\d+",
 	}
 
 	// Maximum identifier lengths per dialect

@@ -33,6 +33,6 @@ func (d *DXDatabase) Delete(tableName string, whereAndFieldNameValues utils.JSON
 
 func (d *DXDatabase) SoftDelete(tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	return d.Update(tableName, utils.JSON{
-		`is_deleted`: true,
+		"is_deleted": true,
 	}, whereAndFieldNameValues, returningFieldNames)
 }

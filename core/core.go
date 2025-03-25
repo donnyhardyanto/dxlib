@@ -11,15 +11,15 @@ import (
 
 var RootContext context.Context
 var RootContextCancel context.CancelFunc
-var IsNewRelicEnabled bool = false
+var IsNewRelicEnabled = false
 var NewRelicApplication *newrelic.Application
-var NewRelicLicense string = ""
+var NewRelicLicense = ""
 
 func init() {
-	_ = dxlibOs.LoadEnvFile(`./run.env`)
-	_ = dxlibOs.LoadEnvFile(`./key.env`)
-	_ = dxlibOs.LoadEnvFile(`./.env`)
-	IsNewRelicEnabled = dxlibOs.GetEnvDefaultValue(`NEW_RELIC_ENABLED`, "false") == "true"
-	NewRelicLicense = dxlibOs.GetEnvDefaultValue(`NEW_RELIC_LICENSE`, "")
+	_ = dxlibOs.LoadEnvFile("./run.env")
+	_ = dxlibOs.LoadEnvFile("./key.env")
+	_ = dxlibOs.LoadEnvFile("./.env")
+	IsNewRelicEnabled = dxlibOs.GetEnvDefaultValue("NEW_RELIC_ENABLED", "false") == "true"
+	NewRelicLicense = dxlibOs.GetEnvDefaultValue("NEW_RELIC_LICENSE", "")
 	RootContext, RootContextCancel = signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 }

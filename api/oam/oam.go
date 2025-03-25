@@ -30,7 +30,7 @@ func Echo(r *http.Request) (map[string]interface{}, error) {
 		return nil, err
 	}
 	data := map[string]interface{}{
-		`log_request`: lr,
+		"log_request": lr,
 	}
 	return data, nil
 }

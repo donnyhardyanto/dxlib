@@ -46,39 +46,39 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 		var parametersAsJSONString []byte
 		parametersAsJSONString, err = json.Marshal(parameters)
 		if err != nil {
-			err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `SHOULD_NOT_HAPPEN:ERROR_MARSHALLING_PARAMETER_TO_STRING:%v`, err.Error())
+			err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "SHOULD_NOT_HAPPEN:ERROR_MARSHALLING_PARAMETER_TO_STRING:%v", err.Error())
 			return nil, err
 		}
 		request, err = http.NewRequest(method, effectiveUrl, bytes.NewBuffer(parametersAsJSONString))
 	}
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `ERROR_AT_CREATING_NEW_REQUEST:%v`, err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_AT_CREATING_NEW_REQUEST:%v", err.Error())
 		return nil, err
 	}
 	if parameters != nil {
-		request.Header.Set(`Content-Type`, "application/json")
+		request.Header.Set("Content-Type", "application/json")
 	}
-	request.Header.Set(`Cache-Control`, `no-cache`)
+	request.Header.Set("Cache-Control", "no-cache")
 	for k, v := range headers {
 		request.Header[k] = []string{v}
 	}
 
 	requestDump, err := httputil.DumpRequest(request, true)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `ERROR_IN_DUMP_REQUEST:%v`, err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_REQUEST:%v", err.Error())
 		return nil, err
 	}
 	aepr.Log.Debugf("Send Request to %s:\n%s\n", effectiveUrl, string(requestDump))
 
 	response, err = client.Do(request)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `ERROR_IN_DUMP_REQUEST:%v`, err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_REQUEST:%v", err.Error())
 		return nil, err
 	}
 
 	responseDump, err := httputil.DumpResponse(response, true)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `ERROR_IN_DUMP_RESPONSE:%v`, err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_RESPONSE:%v", err.Error())
 		return response, err
 	}
 	aepr.Log.Debugf("Response :\n%s\n", string(responseDump))
@@ -93,11 +93,11 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 	request, err = http.NewRequest(method, effectiveUrl, bytes.NewBuffer([]byte(parametersAsJSONString)))
 
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `ERROR_AT_CREATING_NEW_REQUEST:%v`, err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_AT_CREATING_NEW_REQUEST:%v", err.Error())
 		return nil, err
 	}
-	request.Header.Set(`Content-Type`, "application/json")
-	request.Header.Set(`Cache-Control`, `no-cache`)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Cache-Control", "no-cache")
 	for k, v := range headers {
 		request.Header[k] = []string{v}
 	}
@@ -111,13 +111,13 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 
 	response, err = client.Do(request)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `ERROR_IN_MAKE_HTTP_REQUEST:%v`, err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_MAKE_HTTP_REQUEST:%v", err.Error())
 		return nil, err
 	}
 
 	responseDump, err := httputil.DumpResponse(response, true)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `ERROR_IN_DUMP_RESPONSE:%v`, err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_RESPONSE:%v", err.Error())
 		return response, err
 	}
 	aepr.Log.Debugf("Response :\n%s\n", string(responseDump))

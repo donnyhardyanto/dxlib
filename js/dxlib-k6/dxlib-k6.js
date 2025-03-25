@@ -200,38 +200,6 @@ const dxlib = {};
             this.setValue(value)
         }
 
-        setValue(value) {
-            let t = toUint8Array(value)
-            this.Value = new Uint8Array(t);
-            this.Length = this.Value.length
-        }
-
-        setValueAsString(valueAsString) {
-            this.setValue(encodeUTF8(valueAsString));
-        }
-
-        getValueAsString() {
-            return decodeUTF8(this.Value);
-        }
-
-        marshalBinary() {
-            let bufferLength = 4 + this.Value.length;
-
-            let buffer = new ArrayBuffer(bufferLength);
-            let dataView = new DataView(buffer);
-
-            // Write Length as int32 in BigEndian byte order
-            dataView.setUint32(0, this.Length, false);
-
-            // Create a new Uint8Array view for the buffer
-            let thisAsBytes = new Uint8Array(buffer);
-
-            // Copy Value into thisAsBytes
-            thisAsBytes.set(this.Value, 4);
-
-            return thisAsBytes;
-        }
-
         static unmarshalBinary(data) {
             if (!(data instanceof Uint8Array)) {
                 if (!Array.isArray(data)) {
@@ -266,6 +234,38 @@ const dxlib = {};
                 o = o + lvAsBytesArray[i].length
             }
             return new LV(r)
+        }
+
+        setValue(value) {
+            let t = toUint8Array(value)
+            this.Value = new Uint8Array(t);
+            this.Length = this.Value.length
+        }
+
+        setValueAsString(valueAsString) {
+            this.setValue(encodeUTF8(valueAsString));
+        }
+
+        getValueAsString() {
+            return decodeUTF8(this.Value);
+        }
+
+        marshalBinary() {
+            let bufferLength = 4 + this.Value.length;
+
+            let buffer = new ArrayBuffer(bufferLength);
+            let dataView = new DataView(buffer);
+
+            // Write Length as int32 in BigEndian byte order
+            dataView.setUint32(0, this.Length, false);
+
+            // Create a new Uint8Array view for the buffer
+            let thisAsBytes = new Uint8Array(buffer);
+
+            // Copy Value into thisAsBytes
+            thisAsBytes.set(this.Value, 4);
+
+            return thisAsBytes;
         }
 
         expand() {
@@ -303,6 +303,18 @@ const dxlib = {};
             }
         }
 
+        /** @param {LV} aLV */
+        static fromLV(aLV) {
+            let lvs = aLV.expand()
+            let db = new DataBlock()
+            db.Time = lvs[0];
+            db.Nonce = lvs[1];
+            db.PreKey = lvs[2];
+            db.Data = lvs[3];
+            db.DataHash = lvs[4];
+            return db;
+        }
+
         setTimeNow() {
             let now = new Date();
             let currentTimeInUTC_ISOFormat = now.toISOString();
@@ -334,18 +346,6 @@ const dxlib = {};
 
         asLV() {
             return LV.combine([this.Time, this.Nonce, this.PreKey, this.Data, this.DataHash]);
-        }
-
-        /** @param {LV} aLV */
-        static fromLV(aLV) {
-            let lvs = aLV.expand()
-            let db = new DataBlock()
-            db.Time = lvs[0];
-            db.Nonce = lvs[1];
-            db.PreKey = lvs[2];
-            db.Data = lvs[3];
-            db.DataHash = lvs[4];
-            return db;
         }
     }
 

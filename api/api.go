@@ -140,14 +140,14 @@ func (am *DXAPIManager) StartAll(errorGroup *errgroup.Group, errorGroupContext c
 
 	am.ErrorGroup.Go(func() (err error) {
 		<-am.ErrorGroupContext.Done()
-		log.Log.Info(`API Manager shutting down... start`)
+		log.Log.Info("API Manager shutting down... start")
 		for _, v := range am.APIs {
 			vErr := v.StartShutdown()
 			if (err == nil) && (vErr != nil) {
 				err = vErr
 			}
 		}
-		log.Log.Info(`API Manager shutting down... done`)
+		log.Log.Info("API Manager shutting down... done")
 		return nil
 	})
 
@@ -182,13 +182,13 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 		return err
 	}
 
-	a.Address, ok = c1[`address`].(string)
+	a.Address, ok = c1["address"].(string)
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("CONFIGURATION_NOT_FOUND:%s.%s/address", configurationNameId, a.NameId)
 		return err
 	}
-	a.WriteTimeoutSec = utilsJSON.GetNumberWithDefault(c1, `writetimeout-sec`, DXAPIDefaultWriteTimeoutSec)
-	a.ReadTimeoutSec = utilsJSON.GetNumberWithDefault(c1, `readtimeout-sec`, DXAPIDefaultReadTimeoutSec)
+	a.WriteTimeoutSec = utilsJSON.GetNumberWithDefault(c1, "writetimeout-sec", DXAPIDefaultWriteTimeoutSec)
+	a.ReadTimeoutSec = utilsJSON.GetNumberWithDefault(c1, "readtimeout-sec", DXAPIDefaultReadTimeoutSec)
 	return nil
 }
 
@@ -315,7 +315,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			aepr.WriteResponseAsError(http.StatusBadRequest, err3)
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(err2, `REQUEST_DUMP_ERROR:%v`, err2.Error())
+				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%v", err2.Error())
 				return
 			}
 			aepr.Log.Errorf(err3, "ONMIDDLEWARE_ERROR:%v\nRaw Request :\n%v\n", err3, string(requestDump))
@@ -350,7 +350,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(err2, `REQUEST_DUMP_ERROR:%+v`, err2)
+				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%+v", err2)
 				return
 			}
 			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:%v\nRaw Request :\n%+v\n", err, string(requestDump))

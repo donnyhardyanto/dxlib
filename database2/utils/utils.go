@@ -63,7 +63,7 @@ func PrepareArrayArgs(keyValues map[string]any, driverName string) (fieldNames s
 func KillConnections(db *sqlx.DB, dbName string) (err error) {
 	driverName := db.DriverName()
 	switch driverName {
-	case `postgres`:
+	case "postgres":
 		query := fmt.Sprintf(`
         SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
@@ -112,7 +112,7 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
 func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 	defer func() {
 		if err != nil {
-			log.Log.Warnf(`Error dropping database %s: %s`, dbName, err.Error())
+			log.Log.Warnf("Error dropping database %s: %s", dbName, err.Error())
 		}
 	}()
 

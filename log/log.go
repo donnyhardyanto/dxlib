@@ -57,7 +57,7 @@ func NewLog(parentLog *DXLog, context context.Context, prefix string) DXLog {
 }
 
 func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text string, v ...any) {
-	stack := ``
+	stack := ""
 	text = fmt.Sprintf(text, v...)
 	if err != nil {
 		location = l.Prefix
@@ -81,7 +81,46 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 		a.Fatalf("Terminating... %s", text)
 	case DXLogLevelPanic:
 		stack = string(debug.Stack())
-		a = a.WithField(`stack`, stack)
+		a = a.WithField("stack", stack)
+		a.Fatalf("%s", text)
+	default:
+		a.Printf("%s", text)
+	}
+	if OnError != nil {
+		err2 := OnError(err, severity, location, text, stack)
+		if err2 != nil {
+			a.Warnf("ERROR_ON_ERROR_HANDLER: %+v", err2)
+		}
+
+	}
+}
+
+func (l *DXLog) LogText2(err error, severity DXLogLevel, location string, text string, v ...any) {
+	stack := ""
+	text = fmt.Sprintf(text, v...)
+	if err != nil {
+		location = l.Prefix
+		stack = fmt.Sprintf("%+v", err)
+		//		text = text + "\n" + err.Error()
+	}
+
+	a := logrus.WithFields(logrus.Fields{"prefix": l.Prefix, "location": location})
+	switch severity {
+	case DXLogLevelTrace:
+		a.Tracef("%s", text)
+	case DXLogLevelDebug:
+		a.Debugf("%s", text)
+	case DXLogLevelInfo:
+		a.Infof("%s", text)
+	case DXLogLevelWarn:
+		a.Warnf("%s", text)
+	case DXLogLevelError:
+		a.Errorf("%s", text)
+	case DXLogLevelFatal:
+		a.Fatalf("Terminating... %s", text)
+	case DXLogLevelPanic:
+		stack = string(debug.Stack())
+		a = a.WithField("stack", stack)
 		a.Fatalf("%s", text)
 	default:
 		a.Printf("%s", text)

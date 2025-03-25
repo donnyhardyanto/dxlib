@@ -43,11 +43,11 @@ func (dm *DXDatabaseManager) LoadFromConfiguration(configurationNameId string) (
 			err := log.Log.ErrorAndCreateErrorf("Cannot read %s as JSON", k)
 			return errors.Wrap(err, "error occured")
 		}
-		isConnectAtStart, ok = d[`is_connect_at_start`].(bool)
+		isConnectAtStart, ok = d["is_connect_at_start"].(bool)
 		if !ok {
 			isConnectAtStart = false
 		}
-		mustConnected, ok = d[`must_connected`].(bool)
+		mustConnected, ok = d["must_connected"].(bool)
 		if !ok {
 			mustConnected = false
 		}

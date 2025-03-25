@@ -65,11 +65,11 @@ func (rs *DXRedisManager) LoadFromConfiguration(configurationNameId string) (err
 			err := log.Log.ErrorAndCreateErrorf("Cannot read %s as JSON", k)
 			return errors.Wrap(err, "error occured")
 		}
-		isConnectAtStart, ok = d[`is_connect_at_start`].(bool)
+		isConnectAtStart, ok = d["is_connect_at_start"].(bool)
 		if !ok {
 			isConnectAtStart = false
 		}
-		mustConnected, ok = d[`must_connected`].(bool)
+		mustConnected, ok = d["must_connected"].(bool)
 		if !ok {
 			mustConnected = false
 		}
@@ -122,7 +122,7 @@ func (rs *DXRedisManager) DisconnectAll() (err error) {
 func (r *DXRedis) ApplyFromConfiguration() (err error) {
 	if !r.IsConfigured {
 		log.Log.Infof("Configuring to Redis %s... start", r.NameId)
-		configurationData, ok := dxlibv3Configuration.Manager.Configurations[`redis`]
+		configurationData, ok := dxlibv3Configuration.Manager.Configurations["redis"]
 		if !ok {
 			err = log.Log.PanicAndCreateErrorf("DXRedis/ApplyFromConfiguration/1", "Redises configuration not found")
 			return errors.Wrap(err, "error occured")
@@ -138,7 +138,7 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		r.Address, ok = redisConfiguration[`address`].(string)
+		r.Address, ok = redisConfiguration["address"].(string)
 		if !ok {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Mandatory address field in Redis %s configuration not exist", r.NameId)
@@ -148,9 +148,9 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		r.UserName, r.HasUserName = redisConfiguration[`user_name`].(string)
-		r.Password, r.HasPassword = redisConfiguration[`password`].(string)
-		r.DatabaseIndex, err = json2.GetInt(redisConfiguration, `database_index`)
+		r.UserName, r.HasUserName = redisConfiguration["user_name"].(string)
+		r.Password, r.HasPassword = redisConfiguration["password"].(string)
+		r.DatabaseIndex, err = json2.GetInt(redisConfiguration, "database_index")
 		if err != nil {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Mandatory database_index field in Redis %s configuration not exist, check configuration and make sure it was integer not a string", r.NameId)

@@ -770,7 +770,7 @@ func (t *DXTable) TxSoftDelete(tx *database.DXDatabaseTx, whereAndFieldNameValue
 	}
 
 	return tx.Update(t.NameId, map[string]any{
-		`is_deleted`: true,
+		"is_deleted": true,
 	}, whereAndFieldNameValues)
 }
 
@@ -1080,7 +1080,7 @@ func (t *DXTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err error
 
 	_, format, err := aepr.GetParameterValueAsString("format")
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `FORMAT_PARAMETER_ERROR:%s`, err.Error())
+		return aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "FORMAT_PARAMETER_ERROR:%s", err.Error())
 	}
 
 	format = strings.ToLower(format)

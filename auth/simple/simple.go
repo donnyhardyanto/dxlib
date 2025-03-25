@@ -10,12 +10,12 @@ import (
 
 func Login(redis *redis.DXRedis, credentials []utils.JSON, key string, secret string, data utils.JSON, ttlSecond int) (isSuccess bool, sessionKey string, err error) {
 	for _, credential := range credentials {
-		cKey, ok := credential[`key`].(string)
+		cKey, ok := credential["key"].(string)
 		if !ok {
 			continue
 		}
 		if cKey == key {
-			cSecret := credential[`secret`].(string)
+			cSecret := credential["secret"].(string)
 			if cSecret == secret {
 				a, err := uuid.NewV7()
 				if err != nil {

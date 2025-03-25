@@ -58,14 +58,14 @@ func (am *DXTaskManager) StartAll(errorGroup *errgroup.Group, errorGroupContext 
 
 	am.ErrorGroup.Go(func() (err error) {
 		<-am.ErrorGroupContext.Done()
-		log.Log.Info(`Task Manager shutting down... start`)
+		log.Log.Info("Task Manager shutting down... start")
 		for _, v := range am.Tasks {
 			vErr := v.StartShutdown()
 			if (err == nil) && (vErr != nil) {
 				err = vErr
 			}
 		}
-		log.Log.Info(`Task Manager shutting down... done`)
+		log.Log.Info("Task Manager shutting down... done")
 		return nil
 	})
 
@@ -96,11 +96,11 @@ func (a *DXTask) ApplyConfigurations() (err error) {
 		return nil
 	}
 
-	tStartAt, ok := c1[`start_at`].(string)
+	tStartAt, ok := c1["start_at"].(string)
 	if ok {
 		a.StartAt = tStartAt
 	}
-	tAfterDelaySec, err := json.GetNumber[int64](c1, `after_delay_sec`)
+	tAfterDelaySec, err := json.GetNumber[int64](c1, "after_delay_sec")
 	if err == nil {
 		a.AfterDelaySec = tAfterDelaySec
 	}

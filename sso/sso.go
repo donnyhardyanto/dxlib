@@ -2,7 +2,6 @@ package sso
 
 import (
 	"encoding/base64"
-	"fmt"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/redis"
@@ -44,16 +43,16 @@ type DXOrganization struct {
 	RemoteServiceUserViewResponseFieldPathAccessToken string
 	RemoteServiceUserViewResponseFieldPathData        string
 
-	RemoteServiceProxyRequestUrl                    string `json:"remote_service_proxy_request_url"`
-	RemoteServiceProxyRequestMethod                 string `json:"remote_service_proxy_request_method"`
-	RemoteServiceProxyRequestFieldPathUserLoginData string `json:"remote_service_proxy_request_field_path_user_login_data"`
-	RemoteServiceProxyRequestFieldPathPayload       string `json:"remote_service_proxy_request_field_path_payload"`
+	RemoteServiceProxyRequestUrl string "json:"remote_service_proxy_request_url""
+	RemoteServiceProxyRequestMethod                 string "json:"remote_service_proxy_request_method""
+	RemoteServiceProxyRequestFieldPathUserLoginData string "json:"remote_service_proxy_request_field_path_user_login_data""
+	RemoteServiceProxyRequestFieldPathPayload       string "json:"remote_service_proxy_request_field_path_payload""
 
-	RemoteServiceProxyResponseFieldPathStatus        string `json:"remote_service_proxy_response_field_path_status"`
-	RemoteServiceProxyResponseFieldStatusIfSuccess   string `json:"remote_service_proxy_response_field_status_if_success"`
-	RemoteServiceProxyResponseFieldPathAccessToken   string `json:"remote_service_proxy_response_field_path_access_token"`
-	RemoteServiceProxyResponseFieldPathUserLoginData string `json:"remote_service_proxy_response_field_path_user_login_data"`
-	RemoteServiceProxyResponseFieldPathResponse      string `json:"remote_service_proxy_response_field_path_response"`
+	RemoteServiceProxyResponseFieldPathStatus        string "json:"remote_service_proxy_response_field_path_status""
+	RemoteServiceProxyResponseFieldStatusIfSuccess   string "json:"remote_service_proxy_response_field_status_if_success""
+	RemoteServiceProxyResponseFieldPathAccessToken   string "json:"remote_service_proxy_response_field_path_access_token""
+	RemoteServiceProxyResponseFieldPathUserLoginData string "json:"remote_service_proxy_response_field_path_user_login_data""
+	RemoteServiceProxyResponseFieldPathResponse      string "json:"remote_service_proxy_response_field_path_response""
 
 	RemoteServiceProfileUrl               string
 	RemoteServiceProfileUrlMethod         string
@@ -92,41 +91,41 @@ func (om *DXOrganizationsManager) GetValidOrganizationAndApplication(organizatio
 }
 
 func (o *DXOrganization) ApplyData(d utils.JSON) (err error) {
-	o.NameId = d[`nameid`].(string)
-	o.Name = d[`name`].(string)
-	o.HMACSecret = d[`hmac_secret`].(string)
-	o.RedisNameId = d[`redis_nameid`].(string)
-	o.AuthenticationMethod = d[`authentication_method`].(string)
+	o.NameId = d["nameid"].(string)
+	o.Name = d["name"].(string)
+	o.HMACSecret = d["hmac_secret"].(string)
+	o.RedisNameId = d["redis_nameid"].(string)
+	o.AuthenticationMethod = d["authentication_method"].(string)
 	switch o.AuthenticationMethod {
 	case "db_password":
-		o.DatabaseNameId = d[`database_nameid`].(string)
-		o.DatabaseTableUser = d[`database_table_user`].(string)
-		o.DatabaseTableUserFieldUserLogin = d[`database_table_user_field_user_login`].(string)
-		o.DatabaseTableUserFieldUserId = d[`database_table_user_field_user_login`].(string)
-		o.DatabaseTablePassword = d[`database_table_password`].(string)
-		o.DatabaseTablePasswordFieldUserId = d[`database_table_password_field_user_id`].(string)
-		o.DatabaseTablePasswordFieldValue = d[`database_table_password_field_value`].(string)
+		o.DatabaseNameId = d["database_nameid"].(string)
+		o.DatabaseTableUser = d["database_table_user"].(string)
+		o.DatabaseTableUserFieldUserLogin = d["database_table_user_field_user_login"].(string)
+		o.DatabaseTableUserFieldUserId = d["database_table_user_field_user_login"].(string)
+		o.DatabaseTablePassword = d["database_table_password"].(string)
+		o.DatabaseTablePasswordFieldUserId = d["database_table_password_field_user_id"].(string)
+		o.DatabaseTablePasswordFieldValue = d["database_table_password_field_value"].(string)
 	case "url":
-		o.RemoteServiceLoginRequestUrl = d[`remote_service_login_request_url`].(string)
-		o.RemoteServiceLoginRequestMethod = d[`remote_service_login_request_method`].(string)
-		o.RemoteServiceLoginRequestPayload = d[`remote_service_login_request_payload`].(utils.JSON)
-		o.RemoteServiceLoginResponseFieldPathStatus = d[`remote_service_login_response_field_path_status`].(string)
-		o.RemoteServiceLoginResponseFieldStatusIfSuccess = d[`remote_service_login_response_field_status_if_success`].(string)
-		o.RemoteServiceLoginResponseFieldPathAccessToken = d[`remote_service_login_response_field_path_access_token`].(string)
-		o.RemoteServiceLoginResponseFieldPathData = d[`remote_service_login_response_field_path_data`].(string)
+		o.RemoteServiceLoginRequestUrl = d["remote_service_login_request_url"].(string)
+		o.RemoteServiceLoginRequestMethod = d["remote_service_login_request_method"].(string)
+		o.RemoteServiceLoginRequestPayload = d["remote_service_login_request_payload"].(utils.JSON)
+		o.RemoteServiceLoginResponseFieldPathStatus = d["remote_service_login_response_field_path_status"].(string)
+		o.RemoteServiceLoginResponseFieldStatusIfSuccess = d["remote_service_login_response_field_status_if_success"].(string)
+		o.RemoteServiceLoginResponseFieldPathAccessToken = d["remote_service_login_response_field_path_access_token"].(string)
+		o.RemoteServiceLoginResponseFieldPathData = d["remote_service_login_response_field_path_data"].(string)
 
-		o.RemoteServiceUserViewRequestUrl = d[`remote_service_user_view_request_url`].(string)
-		o.RemoteServiceUserViewRequestMethod = d[`remote_service_user_view_request_method`].(string)
-		o.RemoteServiceUserViewRequestPayload = d[`remote_service_user_view_request_payload`].(utils.JSON)
-		o.RemoteServiceUserViewResponseFieldPathStatus = d[`remote_service_user_view_response_field_path_status`].(string)
-		o.RemoteServiceUserViewResponseFieldStatusIfSuccess = d[`remote_service_user_view_response_field_status_if_success`].(string)
-		o.RemoteServiceUserViewResponseFieldPathData = d[`remote_service_user_view_response_field_path_data`].(string)
+		o.RemoteServiceUserViewRequestUrl = d["remote_service_user_view_request_url"].(string)
+		o.RemoteServiceUserViewRequestMethod = d["remote_service_user_view_request_method"].(string)
+		o.RemoteServiceUserViewRequestPayload = d["remote_service_user_view_request_payload"].(utils.JSON)
+		o.RemoteServiceUserViewResponseFieldPathStatus = d["remote_service_user_view_response_field_path_status"].(string)
+		o.RemoteServiceUserViewResponseFieldStatusIfSuccess = d["remote_service_user_view_response_field_status_if_success"].(string)
+		o.RemoteServiceUserViewResponseFieldPathData = d["remote_service_user_view_response_field_path_data"].(string)
 	}
 
-	o.Applications = d[`applications`].(utils.JSON)
+	o.Applications = d["applications"].(utils.JSON)
 	o.Database = database.Manager.Databases[o.DatabaseNameId]
 	o.Redis = redis.Manager.Redises[o.RedisNameId]
-	o.AccessTokenTimeoutDurationSec, err = json2.GetInt64(d, `access_token_timeout_duration_sec`)
+	o.AccessTokenTimeoutDurationSec, err = json2.GetInt64(d, "access_token_timeout_duration_sec")
 	if err != nil {
 		err := log.Log.PanicAndCreateErrorf("DXOrganization/ApplyData", "Can not case AccessTokenTimeoutDurationSec tp Int64 (%v)", err.Error())
 		return errors.Wrap(err, "error occured")

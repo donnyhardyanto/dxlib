@@ -9,7 +9,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/database/protected/export"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
-	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
 	"net/http"
 	"strings"
@@ -319,7 +318,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 
 	_, format, err := aepr.GetParameterValueAsString("format")
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `FORMAT_PARAMETER_ERROR:%s`, err.Error())
+		return aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "FORMAT_PARAMETER_ERROR:%s", err.Error())
 	}
 
 	format = strings.ToLower(format)

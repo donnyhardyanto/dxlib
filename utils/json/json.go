@@ -283,7 +283,7 @@ func GetValueWithFieldPathString(fieldPath string, data utils.JSON) (any, error)
 	for i, v := range path {
 		r, ok = d[v]
 		if !ok {
-			err := errors.Errorf(`GetValueWithFieldPathString: Part %d:'%s' from %s not found `, i, v, fieldPath)
+			err := errors.Errorf("GetValueWithFieldPathString: Part %d:'%s' from %s not found ", i, v, fieldPath)
 			return nil, err
 		}
 		switch r.(type) {
@@ -311,7 +311,7 @@ func getValueByFieldPathMap(dataPath utils.JSON, data utils.JSON) (r any, err er
 				r, err = getValueByFieldPathMap(v.(utils.JSON), d.(utils.JSON))
 
 			default:
-				return nil, errors.Errorf(`type does not match v=%T with d=%T`, v, d)
+				return nil, errors.Errorf("type does not match v=%T with d=%T", v, d)
 			}
 		default:
 			return d, nil

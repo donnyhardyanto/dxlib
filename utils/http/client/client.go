@@ -33,7 +33,7 @@ func (hr *HTTPResponse) BodyAsJSON() (map[string]any, error) {
 
 func HTTPClient(method string, url string, headers map[string]string, body any) (request *http.Request, response *http.Response, err error) {
 	var bodyAsBytes []byte
-	contentType := ``
+	contentType := ""
 
 	switch body.(type) {
 	case string:
@@ -47,10 +47,10 @@ func HTTPClient(method string, url string, headers map[string]string, body any) 
 		if err != nil {
 			return nil, nil, err
 		}
-		contentType = `application/json`
+		contentType = "application/json"
 		break
 	default:
-		err = errors.New(fmt.Sprintf(`SHOULD_NOT_HAPPEN:TYPE_CANT_BE_CONVERTED_TO_BYTES:%v`, body))
+		err = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:TYPE_CANT_BE_CONVERTED_TO_BYTES:%v", body))
 		return nil, nil, err
 	}
 
@@ -59,7 +59,7 @@ func HTTPClient(method string, url string, headers map[string]string, body any) 
 		return nil, nil, err
 	}
 
-	if contentType != `` {
+	if contentType != "" {
 		request.Header.Set("Content-Type", contentType)
 	}
 	request.Header.Set("Content-Length", fmt.Sprint(len(bodyAsBytes)))

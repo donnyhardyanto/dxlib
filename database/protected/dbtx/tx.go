@@ -30,19 +30,19 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 		}
 		err = callback(tx, log)
 		if err != nil {
-			log.Errorf(err, `TX_ERROR_IN_CALLBACK: (%+v)`, err)
+			log.Errorf(err, "TX_ERROR_IN_CALLBACK: (%+v)", err)
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%+v)`, errTx)
+				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%+v)", errTx)
 			}
 			return err
 		}
 		err = tx.Commit()
 		if err != nil {
-			log.Errorf(err, `TX_ERROR_IN_COMMITT: (%+v)`, err)
+			log.Errorf(err, "TX_ERROR_IN_COMMITT: (%+v)", err)
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, `ErrorInCommitRollback: (%+v)`, errTx)
+				log.Errorf(errTx, "ErrorInCommitRollback: (%+v)", errTx)
 			}
 			return err
 		}
@@ -59,19 +59,19 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 	}
 	err = callback(tx, log)
 	if err != nil {
-		log.Errorf(err, `TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
+		log.Errorf(err, "TX_ERROR_IN_CALLBACK: (%v)", err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+			log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 		}
 		return errors.Wrap(err, "error occurred")
 	}
 	err = tx.Commit()
 	if err != nil {
-		log.Errorf(err, `TX_ERROR_IN_COMMITT: (%v)`, err.Error())
+		log.Errorf(err, "TX_ERROR_IN_COMMITT: (%v)", err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(errTx, `ErrorInCommitRollback: (%v)`, errTx.Error())
+			log.Errorf(errTx, "ErrorInCommitRollback: (%v)", errTx.Error())
 		}
 		return errors.Wrap(err, "error occurred")
 	}
@@ -90,7 +90,7 @@ func TxNamedQuery(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, 
 		if autoRollback {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 			}
 		}
 		return nil, err
@@ -109,7 +109,7 @@ func TxNamedExec(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, query string, a
 		if autoRollback {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 			}
 		}
 		return nil, err
@@ -131,15 +131,15 @@ func TxShouldNamedQueryIdBig(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, que
 		if err != nil {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 			}
 			return 0, err
 		}
 	} else {
-		err := errors.New(`NO_ID_RETURNED:` + query)
+		err := errors.New("NO_ID_RETURNED:" + query)
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+			log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 		}
 		return 0, err
 	}
@@ -169,7 +169,7 @@ func TxNamedQueryRows(log *log.DXLog, fieldTypeMapping db.FieldTypeMapping, auto
 		if err != nil {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 			}
 			return nil, nil, err
 		}
@@ -206,7 +206,7 @@ func TxNamedQueryRow(log *log.DXLog, fieldTypeMapping db.FieldTypeMapping, autoR
 		if err != nil {
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 			}
 			return rowsInfo, nil, err
 		}
@@ -226,10 +226,10 @@ func TxShouldNamedQueryRow(log *log.DXLog, fieldTypeMapping db.FieldTypeMapping,
 		return rowsInfo, row, err
 	}
 	if row == nil {
-		err := errors.New(`ROW_MUST_EXIST:` + query)
+		err := errors.New("ROW_MUST_EXIST:" + query)
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(errTx, `SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+			log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 		}
 		return rowsInfo, nil, err
 	}
@@ -253,7 +253,7 @@ func TxShouldSelectOne(log *log.DXLog, fieldTypeMapping db.FieldTypeMapping, aut
 	driverName := tx.DriverName()
 	s, err := db.SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, 1, forUpdatePart)
 	if err != nil {
-		err := errors.Errorf(`%s:%s`, err, tableName)
+		err := errors.Errorf("%s:%s", err, tableName)
 		return rowsInfo, nil, err
 	}
 	wKV, err := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
@@ -263,7 +263,7 @@ func TxShouldSelectOne(log *log.DXLog, fieldTypeMapping db.FieldTypeMapping, aut
 
 	rowsInfo, r, err = TxShouldNamedQueryRow(log, fieldTypeMapping, autoRollback, tx, s, wKV)
 	if err != nil {
-		err := errors.Errorf(`%s:%s`, err, tableName)
+		err := errors.Errorf("%s:%s", err, tableName)
 		return rowsInfo, nil, err
 	}
 	return rowsInfo, r, err
@@ -338,21 +338,21 @@ func OracleTxInsertReturning(tx *sqlx.Tx, tableName string, fieldNameForRowId st
 func TxInsert(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, keyValues utils.JSON) (id int64, err error) {
 	driverName := tx.DriverName()
 	fn, fv := db.SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
-	s := ``
+	s := ""
 	switch driverName {
 	case "postgres":
-		s = `INSERT INTO` + " " + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING id`
+		s = "INSERT INTO" + " " + tableName + " (" + fn + ") VALUES (" + fv + ") RETURNING id"
 	case "sqlserver":
-		s = `INSERT INTO` + " " + tableName + ` (` + fn + `) OUTPUT INSERTED.id VALUES (` + fv + `)`
+		s = "INSERT INTO" + " " + tableName + " (" + fn + ") OUTPUT INSERTED.id VALUES (" + fv + ")"
 	case "oracle":
-		id, err = OracleTxInsertReturning(tx, tableName, `id`, keyValues)
+		id, err = OracleTxInsertReturning(tx, tableName, "id", keyValues)
 		if err != nil {
 			return 0, err
 		}
 		return id, nil
 	default:
 		fmt.Println("Unknown database type. Using Postgresql Dialect")
-		s = `INSERT INTO` + " " + tableName + ` (` + fn + `) values (` + fv + `) returning id`
+		s = "INSERT INTO" + " " + tableName + " (" + fn + ") values (" + fv + ") returning id"
 	}
 	kv, err := db.ExcludeSQLExpression(keyValues, driverName)
 	if err != nil {
@@ -372,9 +372,9 @@ func TxUpdate(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 	var s string
 	switch driverName {
 	case "postgres":
-		s = `update ` + tableName + ` set ` + u + ` where ` + w
+		s = "update " + tableName + " set " + u + " where " + w
 	case "sqlserver":
-		s = `update ` + tableName + ` set ` + u + ` where ` + w
+		s = "update " + tableName + " set " + u + " where " + w
 	case "oracle":
 		return nil, errors.New("unknown database type, using Postgresql Dialect")
 	default:
@@ -394,9 +394,9 @@ func TxUpdate(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 	var s string
 	switch driverName {
 	case "postgres":
-		s = `update ` + tableName + ` set ` + u + ` where ` + w
+		s = "update " + tableName + " set " + u + " where " + w
 	case "sqlserver":
-		s = `update ` + tableName + ` set ` + u + ` where ` + w
+		s = "update " + tableName + " set " + u + " where " + w
 	case "oracle":
 		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
 	default:
@@ -415,7 +415,7 @@ func TxDelete(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 
 	driverName := tx.DriverName()
 	w := db.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
-	s := `delete from` + " " + tableName + ` where ` + w
+	s := "delete from" + " " + tableName + " where " + w
 	wKV, err := db.ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	if err != nil {
 		return nil, err

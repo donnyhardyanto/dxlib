@@ -20,11 +20,11 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 		case "oracle":
 			k = strings.ToUpper(k)
 		}
-		if fieldNames != `` {
+		if fieldNames != "" {
 			fieldNames = fieldNames + ","
 		}
 		fieldNames = fieldNames + k
-		if fieldValues != `` {
+		if fieldValues != "" {
 			fieldValues = fieldValues + ","
 		}
 		switch v.(type) {

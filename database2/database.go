@@ -241,19 +241,19 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		n, ok := databaseConfiguration[`nameid`].(string)
+		n, ok := databaseConfiguration["nameid"].(string)
 		if ok {
 			d.NameId = n
 		}
-		b, ok := databaseConfiguration[`must_connected`].(bool)
+		b, ok := databaseConfiguration["must_connected"].(bool)
 		if ok {
 			d.MustConnected = b
 		}
-		b, ok = databaseConfiguration[`is_connect_at_start`].(bool)
+		b, ok = databaseConfiguration["is_connect_at_start"].(bool)
 		if ok {
 			d.IsConnectAtStart = b
 		}
-		s, ok := databaseConfiguration[`database_type`].(string)
+		s, ok := databaseConfiguration["database_type"].(string)
 		if !ok {
 			if d.MustConnected {
 				err := log.Log.FatalAndCreateErrorf("Mandatory database_type field value in database %s configuration is not supported (%v)", d.NameId, s)
@@ -273,7 +273,7 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		d.Address, ok = databaseConfiguration[`address`].(string)
+		d.Address, ok = databaseConfiguration["address"].(string)
 		if !ok {
 			if d.MustConnected {
 				err := log.Log.FatalAndCreateErrorf("Mandatory address field in Database %s configuration not exist", d.NameId)
@@ -283,7 +283,7 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		d.UserName, ok = databaseConfiguration[`user_name`].(string)
+		d.UserName, ok = databaseConfiguration["user_name"].(string)
 		if !ok {
 			if d.MustConnected {
 				err := log.Log.FatalAndCreateErrorf("Mandatory user_name field in Database %s configuration not exist", d.NameId)
@@ -293,7 +293,7 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		d.UserPassword, ok = databaseConfiguration[`user_password`].(string)
+		d.UserPassword, ok = databaseConfiguration["user_password"].(string)
 		if !ok {
 			if d.MustConnected {
 				err := log.Log.FatalAndCreateErrorf("Mandatory user_password field in Database %s configuration not exist", d.NameId)
@@ -303,7 +303,7 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		d.DatabaseName, ok = databaseConfiguration[`database_name`].(string)
+		d.DatabaseName, ok = databaseConfiguration["database_name"].(string)
 		if !ok {
 			if d.MustConnected {
 				err := log.Log.FatalAndCreateErrorf("Mandatory database_name field in Database %s configuration not exist", d.NameId)
@@ -313,8 +313,8 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		d.CreateScriptFiles, _ = databaseConfiguration[`create_script_files`].([]string)
-		d.ConnectionOptions, _ = databaseConfiguration[`connection_options`].(string)
+		d.CreateScriptFiles, _ = databaseConfiguration["create_script_files"].([]string)
+		d.ConnectionOptions, _ = databaseConfiguration["connection_options"].(string)
 
 		d.NonSensitiveConnectionString = d.GetNonSensitiveConnectionString()
 		d.ConnectionString, err = d.GetConnectionString()
@@ -467,19 +467,19 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		}
 		err = callback(tx)
 		if err != nil {
-			log.Errorf(`TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
+			log.Errorf("TX_ERROR_IN_CALLBACK: (%v)", err.Error())
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+				log.Errorf("SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 			}
 			return errors.Wrap(err, "error occured")
 		}
 		err = tx.Commit()
 		if err != nil {
-			log.Errorf(`TX_ERROR_IN_COMMITT: (%v)`, err.Error())
+			log.Errorf("TX_ERROR_IN_COMMITT: (%v)", err.Error())
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
+				log.Errorf("ErrorInCommitRollback: (%v)", errTx.Error())
 			}
 			return errors.Wrap(err, "error occured")
 		}
@@ -501,19 +501,19 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	}
 	err = callback(dtx)
 	if err != nil {
-		log.Errorf(`TX_ERROR_IN_CALLBACK: (%v)`, err.Error())
+		log.Errorf("TX_ERROR_IN_CALLBACK: (%v)", err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(`SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)`, errTx.Error())
+			log.Errorf("SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 		}
 		return errors.Wrap(err, "error occured")
 	}
 	err = dtx.Tx.Commit()
 	if err != nil {
-		log.Errorf(`TX_ERROR_IN_COMMIT: (%v)`, err.Error())
+		log.Errorf("TX_ERROR_IN_COMMIT: (%v)", err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(`ErrorInCommitRollback: (%v)`, errTx.Error())
+			log.Errorf("ErrorInCommitRollback: (%v)", errTx.Error())
 		}
 		return errors.Wrap(err, "error occured")
 	}

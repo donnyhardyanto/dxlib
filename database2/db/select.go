@@ -30,13 +30,13 @@ import (
 // Otherwise, joins the field names with commas after formatting each identifier
 // according to database-specific rules
 func SQLPartFieldNames(fieldNames []string, driverName string) (s string) {
-	showFieldNames := ``
+	showFieldNames := ""
 	if fieldNames == nil {
-		return `*`
+		return "*"
 	}
 	for _, v := range fieldNames {
-		if showFieldNames != `` {
-			showFieldNames = showFieldNames + `, `
+		if showFieldNames != "" {
+			showFieldNames = showFieldNames + ", "
 		}
 		showFieldNames = showFieldNames + utils2.DbDriverFormatIdentifier(driverName, v)
 	}
@@ -104,29 +104,29 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	// Common parts preparation
 	f := SQLPartFieldNames(fieldNames, driverName)
 	w := utils2.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
-	effectiveWhere := ``
-	if w != `` {
-		effectiveWhere = ` where ` + w
+	effectiveWhere := ""
+	if w != "" {
+		effectiveWhere = " where " + w
 	}
 
-	j := ``
+	j := ""
 	if joinSQLPart != nil {
-		j = ` ` + joinSQLPart.(string)
+		j = " " + joinSQLPart.(string)
 	}
 
 	o, err := SQLPartOrderByFieldNameDirections(orderByFieldNameDirections, driverName)
 	if err != nil {
-		return ``, err
+		return "", err
 	}
-	effectiveOrderBy := ``
-	if o != `` {
-		effectiveOrderBy = ` order by ` + o
+	effectiveOrderBy := ""
+	if o != "" {
+		effectiveOrderBy = " order by " + o
 	}
 
 	// Handle WITH clause (Common Table Expressions) if provided
 	effectiveWith := ""
 	if withCTE != "" {
-		effectiveWith = `with ` + withCTE + ` `
+		effectiveWith = "with " + withCTE + " "
 	}
 
 	// Handle GROUP BY if provided
@@ -136,13 +136,13 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		for i, field := range groupByFields {
 			groupByColumns[i] = utils2.DbDriverFormatIdentifier(driverName, field)
 		}
-		effectiveGroupBy = ` group by ` + strings.Join(groupByColumns, ", ")
+		effectiveGroupBy = " group by " + strings.Join(groupByColumns, ", ")
 	}
 
 	// Handle HAVING clause if provided
 	effectiveHaving := ""
 	if havingClause != "" && effectiveGroupBy != "" {
-		effectiveHaving = ` having ` + havingClause
+		effectiveHaving = " having " + havingClause
 	}
 
 	// Convert limit to int64 if provided
@@ -158,7 +158,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		case int64:
 			limitAsInt64 = v
 		default:
-			return ``, errors.New(`SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64`)
+			return "", errors.New("SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64")
 		}
 	}
 
@@ -175,32 +175,32 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		case int64:
 			offsetAsInt64 = v
 		default:
-			return ``, errors.New(`SHOULD_NOT_HAPPEN:CANT_CONVERT_OFFSET_TO_INT64`)
+			return "", errors.New("SHOULD_NOT_HAPPEN:CANT_CONVERT_OFFSET_TO_INT64")
 		}
 	}
 
 	// Handle FOR UPDATE clause
-	u := ``
+	u := ""
 	if forUpdatePart == nil {
 		forUpdatePart = false
 	}
 	if forUpdatePart == true {
-		u = ` for update`
+		u = " for update"
 	}
 
 	// Generate database-specific limit and offset clauses
 	effectiveLimitOffsetClause, additionalOrderBy, err := utils2.DBDriverGenerateLimitOffsetClause(driverName, limitAsInt64, offsetAsInt64, limit != nil, effectiveOrderBy, orderByFieldNameDirections)
 	if err != nil {
-		return ``, err
+		return "", err
 	}
 
 	// Use the additionalOrderBy if it was modified in generateLimitOffsetClause
-	if additionalOrderBy != `` {
+	if additionalOrderBy != "" {
 		effectiveOrderBy = additionalOrderBy
 	}
 
 	// Generate the final SQL
-	s = effectiveWith + `select ` + f + ` from ` + tableName + j + effectiveWhere +
+	s = effectiveWith + "select " + f + " from " + tableName + j + effectiveWhere +
 		effectiveGroupBy + effectiveHaving + effectiveOrderBy + effectiveLimitOffsetClause + u
 
 	return s, nil

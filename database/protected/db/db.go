@@ -230,7 +230,7 @@ type SQLExpression struct {
 func (se SQLExpression) String() (s string) {
 	for _, c := range se.Expression {
 		if c == ':' {
-			s = s + `::`
+			s = s + "::"
 		} else {
 			s = s + string(c)
 		}
@@ -239,13 +239,13 @@ func (se SQLExpression) String() (s string) {
 }
 
 func SQLPartFieldNames(fieldNames []string, driverName string) (s string) {
-	showFieldNames := ``
+	showFieldNames := ""
 	if fieldNames == nil {
-		return `*`
+		return "*"
 	}
 	for _, v := range fieldNames {
-		if showFieldNames != `` {
-			showFieldNames = showFieldNames + `, `
+		if showFieldNames != "" {
+			showFieldNames = showFieldNames + ", "
 		}
 		switch driverName {
 		case "oracle":
@@ -408,11 +408,11 @@ func SQLPartOrderByFieldNameDirections(orderbyKeyValues map[string]string, drive
 }
 
 func SQLPartSetFieldNameValues(setKeyValues utils.JSON, driverName string) (newSetKeyValues utils.JSON, s string) {
-	setFieldNameValues := ``
+	setFieldNameValues := ""
 	newSetKeyValues = utils.JSON{}
 	for k, v := range setKeyValues {
-		if setFieldNameValues != `` {
-			setFieldNameValues = setFieldNameValues + `,`
+		if setFieldNameValues != "" {
+			setFieldNameValues = setFieldNameValues + ","
 		}
 		switch v.(type) {
 		case SQLExpression:
@@ -423,8 +423,8 @@ func SQLPartSetFieldNameValues(setKeyValues utils.JSON, driverName string) (newS
 			case "oracle":
 				k = strings.ToUpper(k)
 			}
-			setFieldNameValues = setFieldNameValues + k + `=:NEW_` + k
-			newSetKeyValues[`NEW_`+k] = v
+			setFieldNameValues = setFieldNameValues + k + "=:NEW_" + k
+			newSetKeyValues["NEW_"+k] = v
 		}
 	}
 	return newSetKeyValues, setFieldNameValues
@@ -436,18 +436,18 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 		case "oracle":
 			k = strings.ToUpper(k)
 		}
-		if fieldNames != `` {
-			fieldNames = fieldNames + `,`
+		if fieldNames != "" {
+			fieldNames = fieldNames + ","
 		}
 		fieldNames = fieldNames + k
-		if fieldValues != `` {
-			fieldValues = fieldValues + `,`
+		if fieldValues != "" {
+			fieldValues = fieldValues + ","
 		}
 		switch v.(type) {
 		case SQLExpression:
 			fieldValues = fieldValues + v.(SQLExpression).String()
 		default:
-			fieldValues = fieldValues + `:` + k
+			fieldValues = fieldValues + ":" + k
 		}
 	}
 	return fieldNames, fieldValues
@@ -459,23 +459,23 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	case "sqlserver":
 		f := SQLPartFieldNames(fieldNames, driverName)
 		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
-		effectiveWhere := ``
-		if w != `` {
-			effectiveWhere = ` where ` + w
+		effectiveWhere := ""
+		if w != "" {
+			effectiveWhere = " where " + w
 		}
-		j := ``
+		j := ""
 		if joinSQLPart != nil {
-			j = ` ` + joinSQLPart.(string)
+			j = " " + joinSQLPart.(string)
 		}
 		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
 		if err != nil {
-			return ``, err
+			return "", err
 		}
-		effectiveOrderBy := ``
-		if o != `` {
-			effectiveOrderBy = ` order by ` + o
+		effectiveOrderBy := ""
+		if o != "" {
+			effectiveOrderBy = " order by " + o
 		}
-		effectiveLimitAsString := ``
+		effectiveLimitAsString := ""
 		if limit != nil {
 			var limitAsInt64 int64
 			switch limit.(type) {
@@ -488,43 +488,43 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 			case int64:
 				limitAsInt64 = limit.(int64)
 			default:
-				err := errors.New(`SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64`)
-				return ``, err
+				err := errors.New("SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64")
+				return "", err
 			}
 			if limitAsInt64 > 0 {
-				effectiveLimitAsString = ` top ` + strconv.FormatInt(limitAsInt64, 10)
+				effectiveLimitAsString = " top " + strconv.FormatInt(limitAsInt64, 10)
 			}
 		}
-		u := ``
+		u := ""
 		if forUpdatePart == nil {
 			forUpdatePart = false
 		}
 		if forUpdatePart == true {
-			u = ` for update `
+			u = " for update "
 		}
-		s = `select ` + effectiveLimitAsString + ` ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + u
+		s = "select " + effectiveLimitAsString + " " + f + " from " + tableName + j + effectiveWhere + effectiveOrderBy + u
 		return s, nil
 	case "postgres":
 		f := SQLPartFieldNames(fieldNames, driverName)
 		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
-		effectiveWhere := ``
-		if w != `` {
-			effectiveWhere = ` where ` + w
+		effectiveWhere := ""
+		if w != "" {
+			effectiveWhere = " where " + w
 		}
-		j := ``
+		j := ""
 		if joinSQLPart != nil {
-			j = ` ` + joinSQLPart.(string)
+			j = " " + joinSQLPart.(string)
 		}
 		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
 		if err != nil {
-			return ``, err
+			return "", err
 		}
 
-		effectiveOrderBy := ``
-		if o != `` {
-			effectiveOrderBy = ` order by ` + o
+		effectiveOrderBy := ""
+		if o != "" {
+			effectiveOrderBy = " order by " + o
 		}
-		effectiveLimitAsString := ``
+		effectiveLimitAsString := ""
 		if limit != nil {
 			var limitAsInt64 int64
 			switch limit.(type) {
@@ -537,42 +537,42 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 			case int64:
 				limitAsInt64 = limit.(int64)
 			default:
-				err := errors.New(`SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64`)
-				return ``, err
+				err := errors.New("SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64")
+				return "", err
 			}
 			if limitAsInt64 > 0 {
-				effectiveLimitAsString = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
+				effectiveLimitAsString = " limit " + strconv.FormatInt(limitAsInt64, 10)
 			}
 		}
-		u := ``
+		u := ""
 		if forUpdatePart == nil {
 			forUpdatePart = false
 		}
 		if forUpdatePart == true {
-			u = ` for update `
+			u = " for update "
 		}
-		s = `select ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
+		s = "select " + f + " from " + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
 		return s, nil
 	case "oracle":
 		f := SQLPartFieldNames(fieldNames, driverName)
 		w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
-		effectiveWhere := ``
-		if w != `` {
-			effectiveWhere = ` where ` + w
+		effectiveWhere := ""
+		if w != "" {
+			effectiveWhere = " where " + w
 		}
-		j := ``
+		j := ""
 		if joinSQLPart != nil {
-			j = ` ` + joinSQLPart.(string)
+			j = " " + joinSQLPart.(string)
 		}
 		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
 		if err != nil {
-			return ``, err
+			return "", err
 		}
-		effectiveOrderBy := ``
-		if o != `` {
-			effectiveOrderBy = ` order by ` + o
+		effectiveOrderBy := ""
+		if o != "" {
+			effectiveOrderBy = " order by " + o
 		}
-		effectiveLimitAsString := ``
+		effectiveLimitAsString := ""
 		if limit != nil {
 			var limitAsInt64 int64
 			switch limit.(type) {
@@ -585,25 +585,25 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 			case int64:
 				limitAsInt64 = limit.(int64)
 			default:
-				err := errors.New(`SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64`)
-				return ``, err
+				err := errors.New("SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64")
+				return "", err
 			}
 			if limitAsInt64 > 0 {
-				effectiveLimitAsString = ` FETCH FIRST ` + strconv.FormatInt(limitAsInt64, 10) + ` ROWS ONLY`
+				effectiveLimitAsString = " FETCH FIRST " + strconv.FormatInt(limitAsInt64, 10) + " ROWS ONLY"
 			}
 		}
-		u := ``
+		u := ""
 		if forUpdatePart == nil {
 			forUpdatePart = false
 		}
 		if forUpdatePart == true {
-			u = ` for update `
+			u = " for update "
 		}
-		s = `select ` + f + ` from ` + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
+		s = "select " + f + " from " + tableName + j + effectiveWhere + effectiveOrderBy + effectiveLimitAsString + u
 		return s, nil
 	default:
-		err := errors.New(`UNKNOWN_DATABASE_TYPE:` + driverName)
-		return ``, err
+		err := errors.New("UNKNOWN_DATABASE_TYPE:" + driverName)
+		return "", err
 	}
 }
 
@@ -751,7 +751,7 @@ func ShouldQueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string
 		return rowsInfo, r, err
 	}
 	if r == nil {
-		err = errors.New(`ROW_MUST_EXIST:` + query)
+		err = errors.New("ROW_MUST_EXIST:" + query)
 		return rowsInfo, r, err
 	}
 	return rowsInfo, r, nil
@@ -763,7 +763,7 @@ func ShouldNamedQueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query s
 		return rowsInfo, r, err
 	}
 	if r == nil {
-		err = errors.New(`ROW_MUST_EXIST:` + query)
+		err = errors.New("ROW_MUST_EXIST:" + query)
 		return rowsInfo, r, err
 	}
 	return rowsInfo, r, nil
@@ -807,8 +807,8 @@ func OracleInsertReturning(db *sqlx.DB, tableName string, fieldNameForRowId stri
 func OracleDelete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	tableName = strings.ToUpper(tableName)
 	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, db.DriverName())
-	if whereClause != `` {
-		whereClause = ` WHERE ` + whereClause
+	if whereClause != "" {
+		whereClause = " WHERE " + whereClause
 	}
 
 	_, _, fieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereAndFieldNameValues, db.DriverName())
@@ -845,7 +845,7 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 	_, _, setWhereFieldArgs := databaseProtectedUtils.PrepareArrayArgs(whereKeyValues, db.DriverName())
 
 	if whereClause != "" {
-		whereClause = ` WHERE ` + whereClause
+		whereClause = " WHERE " + whereClause
 	}
 
 	for _, v := range setWhereFieldArgs {
@@ -931,8 +931,8 @@ func OracleSelect(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, tableName stri
 	fieldNamesStr := SQLPartFieldNames(fieldNames, db.DriverName())
 
 	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, db.DriverName())
-	if whereClause != `` {
-		whereClause = ` WHERE ` + whereClause
+	if whereClause != "" {
+		whereClause = " WHERE " + whereClause
 	}
 
 	orderByClause, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, db.DriverName())
@@ -940,8 +940,8 @@ func OracleSelect(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, tableName stri
 		return nil, nil, err
 	}
 
-	if orderByClause != `` {
-		orderByClause = ` order by ` + orderByClause
+	if orderByClause != "" {
+		orderByClause = " order by " + orderByClause
 	}
 	limitClause := ""
 
@@ -976,7 +976,7 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 			return 0, err
 		}
 	} else {
-		err := errors.New(`NO_ID_RETURNED:` + query)
+		err := errors.New("NO_ID_RETURNED:" + query)
 		return 0, err
 	}
 	return returningId, nil
@@ -1414,8 +1414,8 @@ func NamedQueryList(dbAppInstance *sqlx.DB, fieldTypeMapping FieldTypeMapping,
 }
 
 func ShouldSelectWhereId(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, tableName string, idValue int64) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = ShouldNamedQueryRow(db, fieldTypeMapping, `SELECT * FROM `+tableName+` where `+databaseProtectedUtils.FormatIdentifier(`id`, db.DriverName())+`=:id`, utils.JSON{
-		`id`: idValue,
+	rowsInfo, r, err = ShouldNamedQueryRow(db, fieldTypeMapping, "SELECT * FROM "+tableName+" where "+databaseProtectedUtils.FormatIdentifier("id", db.DriverName())+"=:id", utils.JSON{
+		"id": idValue,
 	})
 	return rowsInfo, r, err
 }
@@ -1572,7 +1572,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (
 		return r, err
 	}
 	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
-	s := `DELETE FROM ` + tableName + ` where ` + w
+	s := "DELETE FROM " + tableName + " where " + w
 	wKV, err := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	if err != nil {
 		return nil, err
@@ -1597,7 +1597,7 @@ func Update(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValu
 	setKeyValues, u := SQLPartSetFieldNameValues(setKeyValues, driverName)
 	w := SQLPartWhereAndFieldNameValues(whereKeyValues, driverName)
 	joinedKeyValues := MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues, driverName)
-	s := `update ` + tableName + ` set ` + u + ` where ` + w
+	s := "update " + tableName + " set " + u + " where " + w
 
 	err = sqlchecker.CheckAll(db.DriverName(), s, joinedKeyValues)
 	if err != nil {
@@ -1609,15 +1609,15 @@ func Update(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValu
 }
 
 func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
-	s := ``
+	s := ""
 	driverName := db.DriverName()
 	switch driverName {
 	case "postgres":
 		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
+		s = "INSERT INTO " + tableName + " (" + fn + ") VALUES (" + fv + ") RETURNING " + fieldNameForRowId
 	case "sqlserver":
 		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.` + fieldNameForRowId + ` VALUES (` + fv + `)`
+		s = "INSERT INTO " + tableName + " (" + fn + ") OUTPUT INSERTED." + fieldNameForRowId + " VALUES (" + fv + ")"
 	case "oracle":
 		id, err = OracleInsertReturning(db, tableName, fieldNameForRowId, keyValues)
 		if err != nil {
@@ -1625,7 +1625,7 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 		}
 		return id, nil
 	default:
-		err = errors.New(`UNSUPPORTED_DATABASE_SQL_INSERT`)
+		err = errors.New("UNSUPPORTED_DATABASE_SQL_INSERT")
 		return 0, err
 	}
 	kv, err := ExcludeSQLExpression(keyValues, driverName)
@@ -1638,20 +1638,20 @@ func Insert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues u
 }
 
 func XInsert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues utils.JSON) (id int64, err error) {
-	s := ``
+	s := ""
 	driverName := db.DriverName()
 	switch driverName {
 	case "postgres":
 		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
+		s = "INSERT INTO " + tableName + " (" + fn + ") VALUES (" + fv + ") RETURNING " + fieldNameForRowId
 	case "sqlserver":
 		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) OUTPUT INSERTED.` + fieldNameForRowId + ` VALUES (` + fv + `)`
+		s = "INSERT INTO " + tableName + " (" + fn + ") OUTPUT INSERTED." + fieldNameForRowId + " VALUES (" + fv + ")"
 	case "oracle":
 		fn, fv := SQLPartInsertFieldNamesFieldValues(keyValues, driverName)
-		s = `INSERT INTO ` + tableName + ` (` + fn + `) VALUES (` + fv + `) RETURNING ` + fieldNameForRowId
+		s = "INSERT INTO " + tableName + " (" + fn + ") VALUES (" + fv + ") RETURNING " + fieldNameForRowId
 	default:
-		err = errors.New(`UNSUPPORTED_DATABASE_SQL_INSERT`)
+		err = errors.New("UNSUPPORTED_DATABASE_SQL_INSERT")
 		return 0, err
 	}
 	kv, err := ExcludeSQLExpression(keyValues, driverName)
@@ -1667,7 +1667,7 @@ func XInsert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues 
 	newId := int64(0)
 	switch driverName {
 	case "oracle":
-		newQuery = newQuery + ` INTO :` + fieldNameForRowId
+		newQuery = newQuery + " INTO :" + fieldNameForRowId
 		newArgs = append(newArgs, sql.Named(fieldNameForRowId, sql.Out{Dest: &newId}))
 	}
 
@@ -1682,15 +1682,15 @@ func XInsert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues 
 	}
 
 	if r == nil {
-		return 0, errors.New(`NO_ROWS_RETURNED_FROM_INSERT`)
+		return 0, errors.New("NO_ROWS_RETURNED_FROM_INSERT")
 	}
 	if len(r) < 1 {
-		return 0, errors.New(`NO_ROWS_RETURNED_FROM_INSERT`)
+		return 0, errors.New("NO_ROWS_RETURNED_FROM_INSERT")
 	}
 	firstRow := r[0]
 	id, ok := firstRow[fieldNameForRowId].(int64)
 	if !ok {
-		return 0, errors.New(`NO_ID_RETURNED_FROM_INSERT`)
+		return 0, errors.New("NO_ID_RETURNED_FROM_INSERT")
 	}
 	return id, nil
 }

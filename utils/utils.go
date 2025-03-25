@@ -46,6 +46,15 @@ func ArrayInt64ToJSON(arr []int64) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
+
+func ArrayInt64ToArrayString(arr []int64) []string {
+	r := make([]string, len(arr))
+	for i, v := range arr {
+		r[i] = strconv.FormatInt(v, 10)
+	}
+	return r
+}
+
 func ArrayFloat64ToJSON(arr []float64) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
@@ -277,7 +286,7 @@ func ConvertToInterfaceBoolFromAny(v any) (r any, err error) {
 		r = v.(float64) != 0
 		break
 	default:
-		err := errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_INT64:%T`, v))
+		err := errors.New(fmt.Sprintf("TYPE_IS_NOT_CONVERTABLE_TO_INT64:%T", v))
 		return nil, err
 	}
 	return r, nil
@@ -304,7 +313,7 @@ func ConvertToInterfaceIntFromAny(v any) (r any, err error) {
 	case float32:
 		f := float64(v.(float32))
 		if (math.Ceil(f) - f) != 0 {
-			err := errors.New(fmt.Sprintf(`FLOAT_NUMBER_IS_NOT_INTEGER:%v`, v))
+			err := errors.New(fmt.Sprintf("FLOAT_NUMBER_IS_NOT_INTEGER:%v", v))
 			return nil, err
 		}
 		r = int(f)
@@ -312,13 +321,13 @@ func ConvertToInterfaceIntFromAny(v any) (r any, err error) {
 	case float64:
 		f := v.(float64)
 		if (math.Ceil(f) - f) != 0 {
-			err := errors.New(fmt.Sprintf(`FLOAT_NUMBER_IS_NOT_INTEGER:%v`, v))
+			err := errors.New(fmt.Sprintf("FLOAT_NUMBER_IS_NOT_INTEGER:%v", v))
 			return nil, err
 		}
 		r = int(f)
 		break
 	default:
-		err := errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_INT:%T`, v))
+		err := errors.New(fmt.Sprintf("TYPE_IS_NOT_CONVERTABLE_TO_INT:%T", v))
 		return nil, err
 	}
 	return r, nil
@@ -345,7 +354,7 @@ func ConvertToInterfaceInt64FromAny(v any) (r any, err error) {
 	case float32:
 		f := float64(v.(float32))
 		if (math.Ceil(f) - f) != 0 {
-			err := errors.New(fmt.Sprintf(`FLOAT_NUMBER_IS_NOT_INTEGER:%v`, v))
+			err := errors.New(fmt.Sprintf("FLOAT_NUMBER_IS_NOT_INTEGER:%v", v))
 			return nil, err
 		}
 		r = int64(f)
@@ -353,13 +362,13 @@ func ConvertToInterfaceInt64FromAny(v any) (r any, err error) {
 	case float64:
 		f := v.(float64)
 		if (math.Ceil(f) - f) != 0 {
-			err := errors.New(fmt.Sprintf(`FLOAT_NUMBER_IS_NOT_INTEGER:%v`, v))
+			err := errors.New(fmt.Sprintf("FLOAT_NUMBER_IS_NOT_INTEGER:%v", v))
 			return nil, err
 		}
 		r = int64(f)
 		break
 	default:
-		err := errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_INT64:%T`, v))
+		err := errors.New(fmt.Sprintf("TYPE_IS_NOT_CONVERTABLE_TO_INT64:%T", v))
 		return nil, err
 	}
 	return r, nil
@@ -384,7 +393,7 @@ func ConvertToInterfaceFloat64FromAny(v any) (r any, err error) {
 		r = vs
 		break
 	default:
-		err := errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_FLOAT64:%T`, v))
+		err := errors.New(fmt.Sprintf("TYPE_IS_NOT_CONVERTABLE_TO_FLOAT64:%T", v))
 		return nil, err
 	}
 	return r, nil
@@ -394,13 +403,13 @@ func ConvertToInterfaceArrayInterfaceFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
 		r = nil
-		err = errors.New(`VALUE_CANT_BE_NIL`)
+		err = errors.New("VALUE_CANT_BE_NIL")
 		return nil, err
 	case types.Array:
 		r = v.([]any)
 		break
 	default:
-		err = errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_ARRAY:%T`, v))
+		err = errors.New(fmt.Sprintf("TYPE_IS_NOT_CONVERTABLE_TO_ARRAY:%T", v))
 		return nil, err
 	}
 	return r, nil
@@ -410,13 +419,13 @@ func ConvertToInterfaceStringFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
 		r = nil
-		err = errors.New(`VALUE_CANT_BE_NIL`)
+		err = errors.New("VALUE_CANT_BE_NIL")
 		return nil, err
 	case int64:
 		r = strconv.FormatInt(v.(int64), 10)
 		break
 	case float64:
-		r = fmt.Sprintf(`%f`, v.(float64))
+		r = fmt.Sprintf("%f", v.(float64))
 		break
 	case string:
 		r = v.(string)
@@ -444,7 +453,7 @@ func ConvertToInterfaceStringFromAny(v any) (r any, err error) {
 		}
 		break
 	default:
-		err = errors.New(fmt.Sprintf(`TYPE_IS_NOT_CONVERTABLE_TO_STRING:%T`, v))
+		err = errors.New(fmt.Sprintf("TYPE_IS_NOT_CONVERTABLE_TO_STRING:%T", v))
 		return nil, err
 	}
 	return r, nil
@@ -466,7 +475,7 @@ func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 		r = v
 		break
 	default:
-		err := errors.New(fmt.Sprint(`TYPE_IS_NOT_CONVERTABLE_TO_MAP[STRING]ANY:%T`, v))
+		err := errors.New(fmt.Sprint("TYPE_IS_NOT_CONVERTABLE_TO_MAP[STRING]ANY:%T", v))
 		return nil, err
 	}
 	return r, nil

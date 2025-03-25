@@ -1,8 +1,6 @@
-
-
 CREATE TABLE "TEST1_TABLE"
 (
-    "ID"                           NUMBER(1)
+    "ID" NUMBER(1)
     /*    name                         VARCHAR2(4000)           NOT NULL,
     at                           TIMESTAMP WITH TIME ZONE,
     is_ok                        NUMBER(1)                NOT NULL,
@@ -18,9 +16,9 @@ CREATE TABLE "TEST1_TABLE"
 CREATE TABLE test1_table2
 (
     id        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    table2_id NUMBER                NOT NULL,
-    name      VARCHAR2(4000)        NOT NULL,
-    CONSTRAINT fk_test1_table FOREIGN KEY (table2_id) REFERENCES test1_table(id)
+    table2_id NUMBER         NOT NULL,
+    name      VARCHAR2(4000) NOT NULL,
+    CONSTRAINT fk_test1_table FOREIGN KEY (table2_id) REFERENCES test1_table (id)
 );
 
 CREATE VIEW v_test1_table2 AS

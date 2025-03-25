@@ -62,7 +62,7 @@ func FormatPhoneNumberCheckValid(s string) bool {
 	}
 
 	// Step a: Remove all formatting characters to count actual digits
-	digitsOnly := regexp.MustCompile(`[^0-9]`).ReplaceAllString(s, "")
+	digitsOnly := regexp.MustCompile("[^0-9]").ReplaceAllString(s, "")
 
 	// Most international numbers need at least 7 digits and rarely exceed 15
 	if len(digitsOnly) < FormatPhoneNumberMinimumLength || len(digitsOnly) > FormatPhoneNumberMaxLength {
@@ -115,13 +115,13 @@ func NormalizePhoneNumber(s string) (string, error) {
 	}
 
 	// Extract digits only
-	digits := regexp.MustCompile(`[0-9]`).FindAllString(s, -1)
+	digits := regexp.MustCompile("[0-9]").FindAllString(s, -1)
 	normalized += strings.Join(digits, "")
 
 	// Handle extensions
-	parts := regexp.MustCompile(`(?i)(?:x|ext|extension)`).Split(s, 2)
+	parts := regexp.MustCompile("(?i)(?:x|ext|extension)").Split(s, 2)
 	if len(parts) > 1 {
-		extDigits := regexp.MustCompile(`[0-9]`).FindAllString(parts[1], -1)
+		extDigits := regexp.MustCompile("[0-9]").FindAllString(parts[1], -1)
 		if len(extDigits) > 0 {
 			normalized += "x" + strings.Join(extDigits, "")
 		}
@@ -137,7 +137,7 @@ func FormatNPWPorNIKCheckValid(s string) bool {
 	}
 
 	// Remove all non-digit characters to check digit count
-	digitsOnly := regexp.MustCompile(`[^0-9]`).ReplaceAllString(s, "")
+	digitsOnly := regexp.MustCompile("[^0-9]").ReplaceAllString(s, "")
 
 	// Check if it's an NPWP (15 or 16 digits)
 	if len(digitsOnly) == FormatNPWPDigitsLengthShort || len(digitsOnly) == FormatNPWPDigitsLengthLong {

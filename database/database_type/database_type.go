@@ -303,7 +303,7 @@ func isJSON(str string) bool {
 }
 
 func ConvertParamsWithMap(query string, params map[string]any, dbType DXDatabaseType) (string, []any, error) {
-	re := regexp.MustCompile(`[:@$][a-zA-Z][a-zA-Z0-9_]*`)
+	re := regexp.MustCompile("[:@$][a-zA-Z][a-zA-Z0-9_]*")
 	matches := re.FindAllString(query, -1)
 
 	orderedArgs := make([]any, 0)

@@ -96,7 +96,7 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 
 	_, _ = io.WriteString(&b, "\r\n")
 	b.Write(aepr.RequestBodyAsBytes)
-	_, _ = io.WriteString(&b, "\r\n\r\n")
+	_, err = io.WriteString(&b, "\r\n\r\n")
 
 	if err != nil {
 		return nil, err
@@ -127,6 +127,17 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsString(statusCode int, header map[string]string, s string) {
 	aepr.WriteResponseAsBytes(statusCode, header, []byte(s))
+}
+
+func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, responseMessage string, err error) {
+	if responseMessage == "" {
+		responseMessage = strings.ToUpper(http.StatusText(statusCode))
+	}
+	requestDump, err := aepr.RequestDumpAsString()
+
+	aepr.Log.LogText2(err, log.DXLogLevelError, "", requestDump)
+	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage)
+	return
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend error) {
@@ -269,14 +280,14 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 	aepr.RequestBodyAsBytes = nil
 	if aepr.Request.Method != aepr.EndPoint.Method {
 		if aepr.Request.Method == "OPTIONS" {
-			aepr.WriteResponseAsBytes(http.StatusOK, nil, []byte(``))
+			aepr.WriteResponseAsBytes(http.StatusOK, nil, []byte(""))
 			return nil
 		}
 		return aepr.WriteResponseAndNewErrorf(http.StatusMethodNotAllowed, "", "METHOD_NOT_ALLOWED:%s!=%s", aepr.Request.Method, aepr.EndPoint.Method)
 	}
 	xVar := aepr.Request.Header.Get("X-Var")
 	var xVarJSON map[string]interface{}
-	if xVar != `` {
+	if xVar != "" {
 		err := json.Unmarshal([]byte(xVar), &xVarJSON)
 		if err != nil {
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_PARSING_HEADER_X-VAR_AS_JSON: %v", err.Error())
@@ -339,10 +350,10 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 		case utilsHttp.ContentTypeApplicationJSON:
 			err = aepr.preProcessRequestAsApplicationJSON()
 		default:
-			err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `Request content-type is not supported yet (%v)`, aepr.EndPoint.RequestContentType)
+			err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request content-type is not supported yet (%v)", aepr.EndPoint.RequestContentType)
 		}
 	default:
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `Request method is not supported yet (%v)`, aepr.EndPoint.Method)
+		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request method is not supported yet (%v)", aepr.EndPoint.Method)
 	}
 	return errors.Wrap(err, "error occured")
 }
@@ -364,19 +375,19 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 	actualContentType := aepr.Request.Header.Get("Content-Type")
 	if actualContentType != "" {
 		if !strings.Contains(actualContentType, "application/json") {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `REQUEST_CONTENT_TYPE_IS_NOT_APPLICATION_JSON: %s`, actualContentType)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_IS_NOT_APPLICATION_JSON: %s", actualContentType)
 		}
 	}
 	bodyAsJSON := utils.JSON{}
 	aepr.RequestBodyAsBytes, err = io.ReadAll(aepr.Request.Body)
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `REQUEST_BODY_CANT_BE_READ:%v=%v`, err.Error(), aepr.RequestBodyAsBytes)
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_READ:%v=%v", err.Error(), aepr.RequestBodyAsBytes)
 	}
 
 	if len(aepr.RequestBodyAsBytes) > 0 {
 		err = json.Unmarshal(aepr.RequestBodyAsBytes, &bodyAsJSON)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v`, err.Error()+"="+string(aepr.RequestBodyAsBytes))
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v", err.Error()+"="+string(aepr.RequestBodyAsBytes))
 		}
 	}
 
@@ -391,7 +402,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		if rpv.Metadata.IsMustExist {
 			if rpv.RawValue == nil {
 				if !rpv.Metadata.IsNullable {
-					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", `MANDATORY_PARAMETER_IS_NOT_EXIST:%s`, variablePath)
+					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_IS_NOT_EXIST:%s", variablePath)
 				}
 			}
 		}

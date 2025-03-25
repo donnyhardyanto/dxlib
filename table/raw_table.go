@@ -740,7 +740,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 
 	_, format, err := aepr.GetParameterValueAsString("format")
 	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", `FORMAT_PARAMETER_ERROR:%s`, err.Error())
+		return aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "FORMAT_PARAMETER_ERROR:%s", err.Error())
 	}
 
 	format = strings.ToLower(format)

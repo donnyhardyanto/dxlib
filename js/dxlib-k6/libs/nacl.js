@@ -1,4 +1,4 @@
-import {randomBytes as rb } from 'k6/crypto';
+import {randomBytes as rb} from 'k6/crypto';
 
 const nacl = {};
 

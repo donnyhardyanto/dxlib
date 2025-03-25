@@ -98,11 +98,11 @@ func (osm *DXObjectStorageManager) LoadFromConfiguration(configurationNameId str
 			err := log.Log.ErrorAndCreateErrorf("Cannot read %s as JSON", k)
 			return errors.Wrap(err, "error occured")
 		}
-		isConnectAtStart, ok = d[`is_connect_at_start`].(bool)
+		isConnectAtStart, ok = d["is_connect_at_start"].(bool)
 		if !ok {
 			isConnectAtStart = false
 		}
-		mustConnected, ok = d[`must_connected`].(bool)
+		mustConnected, ok = d["must_connected"].(bool)
 		if !ok {
 			mustConnected = false
 		}
@@ -192,7 +192,7 @@ func (osm *DXObjectStorageManager) FindObjectStorageAndSendObject(aepr *api.DXAP
 func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 	if !r.IsConfigured {
 		log.Log.Infof("Configuring to ObjectStorage %s... start", r.NameId)
-		configurationData, ok := dxlibv3Configuration.Manager.Configurations[`object_storage`]
+		configurationData, ok := dxlibv3Configuration.Manager.Configurations["object_storage"]
 		if !ok {
 			err = log.Log.PanicAndCreateErrorf("DXObjectStorage/ApplyFromConfiguration/1", "ObjectStorage configuration not found")
 			return errors.Wrap(err, "error occured")
@@ -208,7 +208,7 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		r.Address, ok = ObjectStorageConfiguration[`address`].(string)
+		r.Address, ok = ObjectStorageConfiguration["address"].(string)
 		if !ok {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Mandatory address field in ObjectStorage %s configuration not exist", r.NameId)
@@ -218,15 +218,15 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 				return errors.Wrap(err, "error occured")
 			}
 		}
-		r.UserName, r.HasUserName = ObjectStorageConfiguration[`user_name`].(string)
-		r.Password, r.HasPassword = ObjectStorageConfiguration[`password`].(string)
-		r.BucketName, ok = ObjectStorageConfiguration[`bucket_name`].(string)
+		r.UserName, r.HasUserName = ObjectStorageConfiguration["user_name"].(string)
+		r.Password, r.HasPassword = ObjectStorageConfiguration["password"].(string)
+		r.BucketName, ok = ObjectStorageConfiguration["bucket_name"].(string)
 		if !ok {
 			err := log.Log.ErrorAndCreateErrorf("Mandatory bucket_name field in object storage ObjectStorage %s configuration not exist.", r.NameId)
 			return errors.Wrap(err, "error occured")
 		}
-		r.BasePath, ok = ObjectStorageConfiguration[`base_path`].(string)
-		r.UseSSL, ok = ObjectStorageConfiguration[`use_ssl`].(bool)
+		r.BasePath, ok = ObjectStorageConfiguration["base_path"].(string)
+		r.UseSSL, ok = ObjectStorageConfiguration["use_ssl"].(bool)
 		r.IsConfigured = true
 		log.Log.Infof("Configuring to ObjectStorage %s... done", r.NameId)
 	}

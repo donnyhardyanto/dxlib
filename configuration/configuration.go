@@ -89,7 +89,7 @@ func (c *DXConfiguration) ShowToLog() {
 		log.Log.Panic("DXConfiguration/ShowToLog/1", err)
 		return
 	}
-	log.Log.Infof(`%s=%s`, c.NameId, dataAsString)
+	log.Log.Infof("%s=%s", c.NameId, dataAsString)
 }
 
 func (c *DXConfiguration) AsString() string {
@@ -111,7 +111,7 @@ func (c *DXConfiguration) AsNonSensitiveString() string {
 	return c.NameId + ": " + string(dataAsString)
 }
 func (c *DXConfiguration) LoadFromFile() (err error) {
-	log.Log.Infof(`Reading file %s... start`, c.Filename)
+	log.Log.Infof("Reading file %s... start", c.Filename)
 	content, err := os.ReadFile(c.Filename)
 	if err != nil {
 		if c.MustExist {

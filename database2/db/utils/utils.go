@@ -344,7 +344,7 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 // DBDriverGenerateLimitOffsetClause generates the appropriate LIMIT/OFFSET clause for each database type
 
 func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAsInt64 int64, hasLimit bool, currentOrderBy string, orderbyFieldNameDirections FieldsOrderBy) (string, string, error) {
-	effectiveLimitOffsetClause := ``
+	effectiveLimitOffsetClause := ""
 	effectiveOrderBy := currentOrderBy
 
 	switch driverName {
@@ -353,48 +353,48 @@ func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAs
 		if orderbyFieldNameDirections == nil || len(orderbyFieldNameDirections) == 0 {
 			// SQL Server requires ORDER BY for OFFSET-FETCH
 			// Add a default ORDER BY if none exists
-			effectiveOrderBy = ` order by (select null)`
+			effectiveOrderBy = " order by (select null)"
 		}
 
 		// Always include OFFSET clause
-		effectiveLimitOffsetClause = ` offset ` + strconv.FormatInt(offsetAsInt64, 10) + ` rows`
+		effectiveLimitOffsetClause = " offset " + strconv.FormatInt(offsetAsInt64, 10) + " rows"
 
 		if hasLimit && limitAsInt64 > 0 {
-			effectiveLimitOffsetClause += ` fetch next ` + strconv.FormatInt(limitAsInt64, 10) + ` rows only`
+			effectiveLimitOffsetClause += " fetch next " + strconv.FormatInt(limitAsInt64, 10) + " rows only"
 		}
 
 	case "postgres":
 		// PostgreSQL uses LIMIT and OFFSET clauses after ORDER BY
 		if hasLimit && limitAsInt64 > 0 {
-			effectiveLimitOffsetClause = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
+			effectiveLimitOffsetClause = " limit " + strconv.FormatInt(limitAsInt64, 10)
 		}
 
 		// Always include OFFSET clause
-		effectiveLimitOffsetClause += ` offset ` + strconv.FormatInt(offsetAsInt64, 10)
+		effectiveLimitOffsetClause += " offset " + strconv.FormatInt(offsetAsInt64, 10)
 
 	case "oracle":
 		// Oracle 12c+ uses OFFSET n ROWS FETCH NEXT m ROWS ONLY
 		// Always include OFFSET clause
-		effectiveLimitOffsetClause = ` offset ` + strconv.FormatInt(offsetAsInt64, 10) + ` rows`
+		effectiveLimitOffsetClause = " offset " + strconv.FormatInt(offsetAsInt64, 10) + " rows"
 
 		if hasLimit && limitAsInt64 > 0 {
-			effectiveLimitOffsetClause += ` fetch next ` + strconv.FormatInt(limitAsInt64, 10) + ` rows only`
+			effectiveLimitOffsetClause += " fetch next " + strconv.FormatInt(limitAsInt64, 10) + " rows only"
 		}
 
 	case "mysql", "mariadb":
 		// MySQL/MariaDB use LIMIT clause with optional OFFSET
 		if hasLimit && limitAsInt64 > 0 {
-			effectiveLimitOffsetClause = ` limit ` + strconv.FormatInt(limitAsInt64, 10)
+			effectiveLimitOffsetClause = " limit " + strconv.FormatInt(limitAsInt64, 10)
 		} else {
 			// MySQL/MariaDB require a limit when using offset
-			effectiveLimitOffsetClause = ` limit 18446744073709551615` // Max value for MySQL
+			effectiveLimitOffsetClause = " limit 18446744073709551615" // Max value for MySQL
 		}
 
 		// Always include OFFSET clause
-		effectiveLimitOffsetClause += ` offset ` + strconv.FormatInt(offsetAsInt64, 10)
+		effectiveLimitOffsetClause += " offset " + strconv.FormatInt(offsetAsInt64, 10)
 
 	default:
-		return ``, ``, errors.New(`UNKNOWN_DATABASE_TYPE:` + driverName)
+		return "", "", errors.New("UNKNOWN_DATABASE_TYPE:" + driverName)
 	}
 
 	return effectiveLimitOffsetClause, effectiveOrderBy, nil
@@ -402,7 +402,8 @@ func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAs
 
 func DeformatIdentifier(identifier string, driverName string) string {
 	// Remove the quotes from the identifier
-	deformattedIdentifier := strings.Trim(identifier, `"`)
+	deformattedIdentifier := strings.Trim(identifier, ""
+	")
 	deformattedIdentifier = strings.ToLower(deformattedIdentifier)
 	return deformattedIdentifier
 }

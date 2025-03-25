@@ -17,7 +17,7 @@ var AllowRisk = false
 // Common SQL injection patterns
 var (
 	// Valid identifier pattern (letters, numbers, underscores, and dots for schema.table.column)
-	identifierPattern = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+	identifierPattern = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 	// Suspicious patterns that might indicate SQL injection
 	suspiciousRegexQueryPatterns = []string{

@@ -2,7 +2,6 @@ package testing
 
 import (
 	"encoding/json"
-	"fmt"
 	dxlibv3HttpClient "github.com/donnyhardyanto/dxlib/utils/http/client"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -30,14 +29,14 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 
 	requestDump, err := httputil.DumpRequest(request, true)
 	if err != nil {
-		t.Logf(`Error in DumpRequest (%v)`, err.Error())
+		t.Logf("Error in DumpRequest (%v)", err.Error())
 		return nil
 	}
 	t.Logf("\nRaw Request :\n%v\n", string(requestDump))
 
 	responseDump, err := httputil.DumpResponse(response, true)
 	if err != nil {
-		t.Logf(`Error in DumpResponse (%v)`, err.Error())
+		t.Logf("Error in DumpResponse (%v)", err.Error())
 		t.FailNow()
 		return response
 	}
@@ -45,7 +44,7 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 
 	if mustSuccess {
 		if response.StatusCode != http.StatusOK {
-			t.Logf(`Error: should be success but not (%v)`, response.StatusCode)
+			t.Logf("Error: should be success but not (%v)", response.StatusCode)
 			t.FailNow()
 			return response
 		}
@@ -54,7 +53,7 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 	if response.StatusCode != http.StatusOK {
 		return response
 	}
-	t.Logf(`Error: should be fail but not (%v)`, response.StatusCode)
+	t.Logf("Error: should be fail but not (%v)", response.StatusCode)
 	t.FailNow()
 	return response
 }

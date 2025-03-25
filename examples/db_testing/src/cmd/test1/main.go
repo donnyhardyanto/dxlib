@@ -22,22 +22,22 @@ func doOnDefineConfiguration() (err error) {
 	configuration.Manager.NewIfNotExistConfiguration("storage", "storage.json", "json", false, false, map[string]any{
 		"postgresql-system": map[string]any{
 			"nameid":              "postgresql-system",
-			"database_type":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_TYPE`, "postgres"),
-			"address":             utilsOs.GetEnvDefaultValue(`DB_SYSTEM_ADDRESS`, "127.0.0.1:5432"),
-			"user_name":           utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_NAME`, "postgres"),
-			"user_password":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_PASSWORD`, "postgres"),
-			"database_name":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_NAME`, `postgres`),
+			"database_type":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_TYPE", "postgres"),
+			"address":             utilsOs.GetEnvDefaultValue("DB_SYSTEM_ADDRESS", "127.0.0.1:5432"),
+			"user_name":           utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_NAME", "postgres"),
+			"user_password":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_PASSWORD", "postgres"),
+			"database_name":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_NAME", "postgres"),
 			"connection_options":  "sslmode=disable",
 			"must_connected":      true,
 			"is_connect_at_start": true,
 		},
 		"p1": map[string]any{
 			"nameid":              "p1",
-			"database_type":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_TYPE`, "postgres"),
-			"address":             utilsOs.GetEnvDefaultValue(`DB_SYSTEM_ADDRESS`, "127.0.0.1:5432"),
-			"user_name":           utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_NAME`, "postgres"),
-			"user_password":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_PASSWORD`, "postgres"),
-			"database_name":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_NAME`, `test1`),
+			"database_type":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_TYPE", "postgres"),
+			"address":             utilsOs.GetEnvDefaultValue("DB_SYSTEM_ADDRESS", "127.0.0.1:5432"),
+			"user_name":           utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_NAME", "postgres"),
+			"user_password":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_PASSWORD", "postgres"),
+			"database_name":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_NAME", "test1"),
 			"connection_options":  "sslmode=disable",
 			"must_connected":      true,
 			"is_connect_at_start": true,
@@ -47,22 +47,22 @@ func doOnDefineConfiguration() (err error) {
 		},
 		"sqlserver-system": map[string]any{
 			"nameid":              "sqlserver-system",
-			"database_type":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_TYPE`, "sqlserver"),
-			"address":             utilsOs.GetEnvDefaultValue(`DB_SYSTEM_ADDRESS`, "127.0.0.1:1433"),
-			"user_name":           utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_NAME`, "sa"),
-			"user_password":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_PASSWORD`, "12345678_Sa"),
-			"database_name":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_NAME`, `master`),
+			"database_type":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_TYPE", "sqlserver"),
+			"address":             utilsOs.GetEnvDefaultValue("DB_SYSTEM_ADDRESS", "127.0.0.1:1433"),
+			"user_name":           utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_NAME", "sa"),
+			"user_password":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_PASSWORD", "12345678_Sa"),
+			"database_name":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_NAME", "master"),
 			"connection_options":  "sslmode=disable",
 			"must_connected":      true,
 			"is_connect_at_start": true,
 		},
 		"p2": map[string]any{
 			"nameid":              "p2",
-			"database_type":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_TYPE`, "sqlserver"),
-			"address":             utilsOs.GetEnvDefaultValue(`DB_SYSTEM_ADDRESS`, "127.0.0.1:1433"),
-			"user_name":           utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_NAME`, "sa"),
-			"user_password":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_PASSWORD`, "12345678_Sa"),
-			"database_name":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_NAME`, `test1`),
+			"database_type":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_TYPE", "sqlserver"),
+			"address":             utilsOs.GetEnvDefaultValue("DB_SYSTEM_ADDRESS", "127.0.0.1:1433"),
+			"user_name":           utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_NAME", "sa"),
+			"user_password":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_PASSWORD", "12345678_Sa"),
+			"database_name":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_NAME", "test1"),
 			"connection_options":  "sslmode=disable",
 			"must_connected":      true,
 			"is_connect_at_start": true,
@@ -72,22 +72,22 @@ func doOnDefineConfiguration() (err error) {
 		},
 		"oracle-system": map[string]any{
 			"nameid":              "oracle-system",
-			"database_type":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_TYPE`, "oracle"),
-			"address":             utilsOs.GetEnvDefaultValue(`DB_SYSTEM_ADDRESS`, "127.0.0.1:1521"),
-			"user_name":           utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_NAME`, "system"),
-			"user_password":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_PASSWORD`, "oraORAora1000"),
-			"database_name":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_NAME`, `FREEPDB1`),
+			"database_type":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_TYPE", "oracle"),
+			"address":             utilsOs.GetEnvDefaultValue("DB_SYSTEM_ADDRESS", "127.0.0.1:1521"),
+			"user_name":           utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_NAME", "system"),
+			"user_password":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_PASSWORD", "oraORAora1000"),
+			"database_name":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_NAME", "FREEPDB1"),
 			"connection_options":  "sslmode=disable",
 			"must_connected":      true,
 			"is_connect_at_start": true,
 		},
 		"p3": map[string]any{
 			"nameid":              "p3",
-			"database_type":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_TYPE`, "oracle"),
-			"address":             utilsOs.GetEnvDefaultValue(`DB_SYSTEM_ADDRESS`, "127.0.0.1:1521"),
-			"user_name":           utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_NAME`, "SYSTEM"),
-			"user_password":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_USER_PASSWORD`, "oraORAora1000"),
-			"database_name":       utilsOs.GetEnvDefaultValue(`DB_SYSTEM_DATABASE_NAME`, `FREEPDB1`),
+			"database_type":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_TYPE", "oracle"),
+			"address":             utilsOs.GetEnvDefaultValue("DB_SYSTEM_ADDRESS", "127.0.0.1:1521"),
+			"user_name":           utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_NAME", "SYSTEM"),
+			"user_password":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_USER_PASSWORD", "oraORAora1000"),
+			"database_name":       utilsOs.GetEnvDefaultValue("DB_SYSTEM_DATABASE_NAME", "FREEPDB1"),
 			"connection_options":  "sslmode=disable",
 			"must_connected":      true,
 			"is_connect_at_start": false,
@@ -95,7 +95,7 @@ func doOnDefineConfiguration() (err error) {
 				createScriptFileFolder + "/oracle/test1-ddl.sql",
 			},
 		},
-	}, []string{`postgres.user_name`, `postgres.user_password`})
+	}, []string{"postgres.user_name", "postgres.user_password"})
 	return nil
 
 }
@@ -146,7 +146,7 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 	}
 
 	_, err = table1.TxHardDelete(dtx, map[string]any{
-		`id`: aId2,
+		"id": aId2,
 	})
 	log.Log.Infof("Update result r after update: %v", r)
 
@@ -161,7 +161,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 	   Example to execute stored procedure
 	   var dbP1 *database.DXDatabase
 
-	   	dbP1 := database.Manager.Databases[`p1`]
+	   	dbP1 := database.Manager.Databases["p1"]
 	   	defer dbP1.Disconnect()
 
 	   	err = dbP1.Connect()
@@ -174,8 +174,8 @@ func doOnAfterConfigurationStartAll() (err error) {
 	   		return errors.Wrap(err, "error occured")
 	   	}*/
 
-	dbP1 := database.Manager.Databases[`p1`]
-	dbSystem := database.Manager.Databases[`postgresql-system`]
+	dbP1 := database.Manager.Databases["p1"]
+	dbSystem := database.Manager.Databases["postgresql-system"]
 
 	err = dbP1.Connect()
 	if err != nil {
@@ -229,8 +229,8 @@ func doOnAfterConfigurationStartAll() (err error) {
 		log.Log.Infof("Update result: %v", r)
 	}*/
 
-	dbP2 := database.Manager.Databases[`p2`]
-	dbP2System := database.Manager.Databases[`sqlserver-system`]
+	dbP2 := database.Manager.Databases["p2"]
+	dbP2System := database.Manager.Databases["sqlserver-system"]
 
 	err = dbP2.Connect()
 	if err != nil {
@@ -284,9 +284,9 @@ func doOnAfterConfigurationStartAll() (err error) {
 			log.Log.Infof("Update result: %v", r)
 		}*/
 
-	dbP3 := database.Manager.Databases[`p3`]
+	dbP3 := database.Manager.Databases["p3"]
 
-	dbP3System := database.Manager.Databases[`oracle-system`]
+	dbP3System := database.Manager.Databases["oracle-system"]
 
 	err = dbP3.Connect()
 	if err != nil {

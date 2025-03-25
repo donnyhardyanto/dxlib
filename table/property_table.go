@@ -990,7 +990,7 @@ func (pt *DXPropertyTable) TxSoftDelete(tx *database.DXDatabaseTx, whereAndField
 	}
 
 	return tx.Update(pt.NameId, map[string]any{
-		`is_deleted`: true,
+		"is_deleted": true,
 	}, whereAndFieldNameValues)
 }
 
