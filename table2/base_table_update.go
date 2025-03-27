@@ -104,9 +104,6 @@ func (bt *DXBaseTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err err
 }
 
 func (bt *DXBaseTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
-
-	return tx.Update(bt.NameId, setKeyValues, whereAndFieldNameValues)
+	result, _, err = tx.Update(bt.NameId, setKeyValues, whereAndFieldNameValues, nil)
+	return result, err
 }

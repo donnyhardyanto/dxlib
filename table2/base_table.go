@@ -12,7 +12,7 @@ import (
 type TableInterface interface {
 	Initialize() TableInterface
 	DbEnsureInitialize() error
-	DoRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, newUid string, err error)
+	//	DoRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, newUid string, err error)
 }
 
 // DXBaseTable contains common fields for all table types
