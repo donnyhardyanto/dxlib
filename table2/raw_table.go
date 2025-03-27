@@ -38,30 +38,6 @@ func (t *DXRawTable) TxSelectCount(tx *database.DXDatabaseTx, summaryCalcFieldsP
 		return totalRows, summaryCalcRow, err
 	}
 */
-func (t *DXRawTable) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
-
-	if t.Database == nil {
-		t.Database = database.Manager.Databases[t.DatabaseNameId]
-	}
-
-	rowsInfo, r, err = t.Database.Select(t.ListViewNameId, t.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
-	if err != nil {
-		return rowsInfo, nil, err
-	}
-
-	return rowsInfo, r, err
-}
-
-func (t *DXRawTable) ShouldSelectOne(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
-
-	if t.Database == nil {
-		t.Database = database.Manager.Databases[t.DatabaseNameId]
-	}
-
-	return t.Database.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections)
-}
 
 func (t *DXRawTable) TxShouldSelectOne(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON,
 	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
@@ -90,14 +66,6 @@ func (t *DXRawTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFie
 	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
 	return tx.SelectOne(t.NameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
-}
-
-func (t *DXRawTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
-	if whereAndFieldNameValues == nil {
-		whereAndFieldNameValues = utils.JSON{}
-	}
-
-	return tx.Delete(t.NameId, whereAndFieldNameValues)
 }
 
 func (t *DXRawTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {

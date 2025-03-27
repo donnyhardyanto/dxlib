@@ -1,7 +1,9 @@
 package table
 
 import (
+	"database/sql"
 	"github.com/donnyhardyanto/dxlib/api"
+	database "github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
@@ -79,4 +81,9 @@ func (bt *DXBaseTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (e
 		return err
 	}
 	return nil
+}
+
+func (t *DXBaseTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+	r, _, err = tx.TxDelete(t.NameId, whereAndFieldNameValues, nil)
+	return r, err
 }

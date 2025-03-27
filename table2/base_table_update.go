@@ -9,17 +9,17 @@ import (
 	"net/http"
 )
 
-func (bt *DXBaseTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
+func (bt *DXBaseTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	// Ensure database is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
 		return nil, err
 	}
 
-	result, _, err = bt.Database.Update(bt.NameId, setKeyValues, whereAndFieldNameValues, nil)
-	return result, err
+	r, _, err = bt.Database.Update(bt.NameId, setKeyValues, whereAndFieldNameValues, nil)
+	return r, err
 }
 
-func (bt *DXBaseTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
+func (bt *DXBaseTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (r sql.Result, err error) {
 	_, _, err = bt.ShouldGetById(l, FieldValueForId)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (bt *DXBaseTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValu
 	})
 }
 
-func (bt *DXBaseTable) UpdateOneByUid(l *log.DXLog, FieldValueForUid string, setKeyValues utils.JSON) (result sql.Result, err error) {
+func (bt *DXBaseTable) UpdateOneByUid(l *log.DXLog, FieldValueForUid string, setKeyValues utils.JSON) (r sql.Result, err error) {
 	_, _, err = bt.ShouldGetByUid(l, FieldValueForUid)
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func (bt *DXBaseTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err err
 	return nil
 }
 
-func (bt *DXBaseTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
-	result, _, err = tx.Update(bt.NameId, setKeyValues, whereAndFieldNameValues, nil)
-	return result, err
+func (bt *DXBaseTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+	r, _, err = tx.Update(bt.NameId, setKeyValues, whereAndFieldNameValues, nil)
+	return r, err
 }
