@@ -133,11 +133,35 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 	if responseMessage == "" {
 		responseMessage = strings.ToUpper(http.StatusText(statusCode))
 	}
-	requestDump, err := aepr.RequestDumpAsString()
-
+	requestDump, err2 := aepr.RequestDumpAsString()
+	if err2 != nil {
+		requestDump = "DUMP REQUEST FAIL"
+	}
 	aepr.Log.LogText2(err, log.DXLogLevelError, "", requestDump)
 	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage)
 	return
+}
+
+func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, responseMessage string, msg string, data ...any) (err error) {
+	if msg == "" {
+		msg = responseMessage
+	} else {
+		msg = fmt.Sprintf(msg, data)
+	}
+
+	if responseMessage == "" {
+		responseMessage = strings.ToUpper(http.StatusText(statusCode))
+	}
+
+	requestDump, err2 := aepr.RequestDumpAsString()
+	if err2 != nil {
+		requestDump = "DUMP REQUEST FAIL"
+	}
+
+	aepr.Log.LogText2(err, log.DXLogLevelError, "", requestDump)
+	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage)
+
+	return nil
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend error) {
