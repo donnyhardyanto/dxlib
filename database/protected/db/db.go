@@ -8,11 +8,11 @@ import (
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database2/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
-	go_ora "github.com/sijms/go-ora/v2/network"
+	_ "github.com/sijms/go-ora/v2/network"
 	"strconv"
 	"strings"
 )
@@ -79,8 +79,8 @@ var (
 	}
 )
 
-// IsConnectionError checks if the error is a database connection error
-func IsConnectionError(err error) bool {
+// isConnectionError checks if the error is a database connection error
+/*func isConnectionError(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -123,7 +123,7 @@ func IsConnectionError(err error) bool {
 
 	return false
 }
-
+*/
 type RowsInfo struct {
 	Columns []string
 	//	ColumnTypes []*sql.ColumnType

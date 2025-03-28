@@ -73,7 +73,7 @@ func (d *DXDatabase) Count(tableName string, whereAndFieldNameValues utils.JSON,
 			return count, nil
 		}
 		log.Log.Warnf("COUNT_ERROR:%s=%v", tableName, err.Error())
-		if !oldDb.IsConnectionError(err) {
+		if !oldDb.isConnectionError(err) {
 			return 0, err
 		}
 		err = d.CheckConnectionAndReconnect()
