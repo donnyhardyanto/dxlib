@@ -433,7 +433,8 @@ func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValue
 			return id, nil
 		}
 		log.Log.Warnf("INSERT_ERROR:%s=%v", tableName, err.Error())
-		if !errors.Is(db.CheckDatabaseError(err), db.ERROR_DB_NOT_CONNECTED) {
+		err = db.CheckDatabaseError(err)
+		if !errors.Is(err, db.ERROR_DB_NOT_CONNECTED) {
 			return 0, err
 		}
 		err = d.CheckConnectionAndReconnect()
@@ -457,7 +458,8 @@ func (d *DXDatabase) Update(tableName string, setKeyValues utils.JSON, whereKeyV
 			return result, nil
 		}
 		log.Log.Warnf("UPDATE_ERROR:%s=%v", tableName, err.Error())
-		if !errors.Is(db.CheckDatabaseError(err), db.ERROR_DB_NOT_CONNECTED) {
+		err = db.CheckDatabaseError(err)
+		if !errors.Is(err, db.ERROR_DB_NOT_CONNECTED) {
 			return nil, err
 		}
 		err = d.CheckConnectionAndReconnect()
@@ -482,7 +484,8 @@ func (d *DXDatabase) Select(tableName string, fieldTypeMapping db.FieldTypeMappi
 			return rowsInfo, resultData, nil
 		}
 		log.Log.Warnf("SELECT_ERROR:%s=%v", tableName, err.Error())
-		if !errors.Is(db.CheckDatabaseError(err), db.ERROR_DB_NOT_CONNECTED) {
+		err = db.CheckDatabaseError(err)
+		if !errors.Is(err, db.ERROR_DB_NOT_CONNECTED) {
 			return nil, nil, err
 		}
 		err = d.CheckConnectionAndReconnect()
@@ -547,7 +550,8 @@ func (d *DXDatabase) Delete(tableName string, whereKeyValues utils.JSON) (r sql.
 			return r, nil
 		}
 		log.Log.Warnf("DELETE_ERROR:%s=%v", tableName, err.Error())
-		if !errors.Is(db.CheckDatabaseError(err), db.ERROR_DB_NOT_CONNECTED) {
+		err = db.CheckDatabaseError(err)
+		if !errors.Is(err, db.ERROR_DB_NOT_CONNECTED) {
 			return nil, err
 		}
 		err = d.CheckConnectionAndReconnect()
