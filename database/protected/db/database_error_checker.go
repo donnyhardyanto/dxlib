@@ -26,12 +26,12 @@ func CheckDatabaseError(err error) error {
 
 	// Check for connection errors
 	if isConnectionError(err) {
-		return errors.Wrap(ERROR_DB_NOT_CONNECTED, err.Error())
+		return ERROR_DB_NOT_CONNECTED
 	}
 
 	// Check for duplicate key errors
 	if IsDuplicateKeyError(err) {
-		return errors.Wrap(ERROR_DB_DUPLICATE_KEY, err.Error())
+		return ERROR_DB_DUPLICATE_KEY
 	}
 
 	// Return the wrapped original error for other cases
