@@ -1049,7 +1049,7 @@ func (t *DXTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, err = t.DoCreate(aepr, p)
 
 	if err != nil {
-		errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
