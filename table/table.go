@@ -90,7 +90,8 @@ func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JS
 func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	newId, err = t.DoInsert(aepr, newKeyValues)
 	if err != nil {
-		return 0, err
+		aepr.WriteResponseAsError(http.StatusConflict, err)
+		return 0, nil
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
 		t.FieldNameForRowId: newId,
@@ -1047,7 +1048,6 @@ func (t *DXTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 		p[k] = v.Value
 	}
 	_, err = t.DoCreate(aepr, p)
-
 	if err != nil {
 		return err
 	}

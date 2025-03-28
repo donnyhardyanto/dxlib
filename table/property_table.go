@@ -314,9 +314,9 @@ func (pt *DXPropertyTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues
 
 	newId, err = pt.Database.Insert(pt.NameId, pt.FieldNameForRowId, newKeyValues)
 	if err != nil {
-		return 0, err
+		aepr.WriteResponseAsError(http.StatusConflict, err)
+		return 0, nil
 	}
-
 	p := utils.JSON{
 		pt.FieldNameForRowId: newId,
 	}

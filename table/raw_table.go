@@ -39,7 +39,8 @@ func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValue
 
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	if err != nil {
-		return 0, aepr.WriteResponseAndNewErrorf(http.StatusConflict, "", "ERROR_INSERTING_TABLE:"+t.NameId+"="+err.Error())
+		aepr.WriteResponseAsError(http.StatusConflict, err)
+		return 0, nil
 	}
 
 	p := utils.JSON{
@@ -709,7 +710,7 @@ func (t *DXRawTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 	}
 	_, err = t.RequestDoCreate(aepr, p)
 	if err != nil {
-		errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
