@@ -83,7 +83,7 @@ func (bt *DXBaseTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (e
 	return nil
 }
 
-func (t *DXBaseTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
-	r, _, err = tx.TxDelete(t.NameId, whereAndFieldNameValues, nil)
+func (bt *DXBaseTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+	r, _, err = tx.TxDelete(bt.NameId, whereAndFieldNameValues, nil)
 	return r, err
 }
