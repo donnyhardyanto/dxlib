@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
 	mssql "github.com/microsoft/go-mssqldb"
@@ -11,11 +12,73 @@ import (
 	"strings"
 )
 
-// Define specific error constants
-var (
-	ERROR_DB_DUPLICATE_KEY = errors.New("ERROR_DB_DUPLICATE_KEY")
-	ERROR_DB_NOT_CONNECTED = errors.New("ERROR_DB_NOT_CONNECTED")
-)
+// StackTraceError is a custom error type that preserves stack traces
+type StackTraceError struct {
+	message    string
+	stackTrace errors.StackTrace
+	cause      error
+}
+
+// Error returns the error message
+func (e *StackTraceError) Error() string {
+	return e.message
+}
+
+// Cause returns the underlying cause of the error
+func (e *StackTraceError) Cause() error {
+	return e.cause
+}
+
+// StackTrace returns the preserved stack trace
+func (e *StackTraceError) StackTrace() errors.StackTrace {
+	return e.stackTrace
+}
+
+// Format implements fmt.Formatter to properly format the error
+// This makes it work with fmt.Printf("%+v", err)
+func (e *StackTraceError) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			fmt.Fprintf(s, "%s\n", e.message)
+			for _, pc := range e.stackTrace {
+				fmt.Fprintf(s, "%+v\n", errors.Frame(pc))
+			}
+			return
+		}
+		fallthrough
+	case 's':
+		fmt.Fprintf(s, "%s", e.message)
+	case 'q':
+		fmt.Fprintf(s, "%q", e.message)
+	}
+}
+
+// Unwrap supports Go 1.13+ error unwrapping
+func (e *StackTraceError) Unwrap() error {
+	return e.cause
+}
+
+// ReplaceErrorMessage replaces the message of an error while preserving its stack trace
+func ReplaceErrorMessage(originalErr error, newMessage string) error {
+	// Check if the original error has a stack trace
+	type stackTracer interface {
+		StackTrace() errors.StackTrace
+	}
+
+	st, ok := originalErr.(stackTracer)
+	if !ok {
+		// If the original error doesn't have a stack trace, just return a new error
+		return errors.New(newMessage)
+	}
+
+	// Create a new error with the new message and the original stack trace
+	return &StackTraceError{
+		message:    newMessage,
+		stackTrace: st.StackTrace(),
+		cause:      errors.Cause(originalErr), // Preserve the original cause if it exists
+	}
+}
 
 // CheckDatabaseError identifies common database errors and returns standardized errors
 // while preserving the original error information
@@ -26,16 +89,16 @@ func CheckDatabaseError(err error) error {
 
 	// Check for connection errors
 	if isConnectionError(err) {
-		return ERROR_DB_NOT_CONNECTED
+		return ReplaceErrorMessage(err, "ERROR_DB_NOT_CONNECTED")
 	}
 
 	// Check for duplicate key errors
 	if IsDuplicateKeyError(err) {
-		return ERROR_DB_DUPLICATE_KEY
+		return ReplaceErrorMessage(err, "ERROR_DB_DUPLICATE_KEY")
 	}
 
 	// Return the wrapped original error for other cases
-	return errors.WithStack(err)
+	return err
 }
 
 // IsDuplicateKeyError detects duplicate key violations across different database systems
