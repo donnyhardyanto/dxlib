@@ -41,6 +41,7 @@ func (e *StackTraceError) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('+') {
 			fmt.Fprintf(s, "%s\n", e.message)
+			fmt.Fprintf(s, "%v\n", e.cause)
 			for _, pc := range e.stackTrace {
 				fmt.Fprintf(s, "%+v\n", errors.Frame(pc))
 			}
