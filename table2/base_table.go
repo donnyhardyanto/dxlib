@@ -17,19 +17,21 @@ type TableInterface interface {
 
 // DXBaseTable contains common fields for all table types
 type DXBaseTable struct {
-	DatabaseNameId             string
-	Database                   *database.DXDatabase
-	NameId                     string
-	ResultObjectName           string
-	ListViewNameId             string
-	FieldNameForRowId          string
-	FieldNameForRowNameId      string
-	FieldNameForRowUid         string
-	FieldNameForRowUtag        string
-	ResponseEnvelopeObjectName string
-	FieldTypeMapping           utils2.FieldTypeMapping
-	OnBeforeInsert             func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
-	OnBeforeUpdate             func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
+	DatabaseNameId              string
+	Database                    *database.DXDatabase
+	NameId                      string
+	ResultObjectName            string
+	ListViewNameId              string
+	FieldNameForRowId           string
+	FieldNameForRowNameId       string
+	FieldNameForRowUid          string
+	FieldNameForRowUtag         string
+	ResponseEnvelopeObjectName  string
+	FieldTypeMapping            utils2.FieldTypeMapping
+	OnBeforeInsert              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
+	OnBeforeUpdate              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
+	OnResultProcessEachListRow  func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable, rowData utils.JSON) (newRowData utils.JSON, err error)
+	OnResponseObjectConstructor func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable, rawResponseObject utils.JSON) (responseObject utils.JSON, err error)
 }
 
 func (bt *DXBaseTable) Initialize() TableInterface {

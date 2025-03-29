@@ -3,7 +3,6 @@ package database2
 import (
 	"database/sql"
 	"github.com/donnyhardyanto/dxlib/database2/db"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -19,8 +18,11 @@ func (d *DXDatabase) Insert(tableName string, setFieldValues utils.JSON, returni
 		if err == nil {
 			return result, returningFieldValues, nil
 		}
-		log.Log.Warnf("INSERT_ERROR:%s=%v", tableName, err.Error())
-		if !utils2.IsConnectionError(err) {
+		err = CheckDatabaseError(err)
+		if err == nil {
+			return nil, nil, err
+		}
+		if err.Error() != "ERROR_DB_NOT_CONNECTED" {
 			return nil, nil, err
 		}
 		err = d.CheckConnectionAndReconnect()
