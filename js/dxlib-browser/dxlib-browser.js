@@ -1,5 +1,5 @@
-import './libs/tweetnacl/nacl.js';
-
+// import './libs/tweetnacl/nacl.js';
+import nacl from "tweetnacl";
 const dxlib = {};
 
 (function (dxlib) {
