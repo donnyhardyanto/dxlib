@@ -3,6 +3,7 @@ package table
 import (
 	"github.com/donnyhardyanto/dxlib/api"
 	database "github.com/donnyhardyanto/dxlib/database2"
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/pkg/errors"
@@ -17,6 +18,7 @@ type TableInterface interface {
 
 // DXBaseTable contains common fields for all table types
 type DXBaseTable struct {
+	DatabaseType                database_type.DXDatabaseType
 	DatabaseNameId              string
 	Database                    *database.DXDatabase
 	NameId                      string
@@ -51,6 +53,9 @@ func (bt *DXBaseTable) DbEnsureInitialize() (err error) {
 			return errors.Wrap(err, "error occured")
 		}
 	}
+	driverName := bt.Database.Connection.DriverName()
+	bt.DatabaseType = database_type.StringToDXDatabaseType(driverName)
+
 	return nil
 }
 

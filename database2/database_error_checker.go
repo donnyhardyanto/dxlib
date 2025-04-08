@@ -60,6 +60,46 @@ func (e *StackTraceError) Unwrap() error {
 	return e.cause
 }
 
+// GetDriverSpecificErrorMessage extracts the specific error message from different database drivers
+func GetDriverSpecificErrorMessage(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	// Unwrap to get the original driver error
+	cause := errors.Cause(err)
+
+	// PostgreSQL
+	if pqErr, ok := cause.(*pq.Error); ok {
+		return fmt.Sprintf("[PostgreSQL: %s] %s", pqErr.Code, pqErr.Message)
+	}
+
+	// MySQL/MariaDB
+	if mysqlErr, ok := cause.(*mysql.MySQLError); ok {
+		return fmt.Sprintf("[MySQL: %d] %s", mysqlErr.Number, mysqlErr.Message)
+	}
+
+	// SQL Server
+	if mssqlErr, ok := cause.(mssql.Error); ok {
+		return fmt.Sprintf("[SQL Server: %d] %s", mssqlErr.Number, mssqlErr.Message)
+	}
+
+	// For other errors, just return the error message
+	return err.Error()
+}
+
+// ReplaceErrorWithDriverDetails replaces the error message with one that includes driver-specific details
+func ReplaceErrorWithDriverDetails(originalErr error, standardMessage string) error {
+	if originalErr == nil {
+		return nil
+	}
+
+	driverMsg := GetDriverSpecificErrorMessage(originalErr)
+	detailedMessage := fmt.Sprintf("%s: %s", standardMessage, driverMsg)
+
+	return ReplaceErrorMessage(originalErr, detailedMessage)
+}
+
 // ReplaceErrorMessage replaces the message of an error while preserving its stack trace
 func ReplaceErrorMessage(originalErr error, newMessage string) error {
 	// Check if the original error has a stack trace
@@ -90,12 +130,12 @@ func CheckDatabaseError(err error) error {
 
 	// Check for connection errors
 	if isConnectionError(err) {
-		return ReplaceErrorMessage(err, "ERROR_DB_NOT_CONNECTED")
+		return ReplaceErrorWithDriverDetails(err, "ERROR_DB_NOT_CONNECTED")
 	}
 
 	// Check for duplicate key errors
 	if IsDuplicateKeyError(err) {
-		return ReplaceErrorMessage(err, "ERROR_DB_DUPLICATE_KEY")
+		return ReplaceErrorWithDriverDetails(err, "ERROR_DB_DUPLICATE_KEY")
 	}
 
 	// Return the wrapped original error for other cases

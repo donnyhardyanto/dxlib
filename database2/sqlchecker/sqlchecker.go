@@ -720,13 +720,13 @@ func CheckValue(value any) error {
 	case []any:
 		for _, item := range v {
 			if err := CheckValue(item); err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 		}
 	case []string:
 		for _, item := range v {
 			if err := CheckValue(item); err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 		}
 	case []uint8, []uint64, []int64, []int32, []int16, []int8, []int, []float64, []float32, []bool:
@@ -738,10 +738,10 @@ func CheckValue(value any) error {
 		// Handle JSONB data type
 		for key, val := range v {
 			if err := CheckIdentifier(database_type.PostgreSQL, key); err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 			if err := CheckValue(val); err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 		}
 	case time.Time:
@@ -750,7 +750,7 @@ func CheckValue(value any) error {
 		return nil
 	default:
 		return nil
-		//return errors.Wrap(err, "error occured")ors.Errorf("unsupported value type: %T", value)
+		//return errors.Errorf("unsupported value type: %T", value)
 	}
 
 	return nil
@@ -802,7 +802,7 @@ func CheckLikePattern(query string) error {
 
 		// Check the actual pattern
 		if err := checkStringValue(pattern); err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 
 		// Check wildcard count
@@ -885,7 +885,7 @@ func checkStringValue(value string) error {
 	// Check for suspicious patterns
 	for _, pattern := range suspiciousValuePatterns {
 		if strings.Contains(lowered, pattern) {
-			return errors.Wrap(err, "error occured")ors.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
+			return errors.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
 		}
 	}*/
 	return nil
@@ -910,11 +910,11 @@ func checkSuspiciousQueryPatterns(value string, ignoreInComments bool) error {
 	return nil
 }
 
-func CheckAll(dbDriverName string, query string, arg any) (err error) {
+func CheckAll(dialect database_type.DXDatabaseType, query string, arg any) (err error) {
 	if AllowRisk {
 		return nil
 	}
-	err = CheckBaseQuery(query, database_type.StringToDXDatabaseType(dbDriverName))
+	err = CheckBaseQuery(query, dialect)
 	if err != nil {
 		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
@@ -934,7 +934,7 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 
 	// Check ORDER BY expressions
 	if strings.Contains(query, "ORDER BY") {
-		err = CheckOrderBy(query, database_type.StringToDXDatabaseType(dbDriverName))
+		err = CheckOrderBy(query, dialect)
 		if err != nil {
 			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %w", err)
 		}

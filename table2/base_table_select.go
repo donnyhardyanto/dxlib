@@ -9,6 +9,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
+	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -165,11 +166,19 @@ func (bt *DXBaseTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere
 	sqlStatement := strings.Join([]string{"SELECT * FROM", bt.ListViewNameId}, " ")
 
 	if filterWhere != "" {
-		
+		err = sqlchecker.CheckBaseQuery(filterWhere, bt.DatabaseType)
 		sqlStatement = sqlStatement + " WHERE " + filterWhere
 	}
 	if filterOrderBy != "" {
+		err = sqlchecker.CheckOrderBy(filterOrderBy, bt.DatabaseType)
+		if err != nil {
+			return err
+		}
 		sqlStatement = sqlStatement + " ORDER BY " + filterOrderBy
+	}
+	err = sqlchecker.CheckAll(bt.DatabaseType, sqlStatement, nil)
+	if err != nil {
+		return err
 	}
 
 	rowsInfo, list, err := raw.QueryRows(bt.Database.Connection, bt.FieldTypeMapping, sqlStatement, filterKeyValues)
@@ -209,26 +218,35 @@ func (bt *DXBaseTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere
 }
 
 func (bt *DXBaseTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
-	if bt.Database == nil {
-		bt.Database = database.Manager.Databases[bt.DatabaseNameId]
-	}
+	sqlStatement := strings.Join([]string{"SELECT * FROM", bt.ListViewNameId}, " ")
 
-	if !bt.Database.Connected {
-		err := bt.Database.Connect()
+	if filterWhere != "" {
+		err = sqlchecker.CheckBaseQuery(filterWhere, bt.DatabaseType)
+		sqlStatement = sqlStatement + " WHERE " + filterWhere
+	}
+	if filterOrderBy != "" {
+		err = sqlchecker.CheckOrderBy(filterOrderBy, bt.DatabaseType)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
+		sqlStatement = sqlStatement + " ORDER BY " + filterOrderBy
 	}
 
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
+		return err
 
 	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
 	if err != nil {
 		return errors.Wrap(err, "error occured")
 	}
+
+		err = sqlchecker.CheckAll(bt.DatabaseType, sqlStatement, nil)
+		if err != nil {
+			return err
+		}
+
+		rowsInfo, list, err := raw.QueryRows(bt.Database.Connection, bt.FieldTypeMapping, sqlStatement, filterKeyValues)
 
 	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(bt.Database.Connection, bt.FieldTypeMapping, "", rowPerPage, pageIndex, "*", bt.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
@@ -391,9 +409,9 @@ func (bt *DXBaseTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err 
 	}
 
 	if !bt.Database.Connected {
-		err := bt.Database.Connect()
+		err = bt.Database.Connect()
 		if err != nil {
-			aepr.Log.Errorf("error At reconnect db At table %s list (%s) ", bt.NameId, err.Error())
+			aepr.Log.Errorf("error At reconnect db At table %s list (%+v) ", bt.NameId, err)
 			return errors.Wrap(err, "error occured")
 		}
 	}

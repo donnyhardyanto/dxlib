@@ -71,13 +71,13 @@ func (d *DXDatabase) EnsureConnection() (err error) {
 	if d.Connection == nil {
 		err = d.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	if !d.Connected {
 		err = d.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	return nil
@@ -122,14 +122,13 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 func (d *DXDatabase) CheckConnection() (err error) {
 	err = d.EnsureConnection()
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	dbConn, err := d.Connection.Conn(context.Background())
 	if err != nil {
-		log.Log.Warnf("Database %v CheckConnection() failed: %v", d.NameId, err.Error())
 		d.Connected = false
-		return errors.Wrap(err, "error occured")
+		return errors.Wrapf(err, "database %v CheckConnection() failed", d.NameId)
 	}
 	defer func() {
 		_ = dbConn.Close()
@@ -140,12 +139,10 @@ func (d *DXDatabase) CheckConnection() (err error) {
 
 	if err := dbConn.PingContext(ctx); err != nil {
 		d.Connected = false
-		log.Log.Warnf("Database %v ping failed: %v", d.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return errors.Wrapf(err, "Database %v ping failed", d.NameId)
 	}
-	log.Log.Tracef("Database %v ping success with result CheckConnection: %v", d.NameId, d.Connected)
 	d.Connected = true
-	return errors.Wrap(err, "error occured")
+	return errors.Wrapf(err, "database %v ping success with result CheckConnection: %v", d.NameId)
 }
 
 func (d *DXDatabase) CheckConnectionAndReconnect() (err error) {
@@ -165,7 +162,7 @@ func (d *DXDatabase) CheckConnectionAndReconnect() (err error) {
 		time.Sleep(2 * time.Second)
 		err = d.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
@@ -175,12 +172,12 @@ func (d *DXDatabase) CheckConnectionAndReconnect() (err error) {
 func (d *DXDatabase) ExecuteScript(s *DXDatabaseScript) (err error) {
 	err = d.EnsureConnection()
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	_, err = s.Execute(d)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -217,7 +214,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 		}
 		s = goOra.BuildUrl(host, portInt, d.DatabaseName, d.UserName, d.UserPassword, urlOptions)
 	default:
-		err = log.Log.ErrorAndCreateErrorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
+		err = errors.Errorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
 	}
 	return s, err
 }
@@ -227,18 +224,15 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 		log.Log.Infof("Configuring to Database %s... start", d.NameId)
 		configurationData, ok := configuration.Manager.Configurations["storage"]
 		if !ok {
-			err = log.Log.PanicAndCreateErrorf("DXDatabase/ApplyFromConfiguration/1", "Storage configuration not found")
-			return errors.Wrap(err, "error occured")
+			return errors.Errorf("storage configuration %s not found", d.NameId)
 		}
 		m := *(configurationData.Data)
 		databaseConfiguration, ok := m[d.NameId].(utils.JSON)
 		if !ok {
 			if d.MustConnected {
-				err := log.Log.FatalAndCreateErrorf("Database %s configuration not found", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("database %s configuration not found", d.NameId)
 			} else {
-				err := log.Log.WarnAndCreateErrorf("Manager is unusable, database %s configuration not found", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("manager is unusable, database %s configuration not found", d.NameId)
 			}
 		}
 		n, ok := databaseConfiguration["nameid"].(string)
@@ -256,61 +250,49 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 		s, ok := databaseConfiguration["database_type"].(string)
 		if !ok {
 			if d.MustConnected {
-				err := log.Log.FatalAndCreateErrorf("Mandatory database_type field value in database %s configuration is not supported (%v)", d.NameId, s)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("mandatory database_type field value in database %s configuration is not supported (%v)", d.NameId, s)
 			} else {
-				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory database_type field value database %s configuration  is not supported (%v)", d.NameId, s)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("configuration is unusable, mandatory database_type field value database %s configuration  is not supported (%v)", d.NameId, s)
 			}
 		}
 		d.DatabaseType = database_type.StringToDXDatabaseType(s)
 		if d.DatabaseType == database_type.UnknownDatabaseType {
 			if d.MustConnected {
-				err := log.Log.FatalAndCreateErrorf("Mandatory value of database_type field of Database %s configuration is not supported (%s)", d.NameId, s)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("mandatory value of database_type field of Database %s configuration is not supported (%s)", d.NameId, s)
 			} else {
-				err := log.Log.WarnAndCreateErrorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
 			}
 		}
 		d.Address, ok = databaseConfiguration["address"].(string)
 		if !ok {
 			if d.MustConnected {
-				err := log.Log.FatalAndCreateErrorf("Mandatory address field in Database %s configuration not exist", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("mandatory address field in Database %s configuration not exist", d.NameId)
 			} else {
-				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in database %s configuration not exist", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("configuration is unusable, mandatory address field in database %s configuration not exist", d.NameId)
 			}
 		}
 		d.UserName, ok = databaseConfiguration["user_name"].(string)
 		if !ok {
 			if d.MustConnected {
-				err := log.Log.FatalAndCreateErrorf("Mandatory user_name field in Database %s configuration not exist", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("mandatory user_name field in Database %s configuration not exist", d.NameId)
 			} else {
-				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory user_name field in Database %s configuration not exist", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("configuration is unusable, mandatory user_name field in Database %s configuration not exist", d.NameId)
 			}
 		}
 		d.UserPassword, ok = databaseConfiguration["user_password"].(string)
 		if !ok {
 			if d.MustConnected {
-				err := log.Log.FatalAndCreateErrorf("Mandatory user_password field in Database %s configuration not exist", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("mandatory user_password field in Database %s configuration not exist", d.NameId)
 			} else {
-				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory user_password field in Database %s configuration not exist", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("configuration is unusable, mandatory user_password field in Database %s configuration not exist", d.NameId)
 			}
 		}
 		d.DatabaseName, ok = databaseConfiguration["database_name"].(string)
 		if !ok {
 			if d.MustConnected {
-				err := log.Log.FatalAndCreateErrorf("Mandatory database_name field in Database %s configuration not exist", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("mandatory database_name field in Database %s configuration not exist", d.NameId)
 			} else {
-				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory database_name field in Database %s configuration not exist", d.NameId)
-				return errors.Wrap(err, "error occured")
+				return errors.Errorf("configuration is unusable, mandatory database_name field in Database %s configuration not exist", d.NameId)
 			}
 		}
 		d.CreateScriptFiles, _ = databaseConfiguration["create_script_files"].([]string)
@@ -319,7 +301,7 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 		d.NonSensitiveConnectionString = d.GetNonSensitiveConnectionString()
 		d.ConnectionString, err = d.GetConnectionString()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		log.Log.Infof("Connecting to Database %s... done", d.NonSensitiveConnectionString)
 		d.IsConfigured = true
@@ -353,8 +335,7 @@ func (d *DXDatabase) Connect() (err error) {
 				log.Log.Fatalf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return nil
 			} else {
-				log.Log.Errorf("Invalid parameters to open database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
-				return errors.Wrap(err, "error when opering database connection")
+				return errors.Wrapf(err, "Invalid parameters to open database %s/%s", d.NameId, d.NonSensitiveConnectionString)
 			}
 		}
 		d.Connection = connection
@@ -367,8 +348,7 @@ func (d *DXDatabase) Connect() (err error) {
 				log.Log.Fatalf("Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
 				return nil
 			} else {
-				log.Log.Errorf("Cannot connect and ping to database %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
-				return errors.Wrap(err, "error occured")
+				return errors.Wrapf(err, "Cannot connect and ping to database %s/%s", d.NameId, d.NonSensitiveConnectionString)
 			}
 		}
 		d.Connected = true
@@ -382,8 +362,7 @@ func (d *DXDatabase) Disconnect() (err error) {
 		log.Log.Infof("Disconnecting to database %s/%s... start", d.NameId, d.NonSensitiveConnectionString)
 		err := (*d.Connection).Close()
 		if err != nil {
-			log.Log.Errorf("Disconnecting to database %s/%s error (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
-			return errors.Wrap(err, "error occured")
+			return errors.Wrapf(err, "Disconnecting to database %s/%s error", d.NameId, d.NonSensitiveConnectionString)
 		}
 		d.Connection = nil
 		d.Connected = false
@@ -400,7 +379,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 
 	defer func() {
 		if err != nil {
-			log.Log.Errorf("Error executing file %s (%v)", filename, err.Error())
+			_ = errors.Wrapf(err, "Error executing file %s (%v)", filename)
 		}
 	}()
 
@@ -424,7 +403,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 		}
 
 	default:
-		err = log.Log.FatalAndCreateErrorf("Driver %s is not supported", driverName)
+		log.Log.Fatalf("Driver %s is not supported", driverName)
 		return nil, err
 	}
 	log.Log.Info("SQL script executed successfully!")
@@ -442,10 +421,10 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 	for k, v := range d.CreateScriptFiles {
 		r, err := d.ExecuteFile(v)
 		if err != nil {
-			log.Log.Errorf("Error executing file %d:'%s' (%s)", k, v, err.Error())
+			log.Log.Errorf(err, "Error executing file %d:'%s' (%s)", k, v, err.Error())
 			var sqlErr mssql.Error
 			if errors.As(err, &sqlErr) {
-				log.Log.Errorf("SQL Server Error Number: %d, State: %d, FCMMessage: %s",
+				log.Log.Errorf(err, "SQL Server Error Number: %d, State: %d, Message: %s",
 					sqlErr.Number, sqlErr.State, sqlErr.Message)
 			}
 			return rs, err
@@ -462,24 +441,23 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	case "oracle":
 		tx, err := d.TransactionBegin(isolationLevel)
 		if err != nil {
-			log.Error(err.Error())
 			return errors.Wrap(err, "error occured")
 		}
 		err = callback(tx)
 		if err != nil {
-			log.Errorf("TX_ERROR_IN_CALLBACK: (%v)", err.Error())
+			log.Errorf(err, "TX_ERROR_IN_CALLBACK: (%v)", err.Error())
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf("SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
+				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 			}
 			return errors.Wrap(err, "error occured")
 		}
 		err = tx.Commit()
 		if err != nil {
-			log.Errorf("TX_ERROR_IN_COMMITT: (%v)", err.Error())
+			log.Errorf(err, "TX_ERROR_IN_COMMITT: (%v)", err.Error())
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf("ErrorInCommitRollback: (%v)", errTx.Error())
+				log.Errorf(err, "ErrorInCommitRollback: (%v)", errTx.Error())
 			}
 			return errors.Wrap(err, "error occured")
 		}
@@ -492,7 +470,6 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		ReadOnly:  false,
 	})
 	if err != nil {
-		log.Error(err.Error())
 		return errors.Wrap(err, "error occured")
 	}
 	dtx := &DXDatabaseTx{
@@ -501,19 +478,19 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	}
 	err = callback(dtx)
 	if err != nil {
-		log.Errorf("TX_ERROR_IN_CALLBACK: (%v)", err.Error())
+		log.Errorf(err, "TX_ERROR_IN_CALLBACK: (%v)", err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf("SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
+			log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 		}
 		return errors.Wrap(err, "error occured")
 	}
 	err = dtx.Tx.Commit()
 	if err != nil {
-		log.Errorf("TX_ERROR_IN_COMMIT: (%v)", err.Error())
+		log.Errorf(err, "TX_ERROR_IN_COMMIT: (%v)", err.Error())
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf("ErrorInCommitRollback: (%v)", errTx.Error())
+			log.Errorf(err, "ErrorInCommitRollback: (%v)", errTx.Error())
 		}
 		return errors.Wrap(err, "error occured")
 	}
