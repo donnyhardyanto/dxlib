@@ -8,6 +8,7 @@ import (
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 	"net/http"
 	"sort"
+	"strings"
 )
 
 type DXAPIEndPointType int
@@ -177,6 +178,10 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 }
 
 func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId, aType, description string, isMustExist bool) *DXAPIEndPointParameter {
+	nameId = strings.TrimSpace(nameId)
+	aType = strings.TrimSpace(aType)
+	description = strings.TrimSpace(description)
+
 	p := DXAPIEndPointParameter{Owner: aep, NameId: nameId, Type: aType, Description: description, IsMustExist: isMustExist}
 	switch aType {
 	case "nullable-int64":
