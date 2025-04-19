@@ -121,7 +121,11 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 		msg = responseMessage
 	}
 	err = aepr.Log.WarnAndCreateErrorf(msg, data...)
-	aepr.WriteResponseAsErrorMessage(statusCode, fmt.Sprintf(responseMessage, data))
+	s := responseMessage
+	if data != nil {
+		s = fmt.Sprintf(responseMessage, data)
+	}
+	aepr.WriteResponseAsErrorMessage(statusCode, s)
 	return err
 }
 
