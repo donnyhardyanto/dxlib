@@ -2,15 +2,16 @@ package raw
 
 import (
 	"database/sql"
-	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
+	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {
-	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
+	dbt := database_type.StringToDXDatabaseType(db.DriverName())
+	err = sqlchecker.CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
@@ -24,7 +25,8 @@ func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error
 }
 
 func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err error) {
-	err = sqlchecker.CheckAll(tx.DriverName(), query, arg)
+	dbt := database_type.StringToDXDatabaseType(tx.DriverName())
+	err = sqlchecker.CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
@@ -43,8 +45,7 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 		args        []interface{}
 	)
 
-	// Get the driver name from the db connection
-	dbDriverName := strings.ToLower(db.DriverName())
+	dbt := database_type.StringToDXDatabaseType(db.DriverName())
 
 	// First, convert named parameters to positional parameters (? placeholders)
 	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
@@ -53,12 +54,12 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 	}
 
 	// Then handle database-specific parameter styles
-	switch dbDriverName {
-	case "postgres":
+	switch dbt {
+	case database_type.PostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case "oracle":
+	case database_type.Oracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -68,7 +69,7 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 			args = append(args, sql.Named(name, value))
 		}
 
-	case "mysql":
+	case database_type.MySQL, database_type.MariaDb:
 		// MySQL uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -77,12 +78,12 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case "sqlserver", "mssql":
+	case database_type.SQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
 	default:
-		return nil, errors.Errorf("unsupported database driver: %s", dbDriverName)
+		return nil, errors.Errorf("unsupported database driver: %s", db.DriverName())
 	}
 
 	// Call the RawExec function with the modified SQL and arguments
@@ -99,8 +100,7 @@ func TxExec(
 		args        []interface{}
 	)
 
-	// Get the driver name from the tx connection
-	dbDriverName := strings.ToLower(tx.DriverName())
+	dbt := database_type.StringToDXDatabaseType(tx.DriverName())
 
 	// First, convert named parameters to positional parameters (? placeholders)
 	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
@@ -109,12 +109,12 @@ func TxExec(
 	}
 
 	// Then handle database-specific parameter styles
-	switch dbDriverName {
-	case "postgres":
+	switch dbt {
+	case database_type.PostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
-	case "oracle":
+	case database_type.Oracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -124,7 +124,7 @@ func TxExec(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case "mysql":
+	case database_type.MySQL, database_type.MariaDb:
 		// MySQL uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -133,12 +133,12 @@ func TxExec(
 		}
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
-	case "sqlserver", "mssql":
+	case database_type.SQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
 	default:
-		return nil, errors.Errorf("unsupported database driver: %s", dbDriverName)
+		return nil, errors.Errorf("unsupported database driver: %s", tx.DriverName())
 	}
 
 	// Call the RawTxExec function with the modified SQL and arguments

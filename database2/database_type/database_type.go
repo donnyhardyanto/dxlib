@@ -46,6 +46,7 @@ func (t DXDatabaseType) Driver() string {
 		return "unknown"
 	}
 }
+
 func StringToDXDatabaseType(v string) DXDatabaseType {
 	switch v {
 	case "postgres", "postgresql":

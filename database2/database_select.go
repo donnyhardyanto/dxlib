@@ -1,7 +1,6 @@
 package database2
 
 import (
-	oldDb "github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
@@ -73,7 +72,7 @@ func (d *DXDatabase) Count(tableName string, whereAndFieldNameValues utils.JSON,
 			return count, nil
 		}
 		log.Log.Warnf("COUNT_ERROR:%s=%v", tableName, err.Error())
-		if !oldDb.isConnectionError(err) {
+		if !IsConnectionError(err) {
 			return 0, err
 		}
 		err = d.CheckConnectionAndReconnect()

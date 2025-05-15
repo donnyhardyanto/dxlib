@@ -35,6 +35,21 @@ func (bt *DXBaseTable) Select(log *log.DXLog, fieldNames []string, whereAndField
 	return rowsInfo, r, err
 }
 
+func (bt *DXBaseTable) Count(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any) (count int64, err error) {
+
+	// Ensure database is initialized
+	if err := bt.DbEnsureInitialize(); err != nil {
+		return 0, err
+	}
+
+	count, err = bt.Database.Count(bt.ListViewNameId, whereAndFieldNameValues, joinSQLPart)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (bt *DXBaseTable) ShouldSelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
 
@@ -139,21 +154,36 @@ func (bt *DXBaseTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err er
 	return nil
 }
 
-func (bt *DXBaseTable) TxShouldSelectOne(tx *database.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
-	return tx.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, offset, forUpdate)
-}
-
 func (bt *DXBaseTable) TxSelect(tx *database.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	return tx.Select(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderByFieldNameDirections, limit, offset, forUpdatePart)
 }
 
+func (bt *DXBaseTable) TxCount(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON, joinSQLPart any) (count int64, err error) {
+
+	// Ensure database is initialized
+	if err := bt.DbEnsureInitialize(); err != nil {
+		return 0, err
+	}
+
+	count, err = tx.Count(bt.ListViewNameId, whereAndFieldNameValues, joinSQLPart)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (bt *DXBaseTable) TxSelectOne(tx *database.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections utils2.FieldsOrderBy, offset any,
 	forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
 
 	return tx.SelectOne(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, offset, forUpdate)
+}
+
+func (bt *DXBaseTable) TxShouldSelectOne(tx *database.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	return tx.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, offset, forUpdate)
 }
 
 func (bt *DXBaseTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
@@ -219,10 +249,12 @@ func (bt *DXBaseTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere
 
 func (bt *DXBaseTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
 	sqlStatement := strings.Join([]string{"SELECT * FROM", bt.ListViewNameId}, " ")
+	sqlCountStatement := strings.Join([]string{"SELECT count(*) as count_result FROM", bt.ListViewNameId}, " ")
 
 	if filterWhere != "" {
 		err = sqlchecker.CheckBaseQuery(filterWhere, bt.DatabaseType)
 		sqlStatement = sqlStatement + " WHERE " + filterWhere
+		sqlCountStatement = sqlCountStatement + " WHERE " + filterWhere
 	}
 	if filterOrderBy != "" {
 		err = sqlchecker.CheckOrderBy(filterOrderBy, bt.DatabaseType)
@@ -235,25 +267,54 @@ func (bt *DXBaseTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filte
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
 	if err != nil {
 		return err
+	}
 
 	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
 	if err != nil {
 		return errors.Wrap(err, "error occured")
 	}
 
-		err = sqlchecker.CheckAll(bt.DatabaseType, sqlStatement, nil)
+	err = sqlchecker.CheckAll(bt.DatabaseType, sqlStatement, nil)
+	if err != nil {
+		return err
+	}
+
+	dtx, err := bt.Database.TransactionBegin(database.LevelRepeatableRead)
+	if err != nil {
+		return err
+	}
+	defer func() {
 		if err != nil {
-			return err
+			dtx.Rollback()
+		} else {
+			dtx.Commit()
 		}
+	}()
 
-		rowsInfo, list, err := raw.QueryRows(bt.Database.Connection, bt.FieldTypeMapping, sqlStatement, filterKeyValues)
+	_, count, err := raw.TxQueryRows(dtx, bt.FieldTypeMapping, sqlCountStatement, filterKeyValues)
+	if err != nil {
+		return err
+	}
 
-	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(bt.Database.Connection, bt.FieldTypeMapping, "", rowPerPage, pageIndex, "*", bt.ListViewNameId,
-		filterWhere, "", filterOrderBy, filterKeyValues)
+	_, countList, err := raw.QueryRows(bt.Database.Connection, bt.FieldTypeMapping, sqlCountStatement, filterKeyValues)
+	if err != nil {
+		return err
+	}
+
+	totalRows := int(countList[0].(utils.JSON)["count_result"].(float64))
+	totalPage := int((totalRows + rowPerPage - 1) / rowPerPage)
+
+	rowsInfo, list, err := raw.QueryRows(bt.Database.Connection, bt.FieldTypeMapping, sqlStatement, filterKeyValues)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
 	}
 
+	/*	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(bt.Database.Connection, bt.FieldTypeMapping, "", rowPerPage, pageIndex, "*", bt.ListViewNameId,
+			filterWhere, "", filterOrderBy, filterKeyValues)
+		if err != nil {
+			return errors.Wrap(err, "error occured")
+		}
+	*/
 	for i := range list {
 
 		if onResultList != nil {

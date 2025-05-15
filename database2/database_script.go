@@ -27,7 +27,7 @@ func (ds *DXDatabaseScript) Execute(d *DXDatabase) (rs []sql.Result, err error) 
 	for k, v := range ds.Files {
 		r, err := ds.ExecuteFile(d, v)
 		if err != nil {
-			log.Log.Errorf("Error executing file %d:'%s' (%s)", k, v, err.Error())
+			log.Log.Errorf(err, "Error executing file %d:'%s' (%s)", k, v, err.Error())
 			return rs, err
 		}
 		rs = append(rs, r)

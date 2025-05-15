@@ -129,7 +129,7 @@ func CheckDatabaseError(err error) error {
 	}
 
 	// Check for connection errors
-	if isConnectionError(err) {
+	if IsConnectionError(err) {
 		return ReplaceErrorWithDriverDetails(err, "ERROR_DB_NOT_CONNECTED")
 	}
 
@@ -210,8 +210,8 @@ func IsDuplicateKeyError(err error) bool {
 	return false
 }
 
-// isConnectionError detects database connection issues across different database systems
-func isConnectionError(err error) bool {
+// IsConnectionError detects database connection issues across different database systems
+func IsConnectionError(err error) bool {
 	if err == nil {
 		return false
 	}

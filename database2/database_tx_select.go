@@ -19,6 +19,16 @@ func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping utils2.FieldT
 	return rowsInfo, resultData, nil
 }
 
+func (dtx *DXDatabaseTx) Count(tableName string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (count int64, err error) {
+
+	count, err = db.TxCount(dtx.Tx, tableName, "COUNT(*)", whereAndFieldNameValues, joinSQLPart, nil, "", "")
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderbyFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
 
