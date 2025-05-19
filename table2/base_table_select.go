@@ -291,7 +291,7 @@ func (bt *DXBaseTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filte
 		}
 	}()
 
-	_, count, err := raw.TxQueryRows(dtx, bt.FieldTypeMapping, sqlCountStatement, filterKeyValues)
+	count, err := raw.TxQueryRows(dtx, bt.FieldTypeMapping, sqlCountStatement, filterKeyValues)
 	if err != nil {
 		return err
 	}

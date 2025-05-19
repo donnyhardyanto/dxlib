@@ -2,8 +2,9 @@ package table
 
 import (
 	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/donnyhardyanto/dxlib/database"
+	database "github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/pkg/errors"
 )
 
 type DXTableManager struct {

@@ -145,6 +145,66 @@ func QueryRows(
 	return RawQueryRows(db, fieldTypeMapping, modifiedSQL, args)
 }
 
+func Count(
+	db *sqlx.DB,
+	sqlStatement string,
+	sqlArguments utils.JSON,
+) (count int64, err error) {
+	var (
+		modifiedSQL string
+		args        []interface{}
+		err         error
+	)
+	dbt := database_type.StringToDXDatabaseType(db.DriverName())
+
+	// First, convert named parameters to positional parameters (? placeholders)
+	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to convert named parameters")
+	}
+
+	// Then handle database-specific parameter styles
+	switch dbt {
+	case database_type.PostgreSQL:
+		// PostgreSQL uses $1, $2, etc.
+		modifiedSQL = db.Rebind(modifiedSQL)
+
+	case database_type.Oracle:
+		// For go-ora, we need to use sql.Named for each parameter
+		// Keep the original SQL with :name parameters (no modification needed)
+
+		// Convert JSON arguments to sql.Named arguments
+		args = make([]interface{}, 0, len(sqlArguments))
+		for name, value := range sqlArguments {
+			args = append(args, sql.Named(name, value))
+		}
+
+	case database_type.MySQL, database_type.MariaDb:
+		// MySQL uses ? placeholders
+		// Convert to question mark format if needed for IN clauses
+		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert to MySQL parameter format")
+		}
+		modifiedSQL = db.Rebind(modifiedSQL)
+
+	case database_type.SQLServer:
+		// SQL Server uses @p1, @p2, etc.
+		modifiedSQL = db.Rebind(modifiedSQL)
+
+	default:
+		return 0, errors.Errorf("unsupported database driver: %s", db.DriverName())
+	}
+
+	// Call the original RawQueryRows function with the modified SQL and arguments
+	_, r, err := RawQueryRows(db, nil, modifiedSQL, args)
+	if err != nil {
+		return 0, errors.Wrapf(err, "error executing count query %s with args %+v", modifiedSQL, args)
+	}
+	if
+
+}
+
 func TxQueryRows(
 	tx *sqlx.Tx,
 	fieldTypeMapping utils2.FieldTypeMapping,

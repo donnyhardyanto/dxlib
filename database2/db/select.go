@@ -516,7 +516,7 @@ func isSubquery(str string) bool {
 //	// Count with subquery
 //	count, err := Count(db, "(SELECT * FROM orders WHERE date > '2023-01-01')", "", nil, nil, nil, "", "")
 //	// Generates: SELECT COUNT(*) FROM (SELECT * FROM orders WHERE date > '2023-01-01') AS subquery__sq_[unique_id]
-func Count(db *sqlx.DB, tableOrSubquery string, countExpr string, whereAndFieldNameValues utils.JSON,
+func Count(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereAndFieldNameValues utils.JSON,
 	joinSQLPart any, groupByFields []string, havingClause string, withCTE string) (count int64, err error) {
 
 	// Determine if this is a subquery
@@ -529,9 +529,9 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpr string, whereAndFieldN
 
 	// Prepare the count expression
 	effectiveCountExpr := "count(*)"
-	if countExpr != "" {
+	/*	if countExpr != "" {
 		effectiveCountExpr = countExpr
-	}
+	}*/
 
 	// For subqueries, wrap them properly
 	effectiveTable := tableOrSubquery
@@ -549,6 +549,68 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpr string, whereAndFieldN
 		// Clear WHERE conditions for subqueries
 		whereAndFieldNameValues = utils.JSON{}
 	}
+
+	// Execute the SELECT query with COUNT expression
+	rowsInfo, rows, err := BaseSelect(db, nil, effectiveTable, []string{effectiveCountExpr},
+		whereAndFieldNameValues, joinSQLPart, nil, nil, nil, nil,
+		groupByFields, havingClause, withCTE)
+
+	if err != nil {
+		return 0, err
+	}
+
+	// Validate the result
+	if len(rows) == 0 || len(rowsInfo.Columns) == 0 {
+		return 0, errors.New("no results returned from count query")
+	}
+
+	// Extract the count value from the first column
+	firstColumn := rowsInfo.Columns[0]
+	countValue, ok := rows[0][firstColumn]
+	if !ok {
+		return 0, errors.Errorf("count column '%s' not found in result", firstColumn)
+	}
+
+	// Convert to int64
+	return utils.ConvertToInt64(countValue)
+}
+
+func CountWhere(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereStatements string, args []any) (count int64, err error) {
+
+	// Determine if this is a subquery
+	isSubquery := isSubquery(tableOrSubquery)
+
+	// When using a subquery, we shouldn't apply WHERE conditions to the outer query
+	if isSubquery && whereStatements != "" && len(args) > 0 {
+		return 0, errors.New("cannot apply WHERE conditions to outer level of a subquery; include them in the subquery instead")
+	}
+
+	// Prepare the count expression
+	effectiveCountExpr := "count(*)"
+	/*	if countExpr != "" {
+		effectiveCountExpr = countExpr
+	}*/
+
+	// For subqueries, wrap them properly
+	effectiveTable := tableOrSubquery
+	if isSubquery {
+		// Create a unique alias
+		uniqueSuffix := "__sq_" + strconv.FormatInt(time.Now().UnixNano(), 36)
+
+		// Handle database-specific subquery syntax
+		if db.DriverName() == "oracle" {
+			effectiveTable = "(" + tableOrSubquery + ") subquery" + uniqueSuffix
+		} else {
+			effectiveTable = "(" + tableOrSubquery + ") as subquery" + uniqueSuffix
+		}
+
+		// Clear WHERE conditions for subqueries
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	s := "select " + effectiveCountExpr + " from " + effectiveTable + " where " + whereStatements
+
+	rowsInfo, rows, err = raw.QueryRows(db, nil, s, wKV)
 
 	// Execute the SELECT query with COUNT expression
 	rowsInfo, rows, err := BaseSelect(db, nil, effectiveTable, []string{effectiveCountExpr},
