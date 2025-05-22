@@ -284,7 +284,7 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 	fullPathObjectName = fullPathObjectName + objectName
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	info, err := r.Client.PutObject(
+	/*info, err := r.Client.PutObject(
 		ctx,
 		r.BucketName,
 		fullPathObjectName,
@@ -294,9 +294,23 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 			ContentType:      contentType,
 			DisableMultipart: disableMultipart,
 			UserMetadata: map[string]string{
-				"original_filename": originalFilename,
+				"original-filename": originalFilename,
 			}},
-	)
+	)*/
+	tags := make(map[string]string)
+	tags["original-filename"] = originalFilename
+
+	info, err := r.Client.PutObject(
+		ctx,
+		r.BucketName,
+		fullPathObjectName,
+		reader,
+		objectSize,
+		minio.PutObjectOptions{
+			ContentType:      contentType,
+			DisableMultipart: disableMultipart,
+			UserTags:         tags,
+		})
 	if err != nil {
 		var err2 minio.ErrorResponse
 		if errors.As(err, &err2) {
