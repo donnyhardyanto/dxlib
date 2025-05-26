@@ -30,6 +30,7 @@ type DXRawTable struct {
 	FieldNameForRowUid         string
 	FieldTypeMapping           db.FieldTypeMapping
 	ResponseEnvelopeObjectName string
+	FieldMaxLengths            map[string]int
 }
 
 func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
@@ -131,6 +132,15 @@ func (t *DXRawTable) TxShouldGetByNameId(tx *database.DXDatabaseTx, nameId strin
 }
 
 func (t *DXRawTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
+	for k, v := range newKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				newKeyValues[k] = vs[:l]
+			}
+		}
+	}
 	newId, err = tx.Insert(t.NameId, newKeyValues)
 	return newId, err
 }
@@ -143,6 +153,16 @@ func (t *DXRawTable) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *datab
 func (t *DXRawTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
 	if t.Database == nil {
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	for k, v := range newKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				newKeyValues[k] = vs[:l]
+			}
+		}
 	}
 
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
@@ -158,6 +178,16 @@ func (t *DXRawTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues uti
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
+	for k, v := range setKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				setKeyValues[k] = vs[:l]
+			}
+		}
+	}
+
 	return t.Database.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
@@ -169,6 +199,17 @@ func (t *DXRawTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues
 	if t.Database == nil {
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
+
+	for k, v := range setKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				setKeyValues[k] = vs[:l]
+			}
+		}
+	}
+
 	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
 		t.FieldNameForRowId: FieldValueForId,
 	})
@@ -182,6 +223,17 @@ func (t *DXRawTable) UpdateOneByUid(l *log.DXLog, FieldValueForUid string, setKe
 	if t.Database == nil {
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
+
+	for k, v := range setKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				setKeyValues[k] = vs[:l]
+			}
+		}
+	}
+
 	return t.Database.Update(t.NameId, setKeyValues, utils.JSON{
 		t.FieldNameForRowUid: FieldValueForUid,
 	})
@@ -191,6 +243,17 @@ func (t *DXRawTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValue
 	if t.Database == nil {
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
+
+	for k, v := range newKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				newKeyValues[k] = vs[:l]
+			}
+		}
+	}
+
 	newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newKeyValues)
 	return newId, err
 }
@@ -275,6 +338,16 @@ func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValu
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
+	for k, v := range newKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				newKeyValues[k] = vs[:l]
+			}
+		}
+	}
+
 	_, err = db.Update(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
 		t.FieldNameForRowId: id,
 	})
@@ -303,6 +376,16 @@ func (t *DXRawTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, new
 
 	if t.Database == nil {
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	for k, v := range newKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				newKeyValues[k] = vs[:l]
+			}
+		}
 	}
 
 	_, err = db.Update(t.Database.Connection, t.NameId, newKeyValues, utils.JSON{
@@ -498,6 +581,16 @@ func (t *DXRawTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFie
 func (t *DXRawTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	for k, v := range setKeyValues {
+		l, ok := t.FieldMaxLengths[k]
+		if ok {
+			vs, ok := v.(string)
+			if ok {
+				setKeyValues[k] = vs[:l]
+			}
+		}
 	}
 
 	return tx.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
