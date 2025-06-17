@@ -315,7 +315,7 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 		var err2 minio.ErrorResponse
 		if errors.As(err, &err2) {
 			// Log specific MinIO error details
-			return nil, log.Log.ErrorAndCreateErrorf("MINIO_ERROR: %s - %s", err2.Code, err2.Message)
+			return nil, log.Log.ErrorAndCreateErrorf("MINIO_ERROR: %s - %s, Bucket:%s, FullPathObjectName:%s", err2.Code, err2.Message, r.BucketName, fullPathObjectName)
 		}
 		return nil, log.Log.ErrorAndCreateErrorf("UPLOAD_ERROR: %v", err)
 	}
