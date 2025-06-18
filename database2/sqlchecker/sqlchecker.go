@@ -531,7 +531,7 @@ var (
 		`\bwaitfor\b`, `\bdelay\b`, `\bsys_eval\b`,
 		`\binformation_schema\b`, `\bsysobjects\b`,
 		`\bxp_\w*\b`, `\bsp_\w*\b`, `\bdeclare\b`,
-		`\d+=\d+`,
+		`\b\d+\s*=\s*\d+\b`,
 	}
 
 	// Maximum identifier lengths per dialect
@@ -916,7 +916,7 @@ func CheckAll(dialect database_type.DXDatabaseType, query string, arg any) (err 
 	}
 	err = CheckBaseQuery(query, dialect)
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
 
 	err = CheckValue(arg)

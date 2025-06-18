@@ -55,7 +55,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, query
 	dbt := database_type.StringToDXDatabaseType(tx.DriverName())
 	err = sqlchecker.CheckAll(dbt, query, arg)
 	if err != nil {
-		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
 
 	rows, err := tx.Queryx(query, arg...)

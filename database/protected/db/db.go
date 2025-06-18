@@ -956,7 +956,7 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 
 	err := sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
-		return 0, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return 0, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
 
 	rows, err := db.NamedQuery(query, arg)
@@ -990,7 +990,7 @@ func NamedQueryRows(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
-		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
 
 	rows, err := db.NamedQuery(query, arg)
@@ -1029,7 +1029,7 @@ func QueryRows(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, arg
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
 	if err != nil {
-		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
 
 	rows, err := db.Queryx(query, arg...)

@@ -31,7 +31,7 @@ var (
 		`\bwaitfor\b`, `\bdelay\b`, `\bsys_eval\b`,
 		`\binformation_schema\b`, `\bsysobjects\b`,
 		`\bxp_\w*\b`, `\bsp_\w*\b`, `\bdeclare\b`,
-		`\d+=\d+`,
+		`\b\d+\s*=\s*\d+\b`,
 	}
 
 	suspiciousValuePatterns = []string{
@@ -325,12 +325,12 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	}
 	err = CheckBaseQuery(query, database_type.StringToDXDatabaseType(dbDriverName))
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
 
 	err = CheckValue(arg)
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w", err)
+		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
 
 	// Check LIKE patterns
