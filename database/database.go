@@ -140,7 +140,8 @@ func (d *DXDatabase) ExecuteScript(s *DXDatabaseScript) (err error) {
 }
 
 func (d *DXDatabase) GetNonSensitiveConnectionString() string {
-	return fmt.Sprintf("%s://%s/%s", d.DatabaseType.String(), d.Address, d.DatabaseName)
+	//return fmt.Sprintf("%s://%s/%s", d.DatabaseType.String(), d.Address, d.DatabaseName)
+	return fmt.Sprintf("%s", d.ConnectionString)
 }
 
 func (d *DXDatabase) GetConnectionString() (s string, err error) {
