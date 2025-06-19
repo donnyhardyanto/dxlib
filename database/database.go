@@ -172,7 +172,6 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	default:
 		err = log.Log.ErrorAndCreateErrorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
 	}
-	log.Log.Info(s)
 	return s, err
 }
 
