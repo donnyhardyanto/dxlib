@@ -155,7 +155,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 			}
 					s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;%s", host, port, d.UserName, d.UserPassword, d.DatabaseName, d.ConnectionOptions)
 		*/
-		s = fmt.Sprintf("%s://%s:%s@%s?database=%s;&%s", d.DatabaseType.String(), d.UserName, d.UserPassword, d.Address, d.DatabaseName, d.ConnectionOptions)
+		s = fmt.Sprintf("%s://%s:%s@%s?database=%s&%s", d.DatabaseType.String(), d.UserName, d.UserPassword, d.Address, d.DatabaseName, d.ConnectionOptions)
 	case database_type.Oracle:
 		host, port, err := net.SplitHostPort(d.Address)
 		if err != nil {
