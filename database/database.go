@@ -140,8 +140,7 @@ func (d *DXDatabase) ExecuteScript(s *DXDatabaseScript) (err error) {
 }
 
 func (d *DXDatabase) GetNonSensitiveConnectionString() string {
-	//return fmt.Sprintf("%s://%s/%s", d.DatabaseType.String(), d.Address, d.DatabaseName)
-	return fmt.Sprintf("%s", d.ConnectionString)
+	return fmt.Sprintf("%s://%s/%s", d.DatabaseType.String(), d.Address, d.DatabaseName)
 }
 
 func (d *DXDatabase) GetConnectionString() (s string, err error) {
@@ -173,6 +172,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	default:
 		err = log.Log.ErrorAndCreateErrorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
 	}
+	log.Log.Info(s)
 	return s, err
 }
 
