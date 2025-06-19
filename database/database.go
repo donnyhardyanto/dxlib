@@ -172,7 +172,6 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	default:
 		err = log.Log.ErrorAndCreateErrorf("configuration is unusable, value of database_type field of database %s configuration is not supported (%s)", d.NameId, s)
 	}
-	log.Log.Info(s)
 	return s, err
 }
 
@@ -275,7 +274,7 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 		if err != nil {
 			return err
 		}
-		log.Log.Infof("Connecting to Database %s... done", d.NonSensitiveConnectionString)
+		log.Log.Infof("Connecting to Database %s... done", d.ConnectionString)
 		d.IsConfigured = true
 		log.Log.Infof("Configuring to Database %s... done", d.NameId)
 	}
