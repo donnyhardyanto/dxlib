@@ -94,11 +94,10 @@ func QueryRows(
 	fieldTypeMapping utils2.FieldTypeMapping,
 	sqlStatement string,
 	sqlArguments utils.JSON,
-) (*database_type.RowsInfo, []utils.JSON, error) {
+) (rowsInfo *database_type.RowsInfo, rows []utils.JSON, err error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
-		err         error
 	)
 	dbt := database_type.StringToDXDatabaseType(db.DriverName())
 
@@ -153,7 +152,6 @@ func Count(
 	var (
 		modifiedSQL string
 		args        []interface{}
-		err         error
 	)
 	dbt := database_type.StringToDXDatabaseType(db.DriverName())
 
@@ -201,7 +199,6 @@ func Count(
 	if err != nil {
 		return 0, errors.Wrapf(err, "error executing count query %s with args %+v", modifiedSQL, args)
 	}
-	if
 
 }
 
@@ -210,11 +207,10 @@ func TxQueryRows(
 	fieldTypeMapping utils2.FieldTypeMapping,
 	sqlStatement string,
 	sqlArguments utils.JSON,
-) (*database_type.RowsInfo, []utils.JSON, error) {
+) (rowsInfo *database_type.RowsInfo, rows []utils.JSON, err error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
-		err         error
 	)
 
 	dbt := database_type.StringToDXDatabaseType(tx.DriverName())

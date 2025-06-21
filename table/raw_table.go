@@ -160,7 +160,11 @@ func (t *DXRawTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int6
 		if ok {
 			vs, ok := v.(string)
 			if ok {
-				newKeyValues[k] = vs[:l]
+				if len(vs) > l {
+					newKeyValues[k] = vs[:l]
+				} else {
+					newKeyValues[k] = vs
+				}
 			}
 		}
 	}
