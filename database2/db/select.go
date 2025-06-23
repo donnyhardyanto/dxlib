@@ -575,7 +575,8 @@ func Count(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereAndFi
 	return utils.ConvertToInt64(countValue)
 }
 
-func CountWhere(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereStatements string, args []any) (count int64, err error) {
+/*
+  	func CountWhere(db *sqlx.DB, tableOrSubquery string , whereStatements string, args []any) (count int64, err error) {
 
 	// Determine if this is a subquery
 	isSubquery := isSubquery(tableOrSubquery)
@@ -587,9 +588,6 @@ func CountWhere(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, where
 
 	// Prepare the count expression
 	effectiveCountExpr := "count(*)"
-	/*	if countExpr != "" {
-		effectiveCountExpr = countExpr
-	}*/
 
 	// For subqueries, wrap them properly
 	effectiveTable := tableOrSubquery
@@ -636,6 +634,7 @@ func CountWhere(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, where
 	// Convert to int64
 	return utils.ConvertToInt64(countValue)
 }
+*/
 
 // TxCount executes a count query within a transaction and returns the result as an int64.
 // This implementation leverages BaseTxSelect for all database interaction.
@@ -657,7 +656,7 @@ func CountWhere(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, where
 // This function is a transaction-based version of the Count function.
 // It provides the same functionality but within a transaction context,
 // which ensures consistency across multiple database operations.
-func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpr string, whereAndFieldNameValues utils.JSON,
+func TxCount(tx *sqlx.Tx, tableOrSubquery string, whereAndFieldNameValues utils.JSON,
 	joinSQLPart any, groupByFields []string, havingClause string, withCTE string) (count int64, err error) {
 
 	// Determine if this is a subquery
@@ -670,9 +669,9 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpr string, whereAndFiel
 
 	// Prepare the count expression
 	effectiveCountExpr := "count(*)"
-	if countExpr != "" {
+	/*	if countExpr != "" {
 		effectiveCountExpr = countExpr
-	}
+	}*/
 
 	// For subqueries, wrap them properly
 	effectiveTable := tableOrSubquery

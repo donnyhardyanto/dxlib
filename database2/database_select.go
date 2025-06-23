@@ -67,7 +67,7 @@ func (d *DXDatabase) Count(tableName string, whereAndFieldNameValues utils.JSON,
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		count, err = db.Count(d.Connection, tableName, "COUNT(*)", whereAndFieldNameValues, joinSQLPart, nil, "", "")
+		count, err = db.Count(d.Connection, tableName, whereAndFieldNameValues, joinSQLPart, nil, "", "")
 		if err == nil {
 			return count, nil
 		}

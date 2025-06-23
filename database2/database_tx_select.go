@@ -21,7 +21,7 @@ func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping utils2.FieldT
 
 func (dtx *DXDatabaseTx) Count(tableName string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (count int64, err error) {
 
-	count, err = db.TxCount(dtx.Tx, tableName, "COUNT(*)", whereAndFieldNameValues, joinSQLPart, nil, "", "")
+	count, err = db.TxCount(dtx.Tx, tableName, whereAndFieldNameValues, joinSQLPart, nil, "", "")
 	if err != nil {
 		return 0, err
 	}

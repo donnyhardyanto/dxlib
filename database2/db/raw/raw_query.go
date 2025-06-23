@@ -2,6 +2,7 @@ package raw
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
@@ -146,7 +147,7 @@ func QueryRows(
 
 func Count(
 	db *sqlx.DB,
-	sqlStatement string,
+	fromWhereJoinPartSqlStatement string,
 	sqlArguments utils.JSON,
 ) (count int64, err error) {
 	var (
@@ -155,8 +156,11 @@ func Count(
 	)
 	dbt := database_type.StringToDXDatabaseType(db.DriverName())
 
+	magicVariableName := "dx_internal_rowcount_x58f2"
+	s := fmt.Sprintf("select count(*) as %s %s", magicVariableName, fromWhereJoinPartSqlStatement)
+
 	// First, convert named parameters to positional parameters (? placeholders)
-	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
+	modifiedSQL, args, err = sqlx.Named(s, sqlArguments)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to convert named parameters")
 	}
@@ -200,6 +204,22 @@ func Count(
 		return 0, errors.Wrapf(err, "error executing count query %s with args %+v", modifiedSQL, args)
 	}
 
+	if len(r) != 1 {
+		return 0, errors.New("unexpected number of rows returned from count query")
+	}
+	c, ok := r[0][magicVariableName].(int64)
+	if !ok {
+		// Handle potential type conversion for different databases
+		switch v := r[0][magicVariableName].(type) {
+		case int:
+			count = int64(v)
+		case float64:
+			count = int64(v)
+		default:
+			return 0, errors.New("unexpected type for count result")
+		}
+	}
+	return c, nil
 }
 
 func TxQueryRows(
