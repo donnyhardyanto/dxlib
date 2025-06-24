@@ -175,23 +175,22 @@ func (d *DXDatabase) GetNonSensitiveConnectionString() string {
 func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	switch d.DatabaseType {
 	case database_type.PostgreSQL:
-		host, portAsString, err := net.SplitHostPort(d.Address)
-		if err != nil {
-			return "", err
-		}
-		s = fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s %s", d.UserName, d.UserPassword, host, portAsString, d.DatabaseName, d.ConnectionOptions)
+		s = fmt.Sprintf("%s://%s:%s@%s/%s?%s", d.DatabaseType.String(), d.UserName, d.UserPassword, d.Address, d.DatabaseName, d.ConnectionOptions)
 	case database_type.SQLServer:
-		host, portAsString, err := net.SplitHostPort(d.Address)
-		if err != nil {
-			return "", err
-		}
-		s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;%s", host, portAsString, d.UserName, d.UserPassword, d.DatabaseName, d.ConnectionOptions)
+		/*
+				host, port, err := net.SplitHostPort(d.Address)
+			if err != nil {
+				return "", err
+			}
+						s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;%s", host, port, d.UserName, d.UserPassword, d.DatabaseName, d.ConnectionOptions)
+		*/
+		s = fmt.Sprintf("%s://%s:%s@%s?database=%s&%s", d.DatabaseType.String(), d.UserName, d.UserPassword, d.Address, d.DatabaseName, d.ConnectionOptions)
 	case database_type.Oracle:
-		host, portAsString, err := net.SplitHostPort(d.Address)
+		host, port, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
 		}
-		portInt, err := strconv.Atoi(portAsString)
+		portInt, err := strconv.Atoi(port)
 		if err != nil {
 			return "", err
 		}
