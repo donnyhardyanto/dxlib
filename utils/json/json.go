@@ -89,6 +89,44 @@ func anyMerge(newerValue, olderValue any) any {
 	return newerValue
 }
 
+func DeepMerge2(x1, x2 utils.JSON) utils.JSON {
+	return anyMerge2(x1, x2).(utils.JSON)
+}
+
+func anyMerge2(newerValue, olderValue any) any {
+	x1, isMap1 := newerValue.(utils.JSON)
+	x2, isMap2 := olderValue.(utils.JSON)
+
+	// Case 1: Both are maps, perform a deep merge into a new map.
+	if isMap1 && isMap2 {
+		// Start with a deep copy of the newer map to ensure no mutation of the original.
+		out := Copy(x1)
+
+		// Merge keys from the older map into our new map.
+		for k, v2 := range x2 {
+			if v1, ok := out[k]; ok {
+				// Key exists in both, so we recurse.
+				out[k] = anyMerge2(v1, v2)
+			} else {
+				// Key only exists in the older map, so add it.
+				out[k] = v2
+			}
+		}
+		return out
+	}
+
+	// Case 2: newerValue is nil, and olderValue is a map. Return the older map.
+	// This is safe as we don't mutate our inputs.
+	if newerValue == nil && isMap2 {
+		return x2
+	}
+
+	// Case 3: In all other scenarios, the newerValue takes precedence.
+	// We return it directly. This function has fulfilled its contract of not
+	// mutating its inputs.
+	return newerValue
+}
+
 func GetBool(kv utils.JSON, k string) (bool, error) {
 	val, exists := kv[k]
 	if !exists {

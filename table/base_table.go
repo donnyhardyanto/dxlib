@@ -1,6 +1,7 @@
 package table
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database"
@@ -160,9 +161,53 @@ func (t *DXBaseTable) TxShouldGetByNameId(tx *database.DXDatabaseTx, nameId stri
 	return rowsInfo, r, err
 }
 
+func (t *DXBaseTable) Upsert(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, newId int64, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	_, r, err := t.Database.SelectOne(t.NameId, nil, nil, whereAndFieldNameValues, nil, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	if r == nil {
+		newSetKeyValues := utilsJson.DeepMerge2(setKeyValues, whereAndFieldNameValues)
+
+		newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newSetKeyValues)
+		return nil, newId, err
+	} else {
+		result, err = t.Database.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
+		return result, 0, err
+	}
+}
+
 func (t *DXBaseTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
 	newId, err = tx.Insert(t.NameId, newKeyValues)
 	return newId, err
+}
+
+func (t *DXBaseTable) TxUpsert(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, newId int64, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	_, r, err := tx.SelectOne(t.NameId, nil, nil, whereAndFieldNameValues, nil, nil, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	if r == nil {
+		newSetKeyValues := utilsJson.DeepMerge2(setKeyValues, whereAndFieldNameValues)
+
+		newId, err = tx.Insert(t.NameId, newSetKeyValues)
+		return nil, newId, err
+	} else {
+		result, err = tx.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
+		return result, 0, err
+	}
 }
 
 func (bt *DXBaseTable) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {

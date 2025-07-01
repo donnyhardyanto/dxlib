@@ -239,6 +239,30 @@ func (t *DXTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, 
 	return newId, err
 }
 
+func (t *DXTable) Upsert(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, newId int64, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	if t.Database == nil {
+		t.Database = database.Manager.Databases[t.DatabaseNameId]
+	}
+
+	_, r, err := t.Database.SelectOne(t.NameId, nil, nil, whereAndFieldNameValues, nil, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	if r == nil {
+		newSetKeyValues := utilsJson.DeepMerge2(setKeyValues, whereAndFieldNameValues)
+
+		newId, err = t.Database.Insert(t.NameId, t.FieldNameForRowId, newSetKeyValues)
+		return nil, newId, err
+	} else {
+		result, err = t.Database.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
+		return result, 0, err
+	}
+}
+
 func (t *DXTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -754,6 +778,26 @@ func (t *DXTable) TxSelectOneForUpdate(tx *database.DXDatabaseTx, whereAndFieldN
 	whereAndFieldNameValues["is_deleted"] = false
 
 	return tx.SelectOne(t.NameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
+}
+
+func (t *DXTable) TxUpsert(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, newId int64, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	_, r, err := tx.SelectOne(t.NameId, nil, nil, whereAndFieldNameValues, nil, nil, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	if r == nil {
+		newSetKeyValues := utilsJson.DeepMerge2(setKeyValues, whereAndFieldNameValues)
+
+		newId, err = tx.Insert(t.NameId, newSetKeyValues)
+		return nil, newId, err
+	} else {
+		result, err = tx.Update(t.NameId, setKeyValues, whereAndFieldNameValues)
+		return result, 0, err
+	}
 }
 
 func (t *DXTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {

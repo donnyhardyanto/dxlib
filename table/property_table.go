@@ -413,6 +413,49 @@ func (pt *DXPropertyTable) TxShouldGetByNameId(tx *database.DXDatabaseTx, nameId
 	return rowsInfo, r, err
 }
 
+func (pt *DXPropertyTable) Upsert(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, newId int64, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	if pt.Database == nil {
+		pt.Database = database.Manager.Databases[pt.DatabaseNameId]
+	}
+
+	_, r, err := pt.Database.SelectOne(pt.NameId, nil, nil, whereAndFieldNameValues, nil, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	if r == nil {
+		newSetKeyValues := utilsJson.DeepMerge2(setKeyValues, whereAndFieldNameValues)
+
+		newId, err = pt.Database.Insert(pt.NameId, pt.FieldNameForRowId, newSetKeyValues)
+		return nil, newId, err
+	} else {
+		result, err = pt.Database.Update(pt.NameId, setKeyValues, whereAndFieldNameValues)
+		return result, 0, err
+	}
+}
+func (pt *DXPropertyTable) TxUpsert(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, newId int64, err error) {
+	if whereAndFieldNameValues == nil {
+		whereAndFieldNameValues = utils.JSON{}
+	}
+
+	_, r, err := tx.SelectOne(pt.NameId, nil, nil, whereAndFieldNameValues, nil, nil, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	if r == nil {
+		newSetKeyValues := utilsJson.DeepMerge2(setKeyValues, whereAndFieldNameValues)
+
+		newId, err = tx.Insert(pt.NameId, newSetKeyValues)
+		return nil, newId, err
+	} else {
+		result, err = tx.Update(pt.NameId, setKeyValues, whereAndFieldNameValues)
+		return result, 0, err
+	}
+}
+
 func (pt *DXPropertyTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
 	//n := utils.NowAsString()
 	tt := time.Now().UTC()
