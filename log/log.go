@@ -177,7 +177,7 @@ func (l *DXLog) WarnAndCreateErrorf(text string, v ...any) (err error) {
 }
 
 func (l *DXLog) Error(text string, err error) {
-	l.LogText(err, DXLogLevelError, l.Prefix, text, err)
+	l.LogText(err, DXLogLevelError, l.Prefix, text)
 }
 
 func (l *DXLog) Errorf(err error, text string, v ...any) {
@@ -192,7 +192,7 @@ func (l *DXLog) ErrorAndCreateErrorf(text string, v ...any) (err error) {
 }
 
 func (l *DXLog) Fatal(text string) {
-	l.LogText(nil, DXLogLevelFatal, l.Prefix, text, nil)
+	l.LogText(nil, DXLogLevelFatal, l.Prefix, text)
 }
 
 func (l *DXLog) Fatalf(text string, v ...any) {
@@ -206,7 +206,7 @@ func (l *DXLog) FatalAndCreateErrorf(text string, v ...any) (err error) {
 }
 
 func (l *DXLog) Panic(location string, err error) {
-	l.LogText(err, DXLogLevelPanic, location, "", err)
+	l.LogText(err, DXLogLevelPanic, location, "")
 }
 
 func (l *DXLog) PanicAndCreateErrorf(location, text string, v ...any) (err error) {
