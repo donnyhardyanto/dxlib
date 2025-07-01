@@ -1,4 +1,4 @@
-package table
+package table2
 
 import (
 	"github.com/donnyhardyanto/dxlib/api"
@@ -17,7 +17,7 @@ type TableInterface interface {
 }
 
 // DXBaseTable contains common fields for all table types
-type DXBaseTable struct {
+type DXBaseTable2 struct {
 	DatabaseType                database_type.DXDatabaseType
 	DatabaseNameId              string
 	Database                    *database.DXDatabase
@@ -32,15 +32,15 @@ type DXBaseTable struct {
 	FieldTypeMapping            utils2.FieldTypeMapping
 	OnBeforeInsert              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
 	OnBeforeUpdate              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
-	OnResultProcessEachListRow  func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable, rowData utils.JSON) (newRowData utils.JSON, err error)
-	OnResponseObjectConstructor func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable, rawResponseObject utils.JSON) (responseObject utils.JSON, err error)
+	OnResultProcessEachListRow  func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable2, rowData utils.JSON) (newRowData utils.JSON, err error)
+	OnResponseObjectConstructor func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable2, rawResponseObject utils.JSON) (responseObject utils.JSON, err error)
 }
 
-func (bt *DXBaseTable) Initialize() TableInterface {
+func (bt *DXBaseTable2) Initialize() TableInterface {
 	return bt
 }
 
-func (bt *DXBaseTable) DbEnsureInitialize() (err error) {
+func (bt *DXBaseTable2) DbEnsureInitialize() (err error) {
 	if bt.Database == nil {
 		bt.Database = database.Manager.Databases[bt.DatabaseNameId]
 		if bt.Database == nil {
@@ -87,16 +87,16 @@ func DoBeforeInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) err
 }
 
 type DXRawTable2 struct {
-	DXBaseTable
+	DXBaseTable2
 }
 
 type DXTable2 struct {
 	DXRawTable2
 }
 
-func (bt *DXTable2) Initialize() TableInterface {
-	bt.OnBeforeInsert = DoBeforeInsert
-	return bt
+func (t *DXTable2) Initialize() TableInterface {
+	t.OnBeforeInsert = DoBeforeInsert
+	return t
 }
 
 type DXPropertyTable2 struct {

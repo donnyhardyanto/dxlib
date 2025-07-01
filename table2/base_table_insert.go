@@ -1,15 +1,15 @@
-package table
+package table2
 
 import (
 	"github.com/donnyhardyanto/dxlib/api"
-	database "github.com/donnyhardyanto/dxlib/database2"
+	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
 	"net/http"
 )
 
-func (bt *DXBaseTable) Insert(newKeyValues utils.JSON) (newId int64, newUid string, err error) {
+func (bt *DXBaseTable2) Insert(newKeyValues utils.JSON) (newId int64, newUid string, err error) {
 	// Ensure database is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
 		return 0, "", err
@@ -44,7 +44,7 @@ func (bt *DXBaseTable) Insert(newKeyValues utils.JSON) (newId int64, newUid stri
 	return newId, newUid, nil
 }
 
-func (bt *DXBaseTable) DoRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (err error) {
+func (bt *DXBaseTable2) DoRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (err error) {
 
 	// Execute OnBeforeInsert callback if provided
 	if bt.OnBeforeInsert != nil {
@@ -69,7 +69,7 @@ func (bt *DXBaseTable) DoRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyVal
 
 // Note: New name is RequestInsert, the RequestCreate is depreciated
 
-func (bt *DXBaseTable) RequestInsert(aepr *api.DXAPIEndPointRequest) (err error) {
+func (bt *DXBaseTable2) RequestInsert(aepr *api.DXAPIEndPointRequest) (err error) {
 	p := map[string]interface{}{}
 	for k, v := range aepr.ParameterValues {
 		p[k] = v.Value
@@ -83,11 +83,11 @@ func (bt *DXBaseTable) RequestInsert(aepr *api.DXAPIEndPointRequest) (err error)
 
 // Note: New name is RequestInsert, the RequestCreate is depreciated
 
-func (bt *DXBaseTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
+func (bt *DXBaseTable2) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 	return bt.RequestInsert(aepr)
 }
 
-func (bt *DXBaseTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, newUid string, err error) {
+func (bt *DXBaseTable2) TxInsert(tx *database2.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, newUid string, err error) {
 	var returningFieldNames []string
 	if bt.FieldNameForRowId != "" {
 		returningFieldNames = append(returningFieldNames, bt.FieldNameForRowId)

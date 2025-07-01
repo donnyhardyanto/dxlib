@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+type RowsInfo struct {
+	Columns []string
+	//	ColumnTypes []*sql.ColumnType
+}
+
 // FieldsOrderBy is a map that defines ordering directions for fields
 // The key is the field name and the value is the direction ("ASC" or "DESC")
 

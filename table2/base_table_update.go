@@ -1,4 +1,4 @@
-package table
+package table2
 
 import (
 	"database/sql"
@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func (bt *DXBaseTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+func (bt *DXBaseTable2) Update(setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	// Ensure database is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
 		return nil, err
@@ -19,7 +19,7 @@ func (bt *DXBaseTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues u
 	return r, err
 }
 
-func (bt *DXBaseTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (r sql.Result, err error) {
+func (bt *DXBaseTable2) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (r sql.Result, err error) {
 	_, _, err = bt.ShouldGetById(l, FieldValueForId)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (bt *DXBaseTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValu
 	})
 }
 
-func (bt *DXBaseTable) UpdateOneByUid(l *log.DXLog, FieldValueForUid string, setKeyValues utils.JSON) (r sql.Result, err error) {
+func (bt *DXBaseTable2) UpdateOneByUid(l *log.DXLog, FieldValueForUid string, setKeyValues utils.JSON) (r sql.Result, err error) {
 	_, _, err = bt.ShouldGetByUid(l, FieldValueForUid)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (bt *DXBaseTable) UpdateOneByUid(l *log.DXLog, FieldValueForUid string, set
 	})
 }
 
-func (bt *DXBaseTable) DoRequestEditByIdOrUid(aepr *api.DXAPIEndPointRequest, id int64, uid string, newKeyValues utils.JSON) (err error) {
+func (bt *DXBaseTable2) DoRequestEditByIdOrUid(aepr *api.DXAPIEndPointRequest, id int64, uid string, newKeyValues utils.JSON) (err error) {
 
 	if bt.OnBeforeUpdate != nil {
 		if err := bt.OnBeforeUpdate(aepr, newKeyValues); err != nil {
@@ -67,7 +67,7 @@ func (bt *DXBaseTable) DoRequestEditByIdOrUid(aepr *api.DXAPIEndPointRequest, id
 	return nil
 }
 
-func (bt *DXBaseTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
+func (bt *DXBaseTable2) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(bt.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (bt *DXBaseTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	return nil
 }
 
-func (bt *DXBaseTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+func (bt *DXBaseTable2) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(bt.FieldNameForRowUid)
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (bt *DXBaseTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err err
 	return nil
 }
 
-func (bt *DXBaseTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+func (bt *DXBaseTable2) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	r, _, err = tx.Update(bt.NameId, setKeyValues, whereAndFieldNameValues, nil)
 	return r, err
 }

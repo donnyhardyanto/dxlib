@@ -402,8 +402,7 @@ func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAs
 
 func DeformatIdentifier(identifier string, driverName string) string {
 	// Remove the quotes from the identifier
-	deformattedIdentifier := strings.Trim(identifier, ""
-	")
+	deformattedIdentifier := strings.Trim(identifier, " ")
 	deformattedIdentifier = strings.ToLower(deformattedIdentifier)
 	return deformattedIdentifier
 }

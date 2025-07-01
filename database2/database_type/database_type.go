@@ -64,8 +64,3 @@ func StringToDXDatabaseType(v string) DXDatabaseType {
 		return UnknownDatabaseType
 	}
 }
-
-type RowsInfo struct {
-	Columns []string
-	//	ColumnTypes []*sql.ColumnType
-}

@@ -1,15 +1,15 @@
-package table
+package table2
 
 import (
 	"database/sql"
 	"github.com/donnyhardyanto/dxlib/api"
-	database "github.com/donnyhardyanto/dxlib/database2"
+	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
 )
 
-func (bt *DXBaseTable) Delete(whereKeyValues utils.JSON) (err error) {
+func (bt *DXBaseTable2) Delete(whereKeyValues utils.JSON) (err error) {
 
 	// Ensure database is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
@@ -23,7 +23,7 @@ func (bt *DXBaseTable) Delete(whereKeyValues utils.JSON) (err error) {
 	return nil
 }
 
-func (bt *DXBaseTable) DeleteById(id int64) (err error) {
+func (bt *DXBaseTable2) DeleteById(id int64) (err error) {
 	err = bt.Delete(utils.JSON{
 		bt.FieldNameForRowId: id,
 	})
@@ -33,7 +33,7 @@ func (bt *DXBaseTable) DeleteById(id int64) (err error) {
 	return nil
 }
 
-func (bt *DXBaseTable) DeleteByUid(uid string) (err error) {
+func (bt *DXBaseTable2) DeleteByUid(uid string) (err error) {
 	err = bt.Delete(utils.JSON{
 		bt.FieldNameForRowUid: uid,
 	})
@@ -43,7 +43,7 @@ func (bt *DXBaseTable) DeleteByUid(uid string) (err error) {
 	return nil
 }
 
-func (bt *DXBaseTable) DoRequestDeleteByIdOrUid(aepr *api.DXAPIEndPointRequest, id int64, uid string) (err error) {
+func (bt *DXBaseTable2) DoRequestDeleteByIdOrUid(aepr *api.DXAPIEndPointRequest, id int64, uid string) (err error) {
 	if id != 0 {
 		err = bt.DeleteById(id)
 	} else {
@@ -57,7 +57,7 @@ func (bt *DXBaseTable) DoRequestDeleteByIdOrUid(aepr *api.DXAPIEndPointRequest, 
 	return nil
 }
 
-func (bt *DXBaseTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
+func (bt *DXBaseTable2) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(bt.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func (bt *DXBaseTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err er
 	return nil
 }
 
-func (bt *DXBaseTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+func (bt *DXBaseTable2) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(bt.FieldNameForRowUid)
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func (bt *DXBaseTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (e
 	return nil
 }
 
-func (bt *DXBaseTable) TxHardDelete(tx *database.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+func (bt *DXBaseTable2) TxHardDelete(tx *database2.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	r, _, err = tx.TxDelete(bt.NameId, whereAndFieldNameValues, nil)
 	return r, err
 }

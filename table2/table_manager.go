@@ -1,22 +1,22 @@
-package table
+package table2
 
 import (
 	"github.com/donnyhardyanto/dxlib/api"
-	database "github.com/donnyhardyanto/dxlib/database2"
+	database2 "github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/pkg/errors"
 )
 
 type DXTableManager struct {
-	Tables                               map[string]*DXTable
-	RawTables                            map[string]*DXRawTable
+	Tables                               map[string]*DXTable2
+	RawTables                            map[string]*DXRawTable2
 	PropertyTables                       map[string]*DXPropertyTable
 	StandardOperationResponsePossibility map[string]map[string]*api.DXAPIEndPointResponsePossibility
 }
 
 func (tm *DXTableManager) ConnectAll() (err error) {
 	for _, t := range tm.Tables {
-		d, ok := database.Manager.Databases[t.DatabaseNameId]
+		d, ok := database2.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
 			return errors.Wrap(err, "error occured")
@@ -24,7 +24,7 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 		t.Database = d
 	}
 	for _, t := range tm.RawTables {
-		d, ok := database.Manager.Databases[t.DatabaseNameId]
+		d, ok := database2.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
 			return errors.Wrap(err, "error occured")
@@ -34,11 +34,12 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 	return nil
 }
 
-func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXTable {
+func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string,
+	tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXTable2 {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
-	t := DXTable{
+	t := DXTable2{
 		DatabaseNameId:             databaseNameId,
 		NameId:                     tableNameId,
 		ResultObjectName:           resultObjectName,
@@ -48,7 +49,7 @@ func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName
 		FieldNameForRowUid:         tableFieldNameForRowUid,
 		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 	}
-	t.Database = database.Manager.Databases[databaseNameId]
+	t.Database = database2.Manager.Databases[databaseNameId]
 	tm.Tables[tableNameId] = &t
 	return &t
 }
@@ -67,16 +68,17 @@ func (tm *DXTableManager) NewPropertyTable(databaseNameId, tableNameId, resultOb
 		FieldNameForRowUid:         tableFieldNameForRowUid,
 		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 	}
-	t.Database = database.Manager.Databases[databaseNameId]
+	t.Database = database2.Manager.Databases[databaseNameId]
 	tm.PropertyTables[tableNameId] = &t
 	return &t
 }
 
-func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXRawTable {
+func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string,
+	tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXRawTable2 {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
-	t := DXRawTable{
+	t := DXRawTable2{
 		DatabaseNameId:             databaseNameId,
 		NameId:                     tableNameId,
 		ResultObjectName:           resultObjectName,
@@ -86,7 +88,7 @@ func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectN
 		FieldNameForRowUid:         tableFieldNameForRowUid,
 		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 	}
-	t.Database = database.Manager.Databases[databaseNameId]
+	t.Database = database2.Manager.Databases[databaseNameId]
 	tm.RawTables[tableNameId] = &t
 	return &t
 }
@@ -95,8 +97,8 @@ var Manager DXTableManager
 
 func init() {
 	Manager = DXTableManager{
-		Tables:         map[string]*DXTable{},
-		RawTables:      map[string]*DXRawTable{},
+		Tables:         map[string]*DXTable2{},
+		RawTables:      map[string]*DXRawTable2{},
 		PropertyTables: map[string]*DXPropertyTable{},
 		StandardOperationResponsePossibility: map[string]map[string]*api.DXAPIEndPointResponsePossibility{
 			"create": {
