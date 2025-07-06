@@ -15,6 +15,7 @@ import (
 	_ "github.com/sijms/go-ora/v2"
 	goOra "github.com/sijms/go-ora/v2"
 	"net"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -174,32 +175,29 @@ func (d *DXDatabase) GetNonSensitiveConnectionString() string {
 func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	switch d.DatabaseType {
 	case database_type.PostgreSQL:
+		// This database type is must strictly using DSN type connection string, and cannot using URL type. Somehow it only works in DSN. Dont know why.
 		host, portAsString, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
 		}
 		s = fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s %s", d.UserName, d.UserPassword, host, portAsString, d.DatabaseName, d.ConnectionOptions)
-		//s = fmt.Sprintf("%s://%s:%s@%s/%s?%s", d.DatabaseType.String(), d.UserName, d.UserPassword, d.Address, d.DatabaseName, d.ConnectionOptions)
+	case database_type.PostgresSQLV2:
+		// Using `net/url` is the correct and idiomatic Go way to do this.
+		u := &url.URL{
+			Scheme: "postgresql",
+			// url.UserPassword correctly escapes any special characters.
+			User: url.UserPassword(d.UserName, d.UserPassword),
+			Host: d.Address, // e.g., "localhost:5432"
+			Path: d.DatabaseName,
+		}
 
-		/*
-			// Using `net/url` is the correct and idiomatic Go way to do this.
-			u := &url.URL{
-				Scheme: "postgresql",
-				// url.UserPassword correctly escapes any special characters.
-				User: url.UserPassword(d.UserName, d.UserPassword),
-				Host: d.Address, // e.g., "localhost:5432"
-				Path: d.DatabaseName,
-			}
+		// Only add query parameters if ConnectionOptions is not empty to avoid a trailing '?'
+		if d.ConnectionOptions != "" {
+			u.RawQuery = d.ConnectionOptions
+		}
 
-			// Only add query parameters if ConnectionOptions is not empty to avoid a trailing '?'
-			if d.ConnectionOptions != "" {
-				u.RawQuery = d.ConnectionOptions
-			}
-
-			// u.String() returns the correctly formatted and encoded URI string.
-			s = u.String()
-		*/
-
+		// u.String() returns the correctly formatted and encoded URI string.
+		s = u.String()
 	case database_type.SQLServer:
 		/*
 				host, port, err := net.SplitHostPort(d.Address)

@@ -20,6 +20,7 @@ const (
 	MySQL
 	Oracle
 	SQLServer
+	PostgresSQLV2
 )
 
 func (t DXDatabaseType) String() string {
@@ -32,6 +33,8 @@ func (t DXDatabaseType) String() string {
 		return "oracle"
 	case SQLServer:
 		return "sqlserver"
+	case PostgresSQLV2:
+		return "postgres_v2"
 	default:
 
 		return "unknown"
@@ -48,6 +51,8 @@ func (t DXDatabaseType) Driver() string {
 		return "oracle"
 	case SQLServer:
 		return "sqlserver"
+	case PostgresSQLV2:
+		return "postgres"
 	default:
 
 		return "unknown"
@@ -63,6 +68,8 @@ func StringToDXDatabaseType(v string) DXDatabaseType {
 		return Oracle
 	case "sqlserver":
 		return SQLServer
+	case "postgres_v2", "postgresql_v2":
+		return PostgresSQLV2
 	default:
 
 		return UnknownDatabaseType
