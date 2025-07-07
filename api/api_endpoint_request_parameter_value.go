@@ -148,7 +148,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			default:
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
-		case "protected-string", "protected-sql-string", "nullable-string":
+		case "protected-string", "protected-sql-string", "nullable-string", "non-empty-string":
 			if rawValueType != "string" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
@@ -342,6 +342,17 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 	case "string":
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		aeprpv.Value = s
+		return nil
+	case "non-empty-string":
+		s, ok := aeprpv.RawValue.(string)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		s = strings.Trim(s, " ")
+		if len(s) == 0 {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
 		aeprpv.Value = s
