@@ -1,0 +1,28 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+# This will handle all text files by default.
+* text=auto
+
+#
+# The above is usually sufficient, but if you want to be explicit, you can
+# add lines for specific file types.
+#
+
+# These files should always have LF line endings in the repo
+*.js    text
+*.json  text
+*.html  text
+*.css   text
+*.py    text
+*.java  text
+*.md    text
+*.sh    text eol=lf
+
+# These files are Windows-specific and should have CRLF endings
+*.bat   text eol=crlf
+*.ps1   text eol=crlf
+
+# These files are binary and should not be touched
+*.png   binary
+*.jpg   binary
+*.pdf   binary
+
