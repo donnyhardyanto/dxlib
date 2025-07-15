@@ -64,7 +64,7 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
 	driverName := db.DriverName()
 	switch driverName {
 	case "postgres":
-		query := fmt.Sprintf("SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '%s' AND pid < > pg_backend_pid()", dbName)
+		query := fmt.Sprintf("SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '%s' AND pid <> pg_backend_pid()", dbName)
 		_, err = db.Exec(query)
 
 	case "sqlserver":
