@@ -137,7 +137,7 @@ func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error
 	return int(vv), nil
 }
 
-func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, defaultValue int) (vv int, err error) {
+func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, defaultValue int) (int, error) {
 	_, v, err := pt.SelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -151,12 +151,12 @@ func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, de
 		}
 		return defaultValue, nil
 	}
-	vv, err = GetAs[int](l, "INT", v)
+	vv, err := GetAs[float64](l, "INT", v)
 	if err != nil {
 		return 0, err
 	}
 
-	return vv, nil
+	return int(vv), nil
 }
 
 func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
