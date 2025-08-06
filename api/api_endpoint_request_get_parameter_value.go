@@ -189,11 +189,11 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsArrayOfAny(k string) (isExi
 	return getParameterValue[[]any](aepr, k)
 }
 
-func (aepr *DXAPIEndPointRequest) GetParameterValueAsArrayOfString(k string) (isExist bool, val []string, err error) {
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsStrings(k string) (isExist bool, val []string, err error) {
 	return getParameterValue[[]string](aepr, k)
 }
 
-func (aepr *DXAPIEndPointRequest) GetParameterValueAsArrayOfInt64(k string) (isExist bool, val []int64, err error) {
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsInt64s(k string) (isExist bool, val []int64, err error) {
 	return getParameterValue[[]int64](aepr, k)
 }
 

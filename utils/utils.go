@@ -7,8 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/log"
-	"github.com/pkg/errors"
 	"go/types"
 	"math"
 	"net"
@@ -19,6 +17,9 @@ import (
 	"strings"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/pkg/errors"
 )
 
 type JSON = map[string]any
@@ -31,23 +32,23 @@ func ArrayToJSON[T any](arr []T) (string, error) {
 	return string(jsonBytes), nil
 }
 
-func ArrayStringToJSON(arr []string) string {
+func StringsToJSON(arr []string) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
-func ArrayIntToJSON(arr []int) string {
+func IntsToJSON(arr []int) string {
 	jsonBytes, err := json.Marshal(arr)
 	if err != nil {
 		return "[]" // Return empty array in extremely unlikely error case
 	}
 	return string(jsonBytes)
 }
-func ArrayInt64ToJSON(arr []int64) string {
+func Int64sToJSON(arr []int64) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
 
-func ArrayInt64ToArrayString(arr []int64) []string {
+func Int64sToStrings(arr []int64) []string {
 	r := make([]string, len(arr))
 	for i, v := range arr {
 		r[i] = strconv.FormatInt(v, 10)
@@ -55,7 +56,7 @@ func ArrayInt64ToArrayString(arr []int64) []string {
 	return r
 }
 
-func ArrayFloat64ToJSON(arr []float64) string {
+func Float64sToJSON(arr []float64) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
@@ -83,7 +84,7 @@ func JSONToBytes(v JSON) ([]byte, error) {
 	}
 	return s, nil
 }
-func ArrayOfStringIsContains(arr []string, str string) bool {
+func StringsIsContains(arr []string, str string) bool {
 	for _, a := range arr {
 		if a == str {
 			return true
