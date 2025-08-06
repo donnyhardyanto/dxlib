@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
+	_ "time/tzdata"
+
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
@@ -11,9 +15,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
-	"net/http"
-	"time"
-	_ "time/tzdata"
 )
 
 type DXPropertyTable struct {
@@ -70,7 +71,7 @@ func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (vv stri
 	return vv, nil
 }
 
-func (pt *DXPropertyTable) GetAsStringDefault(l *log.DXLog, propertyId string, defaultValue string) (vv string, err error) {
+func (pt *DXPropertyTable) GetAsStringOrDefault(l *log.DXLog, propertyId string, defaultValue string) (vv string, err error) {
 	_, v, err := pt.SelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -134,6 +135,28 @@ func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error
 	}
 
 	return int(vv), nil
+}
+
+func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, defaultValue int) (vv int, err error) {
+	_, v, err := pt.SelectOne(l, nil, utils.JSON{
+		"nameid": propertyId,
+	}, nil)
+	if err != nil {
+		return 0, err
+	}
+	if v == nil {
+		err = pt.SetAsInt(l, propertyId, defaultValue)
+		if err != nil {
+			return 0, err
+		}
+		return defaultValue, nil
+	}
+	vv, err = GetAs[int](l, "INT", v)
+	if err != nil {
+		return 0, err
+	}
+
+	return vv, nil
 }
 
 func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
