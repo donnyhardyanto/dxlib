@@ -673,7 +673,7 @@ func FindCommonValuesInMapString[V comparable](arrays1, arrays2 []map[string]any
 	return FindCommonValues[string, V](arrays1, arrays2, key)
 }
 
-func StringArrayHasCommonItem(arr1, arr2 []string) bool {
+func StringsHasCommonItem(arr1, arr2 []string) bool {
 	for _, str := range arr1 {
 		if slices.Contains(arr2, str) {
 			return true
@@ -786,7 +786,7 @@ func ExtractMapValue[T any](m *map[string]any, key string) (exists bool, value T
 	return exists, value, nil
 }
 
-func GetMapValueFromArrayOfJSON[T any](a []map[string]any, key string) (values []T, error error) {
+func GetMapValueFromJSONs[T any](a []map[string]any, key string) (values []T, error error) {
 	values = []T{}
 	for _, m := range a {
 		isExist, value, err := GetMapValue[T](m, key)
