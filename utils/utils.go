@@ -84,13 +84,22 @@ func JSONToBytes(v JSON) ([]byte, error) {
 	}
 	return s, nil
 }
-func StringsIsContains(arr []string, str string) bool {
+
+func TsIsContains[T comparable](arr []T, v T) bool {
 	for _, a := range arr {
-		if a == str {
+		if a == v {
 			return true
 		}
 	}
 	return false
+}
+
+func Int64sIsContains(arr []int64, v int64) bool {
+	return TsIsContains[int64](arr, v)
+}
+
+func StringsIsContains(arr []string, v string) bool {
+	return TsIsContains[string](arr, v)
 }
 
 func GetAllMachineIP4s() []string {

@@ -201,7 +201,7 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 		return nil*/
 }
 
-func SQLBuildParameterizedWhereClause(driverName string, pv *[]any, template string, values ...string) string {
+func SQLBuildParameterizedWhereClauseT[T comparable](driverName string, pv *[]any, template string, values ...T) string {
 	if len(values) == 0 {
 		return ""
 	}
@@ -229,8 +229,41 @@ func SQLBuildParameterizedWhereClause(driverName string, pv *[]any, template str
 
 	return result
 }
+func SQLBuildParameterizedWhereClauseString(driverName string, pv *[]any, template string, values ...string) string {
+	return SQLBuildParameterizedWhereClauseT[string](driverName, pv, template, values...)
+	/*	if len(values) == 0 {
+			return ""
+		}
 
-func SQLBuildWhereInClause(fieldName string, values []string) string {
+		p := len(*pv)
+		result := template
+
+		for _, value := range values {
+			p++
+			var placeholder string
+			switch driverName {
+			case "postgres":
+				placeholder = fmt.Sprintf("$%d", p)
+			case "sqlserver":
+				placeholder = fmt.Sprintf("@%d", p)
+			case "oracle":
+				placeholder = fmt.Sprintf(":%d", p)
+			default: // mysql and others
+				placeholder = "?"
+			}
+
+			result = strings.Replace(result, "?", placeholder, 1)
+			*pv = append(*pv, value)
+		}
+
+		return result*/
+}
+
+func SQLBuildParameterizedWhereClauseInt64(driverName string, pv *[]any, template string, values ...int64) string {
+	return SQLBuildParameterizedWhereClauseT(driverName, pv, template, values...)
+}
+
+func SQLBuildWhereInClauseStrings(fieldName string, values []string) string {
 	l := len(values)
 	if l == 0 {
 		return ""
@@ -245,7 +278,7 @@ func SQLBuildWhereInClause(fieldName string, values []string) string {
 	return "(" + fieldName + " IN (" + strings.Join(quotedStatuses, ",") + "))"
 }
 
-func SQLBuildParameterizedWhereInClause(driverName string, pv *[]any, fieldName string, values []string) string {
+func SQLBuildParameterizedWhereInClauseStrings(driverName string, pv *[]any, fieldName string, values []string) string {
 	l := len(values)
 	if l == 0 {
 		return ""
