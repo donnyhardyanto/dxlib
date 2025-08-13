@@ -93,13 +93,29 @@ func (pt *DXPropertyTable) GetAsStringOrDefault(l *log.DXLog, propertyId string,
 	return vv, nil
 }
 
+/*
+	func (pt *DXPropertyTable) TxSetAsString(dtx *database.DXDatabaseTx, propertyId string, value string) (err error) {
+		v, err := json.Marshal(utils.JSON{"value": value})
+
+		_, err = pt.TxInsert(dtx, utils.JSON{
+			"nameid": propertyId,
+			"type":   "STRING",
+			"value":  v,
+		})
+		if err != nil {
+			return errors.Wrap(err, "error occured")
+		}
+		return nil
+	}
+*/
 func (pt *DXPropertyTable) TxSetAsString(dtx *database.DXDatabaseTx, propertyId string, value string) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
-	_, err = pt.TxInsert(dtx, utils.JSON{
+	_, _, err = pt.TxUpsert(dtx, utils.JSON{
+		"type":  "STRING",
+		"value": v,
+	}, utils.JSON{
 		"nameid": propertyId,
-		"type":   "STRING",
-		"value":  v,
 	})
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -107,13 +123,30 @@ func (pt *DXPropertyTable) TxSetAsString(dtx *database.DXDatabaseTx, propertyId 
 	return nil
 }
 
-func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value string) (err error) {
+/*func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value string) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
 	_, err = pt.Insert(log, utils.JSON{
 		"nameid": propertyId,
 		"type":   "STRING",
 		"value":  string(v),
+	})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
+}*/
+
+func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value string) (err error) {
+	v, err := json.Marshal(utils.JSON{"value": value})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	_, _, err = pt.Upsert(utils.JSON{
+		"type":  "STRING",
+		"value": string(v),
+	}, utils.JSON{
+		"nameid": propertyId,
 	})
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -159,7 +192,7 @@ func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, de
 	return int(vv), nil
 }
 
-func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
+/*func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	_, err = pt.TxInsert(dtx, utils.JSON{
 		"nameid": propertyId,
@@ -170,14 +203,49 @@ func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId str
 		return errors.Wrap(err, "error occured")
 	}
 	return nil
+}*/
+
+func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
+	v, err := json.Marshal(utils.JSON{"value": value})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	_, _, err = pt.TxUpsert(dtx, utils.JSON{
+		"type":  "INT",
+		"value": v,
+	}, utils.JSON{
+		"nameid": propertyId,
+	})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
+/*
+	func (pt *DXPropertyTable) SetAsInt(log *log.DXLog, propertyId string, value int) (err error) {
+		v, err := json.Marshal(utils.JSON{"value": value})
+		_, err = pt.Insert(log, utils.JSON{
+			"nameid": propertyId,
+			"type":   "INT",
+			"value":  v,
+		})
+		if err != nil {
+			return errors.Wrap(err, "error occured")
+		}
+		return nil
+	}
+*/
 func (pt *DXPropertyTable) SetAsInt(log *log.DXLog, propertyId string, value int) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
-	_, err = pt.Insert(log, utils.JSON{
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	_, _, err = pt.Upsert(utils.JSON{
+		"type":  "INT",
+		"value": v,
+	}, utils.JSON{
 		"nameid": propertyId,
-		"type":   "INT",
-		"value":  v,
 	})
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -201,7 +269,7 @@ func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, e
 	return int64(vv), nil
 }
 
-func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId string, value int64) (err error) {
+/*func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId string, value int64) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
 	_, err = pt.TxInsert(dtx, utils.JSON{
@@ -213,9 +281,26 @@ func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId s
 		return errors.Wrap(err, "error occured")
 	}
 	return nil
+}*/
+
+func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId string, value int64) (err error) {
+	v, err := json.Marshal(utils.JSON{"value": value})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	_, _, err = pt.TxUpsert(dtx, utils.JSON{
+		"type":  "INT64",
+		"value": v,
+	}, utils.JSON{
+		"nameid": propertyId,
+	})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+	return nil
 }
 
-func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value int64) (err error) {
+/*func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value int64) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
 	_, err = pt.Insert(log, utils.JSON{
@@ -227,39 +312,78 @@ func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value i
 		return errors.Wrap(err, "error occured")
 	}
 	return nil
-}
+}*/
 
-func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) (err error) {
-	_, property, err := pt.TxSelectOne(dtx, nil, utils.JSON{
-		"nameid": propertyId,
-	}, nil)
+func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value int64) (err error) {
+	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return errors.Wrap(err, "error occured")
 	}
-	v, err := json.Marshal(utils.JSON{"value": value})
-
-	if property == nil {
-		_, err = pt.TxInsert(dtx, utils.JSON{
-			"nameid": propertyId,
-			"type":   "JSON",
-			"value":  v,
-		})
-		if err != nil {
-			return errors.Wrap(err, "error occured")
-		}
-	} else {
-		_, err = pt.TxUpdate(dtx, utils.JSON{
-			"value": v,
-		}, utils.JSON{
-			"nameid": propertyId,
-		})
-		if err != nil {
-			return errors.Wrap(err, "error occured")
-		}
+	_, _, err = pt.Upsert(utils.JSON{
+		"type":  "INT64",
+		"value": v,
+	}, utils.JSON{
+		"nameid": propertyId,
+	})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
 	}
 	return nil
 }
 
+/*
+	func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) (err error) {
+		_, property, err := pt.TxSelectOne(dtx, nil, utils.JSON{
+			"nameid": propertyId,
+		}, nil)
+		if err != nil {
+			return errors.Wrap(err, "error occured")
+		}
+		v, err := json.Marshal(utils.JSON{"value": value})
+
+		if property == nil {
+			_, err = pt.TxInsert(dtx, utils.JSON{
+				"nameid": propertyId,
+				"type":   "JSON",
+				"value":  v,
+			})
+			if err != nil {
+				return errors.Wrap(err, "error occured")
+			}
+		} else {
+			_, err = pt.TxUpdate(dtx, utils.JSON{
+				"value": v,
+			}, utils.JSON{
+				"nameid": propertyId,
+			})
+			if err != nil {
+				return errors.Wrap(err, "error occured")
+			}
+		}
+		return nil
+	}
+*/
+func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) (err error) {
+
+	v, err := json.Marshal(utils.JSON{"value": value})
+	if err != nil {
+		return errors.Wrap(err, "error occurred when TxSetAsJSON.Marshall")
+	}
+
+	_, _, err = pt.TxUpsert(dtx, utils.JSON{
+		"value": v,
+		"type":  "JSON",
+	}, utils.JSON{
+		"nameid": propertyId,
+	})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+
+	return nil
+}
+
+/*
 func (pt *DXPropertyTable) SetAsJSON(log *log.DXLog, propertyId string, value map[string]any) (err error) {
 	_, property, err := pt.SelectOne(log, nil, utils.JSON{
 		"nameid": propertyId,
@@ -290,7 +414,27 @@ func (pt *DXPropertyTable) SetAsJSON(log *log.DXLog, propertyId string, value ma
 	}
 	return nil
 }
+*/
 
+func (pt *DXPropertyTable) SetAsJSON(log *log.DXLog, propertyId string, value map[string]any) (err error) {
+
+	v, err := json.Marshal(utils.JSON{"value": value})
+	if err != nil {
+		return errors.Wrap(err, "error occurred when TxSetAsJSON.Marshall")
+	}
+
+	_, _, err = pt.Upsert(utils.JSON{
+		"value": v,
+		"type":  "JSON",
+	}, utils.JSON{
+		"nameid": propertyId,
+	})
+	if err != nil {
+		return errors.Wrap(err, "error occured")
+	}
+
+	return nil
+}
 func (pt *DXPropertyTable) GetAsJSON(l *log.DXLog, propertyId string) (map[string]any, error) {
 	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
@@ -459,6 +603,7 @@ func (pt *DXPropertyTable) Upsert(setKeyValues utils.JSON, whereAndFieldNameValu
 		return result, 0, err
 	}
 }
+
 func (pt *DXPropertyTable) TxUpsert(tx *database.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, newId int64, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
