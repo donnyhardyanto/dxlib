@@ -85,7 +85,7 @@ func JSONToBytes(v JSON) ([]byte, error) {
 	return s, nil
 }
 
-func TsIsContains[T comparable](arr []T, v T) bool {
+func TsIsContain[T comparable](arr []T, v T) bool {
 	for _, a := range arr {
 		if a == v {
 			return true
@@ -94,12 +94,12 @@ func TsIsContains[T comparable](arr []T, v T) bool {
 	return false
 }
 
-func Int64sIsContains(arr []int64, v int64) bool {
-	return TsIsContains[int64](arr, v)
+func Int64sIsContain(arr []int64, v int64) bool {
+	return TsIsContain[int64](arr, v)
 }
 
-func StringsIsContains(arr []string, v string) bool {
-	return TsIsContains[string](arr, v)
+func StringsIsContain(arr []string, v string) bool {
+	return TsIsContain[string](arr, v)
 }
 
 func GetAllMachineIP4s() []string {
@@ -236,13 +236,22 @@ func SetValueInNestedMap(data map[string]interface{}, key string, value interfac
 	return
 }
 
-func IfStringInSlice(str string, list []string) bool {
+func StringIsInSlice(str string, list []string) bool {
 	for _, v := range list {
 		if v == str {
 			return true
 		}
 	}
 	return false
+}
+
+func TsIsInSlice[T comparable](v []T, aSlice []T) bool {
+	for _, vi := range v {
+		if !TsIsContain(aSlice, vi) {
+			return false
+		}
+	}
+	return true
 }
 
 func RandomData(l int) (r []byte) {
