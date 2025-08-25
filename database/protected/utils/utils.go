@@ -70,7 +70,7 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
 	case "sqlserver":
 		query := fmt.Sprintf(`
 		USE master
-		DECLARE @killvarchar(8000) = ''
+		DECLARE @kill varchar(8000) = ''
 		SELECT @kill = @kill + 'kill ' + CONVERT(varchar(5), session_id) + ';' FROM sys.dm_exec_sessions WHERE database_id = DB_ID('%s') AND	session_id != @@SPID
 		EXEC(@kill)
 		`, dbName)
