@@ -2,14 +2,16 @@ package sso
 
 import (
 	"encoding/base64"
+	"time"
+	_ "time/tzdata"
+
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/redis"
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/golang-jwt/jwt/v5"
-	"time"
-	_ "time/tzdata"
+	"github.com/pkg/errors"
 )
 
 var OrganizationManager DXOrganizationsManager
@@ -43,16 +45,16 @@ type DXOrganization struct {
 	RemoteServiceUserViewResponseFieldPathAccessToken string
 	RemoteServiceUserViewResponseFieldPathData        string
 
-	RemoteServiceProxyRequestUrl string "json:"remote_service_proxy_request_url""
-	RemoteServiceProxyRequestMethod                 string "json:"remote_service_proxy_request_method""
-	RemoteServiceProxyRequestFieldPathUserLoginData string "json:"remote_service_proxy_request_field_path_user_login_data""
-	RemoteServiceProxyRequestFieldPathPayload       string "json:"remote_service_proxy_request_field_path_payload""
+	RemoteServiceProxyRequestUrl                    string `json:"remote_service_proxy_request_url"`
+	RemoteServiceProxyRequestMethod                 string `json:"remote_service_proxy_request_method"`
+	RemoteServiceProxyRequestFieldPathUserLoginData string `json:"remote_service_proxy_request_field_path_user_login_data"`
+	RemoteServiceProxyRequestFieldPathPayload       string `json:"remote_service_proxy_request_field_path_payload"`
 
-	RemoteServiceProxyResponseFieldPathStatus        string "json:"remote_service_proxy_response_field_path_status""
-	RemoteServiceProxyResponseFieldStatusIfSuccess   string "json:"remote_service_proxy_response_field_status_if_success""
-	RemoteServiceProxyResponseFieldPathAccessToken   string "json:"remote_service_proxy_response_field_path_access_token""
-	RemoteServiceProxyResponseFieldPathUserLoginData string "json:"remote_service_proxy_response_field_path_user_login_data""
-	RemoteServiceProxyResponseFieldPathResponse      string "json:"remote_service_proxy_response_field_path_response""
+	RemoteServiceProxyResponseFieldPathStatus        string `json:"remote_service_proxy_response_field_path_status"`
+	RemoteServiceProxyResponseFieldStatusIfSuccess   string `json:"remote_service_proxy_response_field_status_if_success"`
+	RemoteServiceProxyResponseFieldPathAccessToken   string `json:"remote_service_proxy_response_field_path_access_token"`
+	RemoteServiceProxyResponseFieldPathUserLoginData string `json:"remote_service_proxy_response_field_path_user_login_data"`
+	RemoteServiceProxyResponseFieldPathResponse      string `json:"remote_service_proxy_response_field_path_response"`
 
 	RemoteServiceProfileUrl               string
 	RemoteServiceProfileUrlMethod         string

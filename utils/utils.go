@@ -7,8 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/log"
-	"github.com/pkg/errors"
 	"go/types"
 	"math"
 	"net"
@@ -19,6 +17,9 @@ import (
 	"strings"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/pkg/errors"
 )
 
 type JSON = map[string]any
@@ -31,23 +32,23 @@ func ArrayToJSON[T any](arr []T) (string, error) {
 	return string(jsonBytes), nil
 }
 
-func ArrayStringToJSON(arr []string) string {
+func StringsToJSON(arr []string) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
-func ArrayIntToJSON(arr []int) string {
+func IntsToJSON(arr []int) string {
 	jsonBytes, err := json.Marshal(arr)
 	if err != nil {
 		return "[]" // Return empty array in extremely unlikely error case
 	}
 	return string(jsonBytes)
 }
-func ArrayInt64ToJSON(arr []int64) string {
+func Int64sToJSON(arr []int64) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
 
-func ArrayInt64ToArrayString(arr []int64) []string {
+func Int64sToStrings(arr []int64) []string {
 	r := make([]string, len(arr))
 	for i, v := range arr {
 		r[i] = strconv.FormatInt(v, 10)
@@ -55,7 +56,7 @@ func ArrayInt64ToArrayString(arr []int64) []string {
 	return r
 }
 
-func ArrayFloat64ToJSON(arr []float64) string {
+func Float64sToJSON(arr []float64) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
@@ -83,13 +84,22 @@ func JSONToBytes(v JSON) ([]byte, error) {
 	}
 	return s, nil
 }
-func ArrayOfStringIsContains(arr []string, str string) bool {
+
+func TsIsContain[T comparable](arr []T, v T) bool {
 	for _, a := range arr {
-		if a == str {
+		if a == v {
 			return true
 		}
 	}
 	return false
+}
+
+func Int64sIsContain(arr []int64, v int64) bool {
+	return TsIsContain[int64](arr, v)
+}
+
+func StringsIsContain(arr []string, v string) bool {
+	return TsIsContain[string](arr, v)
 }
 
 func GetAllMachineIP4s() []string {
@@ -226,13 +236,22 @@ func SetValueInNestedMap(data map[string]interface{}, key string, value interfac
 	return
 }
 
-func IfStringInSlice(str string, list []string) bool {
+func StringIsInSlice(str string, list []string) bool {
 	for _, v := range list {
 		if v == str {
 			return true
 		}
 	}
 	return false
+}
+
+func TsIsInSlice[T comparable](v []T, aSlice []T) bool {
+	for _, vi := range v {
+		if !TsIsContain(aSlice, vi) {
+			return false
+		}
+	}
+	return true
 }
 
 func RandomData(l int) (r []byte) {
@@ -672,7 +691,7 @@ func FindCommonValuesInMapString[V comparable](arrays1, arrays2 []map[string]any
 	return FindCommonValues[string, V](arrays1, arrays2, key)
 }
 
-func StringArrayHasCommonItem(arr1, arr2 []string) bool {
+func StringsHasCommonItem(arr1, arr2 []string) bool {
 	for _, str := range arr1 {
 		if slices.Contains(arr2, str) {
 			return true
@@ -785,7 +804,7 @@ func ExtractMapValue[T any](m *map[string]any, key string) (exists bool, value T
 	return exists, value, nil
 }
 
-func GetMapValueFromArrayOfJSON[T any](a []map[string]any, key string) (values []T, error error) {
+func GetMapValueFromJSONs[T any](a []map[string]any, key string) (values []T, error error) {
 	values = []T{}
 	for _, m := range a {
 		isExist, value, err := GetMapValue[T](m, key)

@@ -199,7 +199,7 @@ func isJSONArray(str string) bool {
 	return errors.Wrap(err, "error occured") == nil
 }
 
-func parseJSONArrayToStringArray(jsonStr string) ([]string, error) {
+func parseJSONsToStrings(jsonStr string) ([]string, error) {
 	var arr []string
 	err := json.Unmarshal([]byte(jsonStr), &arr)
 	if err != nil {
@@ -212,7 +212,7 @@ func prepareJsonArg(arg interface{}, driverName string) interface{} {
 	if jsonStr, ok := arg.(string); ok {
 		jsonStr = strings.TrimSpace(jsonStr)
 		if isJSONArray(jsonStr) {
-			if arr, err := parseJSONArrayToStringArray(jsonStr); err == nil {
+			if arr, err := parseJSONsToStrings(jsonStr); err == nil {
 				switch driverName {
 				case "postgres", "postgresql":
 					// For PostgreSQL, no need to wrap the JSON string in CAST
