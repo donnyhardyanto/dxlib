@@ -7,14 +7,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DXTableManager struct {
+type DXTableManager2 struct {
 	Tables                               map[string]*DXTable2
 	RawTables                            map[string]*DXRawTable2
-	PropertyTables                       map[string]*DXPropertyTable
+	PropertyTables                       map[string]*DXPropertyTable2
 	StandardOperationResponsePossibility map[string]map[string]*api.DXAPIEndPointResponsePossibility
 }
 
-func (tm *DXTableManager) ConnectAll() (err error) {
+func (tm *DXTableManager2) ConnectAll() (err error) {
 	for _, t := range tm.Tables {
 		d, ok := database2.Manager.Databases[t.DatabaseNameId]
 		if !ok {
@@ -34,72 +34,69 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 	return nil
 }
 
-func (tm *DXTableManager) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string,
+func (tm *DXTableManager2) NewTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string,
 	tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXTable2 {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
-	t := DXTable2{
-		DatabaseNameId:             databaseNameId,
-		NameId:                     tableNameId,
-		ResultObjectName:           resultObjectName,
-		ListViewNameId:             tableListViewNameId,
-		FieldNameForRowId:          tableFieldNameForRowId,
-		FieldNameForRowNameId:      tableFieldNameForRowNameId,
-		FieldNameForRowUid:         tableFieldNameForRowUid,
-		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
-	}
+	t := DXTable2{}
+	t.DatabaseNameId = databaseNameId
+	t.NameId = tableNameId
+	t.ResultObjectName = resultObjectName
+	t.ListViewNameId = tableListViewNameId
+	t.FieldNameForRowId = tableFieldNameForRowId
+	t.FieldNameForRowNameId = tableFieldNameForRowNameId
+	t.FieldNameForRowUid = tableFieldNameForRowUid
+	t.ResponseEnvelopeObjectName = responseEnvelopeObjectName
 	t.Database = database2.Manager.Databases[databaseNameId]
 	tm.Tables[tableNameId] = &t
 	return &t
 }
 
-func (tm *DXTableManager) NewPropertyTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXPropertyTable {
+func (tm *DXTableManager2) NewPropertyTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string, tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXPropertyTable2 {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
-	t := DXPropertyTable{
-		DatabaseNameId:             databaseNameId,
-		NameId:                     tableNameId,
-		ResultObjectName:           resultObjectName,
-		ListViewNameId:             tableListViewNameId,
-		FieldNameForRowId:          tableFieldNameForRowId,
-		FieldNameForRowNameId:      tableFieldNameForRowNameId,
-		FieldNameForRowUid:         tableFieldNameForRowUid,
-		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
-	}
+	t := DXPropertyTable2{}
+	t.DatabaseNameId = databaseNameId
+	t.NameId = tableNameId
+	t.ResultObjectName = resultObjectName
+	t.ListViewNameId = tableListViewNameId
+	t.FieldNameForRowId = tableFieldNameForRowId
+	t.FieldNameForRowNameId = tableFieldNameForRowNameId
+	t.FieldNameForRowUid = tableFieldNameForRowUid
+	t.ResponseEnvelopeObjectName = responseEnvelopeObjectName
 	t.Database = database2.Manager.Databases[databaseNameId]
 	tm.PropertyTables[tableNameId] = &t
 	return &t
 }
 
-func (tm *DXTableManager) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string,
+func (tm *DXTableManager2) NewRawTable(databaseNameId, tableNameId, resultObjectName string, tableListViewNameId string, tableFieldNameForRowNameId string, tableFieldNameForRowId string,
 	tableFieldNameForRowUid string, responseEnvelopeObjectName string) *DXRawTable2 {
 	if tableListViewNameId == "" {
 		tableListViewNameId = tableNameId
 	}
-	t := DXRawTable2{
-		DatabaseNameId:             databaseNameId,
-		NameId:                     tableNameId,
-		ResultObjectName:           resultObjectName,
-		ListViewNameId:             tableListViewNameId,
-		FieldNameForRowId:          tableFieldNameForRowId,
-		FieldNameForRowNameId:      tableFieldNameForRowNameId,
-		FieldNameForRowUid:         tableFieldNameForRowUid,
-		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
-	}
+	t := DXRawTable2{}
+	t.DatabaseNameId = databaseNameId
+	t.NameId = tableNameId
+	t.ResultObjectName = resultObjectName
+	t.ListViewNameId = tableListViewNameId
+	t.FieldNameForRowId = tableFieldNameForRowId
+	t.FieldNameForRowNameId = tableFieldNameForRowNameId
+	t.FieldNameForRowUid = tableFieldNameForRowUid
+	t.ResponseEnvelopeObjectName = responseEnvelopeObjectName
 	t.Database = database2.Manager.Databases[databaseNameId]
 	tm.RawTables[tableNameId] = &t
 	return &t
 }
 
-var Manager DXTableManager
+var Manager DXTableManager2
 
 func init() {
-	Manager = DXTableManager{
+	Manager = DXTableManager2{
 		Tables:         map[string]*DXTable2{},
 		RawTables:      map[string]*DXRawTable2{},
-		PropertyTables: map[string]*DXPropertyTable{},
+		PropertyTables: map[string]*DXPropertyTable2{},
 		StandardOperationResponsePossibility: map[string]map[string]*api.DXAPIEndPointResponsePossibility{
 			"create": {
 				"success": &api.DXAPIEndPointResponsePossibility{
