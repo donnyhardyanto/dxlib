@@ -3,6 +3,7 @@ package raw
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
@@ -124,12 +125,12 @@ func QueryRows(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MySQL, database_type.MariaDb:
-		// MySQL uses ? placeholders
+	case database_type.MariaDb:
+		// MariaDb uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to convert to MySQL parameter format")
+			return nil, nil, errors.Wrap(err, "failed to convert to MariaDb parameter format")
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -181,12 +182,12 @@ func Count(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MySQL, database_type.MariaDb:
-		// MySQL uses ? placeholders
+	case database_type.MariaDb:
+		// MariaDb uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return 0, errors.Wrap(err, "failed to convert to MySQL parameter format")
+			return 0, errors.Wrap(err, "failed to convert to MariaDb parameter format")
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -257,12 +258,12 @@ func TxQueryRows(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MySQL, database_type.MariaDb:
-		// MySQL uses ? placeholders
+	case database_type.MariaDb:
+		// MariaDb uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to convert to MySQL parameter format")
+			return nil, nil, errors.Wrap(err, "failed to convert to MariaDb parameter format")
 		}
 		modifiedSQL = tx.Rebind(modifiedSQL)
 

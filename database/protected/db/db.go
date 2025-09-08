@@ -265,7 +265,7 @@ func formatIdentifierForDB(identifier string, driverName string) string {
 		return strings.ToUpper(identifier) // DB2 is case-insensitive but conventionally uppercase
 	case "sqlserver":
 		return identifier // SQL Server is case-insensitive
-	case "mysql":
+	case "mysql", "mariadb":
 		return identifier // MySQL on Windows is case-insensitive, on Unix case-sensitive
 	case "postgres":
 		return identifier // PostgreSQL is case-sensitive
@@ -307,7 +307,7 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 				case "postgres":
 					// PostgreSQL supports case-sensitive parameter names
 					condition = k + "=:" + k
-				case "mysql":
+				case "mysql", "mariadb":
 					// MySQL uses ? for parameters by default, but we're using named parameters
 					condition = k + "=:" + k
 				case "sqlserver":
@@ -378,7 +378,7 @@ func formatOrderByField(field string, direction string, driverName string) (stri
 		}
 		return fmt.Sprintf("%s %s NULLS %s", field, validDirection, nullsPos), nil
 
-	case "mysql":
+	case "mysql", "mariadb":
 		// MySQL handles NULLs differently and doesn't support NULLS FIRST/LAST
 		// NULL values are considered lower than non-NULL values
 		return field + " " + validDirection, nil

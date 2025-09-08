@@ -3,13 +3,14 @@ package database2
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"net"
+	"strings"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/pkg/errors"
-	"io"
-	"net"
-	"strings"
 )
 
 // StackTraceError is a custom error type that preserves stack traces
@@ -75,8 +76,8 @@ func GetDriverSpecificErrorMessage(err error) string {
 	}
 
 	// MySQL/MariaDB
-	if mysqlErr, ok := cause.(*mysql.MySQLError); ok {
-		return fmt.Sprintf("[MySQL: %d] %s", mysqlErr.Number, mysqlErr.Message)
+	if mariaDbErr, ok := cause.(*mysql.MySQLError); ok {
+		return fmt.Sprintf("[MariaDB: %d] %s", mariaDbErr.Number, mariaDbErr.Message)
 	}
 
 	// SQL Server
@@ -156,8 +157,8 @@ func IsDuplicateKeyError(err error) bool {
 	}
 
 	// MySQL/MariaDB
-	if mysqlErr, ok := errors.Cause(err).(*mysql.MySQLError); ok {
-		return mysqlErr.Number == 1062 // Duplicate entry
+	if mariaDbErr, ok := errors.Cause(err).(*mysql.MySQLError); ok {
+		return mariaDbErr.Number == 1062 // Duplicate entry
 	}
 
 	// SQL Server
@@ -240,13 +241,13 @@ func IsConnectionError(err error) bool {
 	}
 
 	// MySQL/MariaDB connection errors
-	if mysqlErr, ok := errors.Cause(err).(*mysql.MySQLError); ok {
+	if mariaDbErr, ok := errors.Cause(err).(*mysql.MySQLError); ok {
 		connectionErrors := map[uint16]bool{
 			1040: true, 1042: true, 1043: true, 1047: true, 1053: true,
 			1077: true, 1129: true, 1130: true, 2002: true, 2003: true,
 			2005: true, 2006: true, 2013: true,
 		}
-		return connectionErrors[mysqlErr.Number]
+		return connectionErrors[mariaDbErr.Number]
 	}
 
 	// SQL Server connection errors

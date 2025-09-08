@@ -2,6 +2,7 @@ package raw
 
 import (
 	"database/sql"
+
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -69,12 +70,12 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MySQL, database_type.MariaDb:
-		// MySQL uses ? placeholders
+	case database_type.MariaDb:
+		// MariaDb uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to convert to MySQL parameter format")
+			return nil, errors.Wrap(err, "failed to convert to MariaDb parameter format")
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -124,12 +125,12 @@ func TxExec(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MySQL, database_type.MariaDb:
-		// MySQL uses ? placeholders
+	case database_type.MariaDb:
+		// MariaDb uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to convert to MySQL parameter format")
+			return nil, errors.Wrap(err, "failed to convert to MariaDb parameter format")
 		}
 		modifiedSQL = tx.Rebind(modifiedSQL)
 

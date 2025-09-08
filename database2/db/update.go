@@ -2,8 +2,9 @@ package db
 
 import (
 	"database/sql"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"strings"
+
+	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
@@ -244,7 +245,9 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 		return nil, nil, errors.New("Oracle RETURNING INTO for UPDATE not implemented in this version")
 
 	case "mysql":
-		// MySQL doesn't support RETURNING directly
+		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
+
+		/*// MySQL doesn't support RETURNING directly
 		baseSQL := strings.Join([]string{
 			"UPDATE",
 			tableName,
@@ -286,7 +289,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 		}
 
 		return result, rows, nil
-
+		*/
 	default:
 		// Unsupported database type
 		return nil, nil, errors.Errorf("unsupported database driver: %s", driverName)
@@ -473,7 +476,9 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 		return nil, nil, errors.New("Oracle RETURNING INTO for UPDATE not implemented in this version")
 
 	case "mysql":
-		// MySQL doesn't support RETURNING directly
+		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
+
+		/*// MySQL doesn't support RETURNING directly
 		baseSQL := strings.Join([]string{
 			"UPDATE",
 			tableName,
@@ -514,7 +519,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 			return result, nil, errors.Wrap(err, "error fetching updated rows")
 		}
 
-		return result, rows, nil
+		return result, rows, nil*/
 
 	default:
 		// Unsupported database type

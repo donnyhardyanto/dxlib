@@ -3,13 +3,14 @@ package sqlchecker
 
 import (
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/database/database_type"
-	"github.com/pkg/errors"
-	"github.com/shopspring/decimal"
 	"regexp"
 	"strings"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/database/database_type"
+	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 )
 
 var AllowRisk = false
@@ -41,7 +42,7 @@ var (
 	// Maximum identifier lengths per dialect
 	maxIdentifierLengths = map[database_type.DXDatabaseType]int{
 		database_type.PostgreSQL: 63,
-		database_type.MySQL:      64,
+		database_type.MariaDB:    64,
 		database_type.SQLServer:  128,
 		database_type.Oracle:     128,
 	}
@@ -53,7 +54,7 @@ var (
 			"like": true, "ilike": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
 		},
-		database_type.MySQL: {
+		database_type.MariaDB: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,

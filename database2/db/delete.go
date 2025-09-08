@@ -2,8 +2,9 @@ package db
 
 import (
 	"database/sql"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"strings"
+
+	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
@@ -177,7 +178,9 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 		return nil, nil, errors.New("Oracle RETURNING INTO for DELETE not implemented in this version")
 
 	case "mysql":
-		// MySQL doesn't support RETURNING directly for DELETE
+		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
+
+		/*// MySQL doesn't support RETURNING directly for DELETE
 		baseSQL := strings.Join([]string{
 			"DELETE FROM",
 			tableName,
@@ -196,7 +199,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 		}
 
 		// MySQL doesn't allow getting values from deleted rows
-		return nil, nil, errors.New("RETURNING not supported for DELETE with MySQL")
+		return nil, nil, errors.New("RETURNING not supported for DELETE with mysql")*/
 
 	default:
 		// Unsupported database type
@@ -350,7 +353,9 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 		return nil, nil, errors.New("Oracle RETURNING INTO for DELETE not implemented in this version")
 
 	case "mysql":
-		// MySQL doesn't support RETURNING directly for DELETE
+		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
+
+		/*// MySQL doesn't support RETURNING directly for DELETE
 		baseSQL := strings.Join([]string{
 			"DELETE FROM",
 			tableName,
@@ -369,7 +374,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 		}
 
 		// MySQL doesn't allow getting values from deleted rows
-		return nil, nil, errors.New("RETURNING not supported for DELETE with MySQL")
+		return nil, nil, errors.New("RETURNING not supported for DELETE with MySQL")*/
 
 	default:
 		// Unsupported database type

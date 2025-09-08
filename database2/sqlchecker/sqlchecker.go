@@ -19,7 +19,6 @@ var AllowRisk = false
 var (
 	identifierPatterns = map[database_type.DXDatabaseType]*regexp.Regexp{
 		database_type.PostgreSQL: regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$"),
-		database_type.MySQL:      regexp.MustCompile("^[a-zA-Z0-9_$]+$"),
 		database_type.MariaDb:    regexp.MustCompile("^[a-zA-Z0-9_$]+$"),
 		database_type.SQLServer:  regexp.MustCompile("^[a-zA-Z@#_][a-zA-Z0-9@#_$]*$"),
 		database_type.Oracle:     regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_$#]*$"),
@@ -31,10 +30,6 @@ var (
 		End   []rune
 	}{
 		database_type.PostgreSQL: {
-			Start: []rune{'"'},
-			End:   []rune{'"'},
-		},
-		database_type.MySQL: {
 			Start: []rune{'"'},
 			End:   []rune{'"'},
 		},
@@ -537,7 +532,6 @@ var (
 	// Maximum identifier lengths per dialect
 	maxIdentifierLengths = map[database_type.DXDatabaseType]int{
 		database_type.PostgreSQL: 63,
-		database_type.MySQL:      64,
 		database_type.SQLServer:  128,
 		database_type.Oracle:     128,
 		database_type.MariaDb:    64,
@@ -548,11 +542,6 @@ var (
 		database_type.PostgreSQL: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "ilike": true, "in": true, "not in": true,
-			"is null": true, "is not null": true,
-		},
-		database_type.MySQL: {
-			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
-			"like": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
 		},
 		database_type.MariaDb: {
@@ -585,7 +574,7 @@ func isReservedKeyword(dialect database_type.DXDatabaseType, word string) bool {
 			commonKeywords[k] = v
 		}
 
-	case database_type.MySQL, database_type.MariaDb:
+	case database_type.MariaDb:
 		for k, v := range mysqlKeywords {
 			commonKeywords[k] = v
 		}

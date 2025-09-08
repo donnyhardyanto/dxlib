@@ -17,7 +17,7 @@ type DXDatabaseType int64
 const (
 	UnknownDatabaseType DXDatabaseType = iota
 	PostgreSQL
-	MySQL
+	MariaDB
 	Oracle
 	SQLServer
 	PostgresSQLV2
@@ -27,7 +27,7 @@ func (t DXDatabaseType) String() string {
 	switch t {
 	case PostgreSQL:
 		return "postgres"
-	case MySQL:
+	case MariaDB:
 		return "mysql"
 	case Oracle:
 		return "oracle"
@@ -45,7 +45,7 @@ func (t DXDatabaseType) Driver() string {
 	switch t {
 	case PostgreSQL:
 		return "postgres"
-	case MySQL:
+	case MariaDB:
 		return "mysql"
 	case Oracle:
 		return "oracle"
@@ -63,7 +63,7 @@ func StringToDXDatabaseType(v string) DXDatabaseType {
 	case "postgres", "postgresql":
 		return PostgreSQL
 	case "mariadb", "mysql":
-		return MySQL
+		return MariaDB
 	case "oracle":
 		return Oracle
 	case "sqlserver":
@@ -349,7 +349,7 @@ func getParamPlaceholder(dbType DXDatabaseType, index int) string {
 		return "@p" + strconv.Itoa(index+1)
 	case Oracle:
 		return ":" + strconv.Itoa(index+1)
-	case MySQL:
+	case MariaDB:
 		return "?"
 	default:
 		return "$" + strconv.Itoa(index+1)
