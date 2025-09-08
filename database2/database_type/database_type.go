@@ -8,8 +8,12 @@ const (
 	MariaDB
 	Oracle
 	SQLServer
-	MariaDb
 )
+
+type RowsInfo struct {
+	Columns []string
+	//	ColumnTypes []*sql.ColumnType
+}
 
 func (t DXDatabaseType) String() string {
 	switch t {
@@ -19,13 +23,15 @@ func (t DXDatabaseType) String() string {
 		return "oracle"
 	case SQLServer:
 		return "sqlserver"
-	case MariaDb:
-		return "mariadb"
+	case MariaDB:
+		return "mariadb" // User-facing type remains "mariadb"
 	default:
 		return "unknown"
 	}
 }
 
+// MariaDB uses the MySQL driver since they share the same wire protocol
+// The Go ecosystem only provides github.com/go-sql-driver/mysql for both
 func (t DXDatabaseType) Driver() string {
 	switch t {
 	case PostgreSQL:
@@ -34,10 +40,9 @@ func (t DXDatabaseType) Driver() string {
 		return "oracle"
 	case SQLServer:
 		return "sqlserver"
-	case MariaDb:
-		return "mariadb"
+	case MariaDB:
+		return "mysql" // Required: Go's database/sql only recognizes "mysql" driver for MariaDB
 	default:
-
 		return "unknown"
 	}
 }
@@ -49,7 +54,7 @@ func StringToDXDatabaseType(v string) DXDatabaseType {
 	case "mysql":
 		return MariaDB
 	case "mariadb":
-		return MariaDb
+		return MariaDB
 	case "oracle":
 		return Oracle
 	case "sqlserver":

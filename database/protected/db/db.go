@@ -454,7 +454,7 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 }
 
 func SQLPartConstructSelect(driverName string, tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections FieldsOrderBy, limit any, forUpdatePart any) (s string, err error) {
+	orderByFieldNameDirections FieldsOrderBy, limit any, forUpdatePart any) (s string, err error) {
 	switch driverName {
 	case "sqlserver":
 		f := SQLPartFieldNames(fieldNames, driverName)
@@ -467,7 +467,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = " " + joinSQLPart.(string)
 		}
-		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		o, err := SQLPartOrderByFieldNameDirections(orderByFieldNameDirections, driverName)
 		if err != nil {
 			return "", err
 		}
@@ -515,7 +515,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = " " + joinSQLPart.(string)
 		}
-		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		o, err := SQLPartOrderByFieldNameDirections(orderByFieldNameDirections, driverName)
 		if err != nil {
 			return "", err
 		}
@@ -564,7 +564,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		if joinSQLPart != nil {
 			j = " " + joinSQLPart.(string)
 		}
-		o, err := SQLPartOrderByFieldNameDirections(orderbyFieldNameDirections, driverName)
+		o, err := SQLPartOrderByFieldNameDirections(orderByFieldNameDirections, driverName)
 		if err != nil {
 			return "", err
 		}

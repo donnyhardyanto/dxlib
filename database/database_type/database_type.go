@@ -3,13 +3,14 @@ package database_type
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/shopspring/decimal"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 )
 
 type DXDatabaseType int64
@@ -28,7 +29,7 @@ func (t DXDatabaseType) String() string {
 	case PostgreSQL:
 		return "postgres"
 	case MariaDB:
-		return "mysql"
+		return "mariadb"
 	case Oracle:
 		return "oracle"
 	case SQLServer:
