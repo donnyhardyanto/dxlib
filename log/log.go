@@ -3,10 +3,11 @@ package log
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
+
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"runtime/debug"
 )
 
 type DXLogLevel int
@@ -58,7 +59,11 @@ func NewLog(parentLog *DXLog, context context.Context, prefix string) DXLog {
 
 func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text string, v ...any) {
 	stack := ""
-	text = fmt.Sprintf(text, v...)
+	if v == nil {
+		text = fmt.Sprint(text)
+	} else {
+		text = fmt.Sprintf(text, v...)
+	}
 	if err != nil {
 		location = l.Prefix
 		stack = fmt.Sprintf("%+v", err)
@@ -97,7 +102,11 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 
 func (l *DXLog) LogText2(err error, severity DXLogLevel, location string, text string, v ...any) {
 	stack := ""
-	text = fmt.Sprintf(text, v...)
+	if v == nil {
+		text = fmt.Sprint(text)
+	} else {
+		text = fmt.Sprintf(text, v...)
+	}
 	if err != nil {
 		location = l.Prefix
 		stack = fmt.Sprintf("%+v", err)
@@ -139,7 +148,12 @@ func (l *DXLog) Trace(text string) {
 }
 
 func (l *DXLog) Tracef(text string, v ...any) {
-	t := fmt.Sprintf(text, v...)
+	t := ""
+	if v == nil {
+		t = fmt.Sprint(text)
+	} else {
+		t = fmt.Sprintf(text, v...)
+	}
 	l.Trace(t)
 }
 
@@ -148,7 +162,12 @@ func (l *DXLog) Debug(text string) {
 }
 
 func (l *DXLog) Debugf(text string, v ...any) {
-	t := fmt.Sprintf(text, v...)
+	t := ""
+	if v == nil {
+		t = fmt.Sprint(text)
+	} else {
+		t = fmt.Sprintf(text, v...)
+	}
 	l.Debug(t)
 }
 
@@ -157,7 +176,12 @@ func (l *DXLog) Info(text string) {
 }
 
 func (l *DXLog) Infof(text string, v ...any) {
-	t := fmt.Sprintf(text, v...)
+	t := ""
+	if v == nil {
+		t = fmt.Sprint(text)
+	} else {
+		t = fmt.Sprintf(text, v...)
+	}
 	l.Info(t)
 }
 
@@ -166,12 +190,21 @@ func (l *DXLog) Warn(text string) {
 }
 
 func (l *DXLog) Warnf(text string, v ...any) {
-	t := fmt.Sprintf(text, v...)
+	t := ""
+	if v == nil {
+		t = fmt.Sprint(text)
+	} else {
+		t = fmt.Sprintf(text, v...)
+	}
 	l.Warn(t)
 }
 
 func (l *DXLog) WarnAndCreateErrorf(text string, v ...any) (err error) {
-	err = errors.Errorf(text, v...)
+	if v == nil {
+		err = errors.Errorf(text)
+	} else {
+		err = errors.Errorf(text, v...)
+	}
 	l.LogText(err, DXLogLevelWarn, "", "")
 	return err
 }
@@ -181,13 +214,22 @@ func (l *DXLog) Error(text string, err error) {
 }
 
 func (l *DXLog) Errorf(err error, text string, v ...any) {
-	t := fmt.Sprintf(text, v...)
+	t := ""
+	if v == nil {
+		t = fmt.Sprint(text)
+	} else {
+		t = fmt.Sprintf(text, v...)
+	}
 	l.Error(t, err)
 }
 
 func (l *DXLog) ErrorAndCreateErrorf(text string, v ...any) (err error) {
-	err = errors.Errorf(text, v...)
-	l.Error(fmt.Sprintf(text, v...), err)
+	if v == nil {
+		err = errors.Errorf(text)
+	} else {
+		err = errors.Errorf(text, v...)
+	}
+	l.Error(err.Error(), err)
 	return err
 }
 
@@ -196,11 +238,21 @@ func (l *DXLog) Fatal(text string) {
 }
 
 func (l *DXLog) Fatalf(text string, v ...any) {
-	l.Fatal(fmt.Sprintf(text, v...))
+	t := ""
+	if v == nil {
+		t = fmt.Sprint(text)
+	} else {
+		t = fmt.Sprintf(text, v...)
+	}
+	l.Fatal(t)
 }
 
 func (l *DXLog) FatalAndCreateErrorf(text string, v ...any) (err error) {
-	err = errors.Errorf(text, v...)
+	if v == nil {
+		err = errors.Errorf(text)
+	} else {
+		err = errors.Errorf(text, v...)
+	}
 	l.Fatal(err.Error())
 	return err
 }
@@ -210,7 +262,11 @@ func (l *DXLog) Panic(location string, err error) {
 }
 
 func (l *DXLog) PanicAndCreateErrorf(location, text string, v ...any) (err error) {
-	err = errors.Errorf(text, v...)
+	if v == nil {
+		err = errors.Errorf(text)
+	} else {
+		err = errors.Errorf(text, v...)
+	}
 	l.Panic(location, err)
 	return err
 }
