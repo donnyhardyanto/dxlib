@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+
 	"github.com/donnyhardyanto/dxlib"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pkg/errors"
@@ -357,7 +358,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 			if !aepr.ResponseHeaderSent {
 				s := fmt.Sprintf("ONEXECUTE_ERROR:%v", err.Error())
-				err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, s, s)
+				aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, s, s)
 				return
 			}
 		} else {

@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 	"github.com/pkg/errors"
-	"io"
-	"net/http"
-	"strings"
 )
 
 type DXAPIUser struct {
@@ -374,16 +375,16 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 					}
 				}
 			}
-			err = aepr.preProcessRequestAsApplicationOctetStream()
+			return aepr.preProcessRequestAsApplicationOctetStream()
 		case utilsHttp.ContentTypeApplicationJSON:
-			err = aepr.preProcessRequestAsApplicationJSON()
+			return aepr.preProcessRequestAsApplicationJSON()
 		default:
-			err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request content-type is not supported yet (%v)", aepr.EndPoint.RequestContentType)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request content-type is not supported yet (%v)", aepr.EndPoint.RequestContentType)
 		}
 	default:
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request method is not supported yet (%v)", aepr.EndPoint.Method)
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request method is not supported yet (%v)", aepr.EndPoint.Method)
 	}
-	return errors.Wrap(err, "error occured")
+	return nil
 }
 
 func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (err error) {
