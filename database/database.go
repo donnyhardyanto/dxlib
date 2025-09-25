@@ -4,6 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+	_ "time/tzdata"
+
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
@@ -14,12 +21,6 @@ import (
 	"github.com/pkg/errors"
 	_ "github.com/sijms/go-ora/v2"
 	goOra "github.com/sijms/go-ora/v2"
-	"net"
-	"net/url"
-	"strconv"
-	"strings"
-	"time"
-	_ "time/tzdata"
 
 	"github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/database/database_type"
@@ -528,6 +529,11 @@ func (d *DXDatabase) Select(tableName string, fieldTypeMapping db.FieldTypeMappi
 
 func (d *DXDatabase) ShouldCount(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
 	totalRows, c, err = db.ShouldCount(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	return totalRows, c, err
+}
+
+func (d *DXDatabase) Count(tableName string, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, c utils.JSON, err error) {
+	totalRows, c, err = db.Count(d.Connection, tableName, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, c, err
 }
 

@@ -3,6 +3,11 @@ package table
 import (
 	"database/sql"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+	_ "time/tzdata"
+
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
@@ -11,10 +16,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
-	"net/http"
-	"strings"
-	"time"
-	_ "time/tzdata"
 )
 
 type DXTable struct {
@@ -656,7 +657,7 @@ func (t *DXTable) Count(log *log.DXLog, summaryCalcFieldsPart string, whereAndFi
 		t.Database = database.Manager.Databases[t.DatabaseNameId]
 	}
 
-	totalRows, summaryCalcRow, err = t.Database.CountOne(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
+	totalRows, summaryCalcRow, err = t.Database.Count(t.ListViewNameId, summaryCalcFieldsPart, whereAndFieldNameValues, joinSQLPart)
 	return totalRows, summaryCalcRow, err
 }
 
