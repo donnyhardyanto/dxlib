@@ -110,10 +110,17 @@ func (t *DXTable) GetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r ut
 	return rowsInfo, r, err
 }
 
-func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+func (t *DXTable) ShouldGetByIdNotDeleted(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowId: id,
 		"is_deleted":        false,
+	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
+	return rowsInfo, r, err
+}
+
+func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
+		t.FieldNameForRowId: id,
 	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
@@ -121,14 +128,12 @@ func (t *DXTable) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.RowsInfo
 func (t *DXTable) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowUid: uid,
-		"is_deleted":         false,
 	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
 func (t *DXTable) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
-		"utag":       utag,
-		"is_deleted": false,
+		"utag": utag,
 	}, nil, map[string]string{t.FieldNameForRowId: "asc"})
 	return rowsInfo, r, err
 }
@@ -136,7 +141,6 @@ func (t *DXTable) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.Row
 func (t *DXTable) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.SelectOne(log, nil, utils.JSON{
 		t.FieldNameForRowNameId: nameid,
-		"is_deleted":            false,
 	}, nil, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
 }
@@ -144,7 +148,6 @@ func (t *DXTable) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsI
 func (t *DXTable) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = t.ShouldSelectOne(log, utils.JSON{
 		t.FieldNameForRowNameId: nameid,
-		"is_deleted":            false,
 	}, nil, map[string]string{t.FieldNameForRowNameId: "asc"})
 	return rowsInfo, r, err
 }
@@ -152,15 +155,27 @@ func (t *DXTable) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db
 func (t *DXTable) TxShouldGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
 		t.FieldNameForRowId: id,
+	}, nil, nil, nil)
+	return rowsInfo, r, err
+}
+
+func (t *DXTable) TxShouldGetByIdNotDeleted(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
+		t.FieldNameForRowId: id,
 		"is_deleted":        false,
 	}, nil, nil, nil)
+	if err != nil {
+		s := err.Error()
+		if strings.Contains(s, "ROW_MUST_EXIST") {
+			return nil, r, errors.Wrap(err, "ID_NOT_EXIST_OR_ALREADY_SOFT_DELETED")
+		}
+	}
 	return rowsInfo, r, err
 }
 
 func (t *DXTable) TxGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.SelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
 		t.FieldNameForRowNameId: nameId,
-		"is_deleted":            false,
 	}, nil, nil, nil)
 	return rowsInfo, r, err
 }
@@ -168,7 +183,6 @@ func (t *DXTable) TxGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsI
 func (t *DXTable) TxShouldGetByNameId(tx *database.DXDatabaseTx, nameId string) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
 		t.FieldNameForRowNameId: nameId,
-		"is_deleted":            false,
 	}, nil, nil, nil)
 	return rowsInfo, r, err
 }

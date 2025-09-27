@@ -3,6 +3,9 @@ package table
 import (
 	"database/sql"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
@@ -10,8 +13,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
-	"net/http"
-	"time"
 )
 
 type TableInterface interface {
@@ -143,6 +144,14 @@ func (t *DXBaseTable) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo
 func (t *DXBaseTable) TxShouldGetById(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
 		t.FieldNameForRowId: id,
+	}, nil, nil, nil)
+	return rowsInfo, r, err
+}
+
+func (t *DXBaseTable) TxShouldGetByIdNotDeleted(tx *database.DXDatabaseTx, id int64) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = tx.ShouldSelectOne(t.ListViewNameId, t.FieldTypeMapping, nil, utils.JSON{
+		t.FieldNameForRowId: id,
+		"is_deleted":        false,
 	}, nil, nil, nil)
 	return rowsInfo, r, err
 }
