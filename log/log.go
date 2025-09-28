@@ -199,12 +199,14 @@ func (l *DXLog) Warnf(text string, v ...any) {
 	l.Warn(t)
 }
 
+func (l *DXLog) WarnAndCreateError(text string) (err error) {
+	err = errors.New(text)
+	l.LogText(err, DXLogLevelWarn, "", "")
+	return err
+}
+
 func (l *DXLog) WarnAndCreateErrorf(text string, v ...any) (err error) {
-	if v == nil {
-		err = errors.Errorf(text)
-	} else {
-		err = errors.Errorf(text, v...)
-	}
+	err = errors.Errorf(text, v...)
 	l.LogText(err, DXLogLevelWarn, "", "")
 	return err
 }

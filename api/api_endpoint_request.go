@@ -120,13 +120,18 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 	}
 	if msg == "" {
 		msg = responseMessage
+	} else {
+		msg = fmt.Sprintf(msg, data...)
 	}
-	err = aepr.Log.WarnAndCreateErrorf(msg, data...)
-	s := responseMessage
+	err = aepr.Log.WarnAndCreateError(msg)
+	if err != nil {
+		// supress
+	}
+	/*s := responseMessage
 	if data != nil {
 		s = fmt.Sprintf(responseMessage, data)
-	}
-	aepr.WriteResponseAsErrorMessage(statusCode, s)
+	}*/
+	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage, msg)
 	return err
 }
 
@@ -143,7 +148,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 		requestDump = "DUMP REQUEST FAIL"
 	}
 	aepr.Log.LogText2(err, log.DXLogLevelError, "", requestDump)
-	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage)
+	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage, err.Error())
 	return
 }
 
@@ -164,7 +169,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, re
 	}
 
 	aepr.Log.LogText2(err, log.DXLogLevelError, "", requestDump)
-	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage)
+	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage, msg)
 
 	return nil
 }
@@ -190,7 +195,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend
 	aepr.WriteResponseAsJSON(statusCode, nil, s)
 }
 
-func (aepr *DXAPIEndPointRequest) WriteResponseAsErrorMessage(statusCode int, errorMsg string) {
+func (aepr *DXAPIEndPointRequest) WriteResponseAsErrorMessage(statusCode int, errorMsg string, reasonMsg string) {
 	if aepr.ResponseHeaderSent {
 		return
 	}
@@ -204,7 +209,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsErrorMessage(statusCode int, er
 		"status":         http.StatusText(statusCode),
 		"status_code":    statusCode,
 		"reason":         errorMsg,
-		"reason_message": "",
+		"reason_message": reasonMsg,
 	}
 	//	}
 
