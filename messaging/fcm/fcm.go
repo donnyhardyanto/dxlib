@@ -2,13 +2,14 @@ package fcm
 
 import (
 	"context"
+	"sync"
+
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"golang.org/x/time/rate"
 	"google.golang.org/api/option"
-	"sync"
 )
 
 /*
