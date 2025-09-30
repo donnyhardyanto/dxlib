@@ -2,7 +2,6 @@ package table
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -45,7 +44,7 @@ func (bt *DXBaseTable) DbEnsureInitialize() error {
 	if bt.Database == nil {
 		bt.Database = database.Manager.Databases[bt.DatabaseNameId]
 		if bt.Database == nil {
-			return fmt.Errorf("database not found: %s", bt.DatabaseNameId)
+			return errors.Errorf("database not found: %s", bt.DatabaseNameId)
 		}
 	}
 	return nil
