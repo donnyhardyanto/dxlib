@@ -121,16 +121,14 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 	if msg == "" {
 		msg = responseMessage
 	} else {
-		msg = fmt.Sprintf(msg, data...)
+		if data != nil {
+			msg = fmt.Sprintf(msg, data...)
+		}
 	}
 	err = aepr.Log.WarnAndCreateError(msg)
 	if err != nil {
-		// supress
+		// suppress
 	}
-	/*s := responseMessage
-	if data != nil {
-		s = fmt.Sprintf(responseMessage, data)
-	}*/
 	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage, msg)
 	return err
 }
@@ -156,7 +154,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, re
 	if msg == "" {
 		msg = responseMessage
 	} else {
-		msg = fmt.Sprintf(msg, data)
+		if data != nil {
+			msg = fmt.Sprintf(msg, data...)
+		}
 	}
 
 	if responseMessage == "" {
