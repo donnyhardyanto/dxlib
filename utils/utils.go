@@ -513,6 +513,14 @@ func JSONToMapStringString(kv JSON) (r map[string]string) {
 	return r
 }
 
+func MapStringStringToJSON(kv map[string]string) (r JSON) {
+	r = JSON{}
+	for k, v := range kv {
+		r[k] = v
+	}
+	return r
+}
+
 func ShouldStrictJSONToMapStringString(kv JSON) (r map[string]string, err error) {
 	r = map[string]string{}
 	for k, v := range kv {
