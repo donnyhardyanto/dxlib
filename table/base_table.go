@@ -337,7 +337,7 @@ func DoBeforeInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) err
 	return nil
 }
 
-type DXRawTable2 struct {
+/*type DXRawTable2 struct {
 	DXBaseTable
 }
 
@@ -353,3 +353,4 @@ func (bt *DXTable2) Initialize() TableInterface {
 type DXProperyTable2 struct {
 	DXTable2
 }
+*/
