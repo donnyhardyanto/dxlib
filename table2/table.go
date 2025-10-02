@@ -749,7 +749,7 @@ func (t *DXTable2) TxSelectOneForUpdate(tx *database2.DXDatabaseTx, whereAndFiel
 	return tx.SelectOne(t.NameId, t.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
-func (t *DXTable2) TxUpdate(tx *databas2.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
+func (t *DXTable2) TxUpdate(tx *database2.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}

@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/database2/db"
-	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 	"os"
 	"path/filepath"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
+	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
+	"github.com/xuri/excelize/v2"
 )
 
 type ExportFormat string
@@ -28,7 +29,7 @@ type ExportOptions struct {
 	DateFormat string
 }
 
-func ExportQueryResults(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
+func ExportQueryResults(rowsInfo *database_type.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
 	if opts.DateFormat == "" {
 		opts.DateFormat = "2006-01-02 15:04:05"
 	}
@@ -48,7 +49,7 @@ func ExportQueryResults(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOpt
 	}
 }
 
-func ExportToStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) ([]byte, string, error) {
+func ExportToStream(rowsInfo *database_type.RowsInfo, rows []utils.JSON, opts ExportOptions) ([]byte, string, error) {
 	if opts.DateFormat == "" {
 		opts.DateFormat = "2006-01-02 15:04:05"
 	}
@@ -68,7 +69,7 @@ func ExportToStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions
 	}
 }
 
-func exportToCSV(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
+func exportToCSV(rowsInfo *database_type.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
 	file, err := os.Create(opts.FilePath)
 	if err != nil {
 		return errors.Errorf("failed to create CSV file: %w", err)
@@ -95,7 +96,7 @@ func exportToCSV(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) e
 	return nil
 }
 
-func exportToCSVStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) ([]byte, error) {
+func exportToCSVStream(rowsInfo *database_type.RowsInfo, rows []utils.JSON, opts ExportOptions) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	writer := csv.NewWriter(buf)
 
@@ -117,7 +118,7 @@ func exportToCSVStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOpti
 	return buf.Bytes(), nil
 }
 
-func exportToXLS(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
+func exportToXLS(rowsInfo *database_type.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -132,7 +133,7 @@ func exportToXLS(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) e
 	return f.SaveAs(opts.FilePath)
 }
 
-func exportToXLSStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) ([]byte, error) {
+func exportToXLSStream(rowsInfo *database_type.RowsInfo, rows []utils.JSON, opts ExportOptions) ([]byte, error) {
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -147,7 +148,7 @@ func exportToXLSStream(rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOpti
 	return buf.Bytes(), nil
 }
 
-func writeXLSContent(f *excelize.File, rowsInfo *db.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
+func writeXLSContent(f *excelize.File, rowsInfo *database_type.RowsInfo, rows []utils.JSON, opts ExportOptions) error {
 	sheetName := opts.SheetName
 	if sheetName == "" {
 		sheetName = "Sheet1"

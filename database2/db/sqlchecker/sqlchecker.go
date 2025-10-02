@@ -2,13 +2,14 @@ package sqlchecker
 
 import (
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
-	"github.com/pkg/errors"
-	"github.com/shopspring/decimal"
 	"regexp"
 	"strings"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
+	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 )
 
 var AllowRisk = false

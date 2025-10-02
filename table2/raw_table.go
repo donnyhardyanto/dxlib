@@ -1,18 +1,11 @@
 package table2
 
 import (
-	"database/sql"
-	"fmt"
-	"github.com/donnyhardyanto/dxlib/api"
-	database2 "github.com/donnyhardyanto/dxlib/database2"
-	"github.com/donnyhardyanto/dxlib/database2/db"
+	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/pkg/errors"
-	"net/http"
-	"strings"
-	"time"
-	_ "time/tzdata"
 )
 
 type OnResultList func(listRow utils.JSON) (utils.JSON, error)
@@ -22,7 +15,7 @@ type OnResultList func(listRow utils.JSON) (utils.JSON, error)
 		DXBaseTable2
 	}
 */
-func (t *DXRawTable2) SelectAll(log *log.DXLog) (rowsInfo *db.RowsInfo, r []utils.JSON, err error) {
+func (t *DXRawTable2) SelectAll(log *log.DXLog) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 	return t.Select(log, nil, nil, nil, nil, nil, nil)
 }
 

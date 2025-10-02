@@ -3,25 +3,27 @@ package database2
 import (
 	"context"
 	"database/sql"
+
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/pkg/errors"
 	goOra "github.com/sijms/go-ora/v2"
 
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
-	_ "github.com/microsoft/go-mssqldb"
-	_ "github.com/sijms/go-ora/v2"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 	_ "time/tzdata"
 
+	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
+	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/sijms/go-ora/v2"
+
 	"github.com/donnyhardyanto/dxlib/configuration"
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )

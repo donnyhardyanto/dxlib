@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
-	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
+	db2 "github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -12,7 +12,7 @@ import (
 
 func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {
 	dbt := database_type.StringToDXDatabaseType(db.DriverName())
-	err = sqlchecker.CheckAll(dbt, query, arg)
+	err = db2.CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
@@ -27,7 +27,7 @@ func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error
 
 func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err error) {
 	dbt := database_type.StringToDXDatabaseType(tx.DriverName())
-	err = sqlchecker.CheckAll(dbt, query, arg)
+	err = db2.CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}

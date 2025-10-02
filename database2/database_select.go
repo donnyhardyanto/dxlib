@@ -1,6 +1,7 @@
 package database2
 
 import (
+	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/log"
@@ -9,7 +10,7 @@ import (
 )
 
 func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections utils2.FieldsOrderBy,
-	limit any, offset any, forUpdatePart any) (rowsInfo *db.RowsInfo, resultData []utils.JSON, err error) {
+	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, resultData []utils.JSON, err error) {
 
 	err = d.EnsureConnection()
 	if err != nil {
@@ -34,7 +35,7 @@ func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeM
 }
 
 func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
 
 	rowsInfo, rr, err := d.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, offset, forUpdatePart)
 	if err != nil {
@@ -47,7 +48,7 @@ func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping utils2.FieldTy
 }
 
 func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderbyFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (
-	rowsInfo *db.RowsInfo, resultData utils.JSON, err error) {
+	rowsInfo *database_type.RowsInfo, resultData utils.JSON, err error) {
 
 	rowsInfo, resultData, err = d.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, offset, forUpdatePart)
 	if err != nil {

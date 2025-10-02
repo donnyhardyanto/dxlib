@@ -1,23 +1,24 @@
 package db
 
 import (
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
+	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
-	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"strconv"
-	"strings"
-	"time"
 )
 
-type RowsInfo struct {
+/*type RowsInfo struct {
 	Columns []string
 	//	ColumnTypes []*sql.ColumnType
-}
+}*/
 
 // FieldsOrderBy is a map that defines ordering directions for fields
 // The key is the field name and the value is the direction ("ASC" or "DESC")

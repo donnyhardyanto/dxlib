@@ -3,14 +3,15 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
+
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
-	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
+	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 // SQLPartInsertFieldNamesFieldValues generates the field names and values parts for an SQL INSERT statement

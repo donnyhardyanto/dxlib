@@ -1,13 +1,14 @@
 package table2
 
 import (
+	"time"
+
 	"github.com/donnyhardyanto/dxlib/api"
 	database "github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/pkg/errors"
-	"time"
 )
 
 type TableInterface interface {

@@ -3,6 +3,11 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/go-sql-driver/mysql"
@@ -11,10 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	go_ora "github.com/sijms/go-ora/v2/network"
-	"math/big"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type FieldsOrderBy map[string]string

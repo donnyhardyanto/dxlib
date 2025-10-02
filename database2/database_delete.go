@@ -2,6 +2,7 @@ package database2
 
 import (
 	"database/sql"
+
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/log"

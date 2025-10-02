@@ -4,11 +4,10 @@ import (
 	"database/sql"
 	"strings"
 
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
-
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
-	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
+	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
+	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"

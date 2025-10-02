@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
-	"github.com/donnyhardyanto/dxlib/database2/sqlchecker"
+	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
+	dbUtils "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 )
 
-func RawQueryRows(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, query string, arg []any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+func RawQueryRows(db *sqlx.DB, fieldTypeMapping dbUtils.FieldTypeMapping, query string, arg []any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	dbt := database_type.StringToDXDatabaseType(db.DriverName())
 	err = sqlchecker.CheckAll(dbt, query, arg)
@@ -42,7 +42,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, query s
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON, err = utils2.DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
+		rowJSON, err = dbUtils.DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -51,7 +51,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, query s
 	return rowsInfo, r, nil
 }
 
-func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, query string, arg []any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping dbUtils.FieldTypeMapping, query string, arg []any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 
 	dbt := database_type.StringToDXDatabaseType(tx.DriverName())
@@ -82,7 +82,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, query
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON, err = utils2.DeformatKeys(rowJSON, tx.DriverName(), fieldTypeMapping)
+		rowJSON, err = dbUtils.DeformatKeys(rowJSON, tx.DriverName(), fieldTypeMapping)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -93,7 +93,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, query
 
 func QueryRows(
 	db *sqlx.DB,
-	fieldTypeMapping utils2.FieldTypeMapping,
+	fieldTypeMapping dbUtils.FieldTypeMapping,
 	sqlStatement string,
 	sqlArguments utils.JSON,
 ) (rowsInfo *database_type.RowsInfo, rows []utils.JSON, err error) {
@@ -225,7 +225,7 @@ func Count(
 
 func TxQueryRows(
 	tx *sqlx.Tx,
-	fieldTypeMapping utils2.FieldTypeMapping,
+	fieldTypeMapping dbUtils.FieldTypeMapping,
 	sqlStatement string,
 	sqlArguments utils.JSON,
 ) (rowsInfo *database_type.RowsInfo, rows []utils.JSON, err error) {
