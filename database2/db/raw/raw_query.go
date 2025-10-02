@@ -125,12 +125,12 @@ func QueryRows(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MariaDb:
-		// MariaDb uses ? placeholders
+	case database_type.MariaDB:
+		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to convert to MariaDb parameter format")
+			return nil, nil, errors.Wrap(err, "failed to convert to MariaDB parameter format")
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -182,12 +182,12 @@ func Count(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MariaDb:
-		// MariaDb uses ? placeholders
+	case database_type.MariaDB:
+		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return 0, errors.Wrap(err, "failed to convert to MariaDb parameter format")
+			return 0, errors.Wrap(err, "failed to convert to MariaDB parameter format")
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -258,12 +258,12 @@ func TxQueryRows(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MariaDb:
-		// MariaDb uses ? placeholders
+	case database_type.MariaDB:
+		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to convert to MariaDb parameter format")
+			return nil, nil, errors.Wrap(err, "failed to convert to MariaDB parameter format")
 		}
 		modifiedSQL = tx.Rebind(modifiedSQL)
 

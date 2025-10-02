@@ -70,12 +70,12 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MariaDb:
-		// MariaDb uses ? placeholders
+	case database_type.MariaDB:
+		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to convert to MariaDb parameter format")
+			return nil, errors.Wrap(err, "failed to convert to MariaDB parameter format")
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -125,12 +125,12 @@ func TxExec(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case database_type.MariaDb:
-		// MariaDb uses ? placeholders
+	case database_type.MariaDB:
+		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to convert to MariaDb parameter format")
+			return nil, errors.Wrap(err, "failed to convert to MariaDB parameter format")
 		}
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
