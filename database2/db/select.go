@@ -681,8 +681,7 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereA
 }
 
 func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
-	limit any, offset any) (totalRowCount int64, rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy) (totalRowCount int64, rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	dtx, err := db.Beginx()
 	if err != nil {
@@ -710,6 +709,9 @@ func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, fieldTypeMapp
 	if err != nil {
 		return 0, nil, nil, err
 	}
+
+	limit := rowsPerPage
+	offset := pageIndex * limit
 
 	rowsInfo, r, err = BaseTxSelect(dtx, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, nil, "")

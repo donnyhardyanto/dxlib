@@ -8,10 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections utils2.FieldsOrderBy,
+func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, resultData []utils.JSON, err error) {
 
-	rowsInfo, resultData, err = db.TxSelect(dtx.Tx, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart)
+	rowsInfo, resultData, err = db.TxSelect(dtx.Tx, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart)
 	if err != nil {
 		return rowsInfo, resultData, err
 	}
@@ -19,9 +19,9 @@ func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping utils2.FieldT
 	return rowsInfo, resultData, nil
 }
 
-func (dtx *DXDatabaseTx) Count(tableName string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (count int64, err error) {
+func (dtx *DXDatabaseTx) Count(tableName string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON) (count int64, err error) {
 
-	count, err = db.TxCount(dtx.Tx, tableName, whereAndFieldNameValues, joinSQLPart, nil, "", "")
+	count, err = db.TxCount(dtx.Tx, tableName, "", whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, "")
 	if err != nil {
 		return 0, err
 	}
@@ -30,9 +30,9 @@ func (dtx *DXDatabaseTx) Count(tableName string, whereAndFieldNameValues utils.J
 }
 
 func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
 
-	rowsInfo, rr, err := dtx.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, 1, offset, forUpdatePart)
+	rowsInfo, rr, err := dtx.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, 1, offset, forUpdatePart)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -43,10 +43,10 @@ func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldTypeMapping utils2.Fie
 }
 
 func (dtx *DXDatabaseTx) ShouldSelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (
 	rowsInfo *database_type.RowsInfo, resultData utils.JSON, err error) {
 
-	rowsInfo, resultData, err = dtx.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, offset, forUpdatePart)
+	rowsInfo, resultData, err = dtx.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdatePart)
 	if err != nil {
 		return nil, nil, err
 	}
