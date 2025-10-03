@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -15,13 +16,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-/*type RowsInfo struct {
-	Columns []string
-	//	ColumnTypes []*sql.ColumnType
-}*/
-
 // FieldsOrderBy is a map that defines ordering directions for fields
-// The key is the field name and the value is the direction ("ASC" or "DESC")
+// The key is the field name, and the value is the direction ("ASC" or "DESC")
 
 // SQLPartFieldNames formats field names for use in a SELECT clause
 //
@@ -105,7 +101,7 @@ func SQLPartOrderByFieldNameDirections(orderByKeyValues map[string]string, drive
 func SQLPartConstructSelect(driverName string, tableName string, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
-	groupByFields []string, havingClause string, withCTE string) (s string, err error) {
+	groupByFields []string, havingClause utils.JSON, withCTE string) (s string, err error) {
 
 	// Common parts preparation
 	f := SQLPartFieldNames(fieldNames, driverName)
@@ -146,9 +142,11 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	}
 
 	// Handle HAVING clause if provided
+	havingClauseAsString := utils2.SQLPartWhereAndFieldNameValues(havingClause, driverName)
+
 	effectiveHaving := ""
-	if havingClause != "" && effectiveGroupBy != "" {
-		effectiveHaving = " having " + havingClause
+	if havingClauseAsString != "" && effectiveGroupBy != "" {
+		effectiveHaving = " having " + havingClauseAsString
 	}
 
 	// Convert limit to int64 if provided
@@ -252,8 +250,8 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 //	// Generates: WITH recent_orders AS (SELECT * FROM orders WHERE order_date > '2023-01-01') SELECT * FROM recent_orders
 func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
-	groupByFields []string, havingClause string, withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
+	withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
 		fieldNames = []string{"*"}
@@ -306,9 +304,9 @@ func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 // This function is similar to BaseSelect but operates within a transaction context,
 // allowing for consistent reads and potential row locking when used with forUpdatePart=true
 func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
-	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON,
 	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
-	groupByFields []string, havingClause string, withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
 		fieldNames = []string{"*"}
@@ -406,11 +404,11 @@ func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 // This function is a backward-compatible wrapper around BaseSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
 func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections utils2.FieldsOrderBy,
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	return BaseSelect(db, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
-		joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart, nil, "", "")
+		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart, "")
 }
 
 // TxSelect is a transaction-based version of the Select function that maintains compatibility with existing code.
@@ -436,11 +434,11 @@ func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName str
 // This function is a transaction-based wrapper around BaseTxSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
 func TxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections utils2.FieldsOrderBy,
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	return BaseTxSelect(tx, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
-		joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart, nil, "", "")
+		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart, "")
 }
 
 // isSubquery checks if a string is likely a SQL subquery rather than a table name
@@ -522,7 +520,7 @@ func isSubquery(str string) bool {
 //	// Count with subquery
 //	count, err := Count(db, "(SELECT * FROM orders WHERE date > '2023-01-01')", "", nil, nil, nil, "", "")
 //	// Generates: SELECT COUNT(*) FROM (SELECT * FROM orders WHERE date > '2023-01-01') AS subquery__sq_[unique_id]
-func Count(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereAndFieldNameValues utils.JSON,
+func Count(db *sqlx.DB, tableOrSubquery string, countExpression string, whereAndFieldNameValues utils.JSON,
 	joinSQLPart any, groupByFields []string, havingClause string, withCTE string) (count int64, err error) {
 
 	// Determine if this is a subquery
@@ -534,10 +532,17 @@ func Count(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereAndFi
 	}
 
 	// Prepare the count expression
-	effectiveCountExpr := "count(*)"
-	/*	if countExpr != "" {
-		effectiveCountExpr = countExpr
-	}*/
+	effectiveCountExpression := "count(*)"
+	if countExpression != "" {
+		effectiveCountExpression = countExpression
+	}
+
+	// OPTIONAL: Optimize for GROUP BY case -- WARNING: IT WILL WORK ON MARIADB BUT NOT IN MYSQL
+	if len(groupByFields) > 0 && countExpression == "" {
+		// When counting groups, we just need to select something
+		// SELECT 1 is more efficient than COUNT(*)
+		effectiveCountExpression = "1"
+	}
 
 	// For subqueries, wrap them properly
 	effectiveTable := tableOrSubquery
@@ -556,13 +561,17 @@ func Count(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereAndFi
 		whereAndFieldNameValues = utils.JSON{}
 	}
 
-	// Execute the SELECT query with COUNT expression
-	rowsInfo, rows, err := BaseSelect(db, nil, effectiveTable, []string{effectiveCountExpr},
+	// Execute the SELECT query with a COUNT expression
+	rowsInfo, rows, err := BaseSelect(db, nil, effectiveTable, []string{effectiveCountExpression},
 		whereAndFieldNameValues, joinSQLPart, nil, nil, nil, nil,
 		groupByFields, havingClause, withCTE)
 
 	if err != nil {
 		return 0, err
+	}
+
+	if len(groupByFields) > 0 {
+		return int64(len(rows)), nil
 	}
 
 	// Validate the result
@@ -580,70 +589,9 @@ func Count(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereAndFi
 	// Convert to int64
 	return utils.ConvertToInt64(countValue)
 }
-
-/*
-  	func CountWhere(db *sqlx.DB, tableOrSubquery string , whereStatements string, args []any) (count int64, err error) {
-
-	// Determine if this is a subquery
-	isSubquery := isSubquery(tableOrSubquery)
-
-	// When using a subquery, we shouldn't apply WHERE conditions to the outer query
-	if isSubquery && whereStatements != "" && len(args) > 0 {
-		return 0, errors.New("cannot apply WHERE conditions to outer level of a subquery; include them in the subquery instead")
-	}
-
-	// Prepare the count expression
-	effectiveCountExpr := "count(*)"
-
-	// For subqueries, wrap them properly
-	effectiveTable := tableOrSubquery
-	if isSubquery {
-		// Create a unique alias
-		uniqueSuffix := "__sq_" + strconv.FormatInt(time.Now().UnixNano(), 36)
-
-		// Handle database-specific subquery syntax
-		if db.DriverName() == "oracle" {
-			effectiveTable = "(" + tableOrSubquery + ") subquery" + uniqueSuffix
-		} else {
-			effectiveTable = "(" + tableOrSubquery + ") as subquery" + uniqueSuffix
-		}
-
-		// Clear WHERE conditions for subqueries
-		whereAndFieldNameValues = utils.JSON{}
-	}
-
-	s := "select " + effectiveCountExpr + " from " + effectiveTable + " where " + whereStatements
-
-	rowsInfo, rows, err = raw.QueryRows(db, nil, s, wKV)
-
-	// Execute the SELECT query with COUNT expression
-	rowsInfo, rows, err := BaseSelect(db, nil, effectiveTable, []string{effectiveCountExpr},
-		whereAndFieldNameValues, joinSQLPart, nil, nil, nil, nil,
-		groupByFields, havingClause, withCTE)
-
-	if err != nil {
-		return 0, err
-	}
-
-	// Validate the result
-	if len(rows) == 0 || len(rowsInfo.Columns) == 0 {
-		return 0, errors.New("no results returned from count query")
-	}
-
-	// Extract the count value from the first column
-	firstColumn := rowsInfo.Columns[0]
-	countValue, ok := rows[0][firstColumn]
-	if !ok {
-		return 0, errors.Errorf("count column '%s' not found in result", firstColumn)
-	}
-
-	// Convert to int64
-	return utils.ConvertToInt64(countValue)
-}
-*/
 
 // TxCount executes a count query within a transaction and returns the result as an int64.
-// This implementation leverages BaseTxSelect for all database interaction.
+// This implementation leverages BaseTxSelect for all database interactions.
 //
 // Parameters:
 //   - tx: The database transaction
@@ -662,8 +610,8 @@ func Count(db *sqlx.DB, tableOrSubquery string /*countExpr string,*/, whereAndFi
 // This function is a transaction-based version of the Count function.
 // It provides the same functionality but within a transaction context,
 // which ensures consistency across multiple database operations.
-func TxCount(tx *sqlx.Tx, tableOrSubquery string, whereAndFieldNameValues utils.JSON,
-	joinSQLPart any, groupByFields []string, havingClause string, withCTE string) (count int64, err error) {
+func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereAndFieldNameValues utils.JSON,
+	joinSQLPart any, groupByFields []string, havingClause utils.JSON, withCTE string) (count int64, err error) {
 
 	// Determine if this is a subquery
 	isSubquery := isSubquery(tableOrSubquery)
@@ -674,10 +622,17 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, whereAndFieldNameValues utils.
 	}
 
 	// Prepare the count expression
-	effectiveCountExpr := "count(*)"
-	/*	if countExpr != "" {
-		effectiveCountExpr = countExpr
-	}*/
+	effectiveCountExpression := "count(*)"
+	if countExpression != "" {
+		effectiveCountExpression = countExpression
+	}
+
+	// OPTIONAL: Optimize for GROUP BY case -- WARNING: IT WILL WORK ON MARIADB BUT NOT IN MYSQL
+	if len(groupByFields) > 0 && countExpression == "" {
+		// When counting groups, we just need to select something
+		// SELECT 1 is more efficient than COUNT(*)
+		effectiveCountExpression = "1"
+	}
 
 	// For subqueries, wrap them properly
 	effectiveTable := tableOrSubquery
@@ -696,13 +651,17 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, whereAndFieldNameValues utils.
 		whereAndFieldNameValues = utils.JSON{}
 	}
 
-	// Execute the SELECT query with COUNT expression
-	rowsInfo, rows, err := BaseTxSelect(tx, nil, effectiveTable, []string{effectiveCountExpr},
+	// Execute the SELECT query with a COUNT expression
+	rowsInfo, rows, err := BaseTxSelect(tx, nil, effectiveTable, []string{effectiveCountExpression},
 		whereAndFieldNameValues, joinSQLPart, nil, nil, nil, nil,
 		groupByFields, havingClause, withCTE)
 
 	if err != nil {
 		return 0, err
+	}
+
+	if len(groupByFields) > 0 {
+		return int64(len(rows)), nil
 	}
 
 	// Validate the result
@@ -719,4 +678,43 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, whereAndFieldNameValues utils.
 
 	// Convert to int64
 	return utils.ConvertToInt64(countValue)
+}
+
+func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
+	limit any, offset any) (totalRowCount int64, rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+
+	dtx, err := db.Beginx()
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	defer func() {
+		if err != nil {
+			errTx := dtx.Rollback()
+			if errTx != nil {
+				fmt.Printf("Suppressed Error rolling back transaction:%s from %s", errTx.Error(), err.Error())
+			}
+			return
+		}
+		errTx := dtx.Commit()
+		if errTx != nil {
+			fmt.Printf("Suppressed Error commit transaction:%s from %s", errTx.Error(), err.Error())
+			errTx2 := dtx.Rollback()
+			if errTx2 != nil {
+				fmt.Printf("Suppressed Error rolling back transaction:%s from %s", errTx2.Error(), errTx.Error())
+			}
+		}
+		return
+	}()
+	rowCount, err := TxCount(dtx, tableName, "", whereAndFieldNameValues, joinSQLPart, groupByFields, havingClause, "")
+	if err != nil {
+		return 0, nil, nil, err
+	}
+
+	rowsInfo, r, err = BaseTxSelect(dtx, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
+		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, nil, "")
+	if err != nil {
+		return rowCount, nil, nil, err
+	}
+	return rowCount, rowsInfo, r, nil
 }

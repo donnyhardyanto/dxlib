@@ -8,6 +8,7 @@ const (
 	MariaDB
 	Oracle
 	SQLServer
+	DeprecatedMysql
 )
 
 type RowsInfo struct {
