@@ -8,7 +8,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
 	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
-	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -33,7 +32,7 @@ func SQLPartUpdateSetFieldValues(setFieldValues utils.JSON, driverName string) (
 			setPart = formattedKey + "=NULL"
 		} else {
 			switch v := v.(type) {
-			case sql_expression.SQLExpression:
+			case SQLExpression:
 				setPart = formattedKey + "=" + v.String()
 			default:
 				setPart = formattedKey + "=:" + k
@@ -88,7 +87,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 	// Validate SET field names
 	for fieldName := range setFieldNameValues {
 		// Skip SQL expressions
-		if _, ok := setFieldNameValues[fieldName].(sql_expression.SQLExpression); ok {
+		if _, ok := setFieldNameValues[fieldName].(SQLExpression); ok {
 			continue
 		}
 
@@ -100,7 +99,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 	// Validate WHERE field names
 	for fieldName := range whereAndFieldNameValues {
 		// Skip SQL expressions
-		if _, ok := whereAndFieldNameValues[fieldName].(sql_expression.SQLExpression); ok {
+		if _, ok := whereAndFieldNameValues[fieldName].(SQLExpression); ok {
 			continue
 		}
 
@@ -131,12 +130,12 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 	// Combine SET and WHERE values
 	combinedParams := utils.JSON{}
 	for k, v := range setFieldNameValues {
-		if _, ok := v.(sql_expression.SQLExpression); !ok {
+		if _, ok := v.(SQLExpression); !ok {
 			combinedParams[k] = v
 		}
 	}
 	for k, v := range whereAndFieldNameValues {
-		if _, ok := v.(sql_expression.SQLExpression); !ok {
+		if _, ok := v.(SQLExpression); !ok {
 			combinedParams[k] = v
 		}
 	}
@@ -319,7 +318,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 	// Validate SET field names
 	for fieldName := range setFieldValues {
 		// Skip SQL expressions
-		if _, ok := setFieldValues[fieldName].(sql_expression.SQLExpression); ok {
+		if _, ok := setFieldValues[fieldName].(SQLExpression); ok {
 			continue
 		}
 
@@ -331,7 +330,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 	// Validate WHERE field names
 	for fieldName := range whereAndFieldNameValues {
 		// Skip SQL expressions
-		if _, ok := whereAndFieldNameValues[fieldName].(sql_expression.SQLExpression); ok {
+		if _, ok := whereAndFieldNameValues[fieldName].(SQLExpression); ok {
 			continue
 		}
 
@@ -362,12 +361,12 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 	// Combine SET and WHERE values
 	combinedParams := utils.JSON{}
 	for k, v := range setFieldValues {
-		if _, ok := v.(sql_expression.SQLExpression); !ok {
+		if _, ok := v.(SQLExpression); !ok {
 			combinedParams[k] = v
 		}
 	}
 	for k, v := range whereAndFieldNameValues {
-		if _, ok := v.(sql_expression.SQLExpression); !ok {
+		if _, ok := v.(SQLExpression); !ok {
 			combinedParams[k] = v
 		}
 	}

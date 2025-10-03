@@ -7,20 +7,20 @@ import (
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/donnyhardyanto/dxlib/database/protected/export"
 	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db"
-	"github.com/donnyhardyanto/dxlib/database2/db/raw"
 	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
+	"github.com/donnyhardyanto/dxlib/database2/export"
 	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/table2/compatibility"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
 )
 
-func (bt *DXBaseTable2) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func (bt *DXBaseTable2) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON,
 	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	// Ensure database2 is initialized
@@ -28,7 +28,7 @@ func (bt *DXBaseTable2) Select(log *log.DXLog, fieldNames []string, whereAndFiel
 		return nil, nil, err
 	}
 
-	rowsInfo, r, err = bt.Database.Select(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart)
+	rowsInfo, r, err = bt.Database.Select(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -36,7 +36,7 @@ func (bt *DXBaseTable2) Select(log *log.DXLog, fieldNames []string, whereAndFiel
 	return rowsInfo, r, err
 }
 
-func (bt *DXBaseTable2) Count(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any) (count int64, err error) {
+func (bt *DXBaseTable2) Count(log *log.DXLog, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON) (count int64, err error) {
 
 	// Ensure database2 is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
@@ -52,17 +52,17 @@ func (bt *DXBaseTable2) Count(log *log.DXLog, whereAndFieldNameValues utils.JSON
 }
 
 func (bt *DXBaseTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
 
 	// Ensure database2 is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
 		return nil, nil, err
 	}
 
-	return bt.Database.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, offset, forUpdate)
+	return bt.Database.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 
-func (bt *DXBaseTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (
+func (bt *DXBaseTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (
 	rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
 
 	// Ensure database2 is initialized
@@ -70,7 +70,7 @@ func (bt *DXBaseTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndF
 		return nil, nil, err
 	}
 
-	return bt.Database.SelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, offset, forUpdate)
+	return bt.Database.SelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 
 func (bt *DXBaseTable2) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
@@ -156,19 +156,19 @@ func (bt *DXBaseTable2) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err e
 }
 
 func (bt *DXBaseTable2) TxSelect(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
-	return tx.Select(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, nil, orderByFieldNameDirections, limit, offset, forUpdatePart)
+	return tx.Select(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, nil, groupBy, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart)
 }
 
-func (bt *DXBaseTable2) TxCount(tx *database2.DXDatabaseTx, whereAndFieldNameValues utils.JSON, joinSQLPart any) (count int64, err error) {
+func (bt *DXBaseTable2) TxCount(tx *database2.DXDatabaseTx, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON) (count int64, err error) {
 
 	// Ensure database2 is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
 		return 0, err
 	}
 
-	count, err = tx.Count(bt.ListViewNameId, whereAndFieldNameValues, joinSQLPart)
+	count, err = tx.Count(bt.ListViewNameId, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause)
 	if err != nil {
 		return 0, err
 	}
@@ -176,50 +176,62 @@ func (bt *DXBaseTable2) TxCount(tx *database2.DXDatabaseTx, whereAndFieldNameVal
 	return count, nil
 }
 
-func (bt *DXBaseTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, orderByFieldNameDirections utils2.FieldsOrderBy, offset any,
+func (bt *DXBaseTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any,
 	forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
 
-	return tx.SelectOne(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, offset, forUpdate)
+	return tx.SelectOne(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 
 func (bt *DXBaseTable2) TxShouldSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
-	return tx.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, offset, forUpdate)
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	return tx.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 
-func (bt *DXBaseTable2) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
+func (bt *DXBaseTable2) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere utils.JSON, filterOrderBy map[string]string, onResultList DXBaseTable2OnResultProcessEachListRow) (err error) {
 
-	// Ensure database2 is initialized
-	if err := bt.DbEnsureInitialize(); err != nil {
-		return err
-	}
-
-	sqlStatement := strings.Join([]string{"SELECT * FROM", bt.ListViewNameId}, " ")
-
-	if filterWhere != "" {
-		err = sqlchecker.CheckBaseQuery(filterWhere, bt.DatabaseType)
-		sqlStatement = sqlStatement + " WHERE " + filterWhere
-	}
-	if filterOrderBy != "" {
-		err = sqlchecker.CheckOrderBy(filterOrderBy, bt.DatabaseType)
-		if err != nil {
-			return err
+	if filterWhere != nil {
+		for k, v := range filterWhere {
+			if vAsExpression, ok := v.(db.SQLExpression); ok {
+				err = sqlchecker.CheckBaseQuery(bt.DatabaseType, vAsExpression.String())
+				if err != nil {
+					return err
+				}
+			} else {
+				err = sqlchecker.CheckIdentifier(bt.DatabaseType, k)
+				if err != nil {
+					return err
+				}
+				err = sqlchecker.CheckValue(bt.DatabaseType, v)
+				if err != nil {
+					return err
+				}
+			}
 		}
-		sqlStatement = sqlStatement + " ORDER BY " + filterOrderBy
 	}
-	err = sqlchecker.CheckAll(bt.DatabaseType, sqlStatement, nil)
+
+	if filterOrderBy != nil {
+		for k, v := range filterOrderBy {
+			err = sqlchecker.CheckIdentifier(bt.DatabaseType, k)
+			if err != nil {
+				return err
+			}
+			err = sqlchecker.CheckOrderByDirection(bt.DatabaseType, v)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	rowsInfo, list, err := bt.Database.Select(bt.ListViewNameId, bt.FieldTypeMapping, nil,
+		filterWhere, nil, nil, nil, filterOrderBy, nil, nil, nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occured")
 	}
 
-	rowsInfo, list, err := raw.QueryRows(bt.Database.Connection, bt.FieldTypeMapping, sqlStatement, filterKeyValues)
-
-	if err != nil {
-		return err
+	if onResultList != nil {
+		bt.OnResultProcessEachListRow = onResultList
 	}
-
 	for i := range list {
-
 		if bt.OnResultProcessEachListRow != nil {
 			aListRow, err := bt.OnResultProcessEachListRow(aepr, bt, list[i])
 			if err != nil {
@@ -248,164 +260,200 @@ func (bt *DXBaseTable2) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWher
 	return nil
 }
 
-func (bt *DXBaseTable2) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
-	sqlStatement := strings.Join([]string{"SELECT * FROM", bt.ListViewNameId}, " ")
-	sqlCountStatement := strings.Join([]string{"SELECT count(*) as count_result FROM", bt.ListViewNameId}, " ")
-
-	if filterWhere != "" {
-		err = sqlchecker.CheckBaseQuery(filterWhere, bt.DatabaseType)
-		sqlStatement = sqlStatement + " WHERE " + filterWhere
-		sqlCountStatement = sqlCountStatement + " WHERE " + filterWhere
-	}
-	if filterOrderBy != "" {
-		err = sqlchecker.CheckOrderBy(filterOrderBy, bt.DatabaseType)
-		if err != nil {
-			return err
+func (bt *DXBaseTable2) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere utils.JSON, filterOrderBy map[string]string, pageIndex int64, rowsPerPage int64, onResultList DXBaseTable2OnResultProcessEachListRow) (err error) {
+	if filterWhere != nil {
+		for k, v := range filterWhere {
+			if vAsExpression, ok := v.(db.SQLExpression); ok {
+				err = sqlchecker.CheckBaseQuery(bt.DatabaseType, vAsExpression.String())
+				if err != nil {
+					return err
+				}
+			} else {
+				err = sqlchecker.CheckIdentifier(bt.DatabaseType, k)
+				if err != nil {
+					return err
+				}
+				err = sqlchecker.CheckValue(bt.DatabaseType, v)
+				if err != nil {
+					return err
+				}
+			}
 		}
-		sqlStatement = sqlStatement + " ORDER BY " + filterOrderBy
 	}
 
-	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
-	if err != nil {
-		return err
-	}
-
-	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-
-	err = sqlchecker.CheckAll(bt.DatabaseType, sqlStatement, nil)
-	if err != nil {
-		return err
-	}
-
-	dtx, err := bt.Database.TransactionBegin(database2.LevelRepeatableRead)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			dtx.Rollback()
-		} else {
-			dtx.Commit()
-		}
-	}()
-
-	count, err := raw.TxQueryRows(dtx, bt.FieldTypeMapping, sqlCountStatement, filterKeyValues)
-	if err != nil {
-		return err
-	}
-
-	_, countList, err := raw.QueryRows(bt.Database.Connection, bt.FieldTypeMapping, sqlCountStatement, filterKeyValues)
-	if err != nil {
-		return err
-	}
-
-	totalRows := int(countList[0].(utils.JSON)["count_result"].(float64))
-	totalPage := int((totalRows + rowPerPage - 1) / rowPerPage)
-
-	rowsInfo, list, err := raw.QueryRows(bt.Database.Connection, bt.FieldTypeMapping, sqlStatement, filterKeyValues)
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-
-	/*	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(bt.Database.Connection, bt.FieldTypeMapping, "", rowPerPage, pageIndex, "*", bt.ListViewNameId,
-			filterWhere, "", filterOrderBy, filterKeyValues)
-		if err != nil {
-			return errors.Wrap(err, "error occured")
-		}
-	*/
-	for i := range list {
-
-		if onResultList != nil {
-			aListRow, err := onResultList(list[i])
+	if filterOrderBy != nil {
+		for k, v := range filterOrderBy {
+			err = sqlchecker.CheckIdentifier(bt.DatabaseType, k)
 			if err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
+			}
+			err = sqlchecker.CheckOrderByDirection(bt.DatabaseType, v)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	totalRowsCount, rowsInfo, list, err := bt.Database.SelectPaging(pageIndex, rowsPerPage, bt.ListViewNameId, bt.FieldTypeMapping, nil,
+		filterWhere, nil, nil, nil, filterOrderBy)
+	if err != nil {
+		return err
+	}
+
+	totalPage := int((totalRowsCount + rowsPerPage - 1) / rowsPerPage)
+
+	if onResultList != nil {
+		bt.OnResultProcessEachListRow = onResultList
+	}
+	for i := range list {
+		if bt.OnResultProcessEachListRow != nil {
+			aListRow, err := bt.OnResultProcessEachListRow(aepr, bt, list[i])
+			if err != nil {
+				return err
 			}
 			list[i] = aListRow
 		}
 
 	}
 
-	data := utils.JSON{
-		"data": utils.JSON{
-			"list": utils.JSON{
-				"rows":       list,
-				"total_rows": totalRows,
-				"total_page": totalPage,
-				"rows_info":  rowsInfo,
-			},
-		},
+	responseObject := utils.JSON{}
+	if bt.OnResponseObjectConstructor != nil {
+		responseObject, err = bt.OnResponseObjectConstructor(aepr, bt, responseObject)
+	} else {
+		responseObject = utilsJson.Encapsulate(
+			"data", utils.JSON{
+				"list": utils.JSON{
+					"rows":       list,
+					"rows_info":  rowsInfo,
+					"total_rows": totalRowsCount,
+					"total_page": totalPage,
+				},
+			})
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseObject)
 
 	return nil
 }
 
 func (bt *DXBaseTable2) RequestListAll(aepr *api.DXAPIEndPointRequest) (err error) {
-	return bt.DoRequestList(aepr, "", "", nil, nil)
+	return bt.DoRequestList(aepr, nil, nil, nil)
 }
 
 func (bt *DXBaseTable2) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
-	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
+	_, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
-	}
-	if !isExistFilterWhere {
-		filterWhere = ""
-	}
-	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterOrderBy {
-		filterOrderBy = ""
 	}
 
-	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	ifExistWhereKV, whereKV, err := aepr.GetParameterValueAsJSON("where")
 	if err != nil {
 		return err
 	}
-	if !isExistFilterKeyValues {
-		filterKeyValues = nil
+
+	_, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
+	if err != nil {
+		return err
 	}
 
-	return bt.DoRequestList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
+	isExistOrderByKV, orderByKVAsJSON, err := aepr.GetParameterValueAsJSON("order_by")
+	if err != nil {
+		return err
+	}
+	var orderByKV map[string]string
+
+	if isExistOrderByKV {
+		for k, v := range orderByKVAsJSON {
+			orderByKV[k] = v.(string)
+		}
+	}
+
+	_, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	if err != nil {
+		return err
+	}
+
+	if ifExistWhereKV {
+		whereKV, err = compatibility.TranslateFilterWhereToWhereKV(filterWhere, filterKeyValues)
+		if err != nil {
+			return err
+		}
+	}
+
+	if isExistOrderByKV {
+		orderByKV, err = compatibility.TranslateFilterOrderByToOrderByKV(filterOrderBy)
+		if err != nil {
+			return err
+		}
+	}
+
+	return bt.DoRequestList(aepr, whereKV, orderByKV, nil)
 }
 
 func (bt *DXBaseTable2) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) {
-	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
+	_, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	if !isExistFilterWhere {
-		filterWhere = ""
-	}
-	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	if !isExistFilterOrderBy {
-		filterOrderBy = ""
+		return err
 	}
 
-	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	ifExistWhereKV, whereKV, err := aepr.GetParameterValueAsJSON("where")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	if !isExistFilterKeyValues {
-		filterKeyValues = nil
+		return err
 	}
 
-	return bt.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
+	_, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
+	if err != nil {
+		return err
+	}
+
+	isExistOrderByKV, orderByKVAsJSON, err := aepr.GetParameterValueAsJSON("order_by")
+	if err != nil {
+		return err
+	}
+	var orderByKV map[string]string
+
+	if isExistOrderByKV {
+		for k, v := range orderByKVAsJSON {
+			orderByKV[k] = v.(string)
+		}
+	}
+
+	_, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	if err != nil {
+		return err
+	}
+
+	if ifExistWhereKV {
+		whereKV, err = compatibility.TranslateFilterWhereToWhereKV(filterWhere, filterKeyValues)
+		if err != nil {
+			return err
+		}
+	}
+
+	if isExistOrderByKV {
+		orderByKV, err = compatibility.TranslateFilterOrderByToOrderByKV(filterOrderBy)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
+	if err != nil {
+		return err
+	}
+
+	_, rowsPerPage, err := aepr.GetParameterValueAsInt64("rows_per_page")
+	if err != nil {
+		return err
+	}
+
+	return bt.DoRequestPagingList(aepr, whereKV, orderByKV, pageIndex, rowsPerPage, nil)
 }
 
 func (bt *DXBaseTable2) IsFieldValueExistAsString(log *log.DXLog, fieldName string, fieldValue string) (bool, error) {
 	_, r, err := bt.SelectOne(log, nil, utils.JSON{
 		fieldName: fieldValue,
-	}, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		return false, err
 	}
@@ -416,27 +464,50 @@ func (bt *DXBaseTable2) IsFieldValueExistAsString(log *log.DXLog, fieldName stri
 }
 
 func (bt *DXBaseTable2) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err error) {
-	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
+	_, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	if !isExistFilterWhere {
-		filterWhere = ""
-	}
-	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	if !isExistFilterOrderBy {
-		filterOrderBy = ""
+		return err
 	}
 
-	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	isWhereKVExist, whereKV, err := aepr.GetParameterValueAsJSON("where")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
-	if !isExistFilterKeyValues {
-		filterKeyValues = nil
+
+	_, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
+	if err != nil {
+		return err
+	}
+
+	isOrderByKVExist, orderByKVAsJSON, err := aepr.GetParameterValueAsJSON("order_by")
+	if err != nil {
+		return err
+	}
+	var orderByKV map[string]string
+
+	if isOrderByKVExist {
+		for k, v := range orderByKVAsJSON {
+			orderByKV[k] = v.(string)
+		}
+	}
+
+	_, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	if err != nil {
+		return err
+	}
+
+	if !isWhereKVExist {
+		whereKV, err = compatibility.TranslateFilterWhereToWhereKV(filterWhere, filterKeyValues)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !isOrderByKVExist {
+		orderByKV, err = compatibility.TranslateFilterOrderByToOrderByKV(filterOrderBy)
+		if err != nil {
+			return err
+		}
 	}
 
 	_, format, err := aepr.GetParameterValueAsString("format")
@@ -446,43 +517,19 @@ func (bt *DXBaseTable2) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err
 
 	format = strings.ToLower(format)
 
-	isDeletedIncluded := false
-	if !isDeletedIncluded {
-		if filterWhere != "" {
-			filterWhere = fmt.Sprintf("(%s) and ", filterWhere)
-		}
-
-		if bt.Database == nil {
-			bt.Database = database2.Manager.Databases[bt.DatabaseNameId]
-		}
-
-		switch bt.Database.DatabaseType.String() {
-		case "sqlserver":
-			filterWhere = filterWhere + "(is_deleted=0)"
-		case "postgres":
-			filterWhere = filterWhere + "(is_deleted=false)"
-		default:
-			filterWhere = filterWhere + "(is_deleted=0)"
-		}
+	_, isDeleted, err := aepr.GetParameterValueAsBool("is_deleted", true)
+	if err != nil {
+		return err
+	}
+	if !isDeleted {
+		whereKV["is_deleted"] = false
 	}
 
-	if bt.Database == nil {
-		bt.Database = database2.Manager.Databases[bt.DatabaseNameId]
-	}
-
-	if !bt.Database.Connected {
-		err = bt.Database.Connect()
-		if err != nil {
-			aepr.Log.Errorf("error At reconnect db At table %s list (%+v) ", bt.NameId, err)
-			return errors.Wrap(err, "error occured")
-		}
-	}
-
-	rowsInfo, list, err := db.NamedQueryList(bt.Database.Connection, bt.FieldTypeMapping, "*", bt.ListViewNameId,
-		filterWhere, "", filterOrderBy, filterKeyValues)
+	rowsInfo, list, err := db.Select(bt.Database.Connection, bt.ListViewNameId, bt.FieldTypeMapping, nil,
+		whereKV, "", nil, nil, orderByKV, nil, nil, nil)
 
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	// Set export options

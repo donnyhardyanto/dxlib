@@ -19,7 +19,7 @@ func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeM
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		rowsInfo, resultDataRows, err = db.Select(d.Connection, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause,
+		rowsInfo, resultDataRows, err = db.Select(d.Connection, tableName, fieldTypeMapping, showFieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause,
 			orderByFieldNameDirections, limit, offset, forUpdatePart)
 		if err == nil {
 			return rowsInfo, resultDataRows, nil
@@ -87,7 +87,7 @@ func (d *DXDatabase) Count(tableName string, whereAndFieldNameValues utils.JSON,
 	return 0, err
 }
 
-func (d *DXDatabase) SelectPaging(pageIndex int64, rowsPerPage int64, tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func (d *DXDatabase) SelectPaging(pageIndex int64, rowsPerPage int64, tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy) (totalRowCount int64, rowsInfo *database_type.RowsInfo, resultDataRows []utils.JSON, err error) {
 
 	err = d.EnsureConnection()
@@ -96,7 +96,7 @@ func (d *DXDatabase) SelectPaging(pageIndex int64, rowsPerPage int64, tableName 
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		totalRowCount, rowsInfo, resultDataRows, err = db.SelectPaging(d.Connection, pageIndex, rowsPerPage, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart,
+		totalRowCount, rowsInfo, resultDataRows, err = db.SelectPaging(d.Connection, pageIndex, rowsPerPage, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart,
 			groupBy, havingClause, orderByFieldNameDirections)
 		if err == nil {
 			return 0, nil, nil, err

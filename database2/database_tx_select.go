@@ -11,7 +11,7 @@ import (
 func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, resultData []utils.JSON, err error) {
 
-	rowsInfo, resultData, err = db.TxSelect(dtx.Tx, fieldTypeMapping, tableName, showFieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart)
+	rowsInfo, resultData, err = db.TxSelect(dtx.Tx, tableName, fieldTypeMapping, showFieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart)
 	if err != nil {
 		return rowsInfo, resultData, err
 	}

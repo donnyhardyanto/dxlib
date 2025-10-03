@@ -8,7 +8,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
 	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
-	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -29,8 +28,8 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 			fieldValues = fieldValues + ","
 		}
 		switch v.(type) {
-		case sql_expression.SQLExpression:
-			fieldValues = fieldValues + v.(sql_expression.SQLExpression).String()
+		case SQLExpression:
+			fieldValues = fieldValues + v.(SQLExpression).String()
 		default:
 			fieldValues = fieldValues + ":" + k
 		}
@@ -149,7 +148,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 		namedArgs := make([]interface{}, 0, len(setFieldValues))
 		for name, value := range setFieldValues {
 			// Skip SQL expressions
-			if _, ok := value.(sql_expression.SQLExpression); !ok {
+			if _, ok := value.(SQLExpression); !ok {
 				namedArgs = append(namedArgs, sql.Named(strings.ToUpper(name), value))
 			}
 		}
@@ -382,7 +381,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 		namedArgs := make([]interface{}, 0, len(setFieldValues))
 		for name, value := range setFieldValues {
 			// Skip SQL expressions
-			if _, ok := value.(sql_expression.SQLExpression); !ok {
+			if _, ok := value.(SQLExpression); !ok {
 				namedArgs = append(namedArgs, sql.Named(strings.ToUpper(name), value))
 			}
 		}

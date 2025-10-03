@@ -10,7 +10,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
 	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
-	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -248,8 +247,8 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 //	cte := "recent_orders AS (SELECT * FROM orders WHERE order_date > '2023-01-01')"
 //	rows, err := BaseSelect(db, mapping, "recent_orders", []string{"*"}, nil, nil, nil, nil, nil, nil, nil, "", cte)
 //	// Generates: WITH recent_orders AS (SELECT * FROM orders WHERE order_date > '2023-01-01') SELECT * FROM recent_orders
-func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
-	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping utils2.FieldTypeMapping,
+	fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
 	withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
@@ -303,8 +302,8 @@ func BaseSelect(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping,
 //
 // This function is similar to BaseSelect but operates within a transaction context,
 // allowing for consistent reads and potential row locking when used with forUpdatePart=true
-func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
-	tableName string, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON,
+func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping utils2.FieldTypeMapping,
+	fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON,
 	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
 	withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
@@ -340,7 +339,7 @@ func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 
 	for fieldName := range whereAndFieldNameValues {
 		// Skip SQL expressions
-		if _, ok := whereAndFieldNameValues[fieldName].(sql_expression.SQLExpression); ok {
+		if _, ok := whereAndFieldNameValues[fieldName].(SQLExpression); ok {
 			continue
 		}
 
@@ -403,11 +402,11 @@ func BaseTxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping,
 //
 // This function is a backward-compatible wrapper around BaseSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
-func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
+func Select(db *sqlx.DB, tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
-	return BaseSelect(db, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
+	return BaseSelect(db, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart, "")
 }
 
@@ -433,11 +432,11 @@ func Select(db *sqlx.DB, fieldTypeMapping utils2.FieldTypeMapping, tableName str
 //
 // This function is a transaction-based wrapper around BaseTxSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
-func TxSelect(tx *sqlx.Tx, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
+func TxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
-	return BaseTxSelect(tx, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
+	return BaseTxSelect(tx, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart, "")
 }
 
@@ -562,7 +561,7 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpression string, whereAnd
 	}
 
 	// Execute the SELECT query with a COUNT expression
-	rowsInfo, rows, err := BaseSelect(db, nil, effectiveTable, []string{effectiveCountExpression},
+	rowsInfo, rows, err := BaseSelect(db, effectiveTable, nil, []string{effectiveCountExpression},
 		whereAndFieldNameValues, joinSQLPart, nil, nil, nil, nil,
 		groupByFields, havingClause, withCTE)
 
@@ -652,7 +651,7 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereA
 	}
 
 	// Execute the SELECT query with a COUNT expression
-	rowsInfo, rows, err := BaseTxSelect(tx, nil, effectiveTable, []string{effectiveCountExpression},
+	rowsInfo, rows, err := BaseTxSelect(tx, effectiveTable, nil, []string{effectiveCountExpression},
 		whereAndFieldNameValues, joinSQLPart, nil, nil, nil, nil,
 		groupByFields, havingClause, withCTE)
 
@@ -680,7 +679,7 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereA
 	return utils.ConvertToInt64(countValue)
 }
 
-func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, fieldTypeMapping utils2.FieldTypeMapping, tableName string, fieldNames []string,
+func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy) (totalRowCount int64, rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
 
 	dtx, err := db.Beginx()
@@ -713,7 +712,7 @@ func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, fieldTypeMapp
 	limit := rowsPerPage
 	offset := pageIndex * limit
 
-	rowsInfo, r, err = BaseTxSelect(dtx, fieldTypeMapping, tableName, fieldNames, whereAndFieldNameValues,
+	rowsInfo, r, err = BaseTxSelect(dtx, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, nil, "")
 	if err != nil {
 		return rowCount, nil, nil, err

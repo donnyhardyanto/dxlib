@@ -12,7 +12,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
-	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
+	"github.com/donnyhardyanto/dxlib/database2/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"

@@ -3,18 +3,19 @@ package table2
 import (
 	"database/sql"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/donnyhardyanto/dxlib/database/protected/db"
-	"github.com/donnyhardyanto/dxlib/database/protected/export"
-	"github.com/donnyhardyanto/dxlib/database2"
-	"github.com/donnyhardyanto/dxlib/log"
-	"github.com/donnyhardyanto/dxlib/utils"
-	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
-	"github.com/pkg/errors"
 	"net/http"
 	"strings"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/api"
+	"github.com/donnyhardyanto/dxlib/database2"
+	"github.com/donnyhardyanto/dxlib/database2/db"
+	"github.com/donnyhardyanto/dxlib/database2/export"
+	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
+	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
+	"github.com/pkg/errors"
 )
 
 /*type DXTable2 struct {
@@ -30,7 +31,7 @@ import (
 	ResponseEnvelopeObjectName string
 }*/
 
-func (t *DXTable2) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
+/*func (t *DXTable2) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	newKeyValues["is_deleted"] = false
 
 	tt := time.Now().UTC()
@@ -85,7 +86,7 @@ func (t *DXTable2) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.J
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
 
 	return newId, nil
-}
+}*/
 
 func (t *DXTable2) DoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	newId, err = t.DoInsert(aepr, newKeyValues)

@@ -685,7 +685,7 @@ func CheckIdentifier(dialect database_type.DXDatabaseType, identifier string) er
 }
 
 // CheckOperator validates SQL operators
-func CheckOperator(operator string, dialect database_type.DXDatabaseType) error {
+func CheckOperator(dialect database_type.DXDatabaseType, operator string) error {
 	op := strings.ToLower(strings.TrimSpace(operator))
 	if ops, ok := validOperators[dialect]; ok {
 		if !ops[op] {
@@ -696,7 +696,7 @@ func CheckOperator(operator string, dialect database_type.DXDatabaseType) error 
 }
 
 // CheckValue validates a value for SQL injection
-func CheckValue(value any) error {
+func CheckValue(dialect database_type.DXDatabaseType, value any) error {
 	if value == nil {
 		return nil
 	}
@@ -709,13 +709,13 @@ func CheckValue(value any) error {
 		return checkStringValue(v)
 	case []any:
 		for _, item := range v {
-			if err := CheckValue(item); err != nil {
+			if err := CheckValue(dialect, item); err != nil {
 				return err
 			}
 		}
 	case []string:
 		for _, item := range v {
-			if err := CheckValue(item); err != nil {
+			if err := CheckValue(dialect, item); err != nil {
 				return err
 			}
 		}
@@ -727,10 +727,10 @@ func CheckValue(value any) error {
 	case map[string]interface{}:
 		// Handle JSONB data type
 		for key, val := range v {
-			if err := CheckIdentifier(database_type.PostgreSQL, key); err != nil {
+			if err := CheckIdentifier(dialect, key); err != nil {
 				return err
 			}
-			if err := CheckValue(val); err != nil {
+			if err := CheckValue(dialect, val); err != nil {
 				return err
 			}
 		}
@@ -744,7 +744,6 @@ func CheckValue(value any) error {
 	}
 
 	return nil
-
 }
 
 // CheckLikePattern validates LIKE patterns
@@ -805,7 +804,7 @@ func CheckLikePattern(query string) error {
 }
 
 // CheckOrderBy validates ORDER BY expressions
-func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
+func CheckOrderBy(dialect database_type.DXDatabaseType, expr string) error {
 	if expr == "" {
 		return errors.Errorf("empty order by expression")
 	}
@@ -846,8 +845,43 @@ func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 	return nil
 }
 
+func CheckOrderByDirection(dialect database_type.DXDatabaseType, direction string) error {
+	if direction == "" {
+		return errors.New("empty order by expression")
+	}
+
+	// Normalize: trim and uppercase, collapse whitespace
+	normalizedDirection := strings.Join(strings.Fields(strings.ToUpper(direction)), " ")
+
+	// Check basic directions (all databases support)
+	switch normalizedDirection {
+	case "ASC", "DESC":
+		return nil
+	}
+
+	// Check NULLS syntax
+	switch normalizedDirection {
+	case "ASC NULLS FIRST", "ASC NULLS LAST", "DESC NULLS FIRST", "DESC NULLS LAST":
+		// Only PostgreSQL and Oracle support NULLS syntax
+		switch dialect {
+		case database_type.PostgreSQL, database_type.Oracle:
+			return nil
+		case database_type.MariaDB, database_type.DeprecatedMysql:
+			return errors.Errorf("MariaDB/MySQL does not support '%s' syntax", normalizedDirection)
+		case database_type.SQLServer:
+			return errors.Errorf("SQL Server does not support '%s' syntax", normalizedDirection)
+		case database_type.UnknownDatabaseType:
+			return errors.Errorf("unknown database type for '%s'", normalizedDirection)
+		default:
+			return errors.Errorf("unsupported database type for '%s'", normalizedDirection)
+		}
+	}
+
+	return errors.Errorf("invalid sort direction: %s", direction)
+}
+
 // CheckBaseQuery validates the base query for suspicious patterns
-func CheckBaseQuery(query string, dialect database_type.DXDatabaseType) error {
+func CheckBaseQuery(dialect database_type.DXDatabaseType, query string) error {
 	if query == "" {
 		return errors.Errorf("empty query")
 	}
@@ -904,12 +938,12 @@ func CheckAll(dialect database_type.DXDatabaseType, query string, arg any) (err 
 	if AllowRisk {
 		return nil
 	}
-	err = CheckBaseQuery(query, dialect)
+	err = CheckBaseQuery(dialect, query)
 	if err != nil {
 		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
 
-	err = CheckValue(arg)
+	err = CheckValue(dialect, arg)
 	if err != nil {
 		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w", err)
 	}
@@ -924,7 +958,7 @@ func CheckAll(dialect database_type.DXDatabaseType, query string, arg any) (err 
 
 	// Check ORDER BY expressions
 	if strings.Contains(query, "ORDER BY") {
-		err = CheckOrderBy(query, dialect)
+		err = CheckOrderBy(dialect, query)
 		if err != nil {
 			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %w", err)
 		}

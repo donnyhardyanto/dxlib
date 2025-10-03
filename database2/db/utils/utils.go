@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
+	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
@@ -131,7 +131,7 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 			return 0, nil
 		}
 
-	case sql_expression.SQLExpression:
+	case db.SQLExpression:
 		// Keep SQL expressions as is since they're handled specially
 		return v, nil
 
@@ -466,7 +466,7 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 			condition = k + " IS NULL"
 		} else {
 			switch v := v.(type) {
-			case sql_expression.SQLExpression:
+			case db.SQLExpression:
 				// Handle custom SQL expressions
 				condition = v.String()
 			default:

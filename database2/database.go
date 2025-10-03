@@ -16,7 +16,7 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/donnyhardyanto/dxlib/database/protected/sqlfile"
+	"github.com/donnyhardyanto/dxlib/database2/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"

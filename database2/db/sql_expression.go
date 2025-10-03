@@ -1,4 +1,4 @@
-package sql_expression
+package db
 
 type SQLExpression struct {
 	Expression string

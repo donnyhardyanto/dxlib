@@ -8,7 +8,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
 	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
-	"github.com/donnyhardyanto/dxlib/database2/utils/sql_expression"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -53,7 +52,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 	// Validate WHERE field names
 	for fieldName := range whereAndFieldNameValues {
 		// Skip SQL expressions
-		if _, ok := whereAndFieldNameValues[fieldName].(sql_expression.SQLExpression); ok {
+		if _, ok := whereAndFieldNameValues[fieldName].(SQLExpression); ok {
 			continue
 		}
 
@@ -228,7 +227,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 	// Validate WHERE field names
 	for fieldName := range whereAndFieldNameValues {
 		// Skip SQL expressions
-		if _, ok := whereAndFieldNameValues[fieldName].(sql_expression.SQLExpression); ok {
+		if _, ok := whereAndFieldNameValues[fieldName].(SQLExpression); ok {
 			continue
 		}
 

@@ -17,6 +17,8 @@ type TableInterface interface {
 	//	DoRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, newUid string, err error)
 }
 
+type DXBaseTable2OnResultProcessEachListRow func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable2, rowData utils.JSON) (newRowData utils.JSON, err error)
+
 // DXBaseTable contains common fields for all table types
 type DXBaseTable2 struct {
 	DatabaseType                database_type.DXDatabaseType
@@ -33,7 +35,7 @@ type DXBaseTable2 struct {
 	FieldTypeMapping            utils2.FieldTypeMapping
 	OnBeforeInsert              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
 	OnBeforeUpdate              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
-	OnResultProcessEachListRow  func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable2, rowData utils.JSON) (newRowData utils.JSON, err error)
+	OnResultProcessEachListRow  DXBaseTable2OnResultProcessEachListRow
 	OnResponseObjectConstructor func(aepr *api.DXAPIEndPointRequest, bt *DXBaseTable2, rawResponseObject utils.JSON) (responseObject utils.JSON, err error)
 }
 
