@@ -10,7 +10,6 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database2"
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/log"
@@ -29,7 +28,7 @@ import (
 		FieldNameForRowId          string
 		FieldNameForRowNameId      string
 		FieldNameForRowUid         string
-		FieldTypeMapping           db.FieldTypeMapping
+		DXDatabaseTableFieldTypeMapping           db.DXDatabaseTableFieldTypeMapping
 		ResponseEnvelopeObjectName string
 	}
 */
@@ -327,7 +326,7 @@ func (pt *DXPropertyTable2) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValue
 	return newId, nil
 }
 
-func (pt *DXPropertyTable2) GetById(log *log.DXLog, id int64) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) GetById(log *log.DXLog, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.SelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowId: id,
 		"is_deleted":         false,
@@ -335,7 +334,7 @@ func (pt *DXPropertyTable2) GetById(log *log.DXLog, id int64) (rowsInfo *databas
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowId: id,
 		"is_deleted":         false,
@@ -343,7 +342,7 @@ func (pt *DXPropertyTable2) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *d
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowUid: uid,
 		"is_deleted":          false,
@@ -351,7 +350,7 @@ func (pt *DXPropertyTable2) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		"utag":       utag,
 		"is_deleted": false,
@@ -359,7 +358,7 @@ func (pt *DXPropertyTable2) ShouldGetByUtag(log *log.DXLog, utag string) (rowsIn
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.SelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowNameId: nameid,
 		"is_deleted":             false,
@@ -367,7 +366,7 @@ func (pt *DXPropertyTable2) GetByNameId(log *log.DXLog, nameid string) (rowsInfo
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowNameId: nameid,
 		"is_deleted":             false,
@@ -375,7 +374,7 @@ func (pt *DXPropertyTable2) ShouldGetByNameId(log *log.DXLog, nameid string) (ro
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) TxShouldGetById(tx *database2.DXDatabaseTx, id int64) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) TxShouldGetById(tx *database2.DXDatabaseTx, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.ShouldSelectOne(pt.ListViewNameId, nil, nil, utils.JSON{
 		pt.FieldNameForRowId: id,
 		"is_deleted":         false,
@@ -383,7 +382,7 @@ func (pt *DXPropertyTable2) TxShouldGetById(tx *database2.DXDatabaseTx, id int64
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) TxGetByNameId(tx *database2.DXDatabaseTx, nameId string) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) TxGetByNameId(tx *database2.DXDatabaseTx, nameId string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.SelectOne(pt.ListViewNameId, nil, nil, utils.JSON{
 		pt.FieldNameForRowNameId: nameId,
 		"is_deleted":             false,
@@ -391,7 +390,7 @@ func (pt *DXPropertyTable2) TxGetByNameId(tx *database2.DXDatabaseTx, nameId str
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) TxShouldGetByNameId(tx *database2.DXDatabaseTx, nameId string) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+func (pt *DXPropertyTable2) TxShouldGetByNameId(tx *database2.DXDatabaseTx, nameId string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.ShouldSelectOne(pt.ListViewNameId, nil, nil, utils.JSON{
 		pt.FieldNameForRowNameId: nameId,
 		"is_deleted":             false,
@@ -805,7 +804,7 @@ func (pt *DXPropertyTable2) RequestHardDeleteByUid(aepr *api.DXAPIEndPointReques
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) SelectAll(log *log.DXLog) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+func (pt *DXPropertyTable2) SelectAll(log *log.DXLog) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	return pt.Select(log, nil, nil, nil, map[string]string{pt.FieldNameForRowId: "asc"}, nil, nil)
 }
 
@@ -839,7 +838,7 @@ func (pt *DXPropertyTable2) SelectAll(log *log.DXLog) (rowsInfo *database_type.R
 	}
 */
 func (pt *DXPropertyTable2) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
@@ -866,7 +865,7 @@ func (pt *DXPropertyTable2) Select(log *log.DXLog, fieldNames []string, whereAnd
 }
 
 func (pt *DXPropertyTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -884,7 +883,7 @@ func (pt *DXPropertyTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string,
 }
 
 func (pt *DXPropertyTable2) TxShouldSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -898,7 +897,7 @@ func (pt *DXPropertyTable2) TxShouldSelectOne(tx *database2.DXDatabaseTx, fieldN
 }
 
 func (pt *DXPropertyTable2) TxShouldSelectOneForUpdate(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -909,7 +908,7 @@ func (pt *DXPropertyTable2) TxShouldSelectOneForUpdate(tx *database2.DXDatabaseT
 }
 
 func (pt *DXPropertyTable2) TxSelect(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -923,7 +922,7 @@ func (pt *DXPropertyTable2) TxSelect(tx *database2.DXDatabaseTx, fieldNames []st
 }
 
 func (pt *DXPropertyTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -937,7 +936,7 @@ func (pt *DXPropertyTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames [
 }
 
 func (pt *DXPropertyTable2) TxSelectOneForUpdate(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -1084,7 +1083,7 @@ func (pt *DXPropertyTable2) RequestPagingList(aepr *api.DXAPIEndPointRequest) (e
 }
 
 func (pt *DXPropertyTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections utils2.FieldsOrderBy) (
-	rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
 	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
@@ -77,7 +76,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 
 	// Get the database driver name
 	driverName := strings.ToLower(db.DriverName())
-	dbType := database_type.StringToDXDatabaseType(driverName)
+	dbType := StringToDXDatabaseType(driverName)
 
 	// Validate table name
 	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
@@ -308,7 +307,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 
 	// Get the database driver name
 	driverName := strings.ToLower(tx.DriverName())
-	dbType := database_type.StringToDXDatabaseType(driverName)
+	dbType := StringToDXDatabaseType(driverName)
 
 	// Validate table name
 	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {

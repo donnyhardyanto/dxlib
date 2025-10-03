@@ -8,7 +8,6 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database2"
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
@@ -21,7 +20,7 @@ import (
 )
 
 func (bt *DXBaseTable2) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON,
-	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	// Ensure database2 is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
@@ -52,7 +51,7 @@ func (bt *DXBaseTable2) Count(log *log.DXLog, whereAndFieldNameValues utils.JSON
 }
 
 func (bt *DXBaseTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	// Ensure database2 is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
@@ -63,7 +62,7 @@ func (bt *DXBaseTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string, whe
 }
 
 func (bt *DXBaseTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (
-	rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	// Ensure database2 is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
@@ -156,7 +155,7 @@ func (bt *DXBaseTable2) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err e
 }
 
 func (bt *DXBaseTable2) TxSelect(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	return tx.Select(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, nil, groupBy, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart)
 }
@@ -177,13 +176,13 @@ func (bt *DXBaseTable2) TxCount(tx *database2.DXDatabaseTx, whereAndFieldNameVal
 }
 
 func (bt *DXBaseTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any,
-	forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	forUpdate any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	return tx.SelectOne(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 
 func (bt *DXBaseTable2) TxShouldSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *database_type.RowsInfo, r utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	return tx.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 

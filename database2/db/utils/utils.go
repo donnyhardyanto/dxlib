@@ -18,9 +18,6 @@ import (
 	go_ora "github.com/sijms/go-ora/v2/network"
 )
 
-type FieldsOrderBy map[string]string
-type FieldTypeMapping map[string]string
-
 // DbDriverFormatIdentifier formats an identifier (column/table name) according to database requirements
 func DbDriverFormatIdentifier(driverName string, identifier string) string {
 	switch driverName {
@@ -344,7 +341,7 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 
 // DBDriverGenerateLimitOffsetClause generates the appropriate LIMIT/OFFSET clause for each database type
 
-func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAsInt64 int64, hasLimit bool, currentOrderBy string, orderbyFieldNameDirections FieldsOrderBy) (string, string, error) {
+func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAsInt64 int64, hasLimit bool, currentOrderBy string, orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy) (string, string, error) {
 	effectiveLimitOffsetClause := ""
 	effectiveOrderBy := currentOrderBy
 
@@ -408,7 +405,7 @@ func DeformatIdentifier(identifier string, driverName string) string {
 	return deformattedIdentifier
 }
 
-func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping FieldTypeMapping) (r map[string]interface{}, err error) {
+func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping) (r map[string]interface{}, err error) {
 	r = map[string]interface{}{}
 	for k, v := range kv {
 		newKey := DeformatIdentifier(k, driverName)

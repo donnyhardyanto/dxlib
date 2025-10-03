@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
+	"github.com/donnyhardyanto/dxlib/database2/db"
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/pkg/errors"
 	goOra "github.com/sijms/go-ora/v2"
@@ -52,7 +52,7 @@ const (
 type DXDatabase struct {
 	NameId                       string
 	IsConfigured                 bool
-	DatabaseType                 database_type.DXDatabaseType
+	DatabaseType                 db.DXDatabaseType
 	Address                      string
 	UserName                     string
 	UserPassword                 string
@@ -190,19 +190,19 @@ func (d *DXDatabase) GetNonSensitiveConnectionString() string {
 
 func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	switch d.DatabaseType {
-	case database_type.PostgreSQL:
+	case db.PostgreSQL:
 		host, portAsString, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
 		}
 		s = fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s %s", d.UserName, d.UserPassword, host, portAsString, d.DatabaseName, d.ConnectionOptions)
-	case database_type.SQLServer:
+	case db.SQLServer:
 		host, portAsString, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
 		}
 		s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;%s", host, portAsString, d.UserName, d.UserPassword, d.DatabaseName, d.ConnectionOptions)
-	case database_type.Oracle:
+	case db.Oracle:
 		host, portAsString, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
@@ -257,8 +257,8 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return errors.Errorf("configuration is unusable, mandatory database_type field value database %s configuration  is not supported (%v)", d.NameId, s)
 			}
 		}
-		d.DatabaseType = database_type.StringToDXDatabaseType(s)
-		if d.DatabaseType == database_type.UnknownDatabaseType {
+		d.DatabaseType = db.StringToDXDatabaseType(s)
+		if d.DatabaseType == db.UnknownDatabaseType {
 			if d.MustConnected {
 				return errors.Errorf("mandatory value of database_type field of Database %s configuration is not supported (%s)", d.NameId, s)
 			} else {
@@ -315,7 +315,7 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 func (d *DXDatabase) CheckIsErrorBecauseDbNotExist(err error) bool {
 	s := err.Error()
 	switch d.DatabaseType {
-	case database_type.PostgreSQL:
+	case db.PostgreSQL:
 		t1 := strings.Contains(s, "database")
 		t2 := strings.Contains(s, "not exist")
 		t3 := strings.Contains(s, d.DatabaseName)

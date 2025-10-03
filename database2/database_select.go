@@ -1,7 +1,6 @@
 package database2
 
 import (
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/log"
@@ -9,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func (d *DXDatabase) Select(tableName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
-	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, resultDataRows []utils.JSON, err error) {
+	limit any, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, resultDataRows []utils.JSON, err error) {
 
 	err = d.EnsureConnection()
 	if err != nil {
@@ -36,8 +35,8 @@ func (d *DXDatabase) Select(tableName string, fieldTypeMapping utils2.FieldTypeM
 	return nil, nil, err
 }
 
-func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, resultDataRow utils.JSON, err error) {
+func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, resultDataRow utils.JSON, err error) {
 
 	rowsInfo, rr, err := d.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, 1, offset, forUpdatePart)
 	if err != nil {
@@ -49,9 +48,9 @@ func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping utils2.FieldTy
 	return rowsInfo, rr[0], nil
 }
 
-func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (
-	rowsInfo *database_type.RowsInfo, resultDataRow utils.JSON, err error) {
+	rowsInfo *db.DXDatabaseTableRowsInfo, resultDataRow utils.JSON, err error) {
 
 	rowsInfo, resultDataRow, err = d.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause,
 		orderByFieldNameDirections, offset, forUpdatePart)
@@ -88,7 +87,7 @@ func (d *DXDatabase) Count(tableName string, whereAndFieldNameValues utils.JSON,
 }
 
 func (d *DXDatabase) SelectPaging(pageIndex int64, rowsPerPage int64, tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy) (totalRowCount int64, rowsInfo *database_type.RowsInfo, resultDataRows []utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy) (totalRowCount int64, rowsInfo *db.DXDatabaseTableRowsInfo, resultDataRows []utils.JSON, err error) {
 
 	err = d.EnsureConnection()
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	database "github.com/donnyhardyanto/dxlib/database2"
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
+	"github.com/donnyhardyanto/dxlib/database2/db"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/pkg/errors"
@@ -21,7 +21,7 @@ type DXBaseTable2OnResultProcessEachListRow func(aepr *api.DXAPIEndPointRequest,
 
 // DXBaseTable contains common fields for all table types
 type DXBaseTable2 struct {
-	DatabaseType                database_type.DXDatabaseType
+	DatabaseType                db.DXDatabaseType
 	DatabaseNameId              string
 	Database                    *database.DXDatabase
 	NameId                      string
@@ -57,7 +57,7 @@ func (bt *DXBaseTable2) DbEnsureInitialize() (err error) {
 		}
 	}
 	driverName := bt.Database.Connection.DriverName()
-	bt.DatabaseType = database_type.StringToDXDatabaseType(driverName)
+	bt.DatabaseType = db.StringToDXDatabaseType(driverName)
 
 	return nil
 }

@@ -1,4 +1,4 @@
-package database_type
+package db
 
 type DXDatabaseType int64
 
@@ -11,10 +11,13 @@ const (
 	DeprecatedMysql
 )
 
-type RowsInfo struct {
+type DXDatabaseTableRowsInfo struct {
 	Columns []string
 	//	ColumnTypes []*sql.ColumnType
 }
+
+type DXDatabaseTableFieldsOrderBy map[string]string
+type DXDatabaseTableFieldTypeMapping map[string]string
 
 func (t DXDatabaseType) String() string {
 	switch t {

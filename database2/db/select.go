@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/donnyhardyanto/dxlib/database2/database_type"
+	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database2/db/raw"
 	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
@@ -99,7 +99,7 @@ func SQLPartOrderByFieldNameDirections(orderByKeyValues map[string]string, drive
 // formatting requirements.
 func SQLPartConstructSelect(driverName string, tableName string, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
+	orderByFieldNameDirections DXDatabaseTableFieldsOrderBy, limit any, offset any, forUpdatePart any,
 	groupByFields []string, havingClause utils.JSON, withCTE string) (s string, err error) {
 
 	// Common parts preparation
@@ -247,10 +247,10 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 //	cte := "recent_orders AS (SELECT * FROM orders WHERE order_date > '2023-01-01')"
 //	rows, err := BaseSelect(db, mapping, "recent_orders", []string{"*"}, nil, nil, nil, nil, nil, nil, nil, "", cte)
 //	// Generates: WITH recent_orders AS (SELECT * FROM orders WHERE order_date > '2023-01-01') SELECT * FROM recent_orders
-func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping utils2.FieldTypeMapping,
+func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
 	groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
-	withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	withCTE string) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
 		fieldNames = []string{"*"}
@@ -302,10 +302,10 @@ func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping utils2.FieldType
 //
 // This function is similar to BaseSelect but operates within a transaction context,
 // allowing for consistent reads and potential row locking when used with forUpdatePart=true
-func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping utils2.FieldTypeMapping,
+func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON,
 	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
-	withCTE string) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	withCTE string) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
 		fieldNames = []string{"*"}
@@ -316,7 +316,7 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping utils2.FieldTy
 
 	driverName := tx.DriverName()
 
-	dbType := database_type.StringToDXDatabaseType(driverName)
+	dbType := StringToDXDatabaseType(driverName)
 
 	// Validate table name explicitly
 	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
@@ -402,9 +402,9 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping utils2.FieldTy
 //
 // This function is a backward-compatible wrapper around BaseSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
-func Select(db *sqlx.DB, tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string,
+func Select(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
-	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	limit any, offset any, forUpdatePart any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	return BaseSelect(db, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart, "")
@@ -432,9 +432,9 @@ func Select(db *sqlx.DB, tableName string, fieldTypeMapping utils2.FieldTypeMapp
 //
 // This function is a transaction-based wrapper around BaseTxSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
-func TxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string,
+func TxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping, fieldNames []string,
 	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
-	limit any, offset any, forUpdatePart any) (rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+	limit any, offset any, forUpdatePart any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	return BaseTxSelect(tx, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, groupByFields, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart, "")
@@ -679,8 +679,8 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereA
 	return utils.ConvertToInt64(countValue)
 }
 
-func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, tableName string, fieldTypeMapping utils2.FieldTypeMapping, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy) (totalRowCount int64, rowsInfo *database_type.RowsInfo, r []utils.JSON, err error) {
+func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping, fieldNames []string,
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy) (totalRowCount int64, rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	dtx, err := db.Beginx()
 	if err != nil {

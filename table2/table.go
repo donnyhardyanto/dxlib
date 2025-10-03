@@ -27,7 +27,7 @@ import (
 	FieldNameForRowId          string
 	FieldNameForRowNameId      string
 	FieldNameForRowUid         string
-	FieldTypeMapping           db.FieldTypeMapping
+	DXDatabaseTableFieldTypeMapping           db.DXDatabaseTableFieldTypeMapping
 	ResponseEnvelopeObjectName string
 }*/
 
