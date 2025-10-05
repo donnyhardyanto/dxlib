@@ -1,4 +1,4 @@
-package sqlchecker
+package db
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )
@@ -18,31 +17,31 @@ var AllowRisk = false
 
 // Regular expressions for unquoted identifiers by database type
 var (
-	identifierPatterns = map[db.DXDatabaseType]*regexp.Regexp{
-		db.PostgreSQL: regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$"),
-		db.MariaDB:    regexp.MustCompile("^[a-zA-Z0-9_$]+$"),
-		db.SQLServer:  regexp.MustCompile("^[a-zA-Z@#_][a-zA-Z0-9@#_$]*$"),
-		db.Oracle:     regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_$#]*$"),
+	identifierPatterns = map[DXDatabaseType]*regexp.Regexp{
+		PostgreSQL: regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$"),
+		MariaDB:    regexp.MustCompile("^[a-zA-Z0-9_$]+$"),
+		SQLServer:  regexp.MustCompile("^[a-zA-Z@#_][a-zA-Z0-9@#_$]*$"),
+		Oracle:     regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_$#]*$"),
 	}
 
 	// QuoteCharacters defines the start and end quote characters for different databases
-	QuoteCharacters = map[db.DXDatabaseType]struct {
+	QuoteCharacters = map[DXDatabaseType]struct {
 		Start []rune
 		End   []rune
 	}{
-		db.PostgreSQL: {
+		PostgreSQL: {
 			Start: []rune{'"'},
 			End:   []rune{'"'},
 		},
-		db.MariaDB: {
+		MariaDB: {
 			Start: []rune{'"'},
 			End:   []rune{'"'},
 		},
-		db.SQLServer: {
+		SQLServer: {
 			Start: []rune{'[', '"'},
 			End:   []rune{']', '"'},
 		},
-		db.Oracle: {
+		Oracle: {
 			Start: []rune{'"'},
 			End:   []rune{'"'},
 		},
@@ -531,31 +530,31 @@ var (
 	}
 
 	// Maximum identifier lengths per dialect
-	maxIdentifierLengths = map[db.DXDatabaseType]int{
-		db.PostgreSQL: 63,
-		db.SQLServer:  128,
-		db.Oracle:     128,
-		db.MariaDB:    64,
+	maxIdentifierLengths = map[DXDatabaseType]int{
+		PostgreSQL: 63,
+		SQLServer:  128,
+		Oracle:     128,
+		MariaDB:    64,
 	}
 
 	// Valid operators for each dialect
-	validOperators = map[db.DXDatabaseType]map[string]bool{
-		db.PostgreSQL: {
+	validOperators = map[DXDatabaseType]map[string]bool{
+		PostgreSQL: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "ilike": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
 		},
-		db.MariaDB: {
+		MariaDB: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
 		},
-		db.SQLServer: {
+		SQLServer: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
 		},
-		db.Oracle: {
+		Oracle: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
@@ -564,39 +563,39 @@ var (
 )
 
 // isReservedKeyword checks if an identifier is a reserved keyword in the specific dialect
-func isReservedKeyword(dialect db.DXDatabaseType, word string) bool {
+func isReservedKeyword(dialect DXDatabaseType, word string) bool {
 	// Convert to uppercase for case-insensitive comparison
 	upperWord := strings.ToUpper(word)
 
 	// Add dialect-specific keywords
 	switch dialect {
-	case db.PostgreSQL:
+	case PostgreSQL:
 		for k, v := range postgresKeywords {
 			commonKeywords[k] = v
 		}
 
-	case db.MariaDB:
+	case MariaDB:
 		for k, v := range mysqlKeywords {
 			commonKeywords[k] = v
 		}
 
-	case db.SQLServer:
+	case SQLServer:
 		for k, v := range sqlServerKeywords {
 			commonKeywords[k] = v
 		}
 
-	case db.Oracle:
+	case Oracle:
 		for k, v := range oracleKeywords {
 			commonKeywords[k] = v
 		}
-	case db.UnknownDatabaseType:
+	case UnknownDatabaseType:
 	}
 
 	return commonKeywords[upperWord]
 }
 
 // CheckIdentifier validates table and column names according to database-specific rules
-func CheckIdentifier(dialect db.DXDatabaseType, identifier string) error {
+func CheckIdentifier(dialect DXDatabaseType, identifier string) error {
 	if identifier == "" {
 		return errors.Errorf("identifier cannot be empty")
 	}
@@ -685,7 +684,7 @@ func CheckIdentifier(dialect db.DXDatabaseType, identifier string) error {
 }
 
 // CheckOperator validates SQL operators
-func CheckOperator(dialect db.DXDatabaseType, operator string) error {
+func CheckOperator(dialect DXDatabaseType, operator string) error {
 	op := strings.ToLower(strings.TrimSpace(operator))
 	if ops, ok := validOperators[dialect]; ok {
 		if !ops[op] {
@@ -696,7 +695,7 @@ func CheckOperator(dialect db.DXDatabaseType, operator string) error {
 }
 
 // CheckValue validates a value for SQL injection
-func CheckValue(dialect db.DXDatabaseType, value any) error {
+func CheckValue(dialect DXDatabaseType, value any) error {
 	if value == nil {
 		return nil
 	}
@@ -804,7 +803,7 @@ func CheckLikePattern(query string) error {
 }
 
 // CheckOrderBy validates ORDER BY expressions
-func CheckOrderBy(dialect db.DXDatabaseType, expr string) error {
+func CheckOrderBy(dialect DXDatabaseType, expr string) error {
 	if expr == "" {
 		return errors.Errorf("empty order by expression")
 	}
@@ -845,7 +844,7 @@ func CheckOrderBy(dialect db.DXDatabaseType, expr string) error {
 	return nil
 }
 
-func CheckOrderByDirection(dialect db.DXDatabaseType, direction string) error {
+func CheckOrderByDirection(dialect DXDatabaseType, direction string) error {
 	if direction == "" {
 		return errors.New("empty order by expression")
 	}
@@ -864,13 +863,13 @@ func CheckOrderByDirection(dialect db.DXDatabaseType, direction string) error {
 	case "ASC NULLS FIRST", "ASC NULLS LAST", "DESC NULLS FIRST", "DESC NULLS LAST":
 		// Only PostgreSQL and Oracle support NULLS syntax
 		switch dialect {
-		case db.PostgreSQL, db.Oracle:
+		case PostgreSQL, Oracle:
 			return nil
-		case db.MariaDB, db.DeprecatedMysql:
+		case MariaDB, DeprecatedMysql:
 			return errors.Errorf("MariaDB/MySQL does not support '%s' syntax", normalizedDirection)
-		case db.SQLServer:
+		case SQLServer:
 			return errors.Errorf("SQL Server does not support '%s' syntax", normalizedDirection)
-		case db.UnknownDatabaseType:
+		case UnknownDatabaseType:
 			return errors.Errorf("unknown database type for '%s'", normalizedDirection)
 		default:
 			return errors.Errorf("unsupported database type for '%s'", normalizedDirection)
@@ -881,7 +880,7 @@ func CheckOrderByDirection(dialect db.DXDatabaseType, direction string) error {
 }
 
 // CheckBaseQuery validates the base query for suspicious patterns
-func CheckBaseQuery(dialect db.DXDatabaseType, query string) error {
+func CheckBaseQuery(dialect DXDatabaseType, query string) error {
 	if query == "" {
 		return errors.Errorf("empty query")
 	}
@@ -934,7 +933,7 @@ func checkSuspiciousQueryPatterns(value string, ignoreInComments bool) error {
 	return nil
 }
 
-func CheckAll(dialect db.DXDatabaseType, query string, arg any) (err error) {
+func CheckAll(dialect DXDatabaseType, query string, arg any) (err error) {
 	if AllowRisk {
 		return nil
 	}

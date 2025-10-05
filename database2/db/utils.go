@@ -1,4 +1,4 @@
-package utils
+package db
 
 import (
 	"encoding/json"
@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
@@ -128,7 +127,7 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 			return 0, nil
 		}
 
-	case db.SQLExpression:
+	case SQLExpression:
 		// Keep SQL expressions as is since they're handled specially
 		return v, nil
 
@@ -341,7 +340,7 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 
 // DBDriverGenerateLimitOffsetClause generates the appropriate LIMIT/OFFSET clause for each database type
 
-func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAsInt64 int64, hasLimit bool, currentOrderBy string, orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy) (string, string, error) {
+func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAsInt64 int64, hasLimit bool, currentOrderBy string, orderbyFieldNameDirections DXDatabaseTableFieldsOrderBy) (string, string, error) {
 	effectiveLimitOffsetClause := ""
 	effectiveOrderBy := currentOrderBy
 
@@ -405,7 +404,7 @@ func DeformatIdentifier(identifier string, driverName string) string {
 	return deformattedIdentifier
 }
 
-func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping) (r map[string]interface{}, err error) {
+func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping) (r map[string]interface{}, err error) {
 	r = map[string]interface{}{}
 	for k, v := range kv {
 		newKey := DeformatIdentifier(k, driverName)
@@ -463,7 +462,7 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 			condition = k + " IS NULL"
 		} else {
 			switch v := v.(type) {
-			case db.SQLExpression:
+			case SQLExpression:
 				// Handle custom SQL expressions
 				condition = v.String()
 			default:

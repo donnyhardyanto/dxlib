@@ -4,9 +4,6 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/donnyhardyanto/dxlib/database2/db/raw"
-	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -44,7 +41,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 	dbType := StringToDXDatabaseType(driverName)
 
 	// Validate table name
-	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
+	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
@@ -55,20 +52,20 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 			continue
 		}
 
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid WHERE field name: %s", fieldName)
 		}
 	}
 
 	// Validate RETURNING field names
 	for _, fieldName := range returningFieldNames {
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid RETURNING field name: %s", fieldName)
 		}
 	}
 
 	// Prepare WHERE clause
-	whereClause := utils2.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 
 	var effectiveWhere string
 	if whereClause != "" {
@@ -93,7 +90,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err := raw.Exec(db, baseSQL, whereAndFieldNameValues)
+			result, err := Exec(db, baseSQL, whereAndFieldNameValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -108,7 +105,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 			returningClause,
 		}, " ")
 
-		_, rows, err := raw.QueryRows(db, nil, sqlStatement, whereAndFieldNameValues)
+		_, rows, err := QueryRows(db, nil, sqlStatement, whereAndFieldNameValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with RETURNING clause")
 		}
@@ -124,7 +121,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 				tableName,
 				effectiveWhere,
 			}, " ")
-			result, err := raw.Exec(db, baseSQL, whereAndFieldNameValues)
+			result, err := Exec(db, baseSQL, whereAndFieldNameValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -146,7 +143,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := raw.QueryRows(db, nil, sqlStatement, whereAndFieldNameValues)
+		_, rows, err := QueryRows(db, nil, sqlStatement, whereAndFieldNameValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with OUTPUT clause")
 		}
@@ -163,7 +160,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err := raw.Exec(db, baseSQL, whereAndFieldNameValues)
+			result, err := Exec(db, baseSQL, whereAndFieldNameValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle delete")
 			}
@@ -219,7 +216,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 	dbType := StringToDXDatabaseType(driverName)
 
 	// Validate table name
-	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
+	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
@@ -230,20 +227,20 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 			continue
 		}
 
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid WHERE field name: %s", fieldName)
 		}
 	}
 
 	// Validate RETURNING field names
 	for _, fieldName := range returningFieldNames {
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid RETURNING field name: %s", fieldName)
 		}
 	}
 
 	// Prepare WHERE clause
-	whereClause := utils2.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 
 	var effectiveWhere string
 	if whereClause != "" {
@@ -268,7 +265,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err = raw.TxExec(tx, baseSQL, whereAndFieldNameValues)
+			result, err = TxExec(tx, baseSQL, whereAndFieldNameValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -283,7 +280,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 			returningClause,
 		}, " ")
 
-		_, rows, err := raw.TxQueryRows(tx, nil, sqlStatement, whereAndFieldNameValues)
+		_, rows, err := TxQueryRows(tx, nil, sqlStatement, whereAndFieldNameValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with RETURNING clause")
 		}
@@ -299,7 +296,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 				tableName,
 				effectiveWhere,
 			}, " ")
-			result, err := raw.TxExec(tx, baseSQL, whereAndFieldNameValues)
+			result, err := TxExec(tx, baseSQL, whereAndFieldNameValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -321,7 +318,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := raw.TxQueryRows(tx, nil, sqlStatement, whereAndFieldNameValues)
+		_, rows, err := TxQueryRows(tx, nil, sqlStatement, whereAndFieldNameValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with OUTPUT clause")
 		}
@@ -338,7 +335,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err = raw.TxExec(tx, baseSQL, whereAndFieldNameValues)
+			result, err = TxExec(tx, baseSQL, whereAndFieldNameValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle delete")
 			}

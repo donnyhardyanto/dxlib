@@ -2,12 +2,11 @@ package database2
 
 import (
 	"github.com/donnyhardyanto/dxlib/database2/db"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/pkg/errors"
 )
 
-func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
+func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, resultData []utils.JSON, err error) {
 
 	rowsInfo, resultData, err = db.TxSelect(dtx.Tx, tableName, fieldTypeMapping, showFieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart)
@@ -29,7 +28,7 @@ func (dtx *DXDatabaseTx) Count(tableName string, whereAndFieldNameValues utils.J
 }
 
 func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	rowsInfo, rr, err := dtx.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, 1, offset, forUpdatePart)
 	if err != nil {
@@ -42,7 +41,7 @@ func (dtx *DXDatabaseTx) SelectOne(tableName string, fieldTypeMapping db.DXDatab
 }
 
 func (dtx *DXDatabaseTx) ShouldSelectOne(tableName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdatePart any) (
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy, offset any, forUpdatePart any) (
 	rowsInfo *db.DXDatabaseTableRowsInfo, resultData utils.JSON, err error) {
 
 	rowsInfo, resultData, err = dtx.SelectOne(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdatePart)

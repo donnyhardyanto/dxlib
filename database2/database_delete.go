@@ -4,7 +4,6 @@ import (
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/database2/db"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -21,7 +20,7 @@ func (d *DXDatabase) Delete(tableName string, whereAndFieldNameValues utils.JSON
 			return result, returningFieldValues, nil
 		}
 		log.Log.Warnf("DELETE_ERROR:%s=%v", tableName, err.Error())
-		if !utils2.IsConnectionError(err) {
+		if !db.IsConnectionError(err) {
 			return nil, nil, err
 		}
 		err = d.CheckConnectionAndReconnect()

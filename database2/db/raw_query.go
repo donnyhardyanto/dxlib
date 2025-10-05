@@ -1,21 +1,18 @@
-package raw
+package db
 
 import (
 	"database/sql"
 	"fmt"
 
-	"github.com/donnyhardyanto/dxlib/database2/db"
-	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
-	dbUtils "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 )
 
-func RawQueryRows(db *sqlx.DB, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
-	dbt := db.StringToDXDatabaseType(db.DriverName())
-	err = sqlchecker.CheckAll(dbt, query, arg)
+	dbt := StringToDXDatabaseType(db.DriverName())
+	err = CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
@@ -27,7 +24,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping db.DXDatabaseTableFieldTypeMappi
 	defer func() {
 		_ = rows.Close()
 	}()
-	rowsInfo = &db.DXDatabaseTableRowsInfo{}
+	rowsInfo = &DXDatabaseTableRowsInfo{}
 	rowsInfo.Columns, err = rows.Columns()
 	if err != nil {
 		return rowsInfo, r, err
@@ -42,7 +39,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping db.DXDatabaseTableFieldTypeMappi
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON, err = dbUtils.DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
+		rowJSON, err = DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -51,11 +48,11 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping db.DXDatabaseTableFieldTypeMappi
 	return rowsInfo, r, nil
 }
 
-func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 
-	dbt := db.StringToDXDatabaseType(tx.DriverName())
-	err = sqlchecker.CheckAll(dbt, query, arg)
+	dbt := StringToDXDatabaseType(tx.DriverName())
+	err = CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
 	}
@@ -67,7 +64,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping db.DXDatabaseTableFieldTypeMap
 	defer func() {
 		_ = rows.Close()
 	}()
-	rowsInfo = &db.DXDatabaseTableRowsInfo{}
+	rowsInfo = &DXDatabaseTableRowsInfo{}
 	rowsInfo.Columns, err = rows.Columns()
 	if err != nil {
 		return rowsInfo, r, err
@@ -82,7 +79,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping db.DXDatabaseTableFieldTypeMap
 		if err != nil {
 			return nil, nil, err
 		}
-		rowJSON, err = dbUtils.DeformatKeys(rowJSON, tx.DriverName(), fieldTypeMapping)
+		rowJSON, err = DeformatKeys(rowJSON, tx.DriverName(), fieldTypeMapping)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -93,15 +90,15 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping db.DXDatabaseTableFieldTypeMap
 
 func QueryRows(
 	db *sqlx.DB,
-	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
+	fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	sqlStatement string,
 	sqlArguments utils.JSON,
-) (rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, err error) {
+) (rowsInfo *DXDatabaseTableRowsInfo, rows []utils.JSON, err error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
 	)
-	dbt := db.StringToDXDatabaseType(db.DriverName())
+	dbt := StringToDXDatabaseType(db.DriverName())
 
 	// First, convert named parameters to positional parameters (? placeholders)
 	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
@@ -111,11 +108,11 @@ func QueryRows(
 
 	// Then handle database-specific parameter styles
 	switch dbt {
-	case db.PostgreSQL:
+	case PostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case db.Oracle:
+	case Oracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -125,7 +122,7 @@ func QueryRows(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case db.MariaDB:
+	case MariaDB:
 		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -134,7 +131,7 @@ func QueryRows(
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case db.SQLServer:
+	case SQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -146,7 +143,7 @@ func QueryRows(
 	return RawQueryRows(db, fieldTypeMapping, modifiedSQL, args)
 }
 
-func Count(
+func RawCount(
 	db *sqlx.DB,
 	fromWhereJoinPartSqlStatement string,
 	sqlArguments utils.JSON,
@@ -155,7 +152,7 @@ func Count(
 		modifiedSQL string
 		args        []interface{}
 	)
-	dbt := db.StringToDXDatabaseType(db.DriverName())
+	dbt := StringToDXDatabaseType(db.DriverName())
 
 	magicVariableName := "dx_internal_rowcount_x58f2"
 	s := fmt.Sprintf("select count(*) as %s %s", magicVariableName, fromWhereJoinPartSqlStatement)
@@ -168,11 +165,11 @@ func Count(
 
 	// Then handle database-specific parameter styles
 	switch dbt {
-	case db.PostgreSQL:
+	case PostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case db.Oracle:
+	case Oracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -182,7 +179,7 @@ func Count(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case db.MariaDB:
+	case MariaDB:
 		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -191,7 +188,7 @@ func Count(
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case db.SQLServer:
+	case SQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -225,16 +222,16 @@ func Count(
 
 func TxQueryRows(
 	tx *sqlx.Tx,
-	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
+	fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	sqlStatement string,
 	sqlArguments utils.JSON,
-) (rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, err error) {
+) (rowsInfo *DXDatabaseTableRowsInfo, rows []utils.JSON, err error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
 	)
 
-	dbt := db.StringToDXDatabaseType(tx.DriverName())
+	dbt := StringToDXDatabaseType(tx.DriverName())
 
 	// First, convert named parameters to positional parameters (? placeholders)
 	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
@@ -244,11 +241,11 @@ func TxQueryRows(
 
 	// Then handle database-specific parameter styles
 	switch dbt {
-	case db.PostgreSQL:
+	case PostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
-	case db.Oracle:
+	case Oracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -258,7 +255,7 @@ func TxQueryRows(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case db.MariaDB:
+	case MariaDB:
 		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -267,7 +264,7 @@ func TxQueryRows(
 		}
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
-	case db.SQLServer:
+	case SQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = tx.Rebind(modifiedSQL)
 

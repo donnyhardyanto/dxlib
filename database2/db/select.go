@@ -6,10 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/donnyhardyanto/dxlib/database/protected/db"
-	"github.com/donnyhardyanto/dxlib/database2/db/raw"
-	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -39,7 +35,7 @@ func SQLPartFieldNames(fieldNames []string, driverName string) (s string) {
 		if showFieldNames != "" {
 			showFieldNames = showFieldNames + ", "
 		}
-		showFieldNames = showFieldNames + utils2.DbDriverFormatIdentifier(driverName, v)
+		showFieldNames = showFieldNames + DbDriverFormatIdentifier(driverName, v)
 	}
 	return showFieldNames
 }
@@ -64,7 +60,7 @@ func SQLPartOrderByFieldNameDirections(orderByKeyValues map[string]string, drive
 	var orderParts []string
 
 	for fieldName, direction := range orderByKeyValues {
-		formattedPart, err := utils2.DbDriverFormatOrderByFieldName(driverName, fieldName, direction)
+		formattedPart, err := DbDriverFormatOrderByFieldName(driverName, fieldName, direction)
 		if err != nil {
 			return "", errors.Errorf("error formatting ORDER BY for fieldName %s: %w", fieldName, err)
 		}
@@ -104,7 +100,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 
 	// Common parts preparation
 	f := SQLPartFieldNames(fieldNames, driverName)
-	w := utils2.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
+	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	effectiveWhere := ""
 	if w != "" {
 		effectiveWhere = " where " + w
@@ -135,13 +131,13 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	if groupByFields != nil && len(groupByFields) > 0 {
 		groupByColumns := make([]string, len(groupByFields))
 		for i, field := range groupByFields {
-			groupByColumns[i] = utils2.DbDriverFormatIdentifier(driverName, field)
+			groupByColumns[i] = DbDriverFormatIdentifier(driverName, field)
 		}
 		effectiveGroupBy = " group by " + strings.Join(groupByColumns, ", ")
 	}
 
 	// Handle HAVING clause if provided
-	havingClauseAsString := utils2.SQLPartWhereAndFieldNameValues(havingClause, driverName)
+	havingClauseAsString := SQLPartWhereAndFieldNameValues(havingClause, driverName)
 
 	effectiveHaving := ""
 	if havingClauseAsString != "" && effectiveGroupBy != "" {
@@ -192,7 +188,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	}
 
 	// Generate database-specific limit and offset clauses
-	effectiveLimitOffsetClause, additionalOrderBy, err := utils2.DBDriverGenerateLimitOffsetClause(driverName, limitAsInt64, offsetAsInt64, limit != nil, effectiveOrderBy, orderByFieldNameDirections)
+	effectiveLimitOffsetClause, additionalOrderBy, err := DBDriverGenerateLimitOffsetClause(driverName, limitAsInt64, offsetAsInt64, limit != nil, effectiveOrderBy, orderByFieldNameDirections)
 	if err != nil {
 		return "", err
 	}
@@ -249,7 +245,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 //	// Generates: WITH recent_orders AS (SELECT * FROM orders WHERE order_date > '2023-01-01') SELECT * FROM recent_orders
 func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
+	groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections DXDatabaseTableFieldsOrderBy, limit any, offset any, forUpdatePart any,
 	withCTE string) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
@@ -268,12 +264,12 @@ func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableF
 		return nil, nil, err
 	}
 
-	wKV, err := utils2.DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName, whereAndFieldNameValues)
+	wKV, err := DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName, whereAndFieldNameValues)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rowsInfo, r, err = raw.QueryRows(db, fieldTypeMapping, s, wKV)
+	rowsInfo, r, err = QueryRows(db, fieldTypeMapping, s, wKV)
 	return rowsInfo, r, err
 }
 
@@ -304,7 +300,7 @@ func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableF
 // allowing for consistent reads and potential row locking when used with forUpdatePart=true
 func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON,
-	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any,
+	orderByFieldNameDirections DXDatabaseTableFieldsOrderBy, limit any, offset any, forUpdatePart any,
 	withCTE string) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	if fieldNames == nil {
@@ -319,7 +315,7 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTabl
 	dbType := StringToDXDatabaseType(driverName)
 
 	// Validate table name explicitly
-	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
+	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
@@ -331,7 +327,7 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTabl
 				continue
 			}
 
-			if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+			if err := CheckIdentifier(dbType, fieldName); err != nil {
 				return nil, nil, errors.Wrapf(err, "invalid field name: %s", fieldName)
 			}
 		}
@@ -343,14 +339,14 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTabl
 			continue
 		}
 
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid WHERE field name: %s", fieldName)
 		}
 	}
 
 	// Validate ORDER BY field names
 	for fieldName := range orderByFieldNameDirections {
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid ORDER BY field name: %s", fieldName)
 		}
 	}
@@ -358,7 +354,7 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTabl
 	// Validate GROUP BY field names if present
 	if groupByFields != nil {
 		for _, fieldName := range groupByFields {
-			if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+			if err := CheckIdentifier(dbType, fieldName); err != nil {
 				return nil, nil, errors.Wrapf(err, "invalid GROUP BY field name: %s", fieldName)
 			}
 		}
@@ -371,12 +367,12 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTabl
 		return nil, nil, err
 	}
 
-	wKV, err := utils2.DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName, whereAndFieldNameValues)
+	wKV, err := DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName, whereAndFieldNameValues)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rowsInfo, r, err = raw.TxQueryRows(tx, fieldTypeMapping, s, wKV)
+	rowsInfo, r, err = TxQueryRows(tx, fieldTypeMapping, s, wKV)
 	return rowsInfo, r, err
 }
 
@@ -403,7 +399,7 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTabl
 // This function is a backward-compatible wrapper around BaseSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
 func Select(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections DXDatabaseTableFieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	return BaseSelect(db, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues,
@@ -433,7 +429,7 @@ func Select(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableField
 // This function is a transaction-based wrapper around BaseTxSelect.
 // It passes nil or empty values for the GROUP BY, HAVING, and CTE parameters.
 func TxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy,
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections DXDatabaseTableFieldsOrderBy,
 	limit any, offset any, forUpdatePart any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	return BaseTxSelect(tx, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues,
@@ -680,7 +676,7 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereA
 }
 
 func SelectPaging(db *sqlx.DB, pageIndex int64, rowsPerPage int64, tableName string, fieldTypeMapping DXDatabaseTableFieldTypeMapping, fieldNames []string,
-	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy) (totalRowCount int64, rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	whereAndFieldNameValues utils.JSON, joinSQLPart any, groupByFields []string, havingClause utils.JSON, orderByFieldNameDirections DXDatabaseTableFieldsOrderBy) (totalRowCount int64, rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	dtx, err := db.Beginx()
 	if err != nil {

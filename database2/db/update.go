@@ -4,9 +4,6 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/donnyhardyanto/dxlib/database2/db/raw"
-	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -79,7 +76,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 	dbType := StringToDXDatabaseType(driverName)
 
 	// Validate table name
-	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
+	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
@@ -90,7 +87,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 			continue
 		}
 
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid SET field name: %s", fieldName)
 		}
 	}
@@ -102,21 +99,21 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 			continue
 		}
 
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid WHERE field name: %s", fieldName)
 		}
 	}
 
 	// Validate RETURNING field names
 	for _, fieldName := range returningFieldNames {
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid RETURNING field name: %s", fieldName)
 		}
 	}
 
 	// Prepare SET and WHERE clauses
 	setClause := SQLPartUpdateSetFieldValues(setFieldNameValues, driverName)
-	whereClause := utils2.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 
 	var effectiveWhere string
 	if whereClause != "" {
@@ -153,7 +150,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 
 		if len(returningFieldNames) == 0 {
 			// Simple update without returning
-			result, err := raw.Exec(db, baseSQL, combinedParams)
+			result, err := Exec(db, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing update")
 			}
@@ -168,7 +165,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 			returningClause,
 		}, " ")
 
-		_, rows, err := raw.QueryRows(db, nil, sqlStatement, combinedParams)
+		_, rows, err := QueryRows(db, nil, sqlStatement, combinedParams)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing update with RETURNING clause")
 		}
@@ -186,7 +183,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 				setClause,
 				effectiveWhere,
 			}, " ")
-			result, err := raw.Exec(db, baseSQL, combinedParams)
+			result, err := Exec(db, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing update")
 			}
@@ -210,7 +207,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := raw.QueryRows(db, nil, sqlStatement, combinedParams)
+		_, rows, err := QueryRows(db, nil, sqlStatement, combinedParams)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing update with OUTPUT clause")
 		}
@@ -229,7 +226,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 
 		if len(returningFieldNames) == 0 {
 			// Simple update without returning
-			result, err := raw.Exec(db, baseSQL, combinedParams)
+			result, err := Exec(db, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle update")
 			}
@@ -310,7 +307,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 	dbType := StringToDXDatabaseType(driverName)
 
 	// Validate table name
-	if err := sqlchecker.CheckIdentifier(dbType, tableName); err != nil {
+	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
@@ -321,7 +318,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 			continue
 		}
 
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid SET field name: %s", fieldName)
 		}
 	}
@@ -333,21 +330,21 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 			continue
 		}
 
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid WHERE field name: %s", fieldName)
 		}
 	}
 
 	// Validate RETURNING field names
 	for _, fieldName := range returningFieldNames {
-		if err := sqlchecker.CheckIdentifier(dbType, fieldName); err != nil {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid RETURNING field name: %s", fieldName)
 		}
 	}
 
 	// Prepare SET and WHERE clauses
 	setClause := SQLPartUpdateSetFieldValues(setFieldValues, driverName)
-	whereClause := utils2.SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
+	whereClause := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 
 	var effectiveWhere string
 	if whereClause != "" {
@@ -384,7 +381,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 
 		if len(returningFieldNames) == 0 {
 			// Simple update without returning
-			result, err := raw.TxExec(tx, baseSQL, combinedParams)
+			result, err := TxExec(tx, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing update")
 			}
@@ -399,7 +396,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 			returningClause,
 		}, " ")
 
-		_, rows, err := raw.TxQueryRows(tx, nil, sqlStatement, combinedParams)
+		_, rows, err := TxQueryRows(tx, nil, sqlStatement, combinedParams)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing update with RETURNING clause")
 		}
@@ -417,7 +414,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 				setClause,
 				effectiveWhere,
 			}, " ")
-			result, err := raw.TxExec(tx, baseSQL, combinedParams)
+			result, err := TxExec(tx, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing update")
 			}
@@ -441,7 +438,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := raw.TxQueryRows(tx, nil, sqlStatement, combinedParams)
+		_, rows, err := TxQueryRows(tx, nil, sqlStatement, combinedParams)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing update with OUTPUT clause")
 		}
@@ -460,7 +457,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 
 		if len(returningFieldNames) == 0 {
 			// Simple update without returning
-			result, err := raw.TxExec(tx, baseSQL, combinedParams)
+			result, err := TxExec(tx, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle update")
 			}

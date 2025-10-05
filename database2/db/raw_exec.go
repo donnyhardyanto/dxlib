@@ -1,18 +1,16 @@
-package raw
+package db
 
 import (
 	"database/sql"
 
-	"github.com/donnyhardyanto/dxlib/database2/db"
-	db2 "github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 )
 
 func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {
-	dbt := db.StringToDXDatabaseType(db.DriverName())
-	err = db2.CheckAll(dbt, query, arg)
+	dbt := StringToDXDatabaseType(db.DriverName())
+	err = CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
@@ -26,8 +24,8 @@ func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error
 }
 
 func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err error) {
-	dbt := db.StringToDXDatabaseType(tx.DriverName())
-	err = db2.CheckAll(dbt, query, arg)
+	dbt := StringToDXDatabaseType(tx.DriverName())
+	err = CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
 	}
@@ -46,7 +44,7 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 		args        []interface{}
 	)
 
-	dbt := db.StringToDXDatabaseType(db.DriverName())
+	dbt := StringToDXDatabaseType(db.DriverName())
 
 	// First, convert named parameters to positional parameters (? placeholders)
 	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
@@ -56,11 +54,11 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 
 	// Then handle database-specific parameter styles
 	switch dbt {
-	case db.PostgreSQL:
+	case PostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case db.Oracle:
+	case Oracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -70,7 +68,7 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 			args = append(args, sql.Named(name, value))
 		}
 
-	case db.MariaDB:
+	case MariaDB:
 		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -79,7 +77,7 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case db.SQLServer:
+	case SQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -101,7 +99,7 @@ func TxExec(
 		args        []interface{}
 	)
 
-	dbt := db.StringToDXDatabaseType(tx.DriverName())
+	dbt := StringToDXDatabaseType(tx.DriverName())
 
 	// First, convert named parameters to positional parameters (? placeholders)
 	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
@@ -111,11 +109,11 @@ func TxExec(
 
 	// Then handle database-specific parameter styles
 	switch dbt {
-	case db.PostgreSQL:
+	case PostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
-	case db.Oracle:
+	case Oracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -125,7 +123,7 @@ func TxExec(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case db.MariaDB:
+	case MariaDB:
 		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -134,7 +132,7 @@ func TxExec(
 		}
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
-	case db.SQLServer:
+	case SQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
