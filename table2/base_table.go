@@ -6,7 +6,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/api"
 	database "github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/db"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/pkg/errors"
 )
@@ -32,7 +31,7 @@ type DXBaseTable2 struct {
 	FieldNameForRowUid          string
 	FieldNameForRowUtag         string
 	ResponseEnvelopeObjectName  string
-	FieldTypeMapping            utils2.FieldTypeMapping
+	FieldTypeMapping            db.DXDatabaseTableFieldTypeMapping
 	OnBeforeInsert              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
 	OnBeforeUpdate              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
 	OnResultProcessEachListRow  DXBaseTable2OnResultProcessEachListRow
@@ -93,6 +92,7 @@ type DXRawTable2 struct {
 	DXBaseTable2
 }
 
+// DXTable2 /* soft delete and is_deleted support */
 type DXTable2 struct {
 	DXRawTable2
 }

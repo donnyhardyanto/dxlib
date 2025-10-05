@@ -9,8 +9,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/db"
-	"github.com/donnyhardyanto/dxlib/database2/db/sqlchecker"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/database2/export"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/table2/compatibility"
@@ -20,7 +18,7 @@ import (
 )
 
 func (bt *DXBaseTable2) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON,
-	orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	// Ensure database2 is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
@@ -51,7 +49,7 @@ func (bt *DXBaseTable2) Count(log *log.DXLog, whereAndFieldNameValues utils.JSON
 }
 
 func (bt *DXBaseTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy, offset any, forUpdate any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	// Ensure database2 is initialized
 	if err := bt.DbEnsureInitialize(); err != nil {
@@ -61,7 +59,7 @@ func (bt *DXBaseTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string, whe
 	return bt.Database.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 
-func (bt *DXBaseTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (
+func (bt *DXBaseTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy, offset any, forUpdate any) (
 	rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	// Ensure database2 is initialized
@@ -155,7 +153,7 @@ func (bt *DXBaseTable2) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err e
 }
 
 func (bt *DXBaseTable2) TxSelect(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy, limit any, offset any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	return tx.Select(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, nil, groupBy, havingClause, orderByFieldNameDirections, limit, offset, forUpdatePart)
 }
@@ -175,14 +173,14 @@ func (bt *DXBaseTable2) TxCount(tx *database2.DXDatabaseTx, whereAndFieldNameVal
 	return count, nil
 }
 
-func (bt *DXBaseTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any,
+func (bt *DXBaseTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy, offset any,
 	forUpdate any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	return tx.SelectOne(bt.ListViewNameId, bt.FieldTypeMapping, nil, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 
 func (bt *DXBaseTable2) TxShouldSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections utils2.FieldsOrderBy, offset any, forUpdate any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy, offset any, forUpdate any) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	return tx.ShouldSelectOne(bt.ListViewNameId, bt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, groupBy, havingClause, orderByFieldNameDirections, offset, forUpdate)
 }
 
@@ -191,16 +189,16 @@ func (bt *DXBaseTable2) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWher
 	if filterWhere != nil {
 		for k, v := range filterWhere {
 			if vAsExpression, ok := v.(db.SQLExpression); ok {
-				err = sqlchecker.CheckBaseQuery(bt.DatabaseType, vAsExpression.String())
+				err = db.CheckBaseQuery(bt.DatabaseType, vAsExpression.String())
 				if err != nil {
 					return err
 				}
 			} else {
-				err = sqlchecker.CheckIdentifier(bt.DatabaseType, k)
+				err = db.CheckIdentifier(bt.DatabaseType, k)
 				if err != nil {
 					return err
 				}
-				err = sqlchecker.CheckValue(bt.DatabaseType, v)
+				err = db.CheckValue(bt.DatabaseType, v)
 				if err != nil {
 					return err
 				}
@@ -210,11 +208,11 @@ func (bt *DXBaseTable2) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWher
 
 	if filterOrderBy != nil {
 		for k, v := range filterOrderBy {
-			err = sqlchecker.CheckIdentifier(bt.DatabaseType, k)
+			err = db.CheckIdentifier(bt.DatabaseType, k)
 			if err != nil {
 				return err
 			}
-			err = sqlchecker.CheckOrderByDirection(bt.DatabaseType, v)
+			err = db.CheckOrderByDirection(bt.DatabaseType, v)
 			if err != nil {
 				return err
 			}
@@ -263,16 +261,16 @@ func (bt *DXBaseTable2) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filt
 	if filterWhere != nil {
 		for k, v := range filterWhere {
 			if vAsExpression, ok := v.(db.SQLExpression); ok {
-				err = sqlchecker.CheckBaseQuery(bt.DatabaseType, vAsExpression.String())
+				err = db.CheckBaseQuery(bt.DatabaseType, vAsExpression.String())
 				if err != nil {
 					return err
 				}
 			} else {
-				err = sqlchecker.CheckIdentifier(bt.DatabaseType, k)
+				err = db.CheckIdentifier(bt.DatabaseType, k)
 				if err != nil {
 					return err
 				}
-				err = sqlchecker.CheckValue(bt.DatabaseType, v)
+				err = db.CheckValue(bt.DatabaseType, v)
 				if err != nil {
 					return err
 				}
@@ -282,11 +280,11 @@ func (bt *DXBaseTable2) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filt
 
 	if filterOrderBy != nil {
 		for k, v := range filterOrderBy {
-			err = sqlchecker.CheckIdentifier(bt.DatabaseType, k)
+			err = db.CheckIdentifier(bt.DatabaseType, k)
 			if err != nil {
 				return err
 			}
-			err = sqlchecker.CheckOrderByDirection(bt.DatabaseType, v)
+			err = db.CheckOrderByDirection(bt.DatabaseType, v)
 			if err != nil {
 				return err
 			}
