@@ -2,17 +2,16 @@ package table2
 
 import (
 	"database/sql"
-	"github.com/donnyhardyanto/dxlib/api"
+
 	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"net/http"
 )
 
 func (bt *DXBaseTable2) Delete(whereKeyValues utils.JSON) (err error) {
 
 	// Ensure database is initialized
-	if err := bt.DbEnsureInitialize(); err != nil {
+	if err := bt.DbEnsureInitializeConnection(); err != nil {
 		return err
 	}
 
@@ -37,46 +36,6 @@ func (bt *DXBaseTable2) DeleteByUid(uid string) (err error) {
 	err = bt.Delete(utils.JSON{
 		bt.FieldNameForRowUid: uid,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (bt *DXBaseTable2) DoRequestDeleteByIdOrUid(aepr *api.DXAPIEndPointRequest, id int64, uid string) (err error) {
-	if id != 0 {
-		err = bt.DeleteById(id)
-	} else {
-		err = bt.DeleteByUid(uid)
-	}
-	if err != nil {
-		return err
-	}
-
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
-	return nil
-}
-
-func (bt *DXBaseTable2) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
-	_, id, err := aepr.GetParameterValueAsInt64(bt.FieldNameForRowId)
-	if err != nil {
-		return err
-	}
-
-	err = bt.DoRequestDeleteByIdOrUid(aepr, id, "")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (bt *DXBaseTable2) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
-	_, uid, err := aepr.GetParameterValueAsString(bt.FieldNameForRowUid)
-	if err != nil {
-		return err
-	}
-
-	err = bt.DoRequestDeleteByIdOrUid(aepr, 0, uid)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package table2
+package not_worked_yet
 
 import (
 	"database/sql"
@@ -11,8 +11,8 @@ import (
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/db"
-	utils2 "github.com/donnyhardyanto/dxlib/database2/db/utils"
 	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/table2"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
@@ -56,7 +56,7 @@ func GetAs[T any](l *log.DXLog, expectedType string, property map[string]any) (T
 	return value, nil
 }
 
-func (pt *DXPropertyTable2) GetAsString(l *log.DXLog, propertyId string) (vv string, err error) {
+func (pt *table2.DXPropertyTable2) GetAsString(l *log.DXLog, propertyId string) (vv string, err error) {
 
 	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
@@ -73,7 +73,7 @@ func (pt *DXPropertyTable2) GetAsString(l *log.DXLog, propertyId string) (vv str
 	return vv, nil
 }
 
-func (pt *DXPropertyTable2) GetAsStringDefault(l *log.DXLog, propertyId string, defaultValue string) (vv string, err error) {
+func (pt *table2.DXPropertyTable2) GetAsStringDefault(l *log.DXLog, propertyId string, defaultValue string) (vv string, err error) {
 	_, v, err := pt.SelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -95,7 +95,7 @@ func (pt *DXPropertyTable2) GetAsStringDefault(l *log.DXLog, propertyId string, 
 	return vv, nil
 }
 
-func (pt *DXPropertyTable2) TxSetAsString(dtx *database2.DXDatabaseTx, propertyId string, value string) (err error) {
+func (pt *table2.DXPropertyTable2) TxSetAsString(dtx *database2.DXDatabaseTx, propertyId string, value string) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
 	_, err = pt.TxInsert(dtx, utils.JSON{
@@ -106,7 +106,7 @@ func (pt *DXPropertyTable2) TxSetAsString(dtx *database2.DXDatabaseTx, propertyI
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) SetAsString(log *log.DXLog, propertyId string, value string) (err error) {
+func (pt *table2.DXPropertyTable2) SetAsString(log *log.DXLog, propertyId string, value string) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
 	_, err = pt.Insert(log, utils.JSON{
@@ -117,7 +117,7 @@ func (pt *DXPropertyTable2) SetAsString(log *log.DXLog, propertyId string, value
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) GetAsInt(l *log.DXLog, propertyId string) (int, error) {
+func (pt *table2.DXPropertyTable2) GetAsInt(l *log.DXLog, propertyId string) (int, error) {
 	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -133,7 +133,7 @@ func (pt *DXPropertyTable2) GetAsInt(l *log.DXLog, propertyId string) (int, erro
 	return int(vv), nil
 }
 
-func (pt *DXPropertyTable2) TxSetAsInt(dtx *database2.DXDatabaseTx, propertyId string, value int) (err error) {
+func (pt *table2.DXPropertyTable2) TxSetAsInt(dtx *database2.DXDatabaseTx, propertyId string, value int) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	_, err = pt.TxInsert(dtx, utils.JSON{
 		"nameid": propertyId,
@@ -143,7 +143,7 @@ func (pt *DXPropertyTable2) TxSetAsInt(dtx *database2.DXDatabaseTx, propertyId s
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) SetAsInt(log *log.DXLog, propertyId string, value int) (err error) {
+func (pt *table2.DXPropertyTable2) SetAsInt(log *log.DXLog, propertyId string, value int) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	_, err = pt.Insert(log, utils.JSON{
 		"nameid": propertyId,
@@ -153,7 +153,7 @@ func (pt *DXPropertyTable2) SetAsInt(log *log.DXLog, propertyId string, value in
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) GetAsInt64(l *log.DXLog, propertyId string) (int64, error) {
+func (pt *table2.DXPropertyTable2) GetAsInt64(l *log.DXLog, propertyId string) (int64, error) {
 	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -169,7 +169,7 @@ func (pt *DXPropertyTable2) GetAsInt64(l *log.DXLog, propertyId string) (int64, 
 	return int64(vv), nil
 }
 
-func (pt *DXPropertyTable2) TxSetAsInt64(dtx *database2.DXDatabaseTx, propertyId string, value int64) (err error) {
+func (pt *table2.DXPropertyTable2) TxSetAsInt64(dtx *database2.DXDatabaseTx, propertyId string, value int64) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
 	_, err = pt.TxInsert(dtx, utils.JSON{
@@ -180,7 +180,7 @@ func (pt *DXPropertyTable2) TxSetAsInt64(dtx *database2.DXDatabaseTx, propertyId
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) SetAsInt64(log *log.DXLog, propertyId string, value int64) (err error) {
+func (pt *table2.DXPropertyTable2) SetAsInt64(log *log.DXLog, propertyId string, value int64) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
 	_, err = pt.Insert(log, utils.JSON{
@@ -191,7 +191,7 @@ func (pt *DXPropertyTable2) SetAsInt64(log *log.DXLog, propertyId string, value 
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) TxSetAsJSON(dtx *database2.DXDatabaseTx, propertyId string, value map[string]any) (err error) {
+func (pt *table2.DXPropertyTable2) TxSetAsJSON(dtx *database2.DXDatabaseTx, propertyId string, value map[string]any) (err error) {
 	_, property, err := pt.TxSelectOne(dtx, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -222,7 +222,7 @@ func (pt *DXPropertyTable2) TxSetAsJSON(dtx *database2.DXDatabaseTx, propertyId 
 	return nil
 }
 
-func (pt *DXPropertyTable2) SetAsJSON(log *log.DXLog, propertyId string, value map[string]any) (err error) {
+func (pt *table2.DXPropertyTable2) SetAsJSON(log *log.DXLog, propertyId string, value map[string]any) (err error) {
 	_, property, err := pt.SelectOne(log, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -253,7 +253,7 @@ func (pt *DXPropertyTable2) SetAsJSON(log *log.DXLog, propertyId string, value m
 	return nil
 }
 
-func (pt *DXPropertyTable2) GetAsJSON(l *log.DXLog, propertyId string) (map[string]any, error) {
+func (pt *table2.DXPropertyTable2) GetAsJSON(l *log.DXLog, propertyId string) (map[string]any, error) {
 	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{
 		"nameid": propertyId,
 	}, nil)
@@ -269,7 +269,7 @@ func (pt *DXPropertyTable2) GetAsJSON(l *log.DXLog, propertyId string) (map[stri
 	return vv, nil
 }
 
-func (pt *DXPropertyTable2) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
+func (pt *table2.DXPropertyTable2) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	newKeyValues["is_deleted"] = false
 
 	tt := time.Now().UTC()
@@ -326,7 +326,7 @@ func (pt *DXPropertyTable2) DoInsert(aepr *api.DXAPIEndPointRequest, newKeyValue
 	return newId, nil
 }
 
-func (pt *DXPropertyTable2) GetById(log *log.DXLog, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) GetById(log *log.DXLog, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.SelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowId: id,
 		"is_deleted":         false,
@@ -334,7 +334,7 @@ func (pt *DXPropertyTable2) GetById(log *log.DXLog, id int64) (rowsInfo *db.DXDa
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowId: id,
 		"is_deleted":         false,
@@ -342,7 +342,7 @@ func (pt *DXPropertyTable2) ShouldGetById(log *log.DXLog, id int64) (rowsInfo *d
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowUid: uid,
 		"is_deleted":          false,
@@ -350,7 +350,7 @@ func (pt *DXPropertyTable2) ShouldGetByUid(log *log.DXLog, uid string) (rowsInfo
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) ShouldGetByUtag(log *log.DXLog, utag string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		"utag":       utag,
 		"is_deleted": false,
@@ -358,7 +358,7 @@ func (pt *DXPropertyTable2) ShouldGetByUtag(log *log.DXLog, utag string) (rowsIn
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) GetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.SelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowNameId: nameid,
 		"is_deleted":             false,
@@ -366,7 +366,7 @@ func (pt *DXPropertyTable2) GetByNameId(log *log.DXLog, nameid string) (rowsInfo
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) ShouldGetByNameId(log *log.DXLog, nameid string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = pt.ShouldSelectOne(log, nil, utils.JSON{
 		pt.FieldNameForRowNameId: nameid,
 		"is_deleted":             false,
@@ -374,7 +374,7 @@ func (pt *DXPropertyTable2) ShouldGetByNameId(log *log.DXLog, nameid string) (ro
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) TxShouldGetById(tx *database2.DXDatabaseTx, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) TxShouldGetById(tx *database2.DXDatabaseTx, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.ShouldSelectOne(pt.ListViewNameId, nil, nil, utils.JSON{
 		pt.FieldNameForRowId: id,
 		"is_deleted":         false,
@@ -382,7 +382,7 @@ func (pt *DXPropertyTable2) TxShouldGetById(tx *database2.DXDatabaseTx, id int64
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) TxGetByNameId(tx *database2.DXDatabaseTx, nameId string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) TxGetByNameId(tx *database2.DXDatabaseTx, nameId string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.SelectOne(pt.ListViewNameId, nil, nil, utils.JSON{
 		pt.FieldNameForRowNameId: nameId,
 		"is_deleted":             false,
@@ -390,7 +390,7 @@ func (pt *DXPropertyTable2) TxGetByNameId(tx *database2.DXDatabaseTx, nameId str
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) TxShouldGetByNameId(tx *database2.DXDatabaseTx, nameId string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) TxShouldGetByNameId(tx *database2.DXDatabaseTx, nameId string) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	rowsInfo, r, err = tx.ShouldSelectOne(pt.ListViewNameId, nil, nil, utils.JSON{
 		pt.FieldNameForRowNameId: nameId,
 		"is_deleted":             false,
@@ -398,7 +398,7 @@ func (pt *DXPropertyTable2) TxShouldGetByNameId(tx *database2.DXDatabaseTx, name
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) TxInsert(tx *database2.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
+func (pt *table2.DXPropertyTable2) TxInsert(tx *database2.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
 	//n := utils.NowAsString()
 	tt := time.Now().UTC()
 	newKeyValues["is_deleted"] = false
@@ -417,7 +417,7 @@ func (pt *DXPropertyTable2) TxInsert(tx *database2.DXDatabaseTx, newKeyValues ut
 	return newId, err
 }
 
-func (pt *DXPropertyTable2) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database2.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
+func (pt *table2.DXPropertyTable2) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx *database2.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
 	n := utils.NowAsString()
 	newKeyValues["is_deleted"] = false
 	newKeyValues["created_at"] = n
@@ -444,7 +444,7 @@ func (pt *DXPropertyTable2) InRequestTxInsert(aepr *api.DXAPIEndPointRequest, tx
 	return newId, err
 }
 
-func (pt *DXPropertyTable2) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
+func (pt *table2.DXPropertyTable2) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int64, err error) {
 	tt := time.Now().UTC()
 	newKeyValues["created_at"] = tt
 	newKeyValues["last_modified_at"] = tt
@@ -464,7 +464,7 @@ func (pt *DXPropertyTable2) Insert(log *log.DXLog, newKeyValues utils.JSON) (new
 	return newId, err
 }
 
-func (pt *DXPropertyTable2) Update(l *log.DXLog, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
+func (pt *table2.DXPropertyTable2) Update(l *log.DXLog, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
@@ -476,7 +476,7 @@ func (pt *DXPropertyTable2) Update(l *log.DXLog, setKeyValues utils.JSON, whereA
 	return pt.Database.Update(pt.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
-func (pt *DXPropertyTable2) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
+func (pt *table2.DXPropertyTable2) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues utils.JSON) (result sql.Result, err error) {
 	_, _, err = pt.ShouldGetById(l, FieldValueForId)
 	if err != nil {
 		return nil, err
@@ -490,7 +490,7 @@ func (pt *DXPropertyTable2) UpdateOne(l *log.DXLog, FieldValueForId int64, setKe
 	})
 }
 
-func (pt *DXPropertyTable2) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
+func (pt *table2.DXPropertyTable2) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
 	n := utils.NowAsString()
 	newKeyValues["is_deleted"] = false
 	newKeyValues["created_at"] = n
@@ -520,7 +520,7 @@ func (pt *DXPropertyTable2) InRequestInsert(aepr *api.DXAPIEndPointRequest, newK
 	return newId, err
 }
 
-func (pt *DXPropertyTable2) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(pt.FieldNameForRowId)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -536,7 +536,7 @@ func (pt *DXPropertyTable2) RequestRead(aepr *api.DXAPIEndPointRequest) (err err
 	return nil
 }
 
-func (pt *DXPropertyTable2) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -552,7 +552,7 @@ func (pt *DXPropertyTable2) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (er
 	return nil
 }
 
-func (pt *DXPropertyTable2) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, nameid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowNameId)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -568,7 +568,7 @@ func (pt *DXPropertyTable2) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) 
 	return nil
 }
 
-func (pt *DXPropertyTable2) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, utag, err := aepr.GetParameterValueAsString("utag")
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -584,7 +584,7 @@ func (pt *DXPropertyTable2) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (e
 	return nil
 }
 
-func (pt *DXPropertyTable2) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
+func (pt *table2.DXPropertyTable2) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
 	_, _, err = pt.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -627,7 +627,7 @@ func (pt *DXPropertyTable2) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, new
 	return nil
 }
 
-func (pt *DXPropertyTable2) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, newKeyValues utils.JSON) (err error) {
+func (pt *table2.DXPropertyTable2) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, newKeyValues utils.JSON) (err error) {
 	_, _, err = pt.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -670,7 +670,7 @@ func (pt *DXPropertyTable2) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid stri
 	return nil
 }
 
-func (pt *DXPropertyTable2) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(pt.FieldNameForRowId)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -685,7 +685,7 @@ func (pt *DXPropertyTable2) RequestEdit(aepr *api.DXAPIEndPointRequest) (err err
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -700,7 +700,7 @@ func (pt *DXPropertyTable2) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (er
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
+func (pt *table2.DXPropertyTable2) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
 	_, _, err = pt.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -720,7 +720,7 @@ func (pt *DXPropertyTable2) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (
 	return nil
 }
 
-func (pt *DXPropertyTable2) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string) (err error) {
+func (pt *table2.DXPropertyTable2) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string) (err error) {
 	_, _, err = pt.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -740,7 +740,7 @@ func (pt *DXPropertyTable2) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid st
 	return nil
 }
 
-func (pt *DXPropertyTable2) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(pt.FieldNameForRowId)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -758,7 +758,7 @@ func (pt *DXPropertyTable2) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (e
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) RequestSoftDeleteById(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestSoftDeleteById(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -776,7 +776,7 @@ func (pt *DXPropertyTable2) RequestSoftDeleteById(aepr *api.DXAPIEndPointRequest
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(pt.FieldNameForRowId)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -790,7 +790,7 @@ func (pt *DXPropertyTable2) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (e
 	return errors.Wrap(err, "error occured")
 }
 
-func (pt *DXPropertyTable2) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -802,10 +802,6 @@ func (pt *DXPropertyTable2) RequestHardDeleteByUid(aepr *api.DXAPIEndPointReques
 		return errors.Wrap(err, "error occured")
 	}
 	return errors.Wrap(err, "error occured")
-}
-
-func (pt *DXPropertyTable2) SelectAll(log *log.DXLog) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	return pt.Select(log, nil, nil, nil, map[string]string{pt.FieldNameForRowId: "asc"}, nil, nil)
 }
 
 /*func (t *DXPropertyTable2) Count(log *log.DXLog, summaryCalcFieldsPart string, whereAndFieldNameValues utils.JSON, joinSQLPart any) (totalRows int64, summaryCalcRow utils.JSON, err error) {
@@ -837,8 +833,8 @@ func (pt *DXPropertyTable2) SelectAll(log *log.DXLog) (rowsInfo *db.DXDatabaseTa
 		return totalRows, summaryCalcRow, err
 	}
 */
-func (pt *DXPropertyTable2) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) Select(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
+	orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{
@@ -864,8 +860,8 @@ func (pt *DXPropertyTable2) Select(log *log.DXLog, fieldNames []string, whereAnd
 	return rowsInfo, r, err
 }
 
-func (pt *DXPropertyTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON,
+	orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -882,8 +878,8 @@ func (pt *DXPropertyTable2) ShouldSelectOne(log *log.DXLog, fieldNames []string,
 	return pt.Database.ShouldSelectOne(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections)
 }
 
-func (pt *DXPropertyTable2) TxShouldSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) TxShouldSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
+	orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -896,8 +892,8 @@ func (pt *DXPropertyTable2) TxShouldSelectOne(tx *database2.DXDatabaseTx, fieldN
 	return tx.ShouldSelectOne(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections, nil)
 }
 
-func (pt *DXPropertyTable2) TxShouldSelectOneForUpdate(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) TxShouldSelectOneForUpdate(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
+	orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -907,8 +903,8 @@ func (pt *DXPropertyTable2) TxShouldSelectOneForUpdate(tx *database2.DXDatabaseT
 	return tx.ShouldSelectOne(pt.NameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
-func (pt *DXPropertyTable2) TxSelect(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy, limit any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) TxSelect(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
+	orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy, limit any) (rowsInfo *db.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -921,8 +917,8 @@ func (pt *DXPropertyTable2) TxSelect(tx *database2.DXDatabaseTx, fieldNames []st
 	return tx.Select(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections, limit, false)
 }
 
-func (pt *DXPropertyTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
+	orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -935,8 +931,8 @@ func (pt *DXPropertyTable2) TxSelectOne(tx *database2.DXDatabaseTx, fieldNames [
 	return tx.SelectOne(pt.ListViewNameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections, false)
 }
 
-func (pt *DXPropertyTable2) TxSelectOneForUpdate(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
-	orderbyFieldNameDirections utils2.FieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func (pt *table2.DXPropertyTable2) TxSelectOneForUpdate(tx *database2.DXDatabaseTx, fieldNames []string, whereAndFieldNameValues utils.JSON,
+	orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
@@ -949,7 +945,7 @@ func (pt *DXPropertyTable2) TxSelectOneForUpdate(tx *database2.DXDatabaseTx, fie
 	return tx.SelectOne(pt.NameId, pt.FieldTypeMapping, fieldNames, whereAndFieldNameValues, nil, orderbyFieldNameDirections, true)
 }
 
-func (pt *DXPropertyTable2) TxUpdate(tx *database2.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
+func (pt *table2.DXPropertyTable2) TxUpdate(tx *database2.DXDatabaseTx, setKeyValues utils.JSON, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
@@ -961,7 +957,7 @@ func (pt *DXPropertyTable2) TxUpdate(tx *database2.DXDatabaseTx, setKeyValues ut
 	return tx.Update(pt.NameId, setKeyValues, whereAndFieldNameValues)
 }
 
-func (pt *DXPropertyTable2) TxSoftDelete(tx *database2.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
+func (pt *table2.DXPropertyTable2) TxSoftDelete(tx *database2.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (result sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
@@ -971,7 +967,7 @@ func (pt *DXPropertyTable2) TxSoftDelete(tx *database2.DXDatabaseTx, whereAndFie
 	}, whereAndFieldNameValues)
 }
 
-func (pt *DXPropertyTable2) TxHardDelete(tx *database2.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
+func (pt *table2.DXPropertyTable2) TxHardDelete(tx *database2.DXDatabaseTx, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
 		whereAndFieldNameValues = utils.JSON{}
 	}
@@ -979,7 +975,7 @@ func (pt *DXPropertyTable2) TxHardDelete(tx *database2.DXDatabaseTx, whereAndFie
 	return tx.Delete(pt.NameId, whereAndFieldNameValues)
 }
 
-func (pt *DXPropertyTable2) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
+func (pt *table2.DXPropertyTable2) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) (err error) {
 	if pt.Database == nil {
 		pt.Database = database2.Manager.Databases[pt.DatabaseNameId]
 	}
@@ -1032,7 +1028,7 @@ func (pt *DXPropertyTable2) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, 
 	return nil
 }
 
-func (pt *DXPropertyTable2) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) {
+func (pt *table2.DXPropertyTable2) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return errors.Wrap(err, "error occured")
@@ -1082,7 +1078,7 @@ func (pt *DXPropertyTable2) RequestPagingList(aepr *api.DXAPIEndPointRequest) (e
 	return pt.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
 }
 
-func (pt *DXPropertyTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections utils2.FieldsOrderBy) (
+func (pt *table2.DXPropertyTable2) SelectOne(log *log.DXLog, fieldNames []string, whereAndFieldNameValues utils.JSON, orderbyFieldNameDirections db.DXDatabaseTableFieldsOrderBy) (
 	rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
 	if whereAndFieldNameValues == nil {
