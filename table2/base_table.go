@@ -34,7 +34,7 @@ type DXBaseTable2 struct {
 	FieldTypeMapping           db.DXDatabaseTableFieldTypeMapping
 	DoOverrideSelectValues     func(whereKeyValues utils.JSON) (utils.JSON, error)
 	DoOverrideInsertValues     func(newKeyValues utils.JSON) (utils.JSON, error)
-	DoOverrideUpdateValues     func(newKeyValues utils.JSON) (utils.JSON, error)
+	DoOverrideUpdateValues     func(newKeyValues utils.JSON, whereKeyValues utils.JSON) (updatedNewKeyValues utils.JSON, updatedWhereKeyValues utils.JSON, err error)
 
 	OnBeforeInsert              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
 	OnBeforeUpdate              func(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) error
@@ -98,7 +98,7 @@ func (t *DXTable2) DoOverrideInsertValues(newKeyValues utils.JSON) (utils.JSON, 
 	return newKeyValues, nil
 }
 
-func (t *DXTable2) DoOverrideUpdateValues(newKeyValues utils.JSON) (utils.JSON, error) {
+func (t *DXTable2) DoOverrideUpdateValues(newKeyValues utils.JSON, whereKeyValues utils.JSON) (updatedNewKeyValues utils.JSON, updatedWhereKeyValues utils.JSON, err error) {
 	tt := time.Now().UTC()
 	newKeyValues["last_modified_at"] = tt
 
@@ -107,7 +107,12 @@ func (t *DXTable2) DoOverrideUpdateValues(newKeyValues utils.JSON) (utils.JSON, 
 		newKeyValues["last_modified_by_user_id"] = "0"
 		newKeyValues["last_modified_by_user_nameid"] = "SYSTEM"
 	}
-	return newKeyValues, nil
+
+	if whereKeyValues == nil {
+		whereKeyValues = utils.JSON{}
+	}
+	whereKeyValues["is_deleted"] = false
+	return newKeyValues, whereKeyValues, nil
 }
 
 func (t *DXTable2) Initialize() TableInterface {
