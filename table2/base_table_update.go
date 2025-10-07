@@ -14,7 +14,7 @@ func (bt *DXBaseTable2) Update(setKeyValues utils.JSON, whereAndFieldNameValues 
 		return nil, err
 	}
 
-	setKeyValues, whereAndFieldNameValues, err = bt.DoOverrideUpdateValuesAndFieldNameValues(setKeyValues, whereAndFieldNameValues)
+	setKeyValues, whereAndFieldNameValues, err = bt.DoOverrideUpdateValues(setKeyValues, whereAndFieldNameValues)
 
 	r, _, err = bt.Database.Update(bt.NameId, setKeyValues, whereAndFieldNameValues, nil)
 	return r, err

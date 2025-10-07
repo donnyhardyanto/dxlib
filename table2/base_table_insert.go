@@ -2,7 +2,6 @@ package table2
 
 import (
 	"github.com/donnyhardyanto/dxlib/database2"
-	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/pkg/errors"
 )
