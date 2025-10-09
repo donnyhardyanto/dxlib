@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/api"
-	database "github.com/donnyhardyanto/dxlib/database2"
+	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/pkg/errors"
@@ -22,7 +22,7 @@ type DXBaseTable2OnResultProcessEachListRow func(aepr *api.DXAPIEndPointRequest,
 type DXBaseTable2 struct {
 	DatabaseType               db.DXDatabaseType
 	DatabaseNameId             string
-	Database                   *database.DXDatabase
+	Database                   *database2.DXDatabase
 	NameId                     string
 	ResultObjectName           string
 	ListViewNameId             string
@@ -48,7 +48,7 @@ func (bt *DXBaseTable2) Initialize() TableInterface {
 
 func (bt *DXBaseTable2) DbEnsureInitializeConnection() (err error) {
 	if bt.Database == nil {
-		bt.Database = database.Manager.Databases[bt.DatabaseNameId]
+		bt.Database = database2.Manager.Databases[bt.DatabaseNameId]
 		if bt.Database == nil {
 			return errors.Errorf("database not found: %s", bt.DatabaseNameId)
 		}
