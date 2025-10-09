@@ -32,6 +32,7 @@ type DXBaseTable2 struct {
 	FieldNameForRowUtag        string
 	ResponseEnvelopeObjectName string
 	FieldTypeMapping           db.DXDatabaseTableFieldTypeMapping
+	FieldMaxLengths            map[string]int
 	DoOverrideSelectValues     func(whereKeyValues utils.JSON) (utils.JSON, error)
 	DoOverrideInsertValues     func(newKeyValues utils.JSON) (utils.JSON, error)
 	DoOverrideUpdateValues     func(newKeyValues utils.JSON, whereKeyValues utils.JSON) (updatedNewKeyValues utils.JSON, updatedWhereKeyValues utils.JSON, err error)

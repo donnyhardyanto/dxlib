@@ -3,6 +3,11 @@ package table
 import (
 	"database/sql"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+	_ "time/tzdata"
+
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
@@ -11,10 +16,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/pkg/errors"
-	"net/http"
-	"strings"
-	"time"
-	_ "time/tzdata"
 )
 
 type OnResultList func(listRow utils.JSON) (utils.JSON, error)
@@ -30,7 +31,7 @@ type DXRawTable struct {
 	FieldNameForRowUid         string
 	FieldTypeMapping           db.FieldTypeMapping
 	ResponseEnvelopeObjectName string
-	FieldMaxLengths            map[string]int
+	FieldTypeStringMaxLengths  map[string]int
 }
 
 func (t *DXRawTable) RequestDoCreate(aepr *api.DXAPIEndPointRequest, newKeyValues utils.JSON) (newId int64, err error) {
@@ -133,7 +134,7 @@ func (t *DXRawTable) TxShouldGetByNameId(tx *database.DXDatabaseTx, nameId strin
 
 func (t *DXRawTable) TxInsert(tx *database.DXDatabaseTx, newKeyValues utils.JSON) (newId int64, err error) {
 	for k, v := range newKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -160,7 +161,7 @@ func (t *DXRawTable) Insert(log *log.DXLog, newKeyValues utils.JSON) (newId int6
 	}
 
 	for k, v := range newKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -187,7 +188,7 @@ func (t *DXRawTable) Update(setKeyValues utils.JSON, whereAndFieldNameValues uti
 	}
 
 	for k, v := range setKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -213,7 +214,7 @@ func (t *DXRawTable) Upsert(setKeyValues utils.JSON, whereAndFieldNameValues uti
 	}
 
 	for k, v := range setKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -251,7 +252,7 @@ func (t *DXRawTable) UpdateOne(l *log.DXLog, FieldValueForId int64, setKeyValues
 	}
 
 	for k, v := range setKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -279,7 +280,7 @@ func (t *DXRawTable) UpdateOneByUid(l *log.DXLog, FieldValueForUid string, setKe
 	}
 
 	for k, v := range setKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -303,7 +304,7 @@ func (t *DXRawTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValue
 	}
 
 	for k, v := range newKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -401,7 +402,7 @@ func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValu
 	}
 
 	for k, v := range newKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -445,7 +446,7 @@ func (t *DXRawTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, new
 	}
 
 	for k, v := range newKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
@@ -675,7 +676,7 @@ func (t *DXRawTable) TxUpdate(tx *database.DXDatabaseTx, setKeyValues utils.JSON
 	}
 
 	for k, v := range setKeyValues {
-		l, ok := t.FieldMaxLengths[k]
+		l, ok := t.FieldTypeStringMaxLengths[k]
 		if ok {
 			vs, ok := v.(string)
 			if ok {
