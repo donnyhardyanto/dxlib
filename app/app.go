@@ -3,8 +3,11 @@ package app
 import (
 	"context"
 	"fmt"
+
 	"github.com/donnyhardyanto/dxlib"
+	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/object_storage"
+	"github.com/donnyhardyanto/dxlib/table2"
 	"github.com/donnyhardyanto/dxlib/vault"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pkg/errors"
@@ -125,7 +128,11 @@ func (a *DXApp) loadConfiguration() (err error) {
 	if a.IsStorageExist {
 		err = database.Manager.LoadFromConfiguration("storage")
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
+		}
+		err = database2.Manager.LoadFromConfiguration("storage")
+		if err != nil {
+			return err
 		}
 	}
 	_, a.IsObjectStorageExist = configuration.Manager.Configurations["object_storage"]
@@ -148,35 +155,43 @@ func (a *DXApp) start() (err error) {
 	log.Log.Info(fmt.Sprintf("%v %v %v", a.Title, a.Version, a.Description))
 	err = a.loadConfiguration()
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	if a.IsRedisExist {
 		err = redis.Manager.ConnectAllAtStart()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	if a.IsStorageExist {
 		err = database.Manager.ConnectAllAtStart()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
-		err := table.Manager.ConnectAll()
+		err = table.Manager.ConnectAll()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
+		}
+		err = database2.Manager.ConnectAllAtStart()
+		if err != nil {
+			return err
+		}
+		err = table2.Manager.ConnectAll()
+		if err != nil {
+			return err
 		}
 		if a.OnStartStorageReady != nil {
 			err = a.OnStartStorageReady()
 			if err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 		}
 	}
 	if a.IsObjectStorageExist {
 		err = object_storage.Manager.ConnectAllAtStart()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
@@ -184,7 +199,7 @@ func (a *DXApp) start() (err error) {
 		err = a.OnDefineSetVariables()
 		if err != nil {
 			log.Log.Error(err.Error(), err)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
@@ -192,14 +207,14 @@ func (a *DXApp) start() (err error) {
 		err = a.OnDefineAPIEndPoints()
 		if err != nil {
 			log.Log.Error(err.Error(), err)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
 	if a.IsAPIExist {
 		err = api.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
@@ -208,14 +223,14 @@ func (a *DXApp) start() (err error) {
 	if a.IsTaskExist {
 		err = task.Manager.StartAll(a.RuntimeErrorGroup, a.RuntimeErrorGroupContext)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
 	if a.OnAfterConfigurationStartAll != nil {
 		err = a.OnAfterConfigurationStartAll()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
@@ -251,7 +266,11 @@ func (a *DXApp) Stop() (err error) {
 	if a.IsStorageExist {
 		err = database.Manager.DisconnectAll()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
+		}
+		err = database2.Manager.DisconnectAll()
+		if err != nil {
+			return err
 		}
 	}
 	if a.IsObjectStorageExist {
