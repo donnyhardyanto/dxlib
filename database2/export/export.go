@@ -36,7 +36,7 @@ func ExportQueryResults(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON,
 
 	dir := filepath.Dir(opts.FilePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return errors.Errorf("failed to create directory: %w", err)
+		return errors.Errorf("failed to create directory: %+v", err)
 	}
 
 	switch opts.Format {
@@ -72,7 +72,7 @@ func ExportToStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opt
 func exportToCSV(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts ExportOptions) error {
 	file, err := os.Create(opts.FilePath)
 	if err != nil {
-		return errors.Errorf("failed to create CSV file: %w", err)
+		return errors.Errorf("failed to create CSV file: %+v", err)
 	}
 	defer file.Close()
 
@@ -80,7 +80,7 @@ func exportToCSV(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts E
 	defer writer.Flush()
 
 	if err := writer.Write(rowsInfo.Columns); err != nil {
-		return errors.Errorf("failed to write CSV headers: %w", err)
+		return errors.Errorf("failed to write CSV headers: %+v", err)
 	}
 
 	for _, row := range rows {
@@ -89,7 +89,7 @@ func exportToCSV(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts E
 			record[i] = formatValue(row[col], opts.DateFormat)
 		}
 		if err := writer.Write(record); err != nil {
-			return errors.Errorf("failed to write CSV record: %w", err)
+			return errors.Errorf("failed to write CSV record: %+v", err)
 		}
 	}
 
@@ -101,7 +101,7 @@ func exportToCSVStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, 
 	writer := csv.NewWriter(buf)
 
 	if err := writer.Write(rowsInfo.Columns); err != nil {
-		return nil, errors.Errorf("failed to write CSV headers: %w", err)
+		return nil, errors.Errorf("failed to write CSV headers: %+v", err)
 	}
 
 	for _, row := range rows {
@@ -110,7 +110,7 @@ func exportToCSVStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, 
 			record[i] = formatValue(row[col], opts.DateFormat)
 		}
 		if err := writer.Write(record); err != nil {
-			return nil, errors.Errorf("failed to write CSV record: %w", err)
+			return nil, errors.Errorf("failed to write CSV record: %+v", err)
 		}
 	}
 	writer.Flush()
@@ -143,7 +143,7 @@ func exportToXLSStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, 
 
 	buf, err := f.WriteToBuffer()
 	if err != nil {
-		return nil, errors.Errorf("failed to write Excel to buffer: %w", err)
+		return nil, errors.Errorf("failed to write Excel to buffer: %+v", err)
 	}
 	return buf.Bytes(), nil
 }
@@ -158,10 +158,10 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, row
 	for i, col := range rowsInfo.Columns {
 		cellName, err := excelize.CoordinatesToCellName(i+1, 1)
 		if err != nil {
-			return errors.Errorf("invalid cell coordinates: %w", err)
+			return errors.Errorf("invalid cell coordinates: %+v", err)
 		}
 		if err := f.SetCellValue(sheetName, cellName, col); err != nil {
-			return errors.Errorf("failed to write header: %w", err)
+			return errors.Errorf("failed to write header: %+v", err)
 		}
 	}
 
@@ -170,10 +170,10 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, row
 		for colIdx, col := range rowsInfo.Columns {
 			cellName, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
 			if err != nil {
-				return errors.Errorf("invalid cell coordinates: %w", err)
+				return errors.Errorf("invalid cell coordinates: %+v", err)
 			}
 			if err := f.SetCellValue(sheetName, cellName, formatValue(row[col], opts.DateFormat)); err != nil {
-				return errors.Errorf("failed to write cell value: %w", err)
+				return errors.Errorf("failed to write cell value: %+v", err)
 			}
 		}
 	}
@@ -186,7 +186,7 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, row
 	})
 	if err == nil {
 		if err := f.SetRowStyle(sheetName, 1, 1, style); err != nil {
-			return errors.Errorf("failed to apply header style: %w", err)
+			return errors.Errorf("failed to apply header style: %+v", err)
 		}
 	}
 
@@ -194,10 +194,10 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, row
 	for i := range rowsInfo.Columns {
 		col, err := excelize.ColumnNumberToName(i + 1)
 		if err != nil {
-			return errors.Errorf("invalid column number: %w", err)
+			return errors.Errorf("invalid column number: %+v", err)
 		}
 		if err := f.SetColWidth(sheetName, col, col, 15); err != nil {
-			return errors.Errorf("failed to set column width: %w", err)
+			return errors.Errorf("failed to set column width: %+v", err)
 		}
 	}
 

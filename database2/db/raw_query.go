@@ -14,7 +14,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	dbt := StringToDXDatabaseType(db.DriverName())
 	err = CheckAll(dbt, query, arg)
 	if err != nil {
-		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
 	}
 
 	rows, err := db.Queryx(query, arg...)
@@ -54,7 +54,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMappin
 	dbt := StringToDXDatabaseType(tx.DriverName())
 	err = CheckAll(dbt, query, arg)
 	if err != nil {
-		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
+		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
 	}
 
 	rows, err := tx.Queryx(query, arg...)

@@ -27,7 +27,7 @@ type JSON = map[string]any
 func ArrayToJSON[T any](arr []T) (string, error) {
 	jsonBytes, err := json.Marshal(arr)
 	if err != nil {
-		return "", errors.Errorf("failed to marshal array: %w", err)
+		return "", errors.Errorf("failed to marshal array: %+v", err)
 	}
 	return string(jsonBytes), nil
 }

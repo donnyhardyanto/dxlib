@@ -97,7 +97,7 @@ func CheckIdentifier(identifier string, dialect database_type.DXDatabaseType) er
 
 		// Check for suspicious patterns
 		if err := checkSuspiciousQueryPatterns(part, false); err != nil {
-			return errors.Errorf("invalid identifier %q: %w", part, err)
+			return errors.Errorf("invalid identifier %q: %+v", part, err)
 		}
 	}
 
@@ -244,7 +244,7 @@ func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 
 		// Check field name
 		if err := CheckIdentifier(tokens[0], dialect); err != nil {
-			return errors.Errorf("invalid field in order by: %w", err)
+			return errors.Errorf("invalid field in order by: %+v", err)
 		}
 
 		// Check direction if specified
@@ -281,7 +281,7 @@ func CheckBaseQuery(query string, dialect database_type.DXDatabaseType) error {
 
 	// Check for suspicious patterns
 	if err := checkSuspiciousQueryPatterns(loweredQuery, false); err != nil {
-		return errors.Errorf("query validation failed: %w", err)
+		return errors.Errorf("query validation failed: %+v", err)
 	}
 
 	return nil
@@ -326,19 +326,19 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	}
 	err = CheckBaseQuery(query, database_type.StringToDXDatabaseType(dbDriverName))
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
+		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
 	}
 
 	err = CheckValue(arg)
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
+		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
 	}
 
 	// Check LIKE patterns
 	if strings.Contains(query, "LIKE") {
 		err = CheckLikePattern(query)
 		if err != nil {
-			return errors.Errorf("SQL_INJECTION_DETECTED:LIKE_PATTERN_VALIDATION_FAILED: %w", err)
+			return errors.Errorf("SQL_INJECTION_DETECTED:LIKE_PATTERN_VALIDATION_FAILED: %+v", err)
 		}
 	}
 
@@ -346,7 +346,7 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	if strings.Contains(query, "ORDER BY") {
 		err = CheckOrderBy(query, database_type.StringToDXDatabaseType(dbDriverName))
 		if err != nil {
-			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %w", err)
+			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %+v", err)
 		}
 	}
 

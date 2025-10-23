@@ -204,7 +204,7 @@ func parseJSONsToStrings(jsonStr string) ([]string, error) {
 	var arr []string
 	err := json.Unmarshal([]byte(jsonStr), &arr)
 	if err != nil {
-		return nil, errors.Errorf("failed to parse JSON array: %w", err)
+		return nil, errors.Errorf("failed to parse JSON array: %+v", err)
 	}
 	return arr, nil
 }

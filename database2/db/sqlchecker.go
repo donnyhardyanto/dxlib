@@ -2306,7 +2306,7 @@ func CheckIdentifier(dialect DXDatabaseType, identifier string) error {
 
 		// Still check for suspicious patterns, as even quoted identifiers shouldn't contain SQL injection
 		if err := checkSuspiciousQueryPatterns(content, false); err != nil {
-			return errors.Errorf("potentially dangerous quoted identifier: %w", err)
+			return errors.Errorf("potentially dangerous quoted identifier: %+v", err)
 		}
 
 		return nil
@@ -2558,7 +2558,7 @@ func CheckBaseQuery(dialect DXDatabaseType, query string) error {
 
 	// Check for suspicious patterns
 	if err := checkSuspiciousQueryPatterns(loweredQuery, false); err != nil {
-		return errors.Errorf("query validation failed: %w", err)
+		return errors.Errorf("query validation failed: %+v", err)
 	}
 
 	return nil
@@ -2602,19 +2602,19 @@ func CheckAll(dialect DXDatabaseType, query string, arg any) (err error) {
 	}
 	err = CheckBaseQuery(dialect, query)
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w=%s +%v", err, query, arg)
+		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
 	}
 
 	err = CheckValue(dialect, arg)
 	if err != nil {
-		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %w", err)
+		return errors.Errorf("SQL_INJECTION_DETECTED:VALUE_VALIDATION_FAILED: %+v", err)
 	}
 
 	// Check LIKE patterns
 	if strings.Contains(query, "LIKE") {
 		err = CheckLikePattern(query)
 		if err != nil {
-			return errors.Errorf("SQL_INJECTION_DETECTED:LIKE_PATTERN_VALIDATION_FAILED: %w", err)
+			return errors.Errorf("SQL_INJECTION_DETECTED:LIKE_PATTERN_VALIDATION_FAILED: %+v", err)
 		}
 	}
 
@@ -2622,7 +2622,7 @@ func CheckAll(dialect DXDatabaseType, query string, arg any) (err error) {
 	if strings.Contains(query, "ORDER BY") {
 		err = CheckOrderBy(dialect, query)
 		if err != nil {
-			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %w", err)
+			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %+v", err)
 		}
 	}
 

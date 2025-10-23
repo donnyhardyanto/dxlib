@@ -12,7 +12,7 @@ func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error
 	dbt := StringToDXDatabaseType(db.DriverName())
 	err = CheckAll(dbt, query, arg)
 	if err != nil {
-		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
 	}
 
 	result, err = db.Exec(query, arg...)
@@ -27,7 +27,7 @@ func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err err
 	dbt := StringToDXDatabaseType(tx.DriverName())
 	err = CheckAll(dbt, query, arg)
 	if err != nil {
-		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %w", err)
+		return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
 	}
 
 	result, err = tx.Exec(query, arg...)

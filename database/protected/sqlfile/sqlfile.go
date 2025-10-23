@@ -266,7 +266,7 @@ func removeComments(content string) string {
 func load(path string) ([]string, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, errors.Errorf("failed to read file %s: %w", path, err)
+		return nil, errors.Errorf("failed to read file %s: %+v", path, err)
 	}
 
 	// Remove comments while preserving newlines
@@ -286,7 +286,7 @@ func (s *SqlFile) Exec(db *sql.DB) (res []sql.Result, err error) {
 
 	tx, err := db.Begin()
 	if err != nil {
-		return nil, errors.Errorf("failed to begin transaction: %w", err)
+		return nil, errors.Errorf("failed to begin transaction: %+v", err)
 	}
 	defer saveTx(tx, &err)
 
@@ -299,7 +299,7 @@ func (s *SqlFile) Exec(db *sql.DB) (res []sql.Result, err error) {
 
 		r, err := tx.Exec(query)
 		if err != nil {
-			return nil, errors.Errorf("SQL error: %w\nQuery: %s", err, query)
+			return nil, errors.Errorf("SQL error: %+v\nQuery: %s", err, query)
 		}
 		results = append(results, r)
 	}

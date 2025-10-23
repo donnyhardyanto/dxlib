@@ -90,7 +90,7 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
 	}
 
 	if err != nil {
-		return errors.Errorf("failed to kill connections: %w", err)
+		return errors.Errorf("failed to kill connections: %+v", err)
 	}
 	return nil
 }
@@ -142,7 +142,7 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 
 	_, err = db.Exec(query)
 	if err != nil {
-		return errors.Errorf("failed to drop database: %w", err)
+		return errors.Errorf("failed to drop database: %+v", err)
 	}
 
 	return nil
@@ -173,7 +173,7 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		return errors.Errorf("failed to create database/user: %w", err)
+		return errors.Errorf("failed to create database/user: %+v", err)
 	}
 
 	return nil
@@ -181,7 +181,7 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 		query := fmt.Sprintf("CREATE DATABASE "%s"", dbName)
 		_, err := db.Exec(query)
 		if err != nil {
-			return errors.Wrap(err, "error occured")ors.Errorf("failed to create database: %w", err)
+			return errors.Wrap(err, "error occured")ors.Errorf("failed to create database: %+v", err)
 		}
 		return nil*/
 }

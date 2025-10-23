@@ -62,7 +62,7 @@ func SQLPartOrderByFieldNameDirections(orderByKeyValues map[string]string, drive
 	for fieldName, direction := range orderByKeyValues {
 		formattedPart, err := DbDriverFormatOrderByFieldName(driverName, fieldName, direction)
 		if err != nil {
-			return "", errors.Errorf("error formatting ORDER BY for fieldName %s: %w", fieldName, err)
+			return "", errors.Errorf("error formatting ORDER BY for fieldName %s: %+v", fieldName, err)
 		}
 		orderParts = append(orderParts, formattedPart)
 	}
