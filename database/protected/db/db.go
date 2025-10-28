@@ -961,7 +961,7 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "ERROR_EXECUTING_NAMED_QUERY:%s", query)
 	}
 	defer func() {
 		if closeErr := rows.Close(); closeErr != nil {
@@ -973,11 +973,10 @@ func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
 	if rows.Next() {
 		err := rows.Scan(&returningId)
 		if err != nil {
-			return 0, err
+			return 0, errors.Wrapf(err, "ROWS_SCAN_ERROR:query=%s", query)
 		}
 	} else {
-		err := errors.New("NO_ID_RETURNED:" + query)
-		return 0, err
+		return 0, errors.New("NO_ID_RETURNED:" + query)
 	}
 	return returningId, nil
 }
