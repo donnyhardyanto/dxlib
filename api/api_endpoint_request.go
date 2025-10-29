@@ -145,7 +145,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 	if err2 != nil {
 		requestDump = "DUMP REQUEST FAIL"
 	}
-	aepr.Log.LogText2(err, log.DXLogLevelError, "", requestDump)
+	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
 	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage, err.Error())
 	return
 }
@@ -168,7 +168,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, re
 		requestDump = "DUMP REQUEST FAIL"
 	}
 
-	aepr.Log.LogText2(err, log.DXLogLevelError, "", requestDump)
+	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
 	aepr.WriteResponseAsErrorMessage(statusCode, responseMessage, msg)
 
 	return nil
