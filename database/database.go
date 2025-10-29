@@ -454,7 +454,7 @@ func (d *DXDatabase) Insert(tableName string, fieldNameForRowId string, keyValue
 		if err == nil {
 			return id, nil
 		}
-		log.Log.LogText(err, log.DXLogLevelError, "INSERT_ERROR:%s=%v", tableName, err.Error())
+		log.Log.LogText(err, log.DXLogLevelError, "INSERT_ERROR:%s=%+v", tableName, err)
 		err = db.CheckDatabaseError(err)
 		if err == nil {
 			return id, err
