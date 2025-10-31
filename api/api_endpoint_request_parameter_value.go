@@ -252,15 +252,33 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		}
 		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	case "float64":
-		v, ok := aeprpv.RawValue.(float64)
-		if !ok {
+		var v float64
+		switch val := aeprpv.RawValue.(type) {
+		case float64:
+			v = val
+		case int:
+			v = float64(val)
+		case int32:
+			v = float64(val)
+		case int64:
+			v = float64(val)
+		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
 		aeprpv.Value = v
 		return nil
 	case "float64zp":
-		v, ok := aeprpv.RawValue.(float64)
-		if !ok {
+		var v float64
+		switch val := aeprpv.RawValue.(type) {
+		case float64:
+			v = val
+		case int:
+			v = float64(val)
+		case int32:
+			v = float64(val)
+		case int64:
+			v = float64(val)
+		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
 		if v >= 0 {
@@ -269,8 +287,17 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		}
 		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	case "float64p":
-		v, ok := aeprpv.RawValue.(float64)
-		if !ok {
+		var v float64
+		switch val := aeprpv.RawValue.(type) {
+		case float64:
+			v = val
+		case int:
+			v = float64(val)
+		case int32:
+			v = float64(val)
+		case int64:
+			v = float64(val)
+		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
 		if v > 0 {
@@ -279,32 +306,62 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		}
 		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	case "float32":
-		t, ok := aeprpv.RawValue.(float64)
-		if !ok {
+		var v float64
+		switch val := aeprpv.RawValue.(type) {
+		case float64:
+			v = val
+		case int:
+			v = float64(val)
+		case int32:
+			v = float64(val)
+		case int64:
+			v = float64(val)
+		case float32:
+			v = float64(val)
+		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
-		v := float32(t)
-		aeprpv.Value = v
+		aeprpv.Value = float32(v)
 		return nil
 	case "float32zp":
-		t, ok := aeprpv.RawValue.(float64)
-		if !ok {
+		var v float64
+		switch val := aeprpv.RawValue.(type) {
+		case float64:
+			v = val
+		case int:
+			v = float64(val)
+		case int32:
+			v = float64(val)
+		case int64:
+			v = float64(val)
+		case float32:
+			v = float64(val)
+		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
-		v := float32(t)
 		if v >= 0 {
-			aeprpv.Value = v
+			aeprpv.Value = float32(v)
 			return nil
 		}
 		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	case "float32p":
-		t, ok := aeprpv.RawValue.(float64)
-		if !ok {
+		var v float64
+		switch val := aeprpv.RawValue.(type) {
+		case float64:
+			v = val
+		case int:
+			v = float64(val)
+		case int32:
+			v = float64(val)
+		case int64:
+			v = float64(val)
+		case float32:
+			v = float64(val)
+		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
-		v := float32(t)
 		if v > 0 {
-			aeprpv.Value = v
+			aeprpv.Value = float32(v)
 			return nil
 		}
 		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
