@@ -494,7 +494,7 @@ func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 		r = v
 		break
 	default:
-		err := errors.New(fmt.Sprint("TYPE_IS_NOT_CONVERTABLE_TO_MAP[STRING]ANY:%T", v))
+		err := errors.Errorf("TYPE_IS_NOT_CONVERTABLE_TO_MAP[STRING]ANY:%T", v)
 		return nil, err
 	}
 	return r, nil

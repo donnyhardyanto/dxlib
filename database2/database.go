@@ -144,7 +144,7 @@ func (d *DXDatabase) CheckConnection() (err error) {
 		return errors.Wrapf(err, "Database %v ping failed", d.NameId)
 	}
 	d.Connected = true
-	return errors.Wrapf(err, "database %v ping success with result CheckConnection: %v", d.NameId)
+	return errors.Wrapf(err, "Dßatabase %s ping success", d.NameId)
 }
 
 func (d *DXDatabase) CheckConnectionAndReconnect() (err error) {
@@ -381,7 +381,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 
 	defer func() {
 		if err != nil {
-			_ = errors.Wrapf(err, "Error executing file %s (%v)", filename)
+			_ = errors.Wrapf(err, "Error executing file %s", filename)
 		}
 	}()
 

@@ -203,7 +203,7 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 		ObjectStorageConfiguration, ok := m[r.NameId].(utils.JSON)
 		if !ok {
 			if r.MustConnected {
-				err := log.Log.PanicAndCreateErrorf("ObjectStorage %s configuration not found", r.NameId)
+				err := log.Log.PanicAndCreateErrorf(log.Log.Prefix, "ObjectStorage %s configuration not found", r.NameId)
 				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("Manager is unusable, ObjectStorage %s configuration not found", r.NameId)
@@ -213,7 +213,7 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 		r.Address, ok = ObjectStorageConfiguration["address"].(string)
 		if !ok {
 			if r.MustConnected {
-				err := log.Log.PanicAndCreateErrorf("Mandatory address field in ObjectStorage %s configuration not exist", r.NameId)
+				err := log.Log.PanicAndCreateErrorf(log.Log.Prefix, "Mandatory address field in ObjectStorage %s configuration not exist", r.NameId)
 				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in ObjectStorage %s configuration not exist", r.NameId)
