@@ -247,7 +247,7 @@ const dxlib = {};
             let ciphertextArray;
             let resultArray;
             try {
-                decodedKey = await window.crypto.subtle.importKey(
+                decodedKey = await globalThis.crypto.subtle.importKey(
                     "raw",
                     key.buffer,
                     "AES-CBC",
@@ -255,8 +255,8 @@ const dxlib = {};
                     ["encrypt", "decrypt"]
                 );
 
-                iv = window.crypto.getRandomValues(new Uint8Array(16));
-                ciphertextArrayBuffer = await window.crypto.subtle.encrypt(
+                iv = globalThis.crypto.getRandomValues(new Uint8Array(16));
+                ciphertextArrayBuffer = await globalThis.crypto.subtle.encrypt(
                     {
                         name: "AES-CBC",
                         iv: iv.buffer
@@ -285,7 +285,7 @@ const dxlib = {};
             let decodedKey
             let decryptedArrayBuffer
             try {
-                decodedKey = await window.crypto.subtle.importKey(
+                decodedKey = await globalThis.crypto.subtle.importKey(
                     "raw",
                     key.buffer,
                     {name: "AES-CBC"},
@@ -293,7 +293,7 @@ const dxlib = {};
                     ["encrypt", "decrypt"] //only allow the key to be used for decryption
                 );
 
-                decryptedArrayBuffer = await window.crypto.subtle.decrypt(
+                decryptedArrayBuffer = await globalThis.crypto.subtle.decrypt(
                     {
                         name: "AES-CBC",
                         iv: iv.buffer
