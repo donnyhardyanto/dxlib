@@ -530,7 +530,7 @@ const dxlib = {};
             // Ensure byte is treated as a number
             let num = Number(byte);
             // Check if it's a valid number
-            if (isNaN(num)) {
+            if (Number.isNaN(num)) {
                 throw new Error('Invalid byte value');
             }
             return num.toString(16).padStart(2, '0');
