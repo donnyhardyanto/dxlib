@@ -97,55 +97,11 @@ const dxlib = {};
         static computeSharedSecret(privateAKey, publicBKey) {
             // Ensure the privateKey and publicKey are Uint8Arrays
             if (!(privateAKey instanceof Uint8Array) || !(publicBKey instanceof Uint8Array)) {
-                throw new Error('Both keys must be Uint8Arrays');
+                throw new TypeError('Both keys must be Uint8Arrays');
             }
 
             return nacl.scalarMult(privateAKey, publicBKey)
         }
-    }
-
-    function toUint8ArrayX(data) {
-        // If already a Uint8Array, return it
-        if (data instanceof Uint8Array) {
-            return data;
-        }
-
-        // If it's an ArrayBuffer, create a view of it
-        if (data instanceof ArrayBuffer) {
-            return new Uint8Array(data);
-        }
-
-        // If it's a string, encode it
-        if (typeof data === 'string') {
-            return new TextEncoder().encode(data);
-        }
-
-        // If it's a number (assuming 32-bit integer)
-        if (typeof data === 'number') {
-            const arr = new Uint8Array(4);
-            new DataView(arr.buffer).setInt32(0, data, true);
-            return arr;
-        }
-
-        // If it's a BigInt (64-bit integer)
-        if (typeof data === 'bigint') {
-            const arr = new Uint8Array(8);
-            new DataView(arr.buffer).setBigInt64(0, data, true);
-            return arr;
-        }
-
-        // If it's an array-like object
-        if (Array.isArray(data) || ArrayBuffer.isView(data)) {
-            return new Uint8Array(data);
-        }
-
-        // If it's an object, stringify it and then encode
-        if (typeof data === 'object') {
-            return new TextEncoder().encode(JSON.stringify(data));
-        }
-
-        // If we can't handle the input, throw an error
-        throw new Error('Unsupported data type');
     }
 
     function toUint8Array(data) {
@@ -219,9 +175,9 @@ const dxlib = {};
             }
             let totalLength = 0
             let lvAsBytesArray = [];
-            for (let i = 0; i < lvs.length; i++) {
+            for (const element of lvs) {
                 /** @type {LV} */
-                let t = lvs[i]
+                let t = element
                 let b = t.marshalBinary()
                 lvAsBytesArray.push(b)
                 totalLength = totalLength + b.length
@@ -318,7 +274,6 @@ const dxlib = {};
         setTimeNow() {
             let now = new Date();
             let currentTimeInUTC_ISOFormat = now.toISOString();
-            //console.log(currentTimeInUTC_ISOFormat);
             this.Time.setValueAsString(currentTimeInUTC_ISOFormat);
         }
 
@@ -530,7 +485,7 @@ const dxlib = {};
             let num = Number(byte);
             // Check if it's a valid number
             if (Number.isNaN(num)) {
-                throw new Error('Invalid byte value');
+                throw new TypeError('Invalid byte value');
             }
             return num.toString(16).padStart(2, '0');
         }).join('');
