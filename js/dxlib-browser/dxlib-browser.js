@@ -28,7 +28,7 @@ const dxlib = {};
         static computeSharedSecret(privateAKey, publicBKey) {
             // Ensure the privateKey and publicKey are Uint8Arrays
             if (!(privateAKey instanceof Uint8Array) || !(publicBKey instanceof Uint8Array)) {
-                throw new Error('Both keys must be Uint8Arrays');
+                throw new TypeError('Both keys must be Uint8Arrays');
             }
 
             return nacl.scalarMult(privateAKey, publicBKey)
@@ -106,9 +106,9 @@ const dxlib = {};
             }
             let totalLength = 0
             let lvAsBytesArray = [];
-            for (let i = 0; i < lvs.length; i++) {
+            for (const element of lvs) {
                 /** @type {LV} */
-                let t = lvs[i]
+                let t = element
                 let b = t.marshalBinary()
                 lvAsBytesArray.push(b)
                 totalLength = totalLength + b.length
@@ -375,7 +375,6 @@ const dxlib = {};
         lvDecryptedLVDataBlock = LV.unmarshalBinary(decryptedData);
 
         dataBlock = DataBlock.fromLV(lvDecryptedLVDataBlock)
-        //dataBlock = DataBlock.unmarshalBinary(lvDecryptedLVDataBlock.Value);
 
         let timeStamp = dataBlock.Time.getValueAsString();
         let parsedTimestamp = new Date(timeStamp)
@@ -385,7 +384,7 @@ const dxlib = {};
             throw new Error("INVALID_TIMESTAMP_DATA");
         }
 
-        const differenceMS = new Date() - parsedTimestamp
+        const differenceMS = Date.now() - parsedTimestamp
         if ((differenceMS - UNPACK_TTL_MS) > 0) {
             throw new Error("TIME_EXPIRED")
         }
@@ -413,8 +412,8 @@ const dxlib = {};
             // Ensure byte is treated as a number
             let num = Number(byte);
             // Check if it's a valid number
-            if (isNaN(num)) {
-                throw new Error('Invalid byte value');
+            if (Number.isNaN(num)) {
+                throw new TypeError('Invalid byte value');
             }
             return num.toString(16).padStart(2, '0');
         }).join('');
@@ -427,7 +426,7 @@ const dxlib = {};
         const bytes = new Uint8Array(hex.length / 2);
         for (let i = 0; i < hex.length; i += 2) {
             let s = hex.substring(i, i + 2);
-            bytes[i / 2] = parseInt(s, 16);
+            bytes[i / 2] = Number.parseInt(s, 16);
         }
         return bytes;
     }
@@ -459,15 +458,7 @@ const dxlib = {};
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = dxlib;
 } else {
-    self.dxlib = self.dxlib || dxlib;
+    globalThis.dxlib = globalThis.dxlib || dxlib;
 }
 
 export default dxlib;
-
-/*if (typeof module !== 'undefined' && module.exports) {
-    module.exports = dxlib;
-} else {
-    self.dxlib = self.dxlib || dxlib;
-}*/
-
-//export default dxlib;
