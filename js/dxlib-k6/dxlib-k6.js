@@ -492,7 +492,6 @@ const dxlib = {};
         lvDecryptedLVDataBlock = LV.unmarshalBinary(decryptedData);
 
         dataBlock = DataBlock.fromLV(lvDecryptedLVDataBlock)
-        //dataBlock = DataBlock.unmarshalBinary(lvDecryptedLVDataBlock.Value);
 
         let timeStamp = dataBlock.Time.getValueAsString();
         let parsedTimestamp = new Date(timeStamp)
@@ -502,7 +501,7 @@ const dxlib = {};
             throw new Error("INVALID_TIMESTAMP_DATA");
         }
 
-        const differenceMS = new Date() - parsedTimestamp
+        const differenceMS = Date.now() - parsedTimestamp
         if ((differenceMS - UNPACK_TTL_MS) > 0) {
             throw new Error("TIME_EXPIRED")
         }
