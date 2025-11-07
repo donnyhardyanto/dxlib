@@ -463,7 +463,7 @@ func isSubquery(str string) bool {
 	// Check for SQL keywords that indicate it's a query
 	selectKeywords := []string{
 		"select ", "with ", "union ", "from ",
-		"join ", "where ", "group by", "order by",
+		"join ", "where ", "group by ", "order by ",
 	}
 
 	for _, keyword := range selectKeywords {
