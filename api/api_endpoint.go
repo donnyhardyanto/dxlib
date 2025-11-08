@@ -48,6 +48,10 @@ func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
 			}
 		}
 	case "PostmanCollection":
+		return fmt.Sprintf("    - name: %s\n    - description: %s\n    - type: %s\n    - required: %t\n    - nullable: %t\n", aep.NameId, aep.Description, aep.Type, aep.IsMustExist, aep.IsNullable)
+	default:
+		return ""
+
 	}
 
 	return s
@@ -172,6 +176,8 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 		}
 
 		return string(collectionJSON), nil
+	default:
+		return "", fmt.Errorf("SpecFormat %s is not supported", SpecFormat)
 	}
 
 	return s, nil
