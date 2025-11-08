@@ -13,7 +13,12 @@ const dxlib = {};
         let out = [];
 
         for (let i = 0; i < len; i++) {
-            let point = str.charCodeAt(i);
+            let point = str.codePointAt(i);
+
+            // Skip the low surrogate if we just processed a high surrogate
+            if (point > 0xFFFF) {
+                i++; // Skip the next char as it's part of the surrogate pair
+            }
 
             if (point <= 0x7F) {
                 out[pos++] = point;
@@ -35,7 +40,7 @@ const dxlib = {};
         return new Uint8Array(out);
     }
 
-    // UTF-8 decoder implementation compatible with TextDecoder
+
     function decodeUTF8(bytes) {
         let out = '';
         let pos = 0;
@@ -43,31 +48,28 @@ const dxlib = {};
 
         while (pos < len) {
             const byte1 = bytes[pos++];
+
             if (byte1 <= 0x7F) {
-                out += String.fromCharCode(byte1);
+                // 1-byte sequence (ASCII)
+                out += String.fromCodePoint(byte1);
             } else if (byte1 <= 0xDF) {
+                // 2-byte sequence
                 const byte2 = bytes[pos++];
-                out += String.fromCharCode(((byte1 & 0x1F) << 6) | (byte2 & 0x3F));
+                const codePoint = ((byte1 & 0x1F) << 6) | (byte2 & 0x3F);
+                out += String.fromCodePoint(codePoint);
             } else if (byte1 <= 0xEF) {
+                // 3-byte sequence
                 const byte2 = bytes[pos++];
                 const byte3 = bytes[pos++];
-                out += String.fromCharCode(((byte1 & 0x0F) << 12) |
-                    ((byte2 & 0x3F) << 6) |
-                    (byte3 & 0x3F));
+                const codePoint = ((byte1 & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | (byte3 & 0x3F);
+                out += String.fromCodePoint(codePoint);
             } else if (byte1 <= 0xF7) {
+                // 4-byte sequence
                 const byte2 = bytes[pos++];
                 const byte3 = bytes[pos++];
                 const byte4 = bytes[pos++];
-                let point = ((byte1 & 0x07) << 18) |
-                    ((byte2 & 0x3F) << 12) |
-                    ((byte3 & 0x3F) << 6) |
-                    (byte4 & 0x3F);
-                if (point > 0xFFFF) {
-                    point -= 0x10000;
-                    out += String.fromCharCode(((point >>> 10) & 0x3FF) | 0xD800);
-                    point = 0xDC00 | (point & 0x3FF);
-                }
-                out += String.fromCharCode(point);
+                const codePoint = ((byte1 & 0x07) << 18) | ((byte2 & 0x3F) << 12) | ((byte3 & 0x3F) << 6) | (byte4 & 0x3F);
+                out += String.fromCodePoint(codePoint);
             }
         }
 
@@ -176,9 +178,7 @@ const dxlib = {};
             let totalLength = 0
             let lvAsBytesArray = [];
             for (const element of lvs) {
-                /** @type {LV} */
-                let t = element
-                let b = t.marshalBinary()
+                let b = element.marshalBinary()
                 lvAsBytesArray.push(b)
                 totalLength = totalLength + b.length
             }
