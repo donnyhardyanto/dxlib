@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/log"
-	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/donnyhardyanto/dxlib/log"
+	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 )
 
 type DXAPIEndPointType int
@@ -109,7 +110,6 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 		// Now you can range over the keys slice and use it to access the map
 		for _, k := range keys {
 			v := aep.ResponsePossibilities[k]
-			//fmt.Println("Key:", k, "StatusCode:", aep.ResponsePossibilities[k].StatusCode)
 			s += fmt.Sprintf("    %s\n", k)
 			s += fmt.Sprintf("      Status Code: %d\n", v.StatusCode)
 			s += fmt.Sprintf("      Description: %s\n", v.Description)
