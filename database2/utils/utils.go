@@ -18,6 +18,8 @@ func FormatIdentifier(identifier string, driverName string) string {
 	case "oracle", "db2":
 		formattedIdentifier = strings.ToUpper(formattedIdentifier)
 		return formattedIdentifier
+	default:
+		// do nothing
 	}
 
 	// Wrap the identifier in quotes to preserve case in the SQL statement

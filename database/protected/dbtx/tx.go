@@ -3,11 +3,12 @@ package dbtx
 import (
 	"database/sql"
 	"fmt"
+	"strings"
+
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"strings"
 
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/log"
@@ -383,30 +384,6 @@ func TxUpdate(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, 
 	result, err = TxNamedExec(log, autoRollback, tx, s, joinedKeyValues)
 	return result, err
 }
-
-/*func TxUpdateOne(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, setKeyValues utils.JSON, whereKeyValues utils.JSON) (
-	result sql.Result, err error) {
-	driveName := tx.DriverName()
-	setKeyValues, u := db.SQLPartSetFieldNameValues(setKeyValues, driveName)
-	w := db.SQLPartWhereAndFieldNameValues(whereKeyValues, driveName)
-	joinedKeyValues := db.MergeMapExcludeSQLExpression(setKeyValues, whereKeyValues, driveName)
-	driverName := tx.DriverName()
-	var s string
-	switch driverName {
-	case "postgres":
-		s = "update " + tableName + " set " + u + " where " + w
-	case "sqlserver":
-		s = "update " + tableName + " set " + u + " where " + w
-	case "oracle":
-		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
-	default:
-		return nil, errors.New("Unknown database type. Using Postgresql Dialect")
-	}
-	result, err = TxNamedExec(log, autoRollback, tx, s, joinedKeyValues)
-
-	//_, result, err = TxNamedQueryRow(log, autoRollback, tx, s, joinedKeyValues)
-	return result, err
-}*/
 
 func TxDelete(log *log.DXLog, autoRollback bool, tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON) (r sql.Result, err error) {
 	if whereAndFieldNameValues == nil {
