@@ -3,14 +3,15 @@ package json
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
 )
 
 type Number interface {
@@ -85,6 +86,7 @@ func anyMerge(newerValue, olderValue any) any {
 		if ok {
 			return x2
 		}
+	default:
 	}
 	return newerValue
 }
@@ -146,7 +148,9 @@ func GetBool(kv utils.JSON, k string) (bool, error) {
 			return true, nil
 		case "false", "0", "no", "off":
 			return false, nil
+		default:
 		}
+	default:
 	}
 
 	return false, errors.Errorf("cannot convert %T value %v to bool", val, val)

@@ -2520,10 +2520,7 @@ func CheckOrderByDirection(dialect DXDatabaseType, direction string) error {
 	switch normalizedDirection {
 	case "ASC", "DESC":
 		return nil
-	}
 
-	// Check NULLS syntax
-	switch normalizedDirection {
 	case "ASC NULLS FIRST", "ASC NULLS LAST", "DESC NULLS FIRST", "DESC NULLS LAST":
 		// Only PostgreSQL and Oracle support NULLS syntax
 		switch dialect {
@@ -2538,6 +2535,7 @@ func CheckOrderByDirection(dialect DXDatabaseType, direction string) error {
 		default:
 			return errors.Errorf("unsupported database type for '%s'", normalizedDirection)
 		}
+	default:
 	}
 
 	return errors.Errorf("invalid sort direction: %s", direction)

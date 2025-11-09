@@ -422,6 +422,8 @@ func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping
 					if err != nil {
 						return nil, err
 					}
+				default:
+
 				}
 			}
 		}
@@ -543,6 +545,7 @@ func IsConnectionError(err error) bool {
 
 	case *mysql.MySQLError: // MariaDB/MySQL
 		return mariadbConnectionErrors[e.Number]
+	default:
 	}
 
 	// Generic check for all database drivers based on error message

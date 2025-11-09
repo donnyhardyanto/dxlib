@@ -122,6 +122,8 @@ func (o *DXOrganization) ApplyData(d utils.JSON) (err error) {
 		o.RemoteServiceUserViewResponseFieldPathStatus = d["remote_service_user_view_response_field_path_status"].(string)
 		o.RemoteServiceUserViewResponseFieldStatusIfSuccess = d["remote_service_user_view_response_field_status_if_success"].(string)
 		o.RemoteServiceUserViewResponseFieldPathData = d["remote_service_user_view_response_field_path_data"].(string)
+	default:
+		return errors.Errorf("invalid AuthenticationMethod %s", o.AuthenticationMethod)
 	}
 
 	o.Applications = d["applications"].(utils.JSON)
