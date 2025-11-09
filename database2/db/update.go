@@ -21,6 +21,7 @@ func SQLPartUpdateSetFieldValues(setFieldValues utils.JSON, driverName string) (
 		switch driverName {
 		case "oracle":
 			formattedKey = strings.ToUpper(k)
+		default:
 		}
 
 		var setPart string
@@ -471,49 +472,6 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 
 	case "mysql":
 		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
-
-		/*// MySQL doesn't support RETURNING directly
-		baseSQL := strings.Join([]string{
-			"UPDATE",
-			tableName,
-			"SET",
-			setClause,
-			effectiveWhere,
-		}, " ")
-
-		// Execute the update
-		result, err := raw.TxExec(tx, baseSQL, combinedParams)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error executing mysql update")
-		}
-
-		// If no returning fields requested, return just the rows affected
-		if len(returningFieldNames) == 0 {
-			return result, returningFieldValues, nil
-		}
-
-		// For MySQL, we need to run a separate SELECT query to get the updated values
-		// This will only work if we have a WHERE clause that can uniquely identify the updated rows
-		if whereClause == "" {
-			return result, nil, errors.New("cannot use RETURNING with MySQL unless WHERE clause uniquely identifies rows")
-		}
-
-		// Query the updated rows
-		selectSQL := strings.Join([]string{
-			"SELECT",
-			strings.Join(returningFieldNames, ", "),
-			"FROM",
-			tableName,
-			effectiveWhere,
-		}, " ")
-
-		_, rows, err := raw.TxQueryRows(tx, nil, selectSQL, whereAndFieldNameValues)
-		if err != nil {
-			// Log the error but don't fail - we've already done the update
-			return result, nil, errors.Wrap(err, "error fetching updated rows")
-		}
-
-		return result, rows, nil*/
 
 	default:
 		// Unsupported database type

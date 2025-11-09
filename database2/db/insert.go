@@ -16,6 +16,7 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 		switch driverName {
 		case "oracle":
 			k = strings.ToUpper(k)
+		default:
 		}
 		if fieldNames != "" {
 			fieldNames = fieldNames + ","
@@ -213,7 +214,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 			return result, returningFieldValues, nil
 		}
 
-		// Use first common ID field name
+		// Use the first common ID field name
 		idFieldNames := []string{"id", "ID", "Id"}
 		idField := ""
 

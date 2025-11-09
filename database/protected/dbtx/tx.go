@@ -49,6 +49,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 		}
 
 		return nil
+	default:
 	}
 	tx, err := db.BeginTxx(log.Context, &sql.TxOptions{
 		Isolation: isolationLevel,

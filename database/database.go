@@ -48,7 +48,7 @@ type DXDatabase struct {
 	NonSensitiveConnectionString string
 	OnCannotConnect              DXDatabaseEventFunc
 	CreateScriptFiles            []string
-	ConcurrencySemaphore         chan struct{} // Adjust number based on your DB max_connections
+	ConcurrencySemaphore         chan struct{} // Adjust the number based on your DB max_connections
 }
 
 func (d *DXDatabase) EnsureConnection() (err error) {
@@ -177,7 +177,7 @@ func (d *DXDatabase) GetNonSensitiveConnectionString() string {
 func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	switch d.DatabaseType {
 	case database_type.PostgreSQL:
-		// This database type is must strictly using DSN type connection string, and cannot using URL type. Somehow it only works in DSN. Dont know why.
+		// This database type must strictly use DSN type connection string and cannot using URL type. Somehow it only works in DSN. Don't know why.
 		host, portAsString, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
@@ -686,20 +686,6 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 	switch driverName {
 	case "sqlserver", "postgres", "oracle":
 		log.Log.Infof("Executing SQL file %s... start", filename)
-		/*		fs := sqlfile.SqlFile{}
-				err = fs.File(filename)
-				if err != nil {
-					log.Log.Panic("DXDatabaseScript/ExecuteFile/1", err)
-					return nil, err
-				}
-				rs, err := fs.Exec(d.Connection.DB)
-				if err != nil {
-					log.Log.Fatalf("Error executing SQL file %s (%v)", filename, err.Error())
-					return rs[0], err
-				}
-				log.Log.Infof("Executing SQL file %s... done", filename)
-				return rs[0], nil*/
-
 		sqlFile := sqlfile.New()
 
 		// Load a single file
@@ -713,32 +699,6 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 		if err != nil {
 			return nil, err
 		}
-
-		/*sqlFile := sqlfile.NewSQLFile()
-
-		// Load single file
-		err = sqlFile.File(filename)
-		if err != nil {
-			return nil, err
-		}
-
-		// Execute the queries
-		err = sqlFile.Execute(d.Connection.DB)
-		if err != nil {
-			return nil, err
-		}
-		*/
-		/*sf := sqlfile.New()
-		err := sf.File(filename)
-		if err != nil {
-			return nil, err
-		}
-
-		results, err := sf.Exec(d.Connection.DB)
-		if err != nil {
-			return nil, err
-		}
-		*/
 	default:
 		err = log.Log.FatalAndCreateErrorf("Driver %s is not supported", driverName)
 		return nil, err

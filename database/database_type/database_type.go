@@ -91,6 +91,7 @@ func prepareArray(arr interface{}, driverName string) interface{} {
 			return fmt.Sprintf("ARRAY[%s]::bigint[]", joinInt64s(v))
 		case []float64:
 			return fmt.Sprintf("ARRAY[%s]::float8[]", joinFloats(v))
+		default:
 		}
 	case "sqlserver":
 		switch v := arr.(type) {
@@ -104,6 +105,7 @@ func prepareArray(arr interface{}, driverName string) interface{} {
 			return fmt.Sprintf("STRING_SPLIT('%s', ',')", joinInt64s(v))
 		case []float64:
 			return fmt.Sprintf("STRING_SPLIT('%s', ',')", joinFloats(v))
+		default:
 		}
 	case "mysql", "mariadb":
 		switch v := arr.(type) {
@@ -115,6 +117,7 @@ func prepareArray(arr interface{}, driverName string) interface{} {
 			return fmt.Sprintf("FIND_IN_SET(column, '%s')", joinInt64s(v))
 		case []float64:
 			return fmt.Sprintf("FIND_IN_SET(column, '%s')", joinFloats(v))
+		default:
 		}
 	case "oracle":
 		switch v := arr.(type) {
@@ -126,7 +129,9 @@ func prepareArray(arr interface{}, driverName string) interface{} {
 			return fmt.Sprintf("APEX_UTIL.STRING_TO_TABLE('%s')", joinInt64s(v))
 		case []float64:
 			return fmt.Sprintf("APEX_UTIL.STRING_TO_TABLE('%s')", joinFloats(v))
+		default:
 		}
+	default:
 	}
 	return arr
 }
@@ -142,6 +147,7 @@ func prepareTextType(text string, driverName string) interface{} {
 			return fmt.Sprintf("TO_CLOB('%s')", strings.ReplaceAll(text, "'", "''"))
 		case "mysql", "mariadb":
 			return fmt.Sprintf("CAST('%s' AS LONGTEXT)", strings.ReplaceAll(text, "'", "''"))
+		default:
 		}
 	}
 	return fmt.Sprintf("'%s'", strings.ReplaceAll(text, "'", "''"))
@@ -220,13 +226,15 @@ func prepareJsonArg(arg interface{}, driverName string) interface{} {
 					// Just pass it directly and let the driver handle it
 					return jsonStr
 				case "oracle":
-					// Oracle: Convert to nested table if it's string array
+					// Oracle: Convert to a nested table if it's a string array
 					return fmt.Sprintf("CAST(MULTISET(SELECT COLUMN_VALUE FROM TABLE(APEX_UTIL.STRING_TO_TABLE('%s'))) AS SYS.ODCIVARCHAR2LIST)",
 						strings.Join(arr, ","))
 				case "sqlserver":
 					return fmt.Sprintf("STRING_SPLIT('%s', ',')", strings.Join(arr, ","))
 				case "mysql", "mariadb":
 					return fmt.Sprintf("FIND_IN_SET(column, '%s')", strings.Join(arr, ","))
+				default:
+					return jsonStr
 				}
 			}
 		}
@@ -242,6 +250,8 @@ func prepareJsonArg(arg interface{}, driverName string) interface{} {
 			return fmt.Sprintf("JSON_OBJECT_T('%s')", strings.ReplaceAll(jsonStr, "'", "''"))
 		case "mysql", "mariadb":
 			return fmt.Sprintf("CAST('%s' AS JSON)", strings.ReplaceAll(jsonStr, "'", "''"))
+		default:
+			return jsonStr
 		}
 	}
 	return arg
@@ -266,6 +276,7 @@ func prepareArg(arg interface{}, driverName string) interface{} {
 			return fmt.Sprintf("TO_TIMESTAMP_TZ('%s', 'YYYY-MM-DD\"T\"HH24:MI:SS.FFTZH:TZM')", v.Format(time.RFC3339))
 		case "mysql", "mariadb":
 			return fmt.Sprintf("CONVERT_TZ('%s', 'UTC', @@session.time_zone)", v.Format("2006-01-02 15:04:05"))
+		default:
 		}
 	case []time.Time:
 		times := make([]string, len(v))
@@ -288,6 +299,7 @@ func prepareArg(arg interface{}, driverName string) interface{} {
 			return fmt.Sprintf("TO_NUMBER('%s')", v.String())
 		case "mysql", "mariadb":
 			return fmt.Sprintf("CAST('%s' AS DECIMAL(65,30))", v.String())
+		default:
 		}
 	case []decimal.Decimal:
 		vals := make([]string, len(v))
@@ -300,6 +312,7 @@ func prepareArg(arg interface{}, driverName string) interface{} {
 		default:
 			return strings.Join(vals, ",")
 		}
+	default:
 	}
 	return arg
 }

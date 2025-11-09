@@ -250,6 +250,7 @@ func SQLPartFieldNames(fieldNames []string, driverName string) (s string) {
 		switch driverName {
 		case "oracle":
 			v = strings.ToUpper(v)
+		default:
 		}
 		showFieldNames = showFieldNames + v
 	}
@@ -422,6 +423,7 @@ func SQLPartSetFieldNameValues(setKeyValues utils.JSON, driverName string) (newS
 			switch driverName {
 			case "oracle":
 				k = strings.ToUpper(k)
+			default:
 			}
 			setFieldNameValues = setFieldNameValues + k + "=:NEW_" + k
 			newSetKeyValues["NEW_"+k] = v
@@ -435,6 +437,7 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 		switch driverName {
 		case "oracle":
 			k = strings.ToUpper(k)
+		default:
 		}
 		if fieldNames != "" {
 			fieldNames = fieldNames + ","
@@ -1437,6 +1440,7 @@ func Select(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, tableName string, fi
 			joinSQLPart,
 			orderbyFieldNameDirections)
 		return rowsInfo, r, err
+	default:
 	}
 	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, limit, forUpdatePart)
 	if err != nil {
@@ -1569,6 +1573,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON) (
 	case "oracle":
 		r, err = OracleDelete(db, tableName, whereAndFieldNameValues)
 		return r, err
+	default:
 	}
 	w := SQLPartWhereAndFieldNameValues(whereAndFieldNameValues, driverName)
 	s := "DELETE FROM " + tableName + " where " + w
@@ -1592,6 +1597,7 @@ func Update(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKeyValu
 	case "oracle":
 		result, err = OracleEdit(db, tableName, setKeyValues, whereKeyValues)
 		return result, err
+	default:
 	}
 	setKeyValues, u := SQLPartSetFieldNameValues(setKeyValues, driverName)
 	w := SQLPartWhereAndFieldNameValues(whereKeyValues, driverName)
@@ -1668,6 +1674,7 @@ func XInsert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues 
 	case "oracle":
 		newQuery = newQuery + " INTO :" + fieldNameForRowId
 		newArgs = append(newArgs, sql.Named(fieldNameForRowId, sql.Out{Dest: &newId}))
+	default:
 	}
 
 	_, r, err := QueryRows(db, nil, newQuery, newArgs)

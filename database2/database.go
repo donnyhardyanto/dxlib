@@ -105,6 +105,7 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 			Log: &log.Log,
 		}
 		return dtx, nil
+	default:
 	}
 
 	tx, err := d.Connection.BeginTxx(context.Background(), &sql.TxOptions{
@@ -465,6 +466,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		}
 
 		return nil
+	default:
 	}
 
 	tx, err := d.Connection.BeginTxx(log.Context, &sql.TxOptions{

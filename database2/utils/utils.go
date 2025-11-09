@@ -194,13 +194,7 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 	}
 
 	return nil
-	/*
-		query := fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)
-		_, err := db.Exec(query)
-		if err != nil {
-			return errors.Wrap(err, "error occured")ors.Errorf("failed to create database: %+v", err)
-		}
-		return nil*/
+
 }
 
 func SQLBuildParameterizedWhereClauseT[T comparable](driverName string, pv *[]any, template string, values ...T) string {
