@@ -56,7 +56,7 @@ func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping
 
 var (
 	oracleConnectionErrors = []int{
-		3113,  // End-of-file on communication channel
+		3113,  // End-of-file on a communication channel
 		3114,  // Not connected to Oracle
 		12170, // TNS connect timeout
 		12541, // No listener
@@ -65,7 +65,7 @@ var (
 	}
 
 	mariadbConnectionErrors = []uint16{
-		1042, // Can't get hostname
+		1042, // Can't get the hostname
 		1043, // Bad handshake
 		1044, // Access denied
 		1045, // Access denied
@@ -74,7 +74,7 @@ var (
 		1130, // Not allowed to connect
 		2002, // Can't connect
 		2003, // Can't connect
-		2004, // Can't create TCP/IP socket
+		2004, // Can't create a TCP / IP socket
 		2005, // Unknown host
 		2006, // Server gone away
 	}
@@ -996,7 +996,7 @@ func QueryRows(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, arg
 	return rowsInfo, r, nil
 }
 
-// buildCountQuery generates count SQL based on database type
+// buildCountQuery generates count SQL based on a database type
 func buildCountQuery(dbType string, summaryCalcFieldsPart, fromQueryPart, whereQueryPart, joinQueryPart string) (string, error) {
 	effectiveWherePart := ""
 	if whereQueryPart != "" {
@@ -1280,7 +1280,7 @@ func NamedQueryPaging(dbAppInstance *sqlx.DB, fieldTypeMapping FieldTypeMapping,
 	return rowsInfo, rows, totalRows, totalPage, summaryRows, err
 }
 
-// NamedQueryPagingList updated to use the extracted count query function
+// NamedQueryList NamedQueryPagingList updated to use the extracted count query function
 func NamedQueryList(dbAppInstance *sqlx.DB, fieldTypeMapping FieldTypeMapping,
 	returnFieldsQueryPart string, fromQueryPart string, whereQueryPart string, joinQueryPart string, orderByQueryPart string,
 	arg any) (rowsInfo *RowsInfo, rows []utils.JSON, err error) {
@@ -1413,7 +1413,7 @@ func Count(db *sqlx.DB, tableName string, summaryCalcFieldsPart string, whereAnd
 		joinClause = joinSQLPart.(string)
 	}
 
-	// Process arguments based on database type
+	// Process arguments based on a database type
 	args, err := ExcludeSQLExpression(whereAndFieldNameValues, driverName)
 	if err != nil {
 		return 0, nil, err
@@ -1616,6 +1616,7 @@ func XInsert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues 
 	switch driverName {
 	case "oracle":
 		return newId, nil
+	default:
 	}
 
 	if r == nil {
