@@ -2,13 +2,15 @@ package api
 
 import (
 	"fmt"
-	security "github.com/donnyhardyanto/dxlib/utils/security"
-	"github.com/pkg/errors"
 	"strings"
 	"time"
 
-	"github.com/donnyhardyanto/dxlib/utils"
+	security "github.com/donnyhardyanto/dxlib/utils/security"
+	"github.com/pkg/errors"
+
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 const ErrorMessageIncompatibleTypeReceived = "INCOMPATIBLE_TYPE:%s(%v)_BUT_RECEIVED_(%s)=%v"
@@ -148,7 +150,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			default:
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
-		case "protected-string", "protected-sql-string", "nullable-string", "non-empty-string":
+		case "protected-string", "protected-sql-string", "nullable-string", "non-empty-string", "iso8601", "date", "time", "email", "phonenumber", "npwp":
 			if rawValueType != "string" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
@@ -159,30 +161,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			for _, v := range aeprpv.Children {
 				err = v.Validate()
 				if err != nil {
-					return errors.Wrap(err, "error occured")
+					return err
 				}
 			}
 		case "json-passthrough":
 			if rawValueType != "map[string]interface {}" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
-		case "iso8601", "date", "time":
-			if rawValueType != "string" {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-			}
-		case "email":
-			if rawValueType != "string" {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-			}
-		case "phonenumber":
-			if rawValueType != "string" {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-			}
-		case "npwp":
-			if rawValueType != "string" {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-			}
-		case "array":
+		case "array", "array-string", "array-int64":
 			if rawValueType != "[]interface {}" {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
@@ -193,16 +179,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			for _, j := range aeprpv.ArrayChildren {
 				err = j.Validate()
 				if err != nil {
-					return errors.Wrap(err, "error occured")
+					return err
 				}
-			}
-		case "array-string":
-			if rawValueType != "[]interface {}" {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-			}
-		case "array-int64":
-			if rawValueType != "[]interface {}" {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
 		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
@@ -476,7 +454,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		for _, v := range aeprpv.ArrayChildren {
 			err = v.Validate()
 			if err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 			s = append(s, v.Value.(utils.JSON))
 		}

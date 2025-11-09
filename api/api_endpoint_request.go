@@ -12,7 +12,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
-	"github.com/pkg/errors"
 )
 
 type DXAPIUser struct {
@@ -357,7 +356,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 				err = rpv.Validate()
 				if err != nil {
 					aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
-					return errors.Wrap(err, "error occured")
+					return err
 				}
 			}
 		}
@@ -376,7 +375,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 					err = rpv.Validate()
 					if err != nil {
 						aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
-						return errors.Wrap(err, "error occured")
+						return err
 					}
 				}
 			}
@@ -444,7 +443,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			err = rpv.Validate()
 			if err != nil {
 				aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 		}
 	}
