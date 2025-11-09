@@ -573,7 +573,7 @@ func QueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, arg 
 
 	switch db.DriverName() {
 	case "oracle":
-		rowInfo, x, err := _oracleSelectRaw(db, fieldTypeMapping, query, arg)
+		rowInfo, x, err := oracleSelectRaw(db, fieldTypeMapping, query, arg)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -628,7 +628,7 @@ func NamedQueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string,
 
 	switch db.DriverName() {
 	case "oracle":
-		rowInfo, x, err := _oracleSelectRaw(db, fieldTypeMapping, query, arg)
+		rowInfo, x, err := oracleSelectRaw(db, fieldTypeMapping, query, arg)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -809,7 +809,7 @@ func OracleEdit(db *sqlx.DB, tableName string, setKeyValues utils.JSON, whereKey
 	return result, nil
 }
 
-func _oracleSelectRaw(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, fieldArgs ...any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
+func oracleSelectRaw(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, fieldArgs ...any) (rowsInfo *RowsInfo, r []utils.JSON, err error) {
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, nil, err
@@ -883,7 +883,7 @@ func OracleSelect(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, tableName stri
 
 	query := fmt.Sprintf("SELECT %s from %s %s %s %s", fieldNamesStr, tableName, whereClause, orderByClause, limitClause)
 
-	return _oracleSelectRaw(db, fieldTypeMapping, query, fieldArgs)
+	return oracleSelectRaw(db, fieldTypeMapping, query, fieldArgs)
 }
 
 func ShouldNamedQueryId(db *sqlx.DB, query string, arg any) (int64, error) {
