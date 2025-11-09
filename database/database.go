@@ -13,6 +13,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database2/sqlfile"
+	utilsSql "github.com/donnyhardyanto/dxlib/utils/security"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	pq "github.com/knetic/go-namedparameterquery"
@@ -26,7 +27,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/database/database_type"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
-	utilsSql "github.com/donnyhardyanto/dxlib/utils/security"
 )
 
 type DXDatabaseEventFunc func(dm *DXDatabase, err error)
@@ -398,6 +398,57 @@ func (d *DXDatabase) Disconnect() (err error) {
 	return nil
 }
 
+func escapeStringForDB(s string, dbType string) string {
+	switch dbType {
+	case "mysql", "mariadb":
+		// MySQL/MariaDB requires escaping multiple characters
+		s = strings.ReplaceAll(s, "\\", "\\\\")
+		s = strings.ReplaceAll(s, "'", "''") // Using '' instead of \' for compatibility
+		s = strings.ReplaceAll(s, "\n", "\\n")
+		s = strings.ReplaceAll(s, "\r", "\\r")
+		s = strings.ReplaceAll(s, "\x00", "\\0")
+		s = strings.ReplaceAll(s, "\x1a", "\\Z")
+		return fmt.Sprintf(`'%s'`, s)
+
+	case "postgresql", "sqlserver", "oracle":
+		// These databases only need a single quote escaping
+		return fmt.Sprintf(`'%s'`, strings.ReplaceAll(s, "'", "''"))
+
+	default:
+		// Default to standard SQL escaping
+		return fmt.Sprintf(`'%s'`, strings.ReplaceAll(s, "'", "''"))
+	}
+}
+
+func formatBoolForDB(b bool, dbType string) string {
+	switch dbType {
+	case "postgresql":
+		if b {
+			return "TRUE"
+		}
+		return "FALSE"
+	case "mysql", "mariadb", "sqlserver":
+		if b {
+			return "1"
+		}
+		return "0"
+	case "oracle":
+		if b {
+			return "1"
+		}
+		return "0"
+	default:
+		if b {
+			return "1"
+		}
+		return "0"
+	}
+}
+
+/*
+This function is not used and might be buggy and will be removed in the future
+*/
+
 func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, err error) {
 	err = d.EnsureConnection()
 	if err != nil {
@@ -414,21 +465,36 @@ func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, er
 		return r, err
 	}
 	s := statement
+
 	for k, v := range parameters {
 		vs := ""
-		switch v.(type) {
+		switch val := v.(type) {
 		case string:
-			// for Postgresql is "
-			vs = fmt.Sprintf(`"%s"`, v)
-		case int, int8, int16, int32, int64:
-			vs = strconv.FormatInt(v.(int64), 10)
-		case float32, float64:
-			vs = fmt.Sprintf("%f", v)
+			vs = escapeStringForDB(val, d.Connection.DriverName())
+		case int:
+			vs = strconv.Itoa(val)
+		case int8:
+			vs = strconv.FormatInt(int64(val), 10)
+		case int16:
+			vs = strconv.FormatInt(int64(val), 10)
+		case int32:
+			vs = strconv.FormatInt(int64(val), 10)
+		case int64:
+			vs = strconv.FormatInt(val, 10)
+		case float32:
+			vs = strconv.FormatFloat(float64(val), 'f', -1, 32)
+		case float64:
+			vs = strconv.FormatFloat(val, 'f', -1, 64)
+		case bool:
+			vs = formatBoolForDB(val, d.Connection.DriverName())
+		case nil:
+			vs = "NULL"
 		default:
-			vs = fmt.Sprintf("%v", v)
+			vs = fmt.Sprintf("%v", val)
 		}
 		s = strings.Replace(s, ":"+strings.ToUpper(k), vs, -1)
 	}
+
 	r, err = d.Connection.Exec(s)
 	if err != nil {
 		if d.Connected {
