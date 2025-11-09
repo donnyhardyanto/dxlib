@@ -87,6 +87,7 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 			Log: &log.Log,
 		}
 		return dtx, nil
+	default:
 	}
 
 	tx, err := d.Connection.BeginTxx(context.Background(), &sql.TxOptions{
@@ -423,6 +424,8 @@ func (d *DXDatabase) Execute(statement string, parameters utils.JSON) (r any, er
 			vs = strconv.FormatInt(v.(int64), 10)
 		case float32, float64:
 			vs = fmt.Sprintf("%f", v)
+		default:
+			vs = fmt.Sprintf("%v", v)
 		}
 		s = strings.Replace(s, ":"+strings.ToUpper(k), vs, -1)
 	}
@@ -709,29 +712,37 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	case "oracle":
 		tx, err := d.TransactionBegin(isolationLevel)
 		if err != nil {
-			log.Error(err.Error(), err)
-			return errors.Wrap(err, "error occured")
+			s := fmt.Sprintf("TX_ERROR_IN_BEGIN: (%v)", err.Error())
+			log.Error(s, err)
+			return errors.Wrap(err, s)
 		}
 		err = callback(tx)
 		if err != nil {
-			log.Errorf(err, "TX_ERROR_IN_CALLBACK: (%v)", err.Error())
+			s := fmt.Sprintf("TX_ERROR_IN_CALLBACK: (%v)", err.Error())
+			log.Errorf(err, s)
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
+				s1 := fmt.Sprintf("ERROR_IN_ROLLBACK: (%v)", errTx.Error())
+				log.Errorf(errTx, s1)
+				s = fmt.Sprintf("SHOULD_NOT_HAPPEN:%s %s", s, s1)
 			}
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, s)
 		}
 		err = tx.Commit()
 		if err != nil {
-			log.Errorf(err, "TX_ERROR_IN_COMMITT: (%v)", err.Error())
+			s := fmt.Sprintf("TX_ERROR_IN_COMMIT: (%v)", err.Error())
+			log.Errorf(err, s)
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(errTx, "ErrorInCommitRollback: (%v)", errTx.Error())
+				s1 := fmt.Sprintf("TX_ERROR_IN_COMMIT_ROLLBACK: (%v)", errTx.Error())
+				log.Errorf(errTx, s1)
+				s = fmt.Sprintf("SHOULD_NOT_HAPPEN:%s %s", s, s1)
 			}
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, s)
 		}
 
 		return nil
+	default:
 	}
 
 	tx, err := d.Connection.BeginTxx(log.Context, &sql.TxOptions{
