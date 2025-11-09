@@ -45,6 +45,7 @@ func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping
 					if err != nil {
 						return nil, err
 					}
+				default:
 				}
 			}
 		}
@@ -79,51 +80,6 @@ var (
 	}
 )
 
-// isConnectionError checks if the error is a database connection error
-/*func isConnectionError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	switch e := err.(type) {
-	case *go_ora.OracleError: // Oracle
-		for _, code := range oracleConnectionErrors {
-			if e.ErrCode == code {
-				return true
-			}
-		}
-
-	case *pq.Error: // PostgreSQL
-		return e.Code.Class() == "08" // Class 08 - Connection Exception
-
-	case *mysql.MySQLError: // MariaDB/MySQL
-		for _, code := range mariadbConnectionErrors {
-			if e.Number == code {
-				return true
-			}
-		}
-
-	default: // SQL Server and generic checks
-		msg := err.Error()
-		connectionErrors := []string{
-			"connection reset",
-			"connection refused",
-			"connection closed",
-			"network error",
-			"dial tcp",
-			"broken pipe",
-		}
-
-		for _, errText := range connectionErrors {
-			if strings.Contains(strings.ToLower(msg), errText) {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-*/
 type RowsInfo struct {
 	Columns []string
 	//	ColumnTypes []*sql.ColumnType
@@ -135,6 +91,7 @@ func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON, driverName strin
 		switch driverName {
 		case "oracle":
 			k = strings.ToUpper(k)
+		default:
 		}
 		switch v.(type) {
 		case bool:
@@ -153,6 +110,7 @@ func MergeMapExcludeSQLExpression(m1 utils.JSON, m2 utils.JSON, driverName strin
 		switch driverName {
 		case "oracle":
 			k = strings.ToUpper(k)
+		default:
 		}
 		switch v.(type) {
 		case bool:
@@ -194,6 +152,7 @@ func ExcludeSQLExpression(kv utils.JSON, driverName string) (r utils.JSON, err e
 		switch driverName {
 		case "oracle":
 			k = strings.ToUpper(k)
+		default:
 		}
 		switch v.(type) {
 		case bool:
@@ -611,22 +570,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 }
 
 func QueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, arg []any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	/*	var argAsArray []any
-		switch arg.(type) {
-		case map[string]any:
-			_, _, argAsArray = PrepareArrayArgs(arg.(map[string]any), db.DriverName())
-		}
 
-		stmt, err := db.PrepareNamed(query)
-		if err != nil {
-			return nil, nil, err
-		}
-		defer stmt.Close()
-		xr, err := stmt.Query(argAsArray)
-		if err != nil {
-			return nil, nil, err
-		}
-		rows := xr*/
 	switch db.DriverName() {
 	case "oracle":
 		rowInfo, x, err := _oracleSelectRaw(db, fieldTypeMapping, query, arg)
@@ -640,6 +584,7 @@ func QueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, arg 
 			return rowInfo, nil, err
 		}
 		return rowInfo, x[0], err
+	default:
 	}
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)
@@ -680,22 +625,7 @@ func QueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, arg 
 }
 
 func NamedQueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string, arg any) (rowsInfo *RowsInfo, r utils.JSON, err error) {
-	/*	var argAsArray []any
-		switch arg.(type) {
-		case map[string]any:
-			_, _, argAsArray = PrepareArrayArgs(arg.(map[string]any), db.DriverName())
-		}
 
-		stmt, err := db.PrepareNamed(query)
-		if err != nil {
-			return nil, nil, err
-		}
-		defer stmt.Close()
-		xr, err := stmt.Query(argAsArray)
-		if err != nil {
-			return nil, nil, err
-		}
-		rows := xr*/
 	switch db.DriverName() {
 	case "oracle":
 		rowInfo, x, err := _oracleSelectRaw(db, fieldTypeMapping, query, arg)
@@ -709,6 +639,7 @@ func NamedQueryRow(db *sqlx.DB, fieldTypeMapping FieldTypeMapping, query string,
 			return rowInfo, nil, err
 		}
 		return rowInfo, x[0], err
+	default:
 	}
 
 	err = sqlchecker.CheckAll(db.DriverName(), query, arg)

@@ -3,13 +3,14 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"net"
+	"strings"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/pkg/errors"
-	"io"
-	"net"
-	"strings"
 )
 
 // StackTraceError is a custom error type that preserves stack traces
@@ -40,18 +41,20 @@ func (e *StackTraceError) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%s\n", e.message)
+			_, _ = fmt.Fprintf(s, "%s\n", e.message)
 			fmt.Fprintf(s, "%v\n", e.cause)
 			for _, pc := range e.stackTrace {
-				fmt.Fprintf(s, "%+v\n", errors.Frame(pc))
+				_, _ = fmt.Fprintf(s, "%+v\n", errors.Frame(pc))
 			}
 			return
 		}
 		fallthrough
 	case 's':
-		fmt.Fprintf(s, "%s", e.message)
+		_, _ = fmt.Fprintf(s, "%s", e.message)
 	case 'q':
-		fmt.Fprintf(s, "%q", e.message)
+		_, _ = fmt.Fprintf(s, "%q", e.message)
+	default:
+		_, _ = fmt.Fprintf(s, "%s", e.message)
 	}
 }
 
