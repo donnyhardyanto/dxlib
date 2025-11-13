@@ -33,6 +33,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) GetNameIdPath() (s string) {
 	}
 	return aeprpv.Parent.GetNameIdPath() + "." + aeprpv.Metadata.NameId
 }
+
 func (aeprpv *DXAPIEndPointRequestParameterValue) NewChild(aepp DXAPIEndPointParameter) *DXAPIEndPointRequestParameterValue {
 	child := DXAPIEndPointRequestParameterValue{Owner: aeprpv.Owner, Metadata: aepp}
 	child.Parent = aeprpv
@@ -45,6 +46,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) NewChild(aepp DXAPIEndPointPar
 
 func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePath string) (err error) {
 	aeprpv.RawValue = rv
+	if aeprpv.RawValue == nil {
+		return nil
+	}
 	if aeprpv.Metadata.Type == "json" {
 		jsonValue, ok := rv.(map[string]interface{})
 		if !ok {
@@ -61,7 +65,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 			} else {
 				err = childValue.SetRawValue(jv, aVariablePath)
 				if err != nil {
-					return errors.Wrap(err, "error occured")
+					return errors.Wrap(err, "error at DXAPIEndPointRequestParameterValue.SetRawValue")
 				}
 			}
 
@@ -102,7 +106,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 				} else {
 					err = childValue.SetRawValue(jv, aVariablePath)
 					if err != nil {
-						return errors.Wrap(err, "error occured")
+						return errors.Wrap(err, "error at DXAPIEndPointRequestParameterValue.SetRawValue")
 					}
 				}
 			}
@@ -450,7 +454,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		aeprpv.Value = s
 		return nil
 	case "array-json-template":
-		s := []utils.JSON{}
+		var s []utils.JSON
 		for _, v := range aeprpv.ArrayChildren {
 			err = v.Validate()
 			if err != nil {
@@ -496,7 +500,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		aeprpv.Value = s
 		return nil
 	case "iso8601":
-		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
+		/* RFC3339Nano format conforms to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
 		   The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
 		   but the code is conformed to the standard. Only the documentation is incorrect.
 		*/
@@ -514,7 +518,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		aeprpv.Value = t
 		return nil
 	case "date":
-		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
+		/* RFC3339Nano format conforms to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
 		   The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
 		   but the code is conformed to the standard. Only the documentation is incorrect.
 		*/
@@ -529,7 +533,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		aeprpv.Value = t
 		return nil
 	case "time":
-		/* RFC3339Nano format conform to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
+		/* RFC3339Nano format conforms to RFC3339 RFC, not Go https://pkg.go.dev/time#pkg-constants.
 		   The golang time package documentation (https://pkg.go.dev/time#pkg-constants) has wrong information on the RFC3339/RFC3329Nano format.
 		   but the code is conformed to the standard. Only the documentation is incorrect.
 		*/

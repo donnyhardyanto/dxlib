@@ -333,6 +333,16 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			if err != nil {
 				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", err.Error())
 			}
+			if (rpv.Metadata.IsMustExist) && (rpv.RawValue == nil) && (!rpv.Metadata.IsNullable) {
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+			}
+			if rpv.RawValue != nil {
+				err = rpv.Validate()
+				if err != nil {
+					aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
+					return err
+				}
+			}
 		}
 	}
 	switch aepr.EndPoint.Method {
@@ -345,12 +355,8 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			if err != nil {
 				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", err.Error())
 			}
-			if rpv.Metadata.IsMustExist {
-				if rpv.RawValue == nil {
-					if !rpv.Metadata.IsNullable {
-						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
-					}
-				}
+			if (rpv.Metadata.IsMustExist) && (rpv.RawValue == nil) && (!rpv.Metadata.IsNullable) {
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
 			}
 			if rpv.RawValue != nil {
 				err = rpv.Validate()
@@ -432,12 +438,8 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		if err != nil {
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", err.Error())
 		}
-		if rpv.Metadata.IsMustExist {
-			if rpv.RawValue == nil {
-				if !rpv.Metadata.IsNullable {
-					return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_IS_NOT_EXIST:%s", variablePath)
-				}
-			}
+		if (rpv.Metadata.IsMustExist) && (rpv.RawValue == nil) && (!rpv.Metadata.IsNullable) {
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
 		}
 		if rpv.RawValue != nil {
 			err = rpv.Validate()
