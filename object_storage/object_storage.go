@@ -286,19 +286,30 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 	fullPathObjectName = fullPathObjectName + objectName
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	/*info, err := r.Client.PutObject(
-		ctx,
-		r.BucketName,
-		fullPathObjectName,
-		reader,
-		objectSize,
-		minio.PutObjectOptions{
-			ContentType:      contentType,
-			DisableMultipart: disableMultipart,
-			UserMetadata: map[string]string{
-				"original-filename": originalFilename,
-			}},
-	)*/
+
+	// 1. Check if the bucket exists and create it if it doesn't
+	exists, err := r.Client.BucketExists(ctx, r.BucketName)
+	if err != nil && !exists {
+		// If an error occurred (and the bucket definitely doesn't exist, which BucketExists handles)
+		// or if the error is due to a connection issue, handle it here.
+		// For simplicity, we proceed to create, but robust error checking may be needed.
+	}
+
+	if !exists {
+		// Use the default region (MinIO's default is typically "us-east-1" but depends on setup)
+		// Adjust minio.MakeBucketOptions{} if you need to specify a Region.
+		err = r.Client.MakeBucket(ctx, r.BucketName, minio.MakeBucketOptions{})
+		if err != nil {
+			// Check if the bucket was created by another concurrent process
+			exists, errCheck := r.Client.BucketExists(ctx, r.BucketName)
+			if (errCheck != nil) || (!exists) {
+				// Actual failure to create bucket
+				return nil, log.Log.ErrorAndCreateErrorf("FAILED_TO_CREATE_BUCKET: %v", err)
+			}
+		}
+		log.Log.Infof("Bucket '%s' created successfully.", r.BucketName)
+	}
+
 	tags := make(map[string]string)
 	tags["original-filename"] = originalFilename
 
