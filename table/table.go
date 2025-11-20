@@ -907,6 +907,9 @@ func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWher
 		return errors.Wrap(err, "error occured")
 	}
 
+	if filterOrderBy == "" {
+		filterOrderBy = t.FieldNameForRowId + " asc"
+	}
 	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, t.FieldTypeMapping, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
