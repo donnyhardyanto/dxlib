@@ -849,12 +849,41 @@ func GetVFromKV[T any](kv map[string]any, key string) (r T, err error) {
 	return vAsT, nil
 }
 
-func GetStringFromKV(KV map[string]any, key string) (r string, err error) {
-	return GetVFromKV[string](KV, key)
+// GetStringFromKV retrieves a string value for the given key from a map[string]any.
+// It relies on the generic GetVFromKV function to perform the key lookup and type assertion.
+func GetStringFromKV(kv map[string]any, key string) (r string, err error) {
+	return GetVFromKV[string](kv, key)
 }
 
-func GetInt64FromKV(KV map[string]any, key string) (r int64, err error) {
-	return GetVFromKV[int64](KV, key)
+// GetInt64FromKV retrieves an int64 value for the given key from a map[string]any.
+// It relies on the generic GetVFromKV function for key lookup and type assertion.
+func GetInt64FromKV(kv map[string]any, key string) (r int64, err error) {
+	return GetVFromKV[int64](kv, key)
+}
+
+// GetIntFromKV retrieves an int value (default 32 or 64 bit) for the given key.
+func GetIntFromKV(kv map[string]any, key string) (r int, err error) {
+	return GetVFromKV[int](kv, key)
+}
+
+// GetUint64FromKV retrieves a uint64 value for the given key.
+func GetUint64FromKV(kv map[string]any, key string) (r uint64, err error) {
+	return GetVFromKV[uint64](kv, key)
+}
+
+// GetFloat64FromKV retrieves a float64 value for the given key.
+func GetFloat64FromKV(kv map[string]any, key string) (r float64, err error) {
+	return GetVFromKV[float64](kv, key)
+}
+
+// GetBoolFromKV retrieves a bool value for the given key.
+func GetBoolFromKV(kv map[string]any, key string) (r bool, err error) {
+	return GetVFromKV[bool](kv, key)
+}
+
+// GetBytesFromKV retrieves a []byte (byte slice) value for the given key.
+func GetBytesFromKV(kv map[string]any, key string) (r []byte, err error) {
+	return GetVFromKV[[]byte](kv, key)
 }
 
 // Int64SliceToStrings converts a slice of int64 to a slice of strings.
