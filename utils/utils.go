@@ -22,8 +22,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+// JSON is a type alias for map[string]any, representing a JSON object.
 type JSON = map[string]any
 
+// ArrayToJSON converts a slice of any type to a JSON string.
 func ArrayToJSON[T any](arr []T) (string, error) {
 	jsonBytes, err := json.Marshal(arr)
 	if err != nil {
@@ -32,10 +34,13 @@ func ArrayToJSON[T any](arr []T) (string, error) {
 	return string(jsonBytes), nil
 }
 
+// StringsToJSON converts a slice of strings to a JSON string.
 func StringsToJSON(arr []string) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
+
+// IntsToJSON converts a slice of ints to a JSON string.
 func IntsToJSON(arr []int) string {
 	jsonBytes, err := json.Marshal(arr)
 	if err != nil {
@@ -43,11 +48,14 @@ func IntsToJSON(arr []int) string {
 	}
 	return string(jsonBytes)
 }
+
+// Int64sToJSON converts a slice of int64s to a JSON string.
 func Int64sToJSON(arr []int64) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
 
+// Int64sToStrings converts a slice of int64s to a slice of strings.
 func Int64sToStrings(arr []int64) []string {
 	r := make([]string, len(arr))
 	for i, v := range arr {
@@ -56,10 +64,13 @@ func Int64sToStrings(arr []int64) []string {
 	return r
 }
 
+// Float64sToJSON converts a slice of float64s to a JSON string.
 func Float64sToJSON(arr []float64) string {
 	jsonBytes, _ := json.Marshal(arr)
 	return string(jsonBytes)
 }
+
+// StringToJSON converts a JSON string to a JSON object.
 func StringToJSON(s string) (JSON, error) {
 	v := JSON{}
 	err := json.Unmarshal([]byte(s), &v)
@@ -69,6 +80,7 @@ func StringToJSON(s string) (JSON, error) {
 	return v, nil
 }
 
+// JSONToString converts a JSON object to a string.
 func JSONToString(v JSON) (string, error) {
 	s, err := json.Marshal(v)
 	if err != nil {
@@ -77,6 +89,7 @@ func JSONToString(v JSON) (string, error) {
 	return string(s), nil
 }
 
+// JSONToBytes converts a JSON object to a byte slice.
 func JSONToBytes(v JSON) ([]byte, error) {
 	s, err := json.Marshal(v)
 	if err != nil {
@@ -85,6 +98,7 @@ func JSONToBytes(v JSON) ([]byte, error) {
 	return s, nil
 }
 
+// TsIsContain checks if a slice of a comparable type contains a specific value.
 func TsIsContain[T comparable](arr []T, v T) bool {
 	for _, a := range arr {
 		if a == v {
@@ -94,14 +108,17 @@ func TsIsContain[T comparable](arr []T, v T) bool {
 	return false
 }
 
+// Int64sIsContain checks if a slice of int64s contains a specific value.
 func Int64sIsContain(arr []int64, v int64) bool {
 	return TsIsContain[int64](arr, v)
 }
 
+// StringsIsContain checks if a slice of strings contains a specific value.
 func StringsIsContain(arr []string, v string) bool {
 	return TsIsContain[string](arr, v)
 }
 
+// GetAllMachineIP4s retrieves all non-loopback IPv4 addresses of the machine.
 func GetAllMachineIP4s() []string {
 	address, err := net.InterfaceAddrs()
 	if err != nil {
@@ -119,6 +136,8 @@ func GetAllMachineIP4s() []string {
 	return ips
 }
 
+// GetAllActualBindingAddress returns a list of actual binding addresses based on a configured address.
+// If the configured IP is not found on the machine, it returns all available IPs with the configured port.
 func GetAllActualBindingAddress(configuredBindingAddress string) []string {
 
 	// Split the config value to get the IP and port
@@ -151,6 +170,7 @@ func GetAllActualBindingAddress(configuredBindingAddress string) []string {
 	return r
 }
 
+// TCPIPPortCanConnect checks if a TCP connection can be established to a given IP and port.
 func TCPIPPortCanConnect(ip string, port string) bool {
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, port), time.Second*3)
 	if err != nil {
@@ -165,6 +185,7 @@ func TCPIPPortCanConnect(ip string, port string) bool {
 	return true
 }
 
+// TCPAddressCanConnect checks if a TCP connection can be established to a given address.
 func TCPAddressCanConnect(address string) bool {
 	conn, err := net.DialTimeout("tcp", address, time.Second*3)
 	if err != nil {
@@ -179,10 +200,12 @@ func TCPAddressCanConnect(address string) bool {
 	return true
 }
 
+// NowAsString returns the current UTC time as a string in RFC3339 format.
 func NowAsString() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }
 
+// IfFloatIsInt checks if a float64 has no fractional part.
 func IfFloatIsInt(f float64) bool {
 	fi := int64(f)
 	if (f - float64(fi)) > 0 {
@@ -191,14 +214,20 @@ func IfFloatIsInt(f float64) bool {
 	return true
 }
 
+// TypeAsString returns the type of a variable as a string.
 func TypeAsString(v any) string {
 	return fmt.Sprintf("%T", v)
 }
 
+// Int64ToString converts an int64 to a string.
 func Int64ToString(i int64) string {
 	return strconv.FormatInt(i, 10)
 }
 
+// GetValueFromNestedMap retrieves a value from a nested map using a dot-separated key.
+// It traverses the map based on the keys provided in the dot-separated string.
+// For example, given a map `{"a": {"b": 1}}` and a key `"a.b"`, it will return `1`.
+// If any key in the path does not exist, it returns an error.
 func GetValueFromNestedMap(data map[string]interface{}, key string) (interface{}, error) {
 	keys := strings.Split(key, ".")
 	var value interface{}
@@ -217,6 +246,8 @@ func GetValueFromNestedMap(data map[string]interface{}, key string) (interface{}
 	return value, nil
 }
 
+// SetValueInNestedMap sets a value in a nested map using a dot-separated key.
+// It creates nested maps if they don't exist.
 func SetValueInNestedMap(data map[string]interface{}, key string, value interface{}) {
 	keys := strings.Split(key, ".")
 	lastKeyIndex := len(keys) - 1
@@ -236,6 +267,7 @@ func SetValueInNestedMap(data map[string]interface{}, key string, value interfac
 	return
 }
 
+// StringIsInSlice checks if a string exists in a slice of strings.
 func StringIsInSlice(str string, list []string) bool {
 	for _, v := range list {
 		if v == str {
@@ -245,6 +277,7 @@ func StringIsInSlice(str string, list []string) bool {
 	return false
 }
 
+// TsIsInSlice checks if all elements of a slice exist in another slice.
 func TsIsInSlice[T comparable](v []T, aSlice []T) bool {
 	for _, vi := range v {
 		if !TsIsContain(aSlice, vi) {
@@ -254,6 +287,7 @@ func TsIsInSlice[T comparable](v []T, aSlice []T) bool {
 	return true
 }
 
+// RandomData generates a slice of random bytes of a given length.
 func RandomData(l int) (r []byte) {
 	r = make([]byte, l)
 	_, err := rand.Read(r)
@@ -264,6 +298,7 @@ func RandomData(l int) (r []byte) {
 	return r
 }
 
+// TimeSubToString returns the string representation of the duration between two time.Time objects.
 func TimeSubToString(t1 any, t2 any) (r string) {
 	if t1 == nil {
 		return ""
@@ -277,6 +312,7 @@ func TimeSubToString(t1 any, t2 any) (r string) {
 	return d.String()
 }
 
+// ConvertToInterfaceBoolFromAny converts a value of any type to a boolean interface.
 func ConvertToInterfaceBoolFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
@@ -311,6 +347,7 @@ func ConvertToInterfaceBoolFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// ConvertToInterfaceIntFromAny converts a value of any type to an integer interface.
 func ConvertToInterfaceIntFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
@@ -352,6 +389,7 @@ func ConvertToInterfaceIntFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// ConvertToInterfaceInt64FromAny converts a value of any type to an int64 interface.
 func ConvertToInterfaceInt64FromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
@@ -393,6 +431,7 @@ func ConvertToInterfaceInt64FromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// ConvertToInterfaceFloat64FromAny converts a value of any type to a float64 interface.
 func ConvertToInterfaceFloat64FromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
@@ -418,6 +457,7 @@ func ConvertToInterfaceFloat64FromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// ConvertToInterfaceArrayInterfaceFromAny converts a value of any type to a slice of interfaces.
 func ConvertToInterfaceArrayInterfaceFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
@@ -434,6 +474,7 @@ func ConvertToInterfaceArrayInterfaceFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// ConvertToInterfaceStringFromAny converts a value of any type to a string interface.
 func ConvertToInterfaceStringFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
@@ -478,6 +519,7 @@ func ConvertToInterfaceStringFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// MustConvertToInterfaceStringFromAny converts a value of any type to a string interface, panicking on error.
 func MustConvertToInterfaceStringFromAny(v any) (r any) {
 	r, err := ConvertToInterfaceStringFromAny(v)
 	if err != nil {
@@ -485,6 +527,8 @@ func MustConvertToInterfaceStringFromAny(v any) (r any) {
 	}
 	return r
 }
+
+// ConvertToMapStringInterfaceFromAny converts a value of any type to a map[string]any interface.
 func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 	switch v.(type) {
 	case types.Nil:
@@ -500,6 +544,7 @@ func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// JSONToMapStringString converts a JSON object to a map[string]string.
 func JSONToMapStringString(kv JSON) (r map[string]string) {
 	r = map[string]string{}
 	for k, v := range kv {
@@ -513,6 +558,7 @@ func JSONToMapStringString(kv JSON) (r map[string]string) {
 	return r
 }
 
+// MapStringStringToJSON converts a map[string]string to a JSON object.
 func MapStringStringToJSON(kv map[string]string) (r JSON) {
 	r = JSON{}
 	for k, v := range kv {
@@ -521,6 +567,7 @@ func MapStringStringToJSON(kv map[string]string) (r JSON) {
 	return r
 }
 
+// ShouldStrictJSONToMapStringString strictly converts a JSON object to a map[string]string, returning an error if any value is not a string.
 func ShouldStrictJSONToMapStringString(kv JSON) (r map[string]string, err error) {
 	r = map[string]string{}
 	for k, v := range kv {
@@ -535,6 +582,7 @@ func ShouldStrictJSONToMapStringString(kv JSON) (r map[string]string, err error)
 	return r, nil
 }
 
+// AnyToBytes converts a value of a supported type to a byte slice.
 func AnyToBytes(data interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	switch v := data.(type) {
@@ -569,6 +617,7 @@ func AnyToBytes(data interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// BytesToInt64 converts a byte slice to an int64.
 func BytesToInt64(b []byte) int64 {
 	if len(b) < 8 {
 		return 0 // or handle the error as needed
@@ -576,6 +625,7 @@ func BytesToInt64(b []byte) int64 {
 	return int64(binary.BigEndian.Uint64(b))
 }
 
+// AskForConfirmation prompts the user for two confirmation keys and returns an error if they don't match the provided keys.
 func AskForConfirmation(key1 string, key2 string) (err error) {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -661,6 +711,7 @@ func DiffJsonFieldValues[T comparable](valuesToCheck []T, jsonData []map[string]
 
 // K is the type for the map key (usually string)
 // V is the type for the values we're comparing (must be comparable)
+// FindCommonValues finds common values in a specific key between two slices of maps.
 func FindCommonValues[K comparable, V comparable](arrays1, arrays2 []map[K]any, key K) []V {
 	// RequestCreate maps to store unique values from each array
 	values1 := make(map[V]bool)
@@ -695,10 +746,12 @@ func FindCommonValues[K comparable, V comparable](arrays1, arrays2 []map[K]any, 
 	return common
 }
 
+// FindCommonValuesInMapString is a specialization of FindCommonValues for maps with string keys.
 func FindCommonValuesInMapString[V comparable](arrays1, arrays2 []map[string]any, key string) []V {
 	return FindCommonValues[string, V](arrays1, arrays2, key)
 }
 
+// StringsHasCommonItem checks if two string slices have any common items.
 func StringsHasCommonItem(arr1, arr2 []string) bool {
 	for _, str := range arr1 {
 		if slices.Contains(arr2, str) {
@@ -708,6 +761,7 @@ func StringsHasCommonItem(arr1, arr2 []string) bool {
 	return false
 }
 
+// GetJSONFromV converts an `any` type to a JSON object.
 func GetJSONFromV(v any) (r JSON, err error) {
 	r, ok := v.(JSON)
 	if !ok {
@@ -725,6 +779,7 @@ func GetJSONFromV(v any) (r JSON, err error) {
 	return r, nil
 }
 
+// GetArrayFromV converts an `any` type to a slice of `any`.
 func GetArrayFromV(v any) (r []any, err error) {
 	if v == nil {
 		return nil, nil
@@ -742,6 +797,7 @@ func GetArrayFromV(v any) (r []any, err error) {
 	return r, nil
 }
 
+// GetJSONFromKV retrieves a JSON object from a map by key.
 func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
 	if kv == nil {
 		return nil, nil
@@ -767,6 +823,41 @@ func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
 	return r, nil
 }
 
+// GetVFromKV retrieves a value of a specific generic type T from a map[string]any.
+// Error messages are structured for client-side parsing and localization.
+func GetVFromKV[T any](kv map[string]any, key string) (r T, err error) {
+	if kv == nil {
+		// Error Code: KV_IS_NIL
+		return r, errors.New("KV_IS_NIL")
+	}
+
+	// 1. Map Lookup
+	v, ok := kv[key]
+	if !ok {
+		// Error Code: KEY_IS_NOT_EXIST
+		return r, fmt.Errorf("KEY_IS_NOT_EXIST:%s", key)
+	}
+
+	// 2. Type Assertion
+	vAsT, ok := v.(T)
+	if !ok {
+		// Error Code: KEY_VALUE_IS_NOT_TYPE_T_BUT_X
+		// %s: Key, %T: Expected Type (from r), %T: Actual Type (from v)
+		return r, fmt.Errorf("KEY_VALUE_IS_NOT_TYPE_T_BUT_X:%s:%T:%T", key, r, v)
+	}
+
+	return vAsT, nil
+}
+
+func GetStringFromKV(KV map[string]any, key string) (r string, err error) {
+	return GetVFromKV[string](KV, key)
+}
+
+func GetInt64FromKV(KV map[string]any, key string) (r int64, err error) {
+	return GetVFromKV[int64](KV, key)
+}
+
+// Int64SliceToStrings converts a slice of int64 to a slice of strings.
 func Int64SliceToStrings(nums []int64) []string {
 	strs := make([]string, len(nums))
 	for i, num := range nums {
@@ -801,6 +892,7 @@ func GetMapValue[T any](m map[string]any, key string) (exist bool, value T, err 
 	return true, typedValue, nil
 }
 
+// ExtractMapValue retrieves a value from a map and deletes the key.
 func ExtractMapValue[T any](m *map[string]any, key string) (exists bool, value T, err error) {
 	exists, value, err = GetMapValue[T](*m, key)
 	if err != nil {
@@ -812,6 +904,7 @@ func ExtractMapValue[T any](m *map[string]any, key string) (exists bool, value T
 	return exists, value, nil
 }
 
+// GetMapValueFromJSONs extracts values for a given key from a slice of maps.
 func GetMapValueFromJSONs[T any](a []map[string]any, key string) (values []T, error error) {
 	values = []T{}
 	for _, m := range a {
@@ -844,6 +937,7 @@ func RemoveDuplicates[T comparable](slice []T) []T {
 	return result
 }
 
+// GetBuildTime retrieves the VCS build time from the build info.
 func GetBuildTime() string {
 	// Try to get VCS timestamp from build info
 	if info, ok := debug.ReadBuildInfo(); ok {
