@@ -84,9 +84,15 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 	}
 
 	var reqWriteExcludeHeaderDump = map[string]bool{
-		"Host":              true, // not in Header map anyway
-		"Transfer-Encoding": true,
-		"Trailer":           true,
+		"Host":                true, // not in Header map anyway
+		"Transfer-Encoding":   true,
+		"Trailer":             true,
+		"Authorization":       true,
+		"Proxy-Authorization": true,
+		"Cookie":              true,
+		"Set-Cookie":          true,
+		"X-Api-Key":           true,
+		"X-Auth-Token":        true,
 	}
 
 	err := req.Header.WriteSubset(&b, reqWriteExcludeHeaderDump)
