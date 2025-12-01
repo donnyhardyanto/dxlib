@@ -15,8 +15,8 @@ const dxlib = {};
     }
 
     class InternalVariables {
-        apiAddress = "";
-        sessionKey = ""
+        APIAddress = "";
+        sessionKey = "";
     }
 
     async function api(internalVariables, url, jsonRequestData, asserted) {
@@ -31,7 +31,7 @@ const dxlib = {};
         if (internalVariables.sessionKey !== "") {
             headers["Authorization"] = `Bearer ${internalVariables.sessionKey}`;
         }
-        let response = await fetch(internalVariables.apiAddress + url, {
+        let response = await fetch(internalVariables.APIAddress + url, {
             method: 'POST',
             headers: headers,
             body: bodyAsString,
@@ -40,6 +40,117 @@ const dxlib = {};
             assertResponse(response);
         }
         return response;
+    }
+
+    async function apiUpload(internalVariables, url, content_type, parameters, fileContent, asserted) {
+        let headers = {
+            'Content-Type': content_type,
+        }
+        if (internalVariables.sessionKey !== null) {
+            if (internalVariables.sessionKey !== "") {
+                headers["Authorization"] = `Bearer ${internalVariables.sessionKey}`;
+            }
+        }
+        if (parameters !== null) {
+            headers["X-Var"] = JSON.stringify(parameters);
+        }
+        let response = await http.post(internalVariables.APIAddress + url, fileContent, {
+            headers: headers,
+        });
+        if (asserted) {
+            assertResponse(response);
+        }
+        return response;
+    }
+
+    async function apiPrekey(internalVariables) {
+        console.log("1a", new Date().toISOString());
+        const ed25519KeyPair = dxlib.Ed25519.keyPair();
+        const edA0PublicKeyAsBytes = ed25519KeyPair.publicKey;
+        internalVariables.edA0PrivateKeyAsBytes = ed25519KeyPair.secretKey;
+
+        const x25519KeyPair1 = dxlib.X25519.keyPair();
+        const ecdhA1PublicKeyAsBytes = x25519KeyPair1.publicKey;
+        internalVariables.ecdhA1PrivateKeyAsBytes = x25519KeyPair1.secretKey;
+
+        const x25519KeyPair2 = dxlib.X25519.keyPair();
+        const ecdhA2PublicKeyAsBytes = x25519KeyPair2.publicKey;
+        internalVariables.ecdhA2PrivateKeyAsBytes = x25519KeyPair2.secretKey;
+
+        // Convert keys to string
+        const edA0PublicKeyAsHexString = dxlib.bytesToHex(edA0PublicKeyAsBytes);
+        const ecdhA1PublicKeyAsHexString = dxlib.bytesToHex(ecdhA1PublicKeyAsBytes);
+        const ecdhA2PublicKeyAsHexString = dxlib.bytesToHex(ecdhA2PublicKeyAsBytes);
+        console.log("1b", new Date().toISOString());
+
+        const pre_login_response = await dxlib.api(internalVariables, "/self/prekey", {
+            a0: edA0PublicKeyAsHexString, a1: ecdhA1PublicKeyAsHexString, a2: ecdhA2PublicKeyAsHexString,
+        }, true);
+        console.log("1c", new Date().toISOString());
+        if (pre_login_response.status !== 200) {
+            return pre_login_response;
+        }
+
+        const preLoginResponseDataAsJSON = await pre_login_response.json();
+
+        internalVariables.preKeyIndex = preLoginResponseDataAsJSON["i"]
+        const edB0PublicKeyAsHexString = preLoginResponseDataAsJSON["b0"];
+        const ecdhB1PublicKeyAsHexString = preLoginResponseDataAsJSON["b1"];
+        const ecdhB2PublicKeyAsHexString = preLoginResponseDataAsJSON["b2"];
+        internalVariables.edB0PublicKeyAsBytes = dxlib.hexToBytes(edB0PublicKeyAsHexString);
+        const ecdhB1PublicKeyAsBytes = dxlib.hexToBytes(ecdhB1PublicKeyAsHexString);
+        const ecdhB2PublicKeyAsBytes = dxlib.hexToBytes(ecdhB2PublicKeyAsHexString);
+        console.log("1d", new Date().toISOString());
+        internalVariables.sharedKey1AsBytes = dxlib.X25519.computeSharedSecret(internalVariables.ecdhA1PrivateKeyAsBytes, ecdhB1PublicKeyAsBytes);
+        console.log("1e", new Date().toISOString());
+        internalVariables.sharedKey2AsBytes = dxlib.X25519.computeSharedSecret(internalVariables.ecdhA2PrivateKeyAsBytes, ecdhB2PublicKeyAsBytes);
+        console.log("1f", new Date().toISOString());
+        return pre_login_response;
+    }
+
+    async function secureAPIV2(internalVariables, url, header, parameters, asserted) {
+        let response = await apiPrekey(internalVariables);
+        if (response.status !== 200) {
+            return response;
+        }
+        const lvHeader = new dxlib.LV(header);
+        const lvParameters = new dxlib.LV(parameters);
+
+        const dataBlockEnvelopeAsHexString = await dxlib.packLVPayload(keys.preKeyIndex, keys.edA0PrivateKeyAsBytes, keys.sharedKey1AsBytes, [lvHeader, lvParameters]);
+        console.log("3", new Date().toISOString());
+        const login_response = await dxlib.api(internalVariables, url, {
+            i: internalVariables.preKeyIndex,
+            d: dataBlockEnvelopeAsHexString,
+        }, asserted);
+
+        if (login_response.status !== 200) {
+            return login_response;
+        }
+        console.log("4", new Date().toISOString());
+        const loginResponseDataAsJSON = await login_response.json();
+        const dataBlockEnvelopeAsHexString2 = loginResponseDataAsJSON['d']
+
+        let lvPayloadElements = await dxlib.unpackLVPayload(keys.preKeyIndex, keys.edB0PublicKeyAsBytes, keys.sharedKey2AsBytes, dataBlockEnvelopeAsHexString2)
+        console.log("5", new Date().toISOString());
+
+        let lvSessionObject = lvPayloadElements[0]
+
+        let sessionObjectAsString = lvSessionObject.getValueAsString();
+        // console.log(sessionObjectAsString)
+
+        let sessionObject = JSON.parse(sessionObjectAsString);
+        // console.log(sessionObject)
+
+        keys.sessionKey = sessionObject['session_key'];
+        keys.userId = sessionObject['user_id'];
+
+        if (keys.sessionKey === "") {
+            console.log("Invalid resulted session key")
+            return
+        }
+
+        console.log("6", new Date().toISOString());
+        return login_response;
     }
 
     class Ed25519 {
@@ -492,7 +603,9 @@ const dxlib = {};
     dxlib.hexToBytes = hexToBytes;
     dxlib.assertResponse = assertResponse;
     dxlib.api = api;
-})(dxlib);
+    dxlib.apiUpload = apiUpload;
+})
+(dxlib);
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = dxlib;
