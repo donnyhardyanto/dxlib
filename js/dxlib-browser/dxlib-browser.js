@@ -17,6 +17,7 @@ const dxlib = {};
     class InternalVariables {
         APIAddress = "";
         sessionKey = "";
+        preKeyUrl = "";
     }
 
     async function api(internalVariables, url, jsonRequestData, asserted) {
@@ -31,6 +32,30 @@ const dxlib = {};
         if (internalVariables.sessionKey !== "") {
             headers["Authorization"] = `Bearer ${internalVariables.sessionKey}`;
         }
+        let response = await fetch(internalVariables.APIAddress + url, {
+            method: 'POST',
+            headers: headers,
+            body: bodyAsString,
+        });
+        if (asserted) {
+            assertResponse(response);
+        }
+        return response;
+    }
+
+    async function postJSON(internalVariables, url, headers, jsonRequestData, asserted) {
+        let bodyAsString = "";
+        if (jsonRequestData !== null) {
+            bodyAsString = JSON.stringify(jsonRequestData);
+        }
+
+        if (headers == null) {
+            headers = {
+                'Content-Type': 'application/json',
+            }
+        }
+
+
         let response = await fetch(internalVariables.APIAddress + url, {
             method: 'POST',
             headers: headers,
@@ -83,8 +108,10 @@ const dxlib = {};
         const ecdhA2PublicKeyAsHexString = dxlib.bytesToHex(ecdhA2PublicKeyAsBytes);
         console.log("1b", new Date().toISOString());
 
-        const pre_login_response = await dxlib.api(internalVariables, "/self/prekey", {
-            a0: edA0PublicKeyAsHexString, a1: ecdhA1PublicKeyAsHexString, a2: ecdhA2PublicKeyAsHexString,
+        const pre_login_response = await dxlib.api(internalVariables, internalVariables.preKeyUrl, {
+            a0: edA0PublicKeyAsHexString,
+            a1: ecdhA1PublicKeyAsHexString,
+            a2: ecdhA2PublicKeyAsHexString,
         }, true);
         console.log("1c", new Date().toISOString());
         if (pre_login_response.status !== 200) {
@@ -107,50 +134,106 @@ const dxlib = {};
         console.log("1f", new Date().toISOString());
         return pre_login_response;
     }
+    // Helper function definition for converting Base64 to Hex string.
+    // It uses codePointAt(0) to correctly handle all binary characters (which shouldn't be
+    // surrogate pairs in this binary context, but it satisfies the SonarQube rule and avoids issues).
+    function b64ToHex(b64) {
+        // Decodes base64 string to a raw binary string
+        const binaryString = atob(b64);
 
-    async function secureAPIV2(internalVariables, url, header, parameters, asserted) {
+        // Uses codePointAt(0) to extract the character code safely, then converts to hex
+        return Array.from(binaryString, char =>
+            char.codePointAt(0).toString(16).padStart(2, '0')
+        ).join('');
+    }
+
+    async function apiSecureV2(internalVariables, url, header, parameters, asserted) {
         let response = await apiPrekey(internalVariables);
         if (response.status !== 200) {
             return response;
         }
+        if (header==null) {
+            header = {}
+        }
+        if (internalVariables.sessionKey !== null) {
+            header["Authorization"] = `Bearer ${internalVariables.sessionKey}`;
+        }
         const lvHeader = new dxlib.LV(header);
         const lvParameters = new dxlib.LV(parameters);
 
-        const dataBlockEnvelopeAsHexString = await dxlib.packLVPayload(keys.preKeyIndex, keys.edA0PrivateKeyAsBytes, keys.sharedKey1AsBytes, [lvHeader, lvParameters]);
+        // FIX: Replaced 'keys' with 'internalVariables'
+        const dataBlockEnvelopeAsHexString = await dxlib.packLVPayload(internalVariables.preKeyIndex, internalVariables.edA0PrivateKeyAsBytes, internalVariables.sharedKey1AsBytes, [lvHeader, lvParameters]);
         console.log("3", new Date().toISOString());
-        const login_response = await dxlib.api(internalVariables, url, {
+
+        const rawResponse = await dxlib.postJSON(internalVariables, url, null,{
             i: internalVariables.preKeyIndex,
             d: dataBlockEnvelopeAsHexString,
         }, asserted);
 
-        if (login_response.status !== 200) {
-            return login_response;
+        if (rawResponse.status !== 200) {
+            return rawResponse;
         }
         console.log("4", new Date().toISOString());
-        const loginResponseDataAsJSON = await login_response.json();
+
+        const loginResponseDataAsJSON = await rawResponse.json();
         const dataBlockEnvelopeAsHexString2 = loginResponseDataAsJSON['d']
 
-        let lvPayloadElements = await dxlib.unpackLVPayload(keys.preKeyIndex, keys.edB0PublicKeyAsBytes, keys.sharedKey2AsBytes, dataBlockEnvelopeAsHexString2)
+        // FIX: Replaced 'keys' with 'internalVariables'
+        let lvPayloadElements = await dxlib.unpackLVPayload(internalVariables.preKeyIndex, internalVariables.edB0PublicKeyAsBytes, internalVariables.sharedKey2AsBytes, dataBlockEnvelopeAsHexString2)
         console.log("5", new Date().toISOString());
 
-        let lvSessionObject = lvPayloadElements[0]
+        const lvPayLoadStatusCode = lvPayloadElements[0];
+        const lvPayLoadHeader = lvPayloadElements[1];
+        const lvPayLoadBody = lvPayloadElements[2];
 
-        let sessionObjectAsString = lvSessionObject.getValueAsString();
-        // console.log(sessionObjectAsString)
 
-        let sessionObject = JSON.parse(sessionObjectAsString);
-        // console.log(sessionObject)
 
-        keys.sessionKey = sessionObject['session_key'];
-        keys.userId = sessionObject['user_id'];
+        // 1. Decode and Reconstruct Status Code
+        const statusCodeBase64 = lvPayLoadStatusCode.getValueAsString();
+        // FIX: Replaced complex map/join with the helper function b64ToHex
+        const statusCodeBytes = dxlib.hexToBytes(b64ToHex(statusCodeBase64));
+        const statusCodeView = new DataView(statusCodeBytes.buffer);
+        const originalStatusCodeBigInt = statusCodeView.getBigUint64(0, false);
 
-        if (keys.sessionKey === "") {
-            console.log("Invalid resulted session key")
-            return
+        // Since HTTP status codes are always 3-digit integers (e.g., 200, 404)
+        // and fit within a standard number (uint32), we convert it back to a standard JS number.
+        // If the actual statusCode was a very large 64-bit number, it would need to remain a BigInt.
+        const originalStatusCode = Number(originalStatusCodeBigInt);
+
+        // 2. Decode and Reconstruct Header
+        const headerBase64 = lvPayLoadHeader.getValueAsString();
+        // FIX: Replaced complex map/join with the helper function b64ToHex
+        const headerJsonString = new TextDecoder().decode(dxlib.hexToBytes(b64ToHex(headerBase64)));
+        let originalHeader;
+        try {
+            originalHeader = JSON.parse(headerJsonString);
+        } catch (e) {
+            console.error("Error parsing header JSON:", e);
+            originalHeader = {};
         }
 
-        console.log("6", new Date().toISOString());
-        return login_response;
+        // 3. Decode and Reconstruct Body
+        const bodyBase64 = lvPayLoadBody.getValueAsString();
+        // FIX: Replaced complex map/join with the helper function b64ToHex
+        const originalBodyAsBytes = dxlib.hexToBytes(b64ToHex(bodyBase64));
+        const originalBodyAsString = new TextDecoder().decode(originalBodyAsBytes);
+
+        // PUT THE CODE HERE
+        // Create a Headers object from the decrypted header map
+        const headers = new Headers(originalHeader);
+
+        // Create a synthetic Response object using the decrypted data
+        const decryptedResponse = new Response(originalBodyAsString, {
+            status: originalStatusCode,
+            statusText: originalStatusCode.toString(),
+            headers: headers,
+            url: rawResponse.url,
+            ok: originalStatusCode >= 200 && originalStatusCode <= 299,
+        });
+
+        decryptedResponse.originalBodyAsBytes = originalBodyAsBytes;
+
+        return decryptedResponse;
     }
 
     class Ed25519 {
@@ -604,8 +687,10 @@ const dxlib = {};
     dxlib.assertResponse = assertResponse;
     dxlib.api = api;
     dxlib.apiUpload = apiUpload;
-})
-(dxlib);
+    dxlib.apiPrekey = apiPrekey;
+    dxlib.apiSecureV2 = apiSecureV2
+    dxlib.postJSON = postJSON;
+}) (dxlib);
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = dxlib;

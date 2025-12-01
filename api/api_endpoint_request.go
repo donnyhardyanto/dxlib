@@ -282,7 +282,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 
 	switch aepr.EndPoint.EndPointType {
 	case EndPointTypeHTTPEndToEndEncryptionV2:
-		payLoadStatusCodeAsBytes := make([]byte, 4)
+		payLoadStatusCodeAsBytes := make([]byte, 8)
 		// --- BIG-ENDIAN ---
 		binary.BigEndian.PutUint64(payLoadStatusCodeAsBytes, uint64(statusCode))
 
