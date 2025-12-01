@@ -855,6 +855,29 @@ func GetStringFromKV(kv map[string]any, key string) (r string, err error) {
 	return GetVFromKV[string](kv, key)
 }
 
+func GetStringFromMapStringString(kv map[string]string, key string) (r string, err error) {
+	if kv == nil {
+		// Error Code: KV_IS_NIL
+		return r, errors.New("GetStringFromMapStringString:KV_IS_NIL")
+	}
+
+	v, ok := kv[key]
+	if !ok {
+		// Error Code: KEY_IS_NOT_EXIST
+		return r, fmt.Errorf("GetStringFromMapStringString:KEY_IS_NOT_EXIST:%s", key)
+	}
+
+	return v, nil
+}
+
+func GetStringFromMapStringStringDefault(kv map[string]string, key string, defaultValue string) (r string) {
+	r, err := GetStringFromMapStringString(kv, key)
+	if err != nil {
+		return defaultValue
+	}
+	return r
+}
+
 // GetInt64FromKV retrieves an int64 value for the given key from a map[string]any.
 // It relies on the generic GetVFromKV function for key lookup and type assertion.
 func GetInt64FromKV(kv map[string]any, key string) (r int64, err error) {

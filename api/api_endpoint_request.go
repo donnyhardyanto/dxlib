@@ -3,6 +3,8 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +14,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
+	"github.com/donnyhardyanto/dxlib/utils/lv"
 )
 
 type DXAPIUser struct {
@@ -37,10 +40,12 @@ type DXAPIEndPointRequest struct {
 	ResponseStatusCode     int
 	ErrorMessage           []string
 	CurrentUser            DXAPIUser
-	LocalData              map[string]any
+	LocalData              utils.JSON
 	ResponseHeaderSent     bool
 	ResponseBodySent       bool
 	SuppressLogDump        bool
+	EncryptionParameters   utils.JSON
+	EffectiveRequestHeader map[string]string
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
@@ -134,7 +139,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 	if err != nil {
 		// suppress
 	}
-	aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, msg)
+	_ = aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, msg)
 	return err
 }
 
@@ -151,7 +156,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 		requestDump = "DUMP REQUEST FAIL"
 	}
 	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
-	aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, err.Error())
+	_ = aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, err.Error())
 	return
 }
 
@@ -174,7 +179,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, re
 	}
 
 	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
-	aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, msg)
+	_ = aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, msg)
 
 	return nil
 }
@@ -262,7 +267,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 		header = map[string]string{}
 	}
 	header["Content-Type"] = "application/json"
+
 	aepr.WriteResponseAsBytes(statusCode, header, jsonBytes)
+
 	return
 }
 
@@ -272,28 +279,117 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		return
 	}
 	responseWriter := *aepr.GetResponseWriter()
-	for k, v := range header {
-		responseWriter.Header().Set(k, v)
-	}
-	responseWriter.WriteHeader(statusCode)
-	aepr.ResponseStatusCode = statusCode
 
-	aepr.ResponseHeaderSent = true
-	if aepr.ResponseBodySent {
-		_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:RESPONSE_BODY_ALREADY_SENT")
-		return
-	}
-	_, err := responseWriter.Write(bodyAsBytes)
-	if err != nil {
-		_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_WRITE_RESPONSE=%s", err.Error())
-		return
-	}
-	aepr.ResponseBodySent = true
-	if statusCode != http.StatusOK {
-		if bodyAsBytes != nil {
-			aepr._responseErrorAsString = ""
-		} else {
-			aepr._responseErrorAsString = string(bodyAsBytes)
+	switch aepr.EndPoint.EndPointType {
+	case EndPointTypeHTTPEndToEndEncryptionV2:
+		payLoadStatusCodeAsBytes := make([]byte, 4)
+		// --- BIG-ENDIAN ---
+		binary.BigEndian.PutUint64(payLoadStatusCodeAsBytes, uint64(statusCode))
+
+		payLoadStatusCodeAsBase64 := base64.StdEncoding.EncodeToString(payLoadStatusCodeAsBytes)
+
+		lvPayLoadStatusCode, err := lv.NewLV([]byte(payLoadStatusCodeAsBase64))
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_STATUS_CODE:%+v\n", err)
+			return
+		}
+
+		payLoadHeaderAsBytes, err := json.Marshal(header)
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_MARSHAL_PAYLOAD_HEADER_AS_BYTES:%+v\n", err)
+			return
+		}
+		payLoadHeaderAsBase64 := base64.StdEncoding.EncodeToString(payLoadHeaderAsBytes)
+
+		lvPayLoadHeader, err := lv.NewLV([]byte(payLoadHeaderAsBase64))
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_HEADER:%+v\n", err)
+			return
+		}
+
+		payLoadBodyAsBase64 := base64.StdEncoding.EncodeToString(bodyAsBytes)
+
+		lvPayLoadBody, err := lv.NewLV([]byte(payLoadBodyAsBase64))
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_BODY:%+v\n", err)
+			return
+		}
+
+		preKeyIndex, err := utils.GetStringFromKV(aepr.EncryptionParameters, "PRE_KEY_INDEX")
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_PRE_KEY_INDEX:%+v\n", err)
+			return
+		}
+		edB0PrivateKeyAsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "EDB0_PRIVATE_KEY_AS_BYTES")
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_EDB0_PRIVATE_KEY_AS_BYTES:%+v\n", err)
+			return
+		}
+		sharedKey2AsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "SHARED_KEY_2_AS_BYTES")
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_SHARED_KEY_2_AS_BYTES:%+v\n", err)
+			return
+		}
+
+		if OnE2EEPrekeyPack == nil {
+
+		}
+		dataBlockEnvelopeAsHexString, err := OnE2EEPrekeyPack(aepr.EndPoint.EndPointType, preKeyIndex, edB0PrivateKeyAsBytes, sharedKey2AsBytes, lvPayLoadStatusCode, lvPayLoadHeader, lvPayLoadBody)
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_PACKLVPAYLOAD:%+v\n", err)
+			return
+		}
+
+		responseWriter.WriteHeader(aepr.ResponseStatusCode)
+		aepr.ResponseHeaderSent = true
+
+		rawPayload := utils.JSON{
+			"d": dataBlockEnvelopeAsHexString,
+		}
+		rawBodyAsBytes, err := json.Marshal(rawPayload)
+		if aepr.ResponseBodySent {
+			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:RESPONSE_BODY_ALREADY_SENT")
+			return
+		}
+		_, err = responseWriter.Write(rawBodyAsBytes)
+		if err != nil {
+			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_WRITE_RESPONSE=%s", err.Error())
+			return
+		}
+
+		aepr.ResponseBodySent = true
+		if statusCode != http.StatusOK {
+			if bodyAsBytes != nil {
+				aepr._responseErrorAsString = ""
+			} else {
+				aepr._responseErrorAsString = string(bodyAsBytes)
+			}
+		}
+
+	default:
+		for k, v := range header {
+			responseWriter.Header().Set(k, v)
+		}
+		responseWriter.WriteHeader(statusCode)
+		aepr.ResponseStatusCode = statusCode
+
+		aepr.ResponseHeaderSent = true
+		if aepr.ResponseBodySent {
+			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:RESPONSE_BODY_ALREADY_SENT")
+			return
+		}
+		_, err := responseWriter.Write(bodyAsBytes)
+		if err != nil {
+			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_WRITE_RESPONSE=%s", err.Error())
+			return
+		}
+		aepr.ResponseBodySent = true
+		if statusCode != http.StatusOK {
+			if bodyAsBytes != nil {
+				aepr._responseErrorAsString = ""
+			} else {
+				aepr._responseErrorAsString = string(bodyAsBytes)
+			}
 		}
 	}
 	return
@@ -408,6 +504,8 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (e
 	switch aepr.EndPoint.EndPointType {
 	case EndPointTypeHTTPUploadStream:
 		return nil
+	case EndPointTypeWS:
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_OCTETSTREAM_ENDPOINT_TYPE_X_NOT_IMPLEMENTED_YET:%v", aepr.EndPoint.Method)
 	default:
 		aepr.RequestBodyAsBytes, err = io.ReadAll(aepr.Request.Body)
 		if err != nil {
@@ -437,6 +535,76 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		}
 	}
 
+	switch aepr.EndPoint.EndPointType {
+	case EndPointTypeHTTPJSON, EndPointTypeHTTPDownloadStream:
+		err := aepr.processEndPointRequestParameterValues(bodyAsJSON)
+		if err != nil {
+			return err
+		}
+	case EndPointTypeHTTPEndToEndEncryptionV1:
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_JSON_ENDPOINT_TYPE_X_NOT_IMPLEMENTED_YET:%v", aepr.EndPoint.Method)
+	case EndPointTypeHTTPEndToEndEncryptionV2:
+		preKeyIndex, err := utils.GetStringFromKV(bodyAsJSON, "i")
+		if err != nil {
+			return err
+		}
+		dataAsHexString, err := utils.GetStringFromKV(bodyAsJSON, "d")
+		if err != nil {
+			return err
+		}
+
+		if OnE2EEPrekeyUnPack == nil {
+			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "NOT_IMPLEMENTED", "NOT_IMPLEMENTED:OnE2EEPrekeyUnPack_IS_NIL:%v", aepr.EndPoint.EndPointType)
+		}
+
+		lvPayloadElements, sharedKey2AsBytes, edB0PrivateKeyAsBytes, err := OnE2EEPrekeyUnPack(aepr.EndPoint.EndPointType, preKeyIndex, dataAsHexString)
+		if err != nil {
+			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "INVALID_PREKEY", "NOT_ERROR:UNPACK_ERROR:%v", err.Error())
+		}
+
+		lvPayloadHeader := lvPayloadElements[0]
+		lvPayloadBody := lvPayloadElements[1]
+
+		payLoadHeaderAsBase64 := lvPayloadHeader.Value
+		payLoadHeaderAsBytes, err := base64.StdEncoding.DecodeString(string(payLoadHeaderAsBase64))
+		if err != nil {
+			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_DECODED_PAYLOAD_HEADER_FROM_BASE64")
+		}
+		payloadHeader := map[string]string{}
+		err = json.Unmarshal(payLoadHeaderAsBytes, &payloadHeader)
+		if err != nil {
+			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_UNMARSHAL_PAYLOAD_HEADER_BYTES")
+		}
+
+		aepr.EncryptionParameters = utils.JSON{
+			"PRE_KEY_INDEX":              preKeyIndex,
+			"SHARED_KEY2_AS_BYTES":       sharedKey2AsBytes,
+			"ED_B0_PRIVATE_KEY_AS_BYTES": edB0PrivateKeyAsBytes,
+		}
+		aepr.EffectiveRequestHeader = payloadHeader
+
+		payLoadBodyAsBase64 := lvPayloadBody.Value
+		payLoadBodyAsBytes, err := base64.StdEncoding.DecodeString(string(payLoadBodyAsBase64))
+		if err != nil {
+			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_DECODED_PAYLOAD_BODY_FROM_BASE64")
+		}
+		payloadBodyAsJSON := utils.JSON{}
+		err = json.Unmarshal(payLoadBodyAsBytes, &payloadBodyAsJSON)
+		if err != nil {
+			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_UNMARSHAL_PAYLOAD_BODY_BYTES")
+		}
+		err = aepr.processEndPointRequestParameterValues(payloadBodyAsJSON)
+		if err != nil {
+			return err
+		}
+	default:
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_JSON_ENDPOINT_TYPE_X_NOT_SUPPORTED:%v", aepr.EndPoint.EndPointType)
+	}
+	return nil
+
+}
+
+func (aepr *DXAPIEndPointRequest) processEndPointRequestParameterValues(bodyAsJSON utils.JSON) (err error) {
 	for _, v := range aepr.EndPoint.Parameters {
 		rpv := aepr.NewAPIEndPointRequestParameter(v)
 		aepr.ParameterValues[v.NameId] = rpv

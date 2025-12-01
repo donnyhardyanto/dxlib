@@ -2,9 +2,10 @@ package http
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
+
+	"github.com/pkg/errors"
 
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -57,4 +58,25 @@ func GetRequestBodyStream(r *http.Request) (io.Reader, error) {
 		return nil, errors.New("BAD_REQUEST_BODY_NIL")
 	}
 	return r.Body, nil
+}
+
+func HeaderToJSON(h http.Header) (r utils.JSON) {
+	r = utils.JSON{}
+	for k, v := range h {
+		r[k] = v
+	}
+	return r
+}
+
+func HeaderToMapStringString(h http.Header) (r map[string]string) {
+	r = make(map[string]string, len(h))
+	for key, values := range h {
+		if len(values) > 0 {
+			// Get only the first value
+			r[key] = values[0]
+		} else {
+			r[key] = "" // Or skip the entry entirely
+		}
+	}
+	return r
 }

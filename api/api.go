@@ -308,6 +308,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	aepr.Log.Debugf("Middleware Start: %s", aepr.EndPoint.Uri)
 
+	if aepr.EffectiveRequestHeader == nil {
+		aepr.EffectiveRequestHeader = utilsHttp.HeaderToMapStringString(aepr.Request.Header)
+	}
 	for _, middleware := range p.Middlewares {
 
 		err = middleware(aepr)
@@ -358,7 +361,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 			if !aepr.ResponseHeaderSent {
 				s := fmt.Sprintf("ONEXECUTE_ERROR:%v", err.Error())
-				aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, s, s)
+				_ = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, s, s)
 				return
 			}
 		} else {

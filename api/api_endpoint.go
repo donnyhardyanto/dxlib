@@ -19,6 +19,8 @@ const (
 	EndPointTypeHTTPUploadStream
 	EndPointTypeHTTPDownloadStream
 	EndPointTypeWS
+	EndPointTypeHTTPEndToEndEncryptionV1
+	EndPointTypeHTTPEndToEndEncryptionV2
 )
 
 type DXAPIEndPointParameter struct {
