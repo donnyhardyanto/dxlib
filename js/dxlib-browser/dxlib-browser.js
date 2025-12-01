@@ -5,6 +5,43 @@ const dxlib = {};
 (function (dxlib) {
     'use strict';
 
+
+    function assertResponse(response) {
+        let statusCode = response.status;
+        if (statusCode !== 200) {
+            alert(`${response.url}: Status code is ${statusCode.toString()}`);
+            throw new Error("Execution halted");
+        }
+    }
+
+    class InternalVariables {
+        apiAddress = "";
+        sessionKey = ""
+    }
+
+    async function api(internalVariables, url, jsonRequestData, asserted) {
+        let bodyAsString = "";
+        if (jsonRequestData !== null) {
+            bodyAsString = JSON.stringify(jsonRequestData);
+        }
+
+        let headers = {
+            'Content-Type': 'application/json',
+        }
+        if (internalVariables.sessionKey !== "") {
+            headers["Authorization"] = `Bearer ${internalVariables.sessionKey}`;
+        }
+        let response = await fetch(internalVariables.apiAddress + url, {
+            method: 'POST',
+            headers: headers,
+            body: bodyAsString,
+        });
+        if (asserted) {
+            assertResponse(response);
+        }
+        return response;
+    }
+
     class Ed25519 {
         static keyPair() {
             return nacl.sign.keyPair();
@@ -453,6 +490,8 @@ const dxlib = {};
     dxlib.unpackLVPayload = unpackLVPayload;
     dxlib.bytesToHex = bytesToHex;
     dxlib.hexToBytes = hexToBytes;
+    dxlib.assertResponse = assertResponse;
+    dxlib.api = api;
 })(dxlib);
 
 if (typeof module !== 'undefined' && module.exports) {

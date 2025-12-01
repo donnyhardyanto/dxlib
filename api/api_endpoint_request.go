@@ -332,8 +332,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		}
 
 		if OnE2EEPrekeyPack == nil {
-
+			aepr.Log.Errorf(err, "NOT_IMPLEMENTED:OnE2EEPrekeyPack_IS_NIL:%v", aepr.EndPoint.EndPointType)
 		}
+
 		dataBlockEnvelopeAsHexString, err := OnE2EEPrekeyPack(aepr.EndPoint.EndPointType, preKeyIndex, edB0PrivateKeyAsBytes, sharedKey2AsBytes, lvPayLoadStatusCode, lvPayLoadHeader, lvPayLoadBody)
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_PACKLVPAYLOAD:%+v\n", err)
