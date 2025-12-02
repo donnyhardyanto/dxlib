@@ -320,9 +320,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_PRE_KEY_INDEX:%+v\n", err)
 			return
 		}
-		edB0PrivateKeyAsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "EDB0_PRIVATE_KEY_AS_BYTES")
+		edB0PrivateKeyAsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "ED_B0_PRIVATE_KEY_AS_BYTES")
 		if err != nil {
-			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_EDB0_PRIVATE_KEY_AS_BYTES:%+v\n", err)
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_ED_B0_PRIVATE_KEY_AS_BYTES:%+v\n", err)
 			return
 		}
 		sharedKey2AsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "SHARED_KEY_2_AS_BYTES")

@@ -158,8 +158,22 @@ const dxlib = {};
         if (internalVariables.sessionKey !== null) {
             header["Authorization"] = `Bearer ${internalVariables.sessionKey}`;
         }
-        const lvHeader = new dxlib.LV(header);
-        const lvParameters = new dxlib.LV(parameters);
+        const headerAsJsonString = JSON.stringify(header);
+        const headerAsJSONStringAsBytes = new TextEncoder().encode(headerAsJsonString);
+        const headerAsJSONStringAsBinaryString = String.fromCodePoint(...headerAsJSONStringAsBytes);
+
+        // Encode the resulting binary string to Base64
+        const headerAsJSONStringAsBase64 = btoa(headerAsJSONStringAsBinaryString);
+
+        const parametersAsJsonString = JSON.stringify(parameters);
+        const parametersAsJSONStringAsBytes = new TextEncoder().encode(parametersAsJsonString);
+        const parametersAsJSONStringAsBinaryString = String.fromCodePoint(...parametersAsJSONStringAsBytes);
+
+        // Encode the resulting binary string to Base64
+        const parametersAsJSONStringAsBase64 = btoa(parametersAsJSONStringAsBinaryString);
+
+        const lvHeader = new dxlib.LV(headerAsJSONStringAsBase64);
+        const lvParameters = new dxlib.LV(parametersAsJSONStringAsBase64);
 
         // FIX: Replaced 'keys' with 'internalVariables'
         const dataBlockEnvelopeAsHexString = await dxlib.packLVPayload(internalVariables.preKeyIndex, internalVariables.edA0PrivateKeyAsBytes, internalVariables.sharedKey1AsBytes, [lvHeader, lvParameters]);
@@ -185,7 +199,6 @@ const dxlib = {};
         const lvPayLoadStatusCode = lvPayloadElements[0];
         const lvPayLoadHeader = lvPayloadElements[1];
         const lvPayLoadBody = lvPayloadElements[2];
-
 
 
         // 1. Decode and Reconstruct Status Code
