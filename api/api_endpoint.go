@@ -23,6 +23,25 @@ const (
 	EndPointTypeHTTPEndToEndEncryptionV2
 )
 
+func (d DXAPIEndPointType) String() string {
+	switch d {
+	case EndPointTypeHTTPJSON:
+		return "EndPointTypeHTTPJSON"
+	case EndPointTypeHTTPUploadStream:
+		return "EndPointTypeHTTPUploadStream"
+	case EndPointTypeHTTPDownloadStream:
+		return "EndPointTypeHTTPDownloadStream"
+	case EndPointTypeWS:
+		return "EndPointTypeWS"
+	case EndPointTypeHTTPEndToEndEncryptionV1:
+		return "EndPointTypeHTTPEndToEndEncryptionV1"
+	case EndPointTypeHTTPEndToEndEncryptionV2:
+		return "EndPointTypeHTTPEndToEndEncryptionV2"
+	default:
+		return fmt.Sprintf("DXAPIEndPointType(%d)", d)
+	}
+}
+
 type DXAPIEndPointParameter struct {
 	Owner       *DXAPIEndPoint
 	Parent      *DXAPIEndPointParameter
@@ -94,6 +113,7 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 		s += fmt.Sprintf("####  Description: %s\n", aep.Description)
 		s += fmt.Sprintf("####  URI: %s\n", aep.Uri)
 		s += fmt.Sprintf("####  Method: %s\n", aep.Method)
+		s += fmt.Sprintf("####  Endpoint Type:%s\n", aep.EndPointType)
 		s += fmt.Sprintf("####  Request Content Type: %s\n", aep.RequestContentType)
 		s += fmt.Sprintf("####  Request Content Length: %d\n", aep.RequestMaxContentLength)
 		s += "####  Parameters:\n"
