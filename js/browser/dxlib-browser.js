@@ -4,7 +4,6 @@ const dxlib = {};
 (function (dxlib) {
     'use strict';
 
-
     function assertResponse(response) {
         let statusCode = response.status;
         if (statusCode !== 200) {
@@ -13,13 +12,27 @@ const dxlib = {};
         }
     }
 
-    class InternalVariables {
-        APIAddress = "";
-        sessionKey = "";
-        preKeyUrl = "";
+    class Client {
+        constructor(apiAddress, preKeyUrl, preKeyCaptcha) {
+            this.APIAddress = apiAddress;
+            this.preKeyUrl = preKeyUrl;
+            this.preKeyCaptchaUrl = preKeyCaptcha;
+            this.edA0PrivateKeyAsBytes = null;
+            this.ecdhA1PrivateKeyAsBytes = null;
+            this.ecdhA2PrivateKeyAsBytes = null;
+            this.edB0PublicKeyAsBytes = null;
+            this.sharedKey1AsBytes = null;
+            this.sharedKey2AsBytes = null;
+            this.preKeyIndex = null;
+            this.sessionKey = null;
+            this.userId = null;
+        }
+        Clone() {
+            return new Client(this.APIAddress, this.preKeyUrl, this.preKeyCaptchaUrl);
+        }
     }
 
-    async function api(internalVariables, url, jsonRequestData, asserted) {
+    async function api(client, url, jsonRequestData, asserted) {
         let bodyAsString = "";
         if (jsonRequestData !== null) {
             bodyAsString = JSON.stringify(jsonRequestData);
@@ -28,10 +41,10 @@ const dxlib = {};
         let headers = {
             'Content-Type': 'application/json',
         }
-        if (internalVariables.sessionKey !== "") {
-            headers["Authorization"] = `Bearer ${internalVariables.sessionKey}`;
+        if (client.sessionKey !== "") {
+            headers["Authorization"] = `Bearer ${client.sessionKey}`;
         }
-        let response = await fetch(internalVariables.APIAddress + url, {
+        let response = await fetch(client.APIAddress + url, {
             method: 'POST',
             headers: headers,
             body: bodyAsString,
@@ -42,7 +55,7 @@ const dxlib = {};
         return response;
     }
 
-    async function postJSON(internalVariables, url, headers, jsonRequestData, asserted) {
+    async function postJSON(client, url, headers, jsonRequestData, asserted) {
         let bodyAsString = "";
         if (jsonRequestData !== null) {
             bodyAsString = JSON.stringify(jsonRequestData);
@@ -54,8 +67,7 @@ const dxlib = {};
             }
         }
 
-
-        let response = await fetch(internalVariables.APIAddress + url, {
+        let response = await fetch(client.APIAddress + url, {
             method: 'POST',
             headers: headers,
             body: bodyAsString,
@@ -66,19 +78,19 @@ const dxlib = {};
         return response;
     }
 
-    async function apiUpload(internalVariables, url, content_type, parameters, fileContent, asserted) {
+    async function apiUpload(client, url, content_type, parameters, fileContent, asserted) {
         let headers = {
             'Content-Type': content_type,
         }
-        if (internalVariables.sessionKey !== null) {
-            if (internalVariables.sessionKey !== "") {
-                headers["Authorization"] = `Bearer ${internalVariables.sessionKey}`;
+        if (client.sessionKey !== null) {
+            if (client.sessionKey !== "") {
+                headers["Authorization"] = `Bearer ${client.sessionKey}`;
             }
         }
         if (parameters !== null) {
             headers["X-Var"] = JSON.stringify(parameters);
         }
-        let response = await http.post(internalVariables.APIAddress + url, fileContent, {
+        let response = await http.post(client.APIAddress + url, fileContent, {
             headers: headers,
         });
         if (asserted) {
@@ -286,6 +298,7 @@ const dxlib = {};
 
 
     dxlib.LV = LV;
+    dxlib.Client = Client;
     dxlib.bytesToHex = bytesToHex;
     dxlib.hexToBytes = hexToBytes;
     dxlib.compareByteArrays = compareByteArrays;

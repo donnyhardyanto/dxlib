@@ -7,6 +7,110 @@ const dxlib = {};
 (function (dxlib) {
     'use strict';
 
+    function assertResponse(response) {
+        let statusCode = response.status;
+        if (statusCode !== 200) {
+            alert(`${response.url}: Status code is ${statusCode.toString()}`);
+            throw new Error("Execution halted");
+        }
+    }
+    class Client {
+        constructor(apiAddress, preKeyUrl, preKeyCaptcha) {
+            this.APIAddress = apiAddress;
+            this.preKeyUrl = preKeyUrl;
+            this.preKeyCaptchaUrl = preKeyCaptcha;
+            this.edA0PrivateKeyAsBytes = null;
+            this.ecdhA1PrivateKeyAsBytes = null;
+            this.ecdhA2PrivateKeyAsBytes = null;
+            this.edB0PublicKeyAsBytes = null;
+            this.sharedKey1AsBytes = null;
+            this.sharedKey2AsBytes = null;
+            this.preKeyIndex = null;
+            this.sessionKey = null;
+            this.userId = null;
+        }
+        Clone() {
+            return new Keys(this.APIAddress, this.preKeyUrl);
+        }
+    }
+
+    async function api(client, url, jsonRequestData, asserted) {
+        let bodyAsString = "";
+        if (jsonRequestData !== null) {
+            bodyAsString = JSON.stringify(jsonRequestData);
+        }
+
+        let headers = {
+            'Content-Type': 'application/json',
+        }
+        if (client.sessionKey !== "") {
+            headers["Authorization"] = `Bearer ${client.sessionKey}`;
+        }
+        let response = await fetch(client.APIAddress + url, {
+            method: 'POST',
+            headers: headers,
+            body: bodyAsString,
+        });
+        if (asserted) {
+            assertResponse(response);
+        }
+        return response;
+    }
+
+    async function postJSON(client, url, headers, jsonRequestData, asserted) {
+        let bodyAsString = "";
+        if (jsonRequestData !== null) {
+            bodyAsString = JSON.stringify(jsonRequestData);
+        }
+
+        if (headers == null) {
+            headers = {
+                'Content-Type': 'application/json',
+            }
+        }
+
+        let response = await fetch(client.APIAddress + url, {
+            method: 'POST',
+            headers: headers,
+            body: bodyAsString,
+        });
+        if (asserted) {
+            assertResponse(response);
+        }
+        return response;
+    }
+
+    async function apiUpload(client, url, content_type, parameters, fileContent, asserted) {
+        let headers = {
+            'Content-Type': content_type,
+        }
+        if (client.sessionKey !== null) {
+            if (client.sessionKey !== "") {
+                headers["Authorization"] = `Bearer ${client.sessionKey}`;
+            }
+        }
+        if (parameters !== null) {
+            headers["X-Var"] = JSON.stringify(parameters);
+        }
+        let response = await http.post(client.APIAddress + url, fileContent, {
+            headers: headers,
+        });
+        if (asserted) {
+            assertResponse(response);
+        }
+        return response;
+    }
+
+    function b64ToHex(b64) {
+        // Decodes base64 string to a raw binary string
+        const binaryString = atob(b64);
+
+        // Uses codePointAt(0) to extract the character code safely, then converts to hex
+        return Array.from(binaryString, char =>
+            char.codePointAt(0).toString(16).padStart(2, '0')
+        ).join('');
+    }
+
     function encodeUTF8(str) {
         let pos = 0;
         const len = str.length;
@@ -39,7 +143,6 @@ const dxlib = {};
 
         return new Uint8Array(out);
     }
-
 
     function decodeUTF8(bytes) {
         let out = '';
@@ -75,7 +178,6 @@ const dxlib = {};
 
         return out;
     }
-
 
     function toUint8Array(data) {
         // If already a Uint8Array, return it
@@ -215,9 +317,6 @@ const dxlib = {};
         }
     }
 
-
-
-
     function bytesToHex(bytes) {
         return Array.from(bytes, byte => {
             // Ensure byte is treated as a number
@@ -242,7 +341,6 @@ const dxlib = {};
         return bytes;
     }
 
-
     function compareByteArrays(arr1, arr2) {
         if (arr1.length !== arr2.length) {
             return false;
@@ -255,8 +353,8 @@ const dxlib = {};
         return true;
     }
 
-
     dxlib.LV = LV;
+    dxlib.Client = Client;
     dxlib.bytesToHex = bytesToHex;
     dxlib.hexToBytes = hexToBytes;
     dxlib.compareByteArrays = compareByteArrays;
