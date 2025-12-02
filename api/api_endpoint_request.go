@@ -579,7 +579,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 
 		aepr.EncryptionParameters = utils.JSON{
 			"PRE_KEY_INDEX":              preKeyIndex,
-			"SHARED_KEY2_AS_BYTES":       sharedKey2AsBytes,
+			"SHARED_KEY_2_AS_BYTES":      sharedKey2AsBytes,
 			"ED_B0_PRIVATE_KEY_AS_BYTES": edB0PrivateKeyAsBytes,
 		}
 		aepr.EffectiveRequestHeader = payloadHeader
