@@ -89,7 +89,7 @@ const dxlib = {};
     }
 
     async function apiPrekey(internalVariables) {
-        console.log("1a", new Date().toISOString());
+        //console.log("1a", new Date().toISOString());
         const ed25519KeyPair = dxlib.Ed25519.keyPair();
         const edA0PublicKeyAsBytes = ed25519KeyPair.publicKey;
         internalVariables.edA0PrivateKeyAsBytes = ed25519KeyPair.secretKey;
@@ -106,14 +106,14 @@ const dxlib = {};
         const edA0PublicKeyAsHexString = dxlib.bytesToHex(edA0PublicKeyAsBytes);
         const ecdhA1PublicKeyAsHexString = dxlib.bytesToHex(ecdhA1PublicKeyAsBytes);
         const ecdhA2PublicKeyAsHexString = dxlib.bytesToHex(ecdhA2PublicKeyAsBytes);
-        console.log("1b", new Date().toISOString());
+       // console.log("1b", new Date().toISOString());
 
         const pre_login_response = await dxlib.api(internalVariables, internalVariables.preKeyUrl, {
             a0: edA0PublicKeyAsHexString,
             a1: ecdhA1PublicKeyAsHexString,
             a2: ecdhA2PublicKeyAsHexString,
         }, true);
-        console.log("1c", new Date().toISOString());
+        //console.log("1c", new Date().toISOString());
         if (pre_login_response.status !== 200) {
             return pre_login_response;
         }
@@ -127,11 +127,11 @@ const dxlib = {};
         internalVariables.edB0PublicKeyAsBytes = dxlib.hexToBytes(edB0PublicKeyAsHexString);
         const ecdhB1PublicKeyAsBytes = dxlib.hexToBytes(ecdhB1PublicKeyAsHexString);
         const ecdhB2PublicKeyAsBytes = dxlib.hexToBytes(ecdhB2PublicKeyAsHexString);
-        console.log("1d", new Date().toISOString());
+        //console.log("1d", new Date().toISOString());
         internalVariables.sharedKey1AsBytes = dxlib.X25519.computeSharedSecret(internalVariables.ecdhA1PrivateKeyAsBytes, ecdhB1PublicKeyAsBytes);
-        console.log("1e", new Date().toISOString());
+        //console.log("1e", new Date().toISOString());
         internalVariables.sharedKey2AsBytes = dxlib.X25519.computeSharedSecret(internalVariables.ecdhA2PrivateKeyAsBytes, ecdhB2PublicKeyAsBytes);
-        console.log("1f", new Date().toISOString());
+        //console.log("1f", new Date().toISOString());
         return pre_login_response;
     }
     // Helper function definition for converting Base64 to Hex string.
@@ -177,7 +177,7 @@ const dxlib = {};
 
         // FIX: Replaced 'keys' with 'internalVariables'
         const dataBlockEnvelopeAsHexString = await dxlib.packLVPayload(internalVariables.preKeyIndex, internalVariables.edA0PrivateKeyAsBytes, internalVariables.sharedKey1AsBytes, [lvHeader, lvParameters]);
-        console.log("3", new Date().toISOString());
+        //console.log("3", new Date().toISOString());
 
         const rawResponse = await dxlib.postJSON(internalVariables, url, null,{
             i: internalVariables.preKeyIndex,
@@ -187,14 +187,14 @@ const dxlib = {};
         if (rawResponse.status !== 200) {
             return rawResponse;
         }
-        console.log("4", new Date().toISOString());
+       // console.log("4", new Date().toISOString());
 
         const loginResponseDataAsJSON = await rawResponse.json();
         const dataBlockEnvelopeAsHexString2 = loginResponseDataAsJSON['d']
 
         // FIX: Replaced 'keys' with 'internalVariables'
         let lvPayloadElements = await dxlib.unpackLVPayload(internalVariables.preKeyIndex, internalVariables.edB0PublicKeyAsBytes, internalVariables.sharedKey2AsBytes, dataBlockEnvelopeAsHexString2)
-        console.log("5", new Date().toISOString());
+        //console.log("5", new Date().toISOString());
 
         const lvPayLoadStatusCode = lvPayloadElements[0];
         const lvPayLoadHeader = lvPayloadElements[1];
