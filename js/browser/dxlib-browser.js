@@ -288,6 +288,7 @@ const dxlib = {};
     dxlib.LV = LV;
     dxlib.bytesToHex = bytesToHex;
     dxlib.hexToBytes = hexToBytes;
+    dxlib.compareByteArrays = compareByteArrays;
     dxlib.assertResponse = assertResponse;
     dxlib.api = api;
     dxlib.apiUpload = apiUpload;
