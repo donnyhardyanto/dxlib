@@ -293,12 +293,14 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		lvPayLoadStatusCode, err := lv.NewLV([]byte(payLoadStatusCodeAsBase64))
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_STATUS_CODE:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		payLoadHeaderAsBytes, err := json.Marshal(header)
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_MARSHAL_PAYLOAD_HEADER_AS_BYTES:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		payLoadHeaderAsBase64 := base64.StdEncoding.EncodeToString(payLoadHeaderAsBytes)
@@ -306,6 +308,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		lvPayLoadHeader, err := lv.NewLV([]byte(payLoadHeaderAsBase64))
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_HEADER:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -314,32 +317,39 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		lvPayLoadBody, err := lv.NewLV([]byte(payLoadBodyAsBase64))
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_BODY:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		preKeyIndex, err := utils.GetStringFromKV(aepr.EncryptionParameters, "PRE_KEY_INDEX")
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_PRE_KEY_INDEX:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		edB0PrivateKeyAsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "ED_B0_PRIVATE_KEY_AS_BYTES")
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_ED_B0_PRIVATE_KEY_AS_BYTES:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		sharedKey2AsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "SHARED_KEY_2_AS_BYTES")
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_SHARED_KEY_2_AS_BYTES:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		if OnE2EEPrekeyPack == nil {
 			aepr.Log.Errorf(err, "NOT_IMPLEMENTED:OnE2EEPrekeyPack_IS_NIL:%v", aepr.EndPoint.EndPointType)
+			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+			return
 		}
 
 		dataBlockEnvelopeAsHexString, err := OnE2EEPrekeyPack(aepr.EndPoint.EndPointType, preKeyIndex, edB0PrivateKeyAsBytes, sharedKey2AsBytes, lvPayLoadStatusCode, lvPayLoadHeader, lvPayLoadBody)
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_PACKLVPAYLOAD:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -354,11 +364,13 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		rawBodyAsBytes, err := json.Marshal(rawPayload)
 		if aepr.ResponseBodySent {
 			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:RESPONSE_BODY_ALREADY_SENT")
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		_, err = responseWriter.Write(rawBodyAsBytes)
 		if err != nil {
 			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_WRITE_RESPONSE=%s", err.Error())
+			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
