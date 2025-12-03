@@ -282,6 +282,13 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 
 	switch aepr.EndPoint.EndPointType {
 	case EndPointTypeHTTPEndToEndEncryptionV2:
+		preKeyIndex, err := utils.GetStringFromKV(aepr.EncryptionParameters, "PRE_KEY_INDEX")
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_PRE_KEY_INDEX:%+v\n", err)
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 		aepr.ResponseStatusCode = statusCode
 
 		payLoadStatusCodeAsBytes := make([]byte, 8)
@@ -321,12 +328,6 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 			return
 		}
 
-		preKeyIndex, err := utils.GetStringFromKV(aepr.EncryptionParameters, "PRE_KEY_INDEX")
-		if err != nil {
-			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_PRE_KEY_INDEX:%+v\n", err)
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			return
-		}
 		edB0PrivateKeyAsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "ED_B0_PRIVATE_KEY_AS_BYTES")
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_ED_B0_PRIVATE_KEY_AS_BYTES:%+v\n", err)
@@ -346,7 +347,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 			return
 		}
 
-		dataBlockEnvelopeAsHexString, err := OnE2EEPrekeyPack(aepr.EndPoint.EndPointType, preKeyIndex, edB0PrivateKeyAsBytes, sharedKey2AsBytes, lvPayLoadStatusCode, lvPayLoadHeader, lvPayLoadBody)
+		dataBlockEnvelopeAsHexString, err := OnE2EEPrekeyPack(aepr, preKeyIndex, edB0PrivateKeyAsBytes, sharedKey2AsBytes, lvPayLoadStatusCode, lvPayLoadHeader, lvPayLoadBody)
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_PACKLVPAYLOAD:%+v\n", err)
 			responseWriter.WriteHeader(http.StatusBadRequest)
@@ -574,7 +575,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "NOT_IMPLEMENTED", "NOT_IMPLEMENTED:OnE2EEPrekeyUnPack_IS_NIL:%v", aepr.EndPoint.EndPointType)
 		}
 
-		lvPayloadElements, sharedKey2AsBytes, edB0PrivateKeyAsBytes, err := OnE2EEPrekeyUnPack(aepr.EndPoint.EndPointType, preKeyIndex, dataAsHexString)
+		lvPayloadElements, sharedKey2AsBytes, edB0PrivateKeyAsBytes, err := OnE2EEPrekeyUnPack(aepr, preKeyIndex, dataAsHexString)
 		if err != nil {
 			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "INVALID_PREKEY", "NOT_ERROR:UNPACK_ERROR:%v", err.Error())
 		}
