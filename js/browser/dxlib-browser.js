@@ -1,4 +1,3 @@
-
 const dxlib = {};
 
 (function (dxlib) {
@@ -27,16 +26,18 @@ const dxlib = {};
             this.sessionKey = null;
             this.userId = null;
         }
+
         Clone() {
             return new Client(this.APIAddress, this.preKeyUrl, this.preKeyCaptchaUrl);
         }
     }
 
     async function api(client, url, jsonRequestData, asserted) {
-        let bodyAsString = "";
-        if (jsonRequestData !== null) {
-            bodyAsString = JSON.stringify(jsonRequestData);
+        if ((jsonRequestData === null) || (jsonRequestData === undefined) || (jsonRequestData === "")) {
+            jsonRequestData = {};
         }
+        let bodyAsString = JSON.stringify(jsonRequestData);
+
 
         let headers = {
             'Content-Type': 'application/json',
@@ -56,10 +57,10 @@ const dxlib = {};
     }
 
     async function postJSON(client, url, headers, jsonRequestData, asserted) {
-        let bodyAsString = "";
-        if (jsonRequestData !== null) {
-            bodyAsString = JSON.stringify(jsonRequestData);
+        if ((jsonRequestData === null) || (jsonRequestData === undefined) || (jsonRequestData === "")) {
+            jsonRequestData = {};
         }
+        let bodyAsString = JSON.stringify(jsonRequestData);
 
         if (headers == null) {
             headers = {
@@ -79,6 +80,9 @@ const dxlib = {};
     }
 
     async function apiUpload(client, url, content_type, parameters, fileContent, asserted) {
+        if ((parameters === null) || (parameters === undefined)) {
+            parameters = "";
+        }
         let headers = {
             'Content-Type': content_type,
         }
@@ -87,7 +91,7 @@ const dxlib = {};
                 headers["Authorization"] = `Bearer ${client.sessionKey}`;
             }
         }
-        if (parameters !== null) {
+        if (parameters !== "") {
             headers["X-Var"] = JSON.stringify(parameters);
         }
         let response = await http.post(client.APIAddress + url, fileContent, {
@@ -112,7 +116,6 @@ const dxlib = {};
             char.codePointAt(0).toString(16).padStart(2, '0')
         ).join('');
     }
-
 
 
     function toUint8Array(data) {
@@ -259,7 +262,6 @@ const dxlib = {};
     }
 
 
-
     function bytesToHex(bytes) {
         return Array.from(bytes, byte => {
             // Ensure byte is treated as a number
@@ -307,7 +309,7 @@ const dxlib = {};
     dxlib.apiUpload = apiUpload;
     dxlib.b64ToHex = b64ToHex;
     dxlib.postJSON = postJSON;
-}) (dxlib);
+})(dxlib);
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = dxlib;
