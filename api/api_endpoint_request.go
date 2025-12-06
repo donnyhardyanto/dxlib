@@ -575,7 +575,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "NOT_IMPLEMENTED", "NOT_IMPLEMENTED:OnE2EEPrekeyUnPack_IS_NIL:%v", aepr.EndPoint.EndPointType)
 		}
 
-		lvPayloadElements, sharedKey2AsBytes, edB0PrivateKeyAsBytes, err := OnE2EEPrekeyUnPack(aepr, preKeyIndex, dataAsHexString)
+		lvPayloadElements, sharedKey2AsBytes, edB0PrivateKeyAsBytes, preKeyData, err := OnE2EEPrekeyUnPack(aepr, preKeyIndex, dataAsHexString)
 		if err != nil {
 			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "INVALID_PREKEY", "NOT_ERROR:UNPACK_ERROR:%v", err.Error())
 		}
@@ -598,6 +598,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			"PRE_KEY_INDEX":              preKeyIndex,
 			"SHARED_KEY_2_AS_BYTES":      sharedKey2AsBytes,
 			"ED_B0_PRIVATE_KEY_AS_BYTES": edB0PrivateKeyAsBytes,
+			"PRE_KEY_DATA":               preKeyData,
 		}
 		aepr.EffectiveRequestHeader = payloadHeader
 
