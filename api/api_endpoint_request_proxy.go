@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/donnyhardyanto/dxlib/utils"
-	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
-	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 	"io"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/donnyhardyanto/dxlib/utils"
+	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
+	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
 func (aepr *DXAPIEndPointRequest) ProxyHTTPAPIClient(method string, url string, bodyParameterAsJSON utils.JSON, headers map[string]string) (statusCode int, r utils.JSON, err error) {
@@ -143,13 +144,13 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 	}
 	responseAsJSON, err = utilsHttp.ResponseBodyToJSON(r)
 	if err != nil {
-		aepr.Log.Errorf(err, "Error in make HTTP request (%v)", err.Error())
+		aepr.Log.Errorf(err, "Error in make HTTP request %+v", err)
 		return responseStatusCode, nil, err
 	}
 
 	vAsString, err := utilsJson.PrettyPrint(responseAsJSON)
 	if err != nil {
-		aepr.Log.Errorf(err, "Error in make HTTP request (%v)", err.Error())
+		aepr.Log.Errorf(err, "Error in make HTTP request %+v", err)
 		return responseStatusCode, nil, err
 	}
 	aepr.Log.Debugf("Response data=%s", vAsString)

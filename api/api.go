@@ -322,7 +322,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%+v", err2)
 				return
 			}
-			aepr.Log.Errorf(err3, "ONMIDDLEWARE_ERROR:%v\nRaw Request :\n%v\n", err3, string(requestDump))
+			aepr.Log.Errorf(err3, "ONMIDDLEWARE_ERROR:%+v\nRaw Request :\n%v\n", err3, string(requestDump))
 			return
 		}
 
@@ -357,10 +357,10 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%+v", err2)
 				return
 			}
-			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:%v\nRaw Request :\n%+v\n", err, string(requestDump))
+			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:%+v\nRaw Request :\n%+v\n", err, string(requestDump))
 
 			if !aepr.ResponseHeaderSent {
-				s := fmt.Sprintf("ONEXECUTE_ERROR:%v", err.Error())
+				s := fmt.Sprintf("ONEXECUTE_ERROR:%+v", err)
 				_ = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, s, s)
 				return
 			}

@@ -304,7 +304,7 @@ func (a *DXApp) execute() (err error) {
 		log.Log.Info("Starting")
 		err = a.OnExecute()
 		if err != nil {
-			log.Log.Infof("onExecute error (%v)", err.Error())
+			log.Log.Infof("onExecute error %+v", err)
 			return err
 		}
 	}

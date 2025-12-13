@@ -424,7 +424,7 @@ func ValidateAndSanitizeOrderByExampleUsage() {
 	for _, example := range examples {
 		result, err := ValidateAndSanitizeOrderBy(example)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			fmt.Printf("Error: %+v\n", err)
 			continue
 		}
 		fmt.Printf("Input: %s -> Sanitized: %s\n", example, result)

@@ -61,7 +61,7 @@ func Tx(log *log.DXLog, db *sqlx.DB, isolationLevel sql.IsolationLevel, callback
 	}
 	err = callback(tx, log)
 	if err != nil {
-		log.Errorf(err, "TX_ERROR_IN_CALLBACK: (%v)", err.Error())
+		log.Errorf(err, "TX_ERROR_IN_CALLBACK: %+v", err)
 		errTx := tx.Rollback()
 		if errTx != nil {
 			log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
