@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 	"time"
 	_ "time/tzdata"
@@ -72,7 +71,7 @@ func (am *DXTaskManager) StartAll(errorGroup *errgroup.Group, errorGroupContext 
 	for _, v := range am.Tasks {
 		err := v.StartAndWait(am.ErrorGroup)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	return nil
@@ -81,14 +80,14 @@ func (am *DXTaskManager) StartAll(errorGroup *errgroup.Group, errorGroupContext 
 func (am *DXTaskManager) StopAll() (err error) {
 	am.ErrorGroupContext.Done()
 	err = am.ErrorGroup.Wait()
-	return errors.Wrap(err, "error occured")
+	return err
 }
 
 func (a *DXTask) ApplyConfigurations() (err error) {
 	configurationTasks, ok := configuration.Manager.Configurations["tasks"]
 	if !ok {
 		err := log.Log.FatalAndCreateErrorf("Can not find configurationTasks 'tasks' needed to configure the tasks")
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	c := *configurationTasks.Data
 	c1, ok := c[a.NameId].(utils.JSON)
@@ -104,14 +103,14 @@ func (a *DXTask) ApplyConfigurations() (err error) {
 	if err == nil {
 		a.AfterDelaySec = tAfterDelaySec
 	}
-	return errors.Wrap(err, "error occured")
+	return err
 }
 
 func (a *DXTask) StartAndWait(errorGroup *errgroup.Group) error {
 	if !a.RuntimeIsActive {
 		err := a.ApplyConfigurations()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		errorGroup.Go(func() (err error) {
 			a.RuntimeIsActive = true
@@ -152,7 +151,7 @@ func (a *DXTask) StartAndWait(errorGroup *errgroup.Group) error {
 			}
 			a.RuntimeIsActive = false
 			log.Log.Infof("Stopped task [%s] at %s... ", a.NameId, a.StartAt)
-			return errors.Wrap(err, "error occured")
+			return err
 		})
 
 	}
@@ -163,7 +162,7 @@ func (a *DXTask) StartShutdown() (err error) {
 	if a.RuntimeIsActive {
 		log.Log.Infof("Shutdown api %s start...", a.NameId)
 		a.Cancel()
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }

@@ -58,7 +58,7 @@ func New() *SqlFile {
 func (s *SqlFile) File(file string) error {
 	queries, err := load(file)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	s.files = append(s.files, file)
@@ -71,7 +71,7 @@ func (s *SqlFile) File(file string) error {
 func (s *SqlFile) Files(files ...string) error {
 	for _, file := range files {
 		if err := s.File(file); err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	return nil
@@ -81,7 +81,7 @@ func (s *SqlFile) Files(files ...string) error {
 func (s *SqlFile) Directory(dir string) error {
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	foundSQL := false
@@ -97,7 +97,7 @@ func (s *SqlFile) Directory(dir string) error {
 
 		foundSQL = true
 		if err := s.File(dir + "/" + name); err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 

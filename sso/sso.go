@@ -132,7 +132,7 @@ func (o *DXOrganization) ApplyData(d utils.JSON) (err error) {
 	o.AccessTokenTimeoutDurationSec, err = json2.GetInt64(d, "access_token_timeout_duration_sec")
 	if err != nil {
 		err := log.Log.PanicAndCreateErrorf("DXOrganization/ApplyData", "Can not case AccessTokenTimeoutDurationSec tp Int64 (%v)", err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }

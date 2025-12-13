@@ -13,7 +13,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/table2/compatibility"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
-	"github.com/pkg/errors"
 )
 
 func (rt *DXRawTable2) DoRequestEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
@@ -307,7 +306,7 @@ func (bt *DXRawTable2) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere
 	rowsInfo, list, err := bt.Database.Select(bt.ListViewNameId, bt.FieldTypeMapping, nil,
 		filterWhere, nil, nil, nil, filterOrderBy, nil, nil, nil)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	if onResultList != nil {
@@ -611,7 +610,7 @@ func (bt *DXRawTable2) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err 
 	// Get file as stream
 	data, contentType, err := export.ExportToStream(rowsInfo, list, opts)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	// Set response headers
@@ -626,7 +625,7 @@ func (bt *DXRawTable2) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err 
 
 	_, err = responseWriter.Write(data)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.ResponseHeaderSent = true

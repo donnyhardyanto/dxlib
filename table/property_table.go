@@ -93,21 +93,6 @@ func (pt *DXPropertyTable) GetAsStringOrDefault(l *log.DXLog, propertyId string,
 	return vv, nil
 }
 
-/*
-	func (pt *DXPropertyTable) TxSetAsString(dtx *database.DXDatabaseTx, propertyId string, value string) (err error) {
-		v, err := json.Marshal(utils.JSON{"value": value})
-
-		_, err = pt.TxInsert(dtx, utils.JSON{
-			"nameid": propertyId,
-			"type":   "STRING",
-			"value":  v,
-		})
-		if err != nil {
-			return errors.Wrap(err, "error occured")
-		}
-		return nil
-	}
-*/
 func (pt *DXPropertyTable) TxSetAsString(dtx *database.DXDatabaseTx, propertyId string, value string) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 
@@ -118,29 +103,15 @@ func (pt *DXPropertyTable) TxSetAsString(dtx *database.DXDatabaseTx, propertyId 
 		"nameid": propertyId,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
 
-/*func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value string) (err error) {
-	v, err := json.Marshal(utils.JSON{"value": value})
-
-	_, err = pt.Insert(log, utils.JSON{
-		"nameid": propertyId,
-		"type":   "STRING",
-		"value":  string(v),
-	})
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	return nil
-}*/
-
 func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value string) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	_, _, err = pt.Upsert(utils.JSON{
 		"type":  "STRING",
@@ -149,7 +120,7 @@ func (pt *DXPropertyTable) SetAsString(log *log.DXLog, propertyId string, value 
 		"nameid": propertyId,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -192,23 +163,10 @@ func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, de
 	return int(vv), nil
 }
 
-/*func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
-	v, err := json.Marshal(utils.JSON{"value": value})
-	_, err = pt.TxInsert(dtx, utils.JSON{
-		"nameid": propertyId,
-		"type":   "INT",
-		"value":  v,
-	})
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	return nil
-}*/
-
 func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	_, _, err = pt.TxUpsert(dtx, utils.JSON{
 		"type":  "INT",
@@ -217,29 +175,15 @@ func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId str
 		"nameid": propertyId,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
 
-/*
-	func (pt *DXPropertyTable) SetAsInt(log *log.DXLog, propertyId string, value int) (err error) {
-		v, err := json.Marshal(utils.JSON{"value": value})
-		_, err = pt.Insert(log, utils.JSON{
-			"nameid": propertyId,
-			"type":   "INT",
-			"value":  v,
-		})
-		if err != nil {
-			return errors.Wrap(err, "error occured")
-		}
-		return nil
-	}
-*/
 func (pt *DXPropertyTable) SetAsInt(log *log.DXLog, propertyId string, value int) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	_, _, err = pt.Upsert(utils.JSON{
 		"type":  "INT",
@@ -248,7 +192,7 @@ func (pt *DXPropertyTable) SetAsInt(log *log.DXLog, propertyId string, value int
 		"nameid": propertyId,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -269,24 +213,10 @@ func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, e
 	return int64(vv), nil
 }
 
-/*func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId string, value int64) (err error) {
-	v, err := json.Marshal(utils.JSON{"value": value})
-
-	_, err = pt.TxInsert(dtx, utils.JSON{
-		"nameid": propertyId,
-		"type":   "INT64",
-		"value":  v,
-	})
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	return nil
-}*/
-
 func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId string, value int64) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	_, _, err = pt.TxUpsert(dtx, utils.JSON{
 		"type":  "INT64",
@@ -295,29 +225,15 @@ func (pt *DXPropertyTable) TxSetAsInt64(dtx *database.DXDatabaseTx, propertyId s
 		"nameid": propertyId,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
 
-/*func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value int64) (err error) {
-	v, err := json.Marshal(utils.JSON{"value": value})
-
-	_, err = pt.Insert(log, utils.JSON{
-		"nameid": propertyId,
-		"type":   "INT64",
-		"value":  v,
-	})
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	return nil
-}*/
-
 func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value int64) (err error) {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	_, _, err = pt.Upsert(utils.JSON{
 		"type":  "INT64",
@@ -326,43 +242,11 @@ func (pt *DXPropertyTable) SetAsInt64(log *log.DXLog, propertyId string, value i
 		"nameid": propertyId,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
 
-/*
-	func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) (err error) {
-		_, property, err := pt.TxSelectOne(dtx, nil, utils.JSON{
-			"nameid": propertyId,
-		}, nil)
-		if err != nil {
-			return errors.Wrap(err, "error occured")
-		}
-		v, err := json.Marshal(utils.JSON{"value": value})
-
-		if property == nil {
-			_, err = pt.TxInsert(dtx, utils.JSON{
-				"nameid": propertyId,
-				"type":   "JSON",
-				"value":  v,
-			})
-			if err != nil {
-				return errors.Wrap(err, "error occured")
-			}
-		} else {
-			_, err = pt.TxUpdate(dtx, utils.JSON{
-				"value": v,
-			}, utils.JSON{
-				"nameid": propertyId,
-			})
-			if err != nil {
-				return errors.Wrap(err, "error occured")
-			}
-		}
-		return nil
-	}
-*/
 func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) (err error) {
 
 	v, err := json.Marshal(utils.JSON{"value": value})
@@ -377,44 +261,11 @@ func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId st
 		"nameid": propertyId,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	return nil
 }
-
-/*
-func (pt *DXPropertyTable) SetAsJSON(log *log.DXLog, propertyId string, value map[string]any) (err error) {
-	_, property, err := pt.SelectOne(log, nil, utils.JSON{
-		"nameid": propertyId,
-	}, nil)
-	if err != nil {
-		return errors.Wrap(err, "error occured")
-	}
-	v, err := json.Marshal(utils.JSON{"value": value})
-
-	if property == nil {
-		_, err = pt.Insert(log, utils.JSON{
-			"nameid": propertyId,
-			"type":   "JSON",
-			"value":  v,
-		})
-		if err != nil {
-			return errors.Wrap(err, "error occured")
-		}
-	} else {
-		_, err = pt.Update(log, utils.JSON{
-			"value": v,
-		}, utils.JSON{
-			"nameid": propertyId,
-		})
-		if err != nil {
-			return errors.Wrap(err, "error occured")
-		}
-	}
-	return nil
-}
-*/
 
 func (pt *DXPropertyTable) SetAsJSON(log *log.DXLog, propertyId string, value map[string]any) (err error) {
 
@@ -430,7 +281,7 @@ func (pt *DXPropertyTable) SetAsJSON(log *log.DXLog, propertyId string, value ma
 		"nameid": propertyId,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	return nil
@@ -749,12 +600,12 @@ func (pt *DXPropertyTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKe
 func (pt *DXPropertyTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(pt.FieldNameForRowId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, d, err := pt.ShouldGetById(&aepr.Log, id)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}))
@@ -765,12 +616,12 @@ func (pt *DXPropertyTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err erro
 func (pt *DXPropertyTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, d, err := pt.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}))
@@ -781,12 +632,12 @@ func (pt *DXPropertyTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err
 func (pt *DXPropertyTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, nameid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowNameId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, d, err := pt.ShouldGetByNameId(&aepr.Log, nameid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}))
@@ -797,12 +648,12 @@ func (pt *DXPropertyTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (
 func (pt *DXPropertyTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, utag, err := aepr.GetParameterValueAsString("utag")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, d, err := pt.ShouldGetByUtag(&aepr.Log, utag)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{pt.ResultObjectName: d, "rows_info": rowsInfo}))
@@ -813,7 +664,7 @@ func (pt *DXPropertyTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (er
 func (pt *DXPropertyTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
 	_, _, err = pt.ShouldGetById(&aepr.Log, id)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	tt := time.Now().UTC()
 	newKeyValues["last_modified_at"] = tt
@@ -844,7 +695,7 @@ func (pt *DXPropertyTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newK
 	})
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.DoEdit (%s) ", pt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{
 		pt.FieldNameForRowId: id,
@@ -856,7 +707,7 @@ func (pt *DXPropertyTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newK
 func (pt *DXPropertyTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, newKeyValues utils.JSON) (err error) {
 	_, _, err = pt.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	tt := time.Now().UTC()
 	newKeyValues["last_modified_at"] = tt
@@ -887,7 +738,7 @@ func (pt *DXPropertyTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid strin
 	})
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.DoEdit (%s) ", pt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(pt.ResponseEnvelopeObjectName, utils.JSON{
 		pt.FieldNameForRowUid: uid,
@@ -898,17 +749,17 @@ func (pt *DXPropertyTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid strin
 func (pt *DXPropertyTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(pt.FieldNameForRowId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	_, newFieldValues, err := aepr.GetParameterValueAsJSON("new")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	err = pt.DoEdit(aepr, id, newFieldValues)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -916,17 +767,17 @@ func (pt *DXPropertyTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err erro
 func (pt *DXPropertyTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	_, newFieldValues, err := aepr.GetParameterValueAsJSON("new")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	err = pt.DoEditByUid(aepr, uid, newFieldValues)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -934,7 +785,7 @@ func (pt *DXPropertyTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err
 func (pt *DXPropertyTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
 	_, _, err = pt.ShouldGetById(&aepr.Log, id)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	if pt.Database == nil {
@@ -945,7 +796,7 @@ func (pt *DXPropertyTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (e
 	})
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.DoDelete (%s) ", pt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
 	return nil
@@ -954,7 +805,7 @@ func (pt *DXPropertyTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (e
 func (pt *DXPropertyTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string) (err error) {
 	_, _, err = pt.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	if pt.Database == nil {
@@ -965,7 +816,7 @@ func (pt *DXPropertyTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid str
 	})
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.DoDelete (%s) ", pt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
 	return nil
@@ -974,7 +825,7 @@ func (pt *DXPropertyTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid str
 func (pt *DXPropertyTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(pt.FieldNameForRowId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	newFieldValues := utils.JSON{
@@ -984,10 +835,10 @@ func (pt *DXPropertyTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (er
 	err = pt.DoEdit(aepr, id, newFieldValues)
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.RequestSoftDelete (%s) ", pt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -995,7 +846,7 @@ func (pt *DXPropertyTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) (er
 func (pt *DXPropertyTable) RequestSoftDeleteById(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	newFieldValues := utils.JSON{
@@ -1005,7 +856,7 @@ func (pt *DXPropertyTable) RequestSoftDeleteById(aepr *api.DXAPIEndPointRequest)
 	err = pt.DoEditByUid(aepr, uid, newFieldValues)
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.RequestSoftDelete (%s) ", pt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -1013,13 +864,13 @@ func (pt *DXPropertyTable) RequestSoftDeleteById(aepr *api.DXAPIEndPointRequest)
 func (pt *DXPropertyTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(pt.FieldNameForRowId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	err = pt.DoDelete(aepr, id)
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.RequestHardDelete (%s) ", pt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -1027,13 +878,13 @@ func (pt *DXPropertyTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (er
 func (pt *DXPropertyTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(pt.FieldNameForRowUid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	err = pt.DoDeleteByUid(aepr, uid)
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.RequestHardDelete (%s) ", pt.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -1220,24 +1071,24 @@ func (pt *DXPropertyTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, f
 
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	if !pt.Database.Connected {
 		err := pt.Database.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(pt.Database.Connection, pt.FieldTypeMapping, "", rowPerPage, pageIndex, "*", pt.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	for i := range list {
@@ -1245,7 +1096,7 @@ func (pt *DXPropertyTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, f
 		if onResultList != nil {
 			aListRow, err := onResultList(list[i])
 			if err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 			list[i] = aListRow
 		}
@@ -1269,14 +1120,14 @@ func (pt *DXPropertyTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, f
 func (pt *DXPropertyTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterWhere {
 		filterWhere = ""
 	}
 	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterOrderBy {
 		filterOrderBy = ""
@@ -1284,7 +1135,7 @@ func (pt *DXPropertyTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (er
 
 	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterKeyValues {
 		filterKeyValues = nil
@@ -1292,7 +1143,7 @@ func (pt *DXPropertyTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (er
 
 	_, isDeletedIncluded, err := aepr.GetParameterValueAsBool("is_deleted", false)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	if !isDeletedIncluded {

@@ -324,12 +324,12 @@ func (t *DXRawTable) InRequestInsert(aepr *api.DXAPIEndPointRequest, newKeyValue
 func (t *DXRawTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, d, err := t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
@@ -340,12 +340,12 @@ func (t *DXRawTable) RequestRead(aepr *api.DXAPIEndPointRequest) (err error) {
 func (t *DXRawTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, d, err := t.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
@@ -356,12 +356,12 @@ func (t *DXRawTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) (err error
 func (t *DXRawTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, nameid, err := aepr.GetParameterValueAsString(t.FieldNameForRowNameId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, d, err := t.ShouldGetByNameId(&aepr.Log, nameid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
@@ -372,12 +372,12 @@ func (t *DXRawTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) (err er
 func (t *DXRawTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, utag, err := aepr.GetParameterValueAsString("utag")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, d, err := t.ShouldGetByUtag(&aepr.Log, utag)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{t.ResultObjectName: d, "rows_info": rowsInfo}))
@@ -388,7 +388,7 @@ func (t *DXRawTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) (err erro
 func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValues utils.JSON) (err error) {
 	_, _, err = t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	for k, v := range newKeyValues {
@@ -420,7 +420,7 @@ func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValu
 	})
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.DoEdit (%s) ", t.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
 		t.FieldNameForRowId: id,
@@ -432,7 +432,7 @@ func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, newKeyValu
 func (t *DXRawTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, newKeyValues utils.JSON) (err error) {
 	_, _, err = t.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	for k, v := range newKeyValues {
@@ -464,7 +464,7 @@ func (t *DXRawTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, new
 	})
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.DoEdit (%s) ", t.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
 		t.FieldNameForRowUid: uid,
@@ -476,17 +476,17 @@ func (t *DXRawTable) DoEditByUid(aepr *api.DXAPIEndPointRequest, uid string, new
 func (t *DXRawTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	_, newFieldValues, err := aepr.GetParameterValueAsJSON("new")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	err = t.DoEdit(aepr, id, newFieldValues)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -494,17 +494,17 @@ func (t *DXRawTable) RequestEdit(aepr *api.DXAPIEndPointRequest) (err error) {
 func (t *DXRawTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	_, newFieldValues, err := aepr.GetParameterValueAsJSON("new")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	err = t.DoEditByUid(aepr, uid, newFieldValues)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -512,7 +512,7 @@ func (t *DXRawTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) (err error
 func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err error) {
 	_, _, err = t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	if t.Database == nil {
@@ -524,7 +524,7 @@ func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err err
 	})
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.DoDelete (%s) ", t.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
 	return nil
@@ -533,7 +533,7 @@ func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) (err err
 func (t *DXRawTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string) (err error) {
 	_, _, err = t.ShouldGetByUid(&aepr.Log, uid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	if t.Database == nil {
@@ -545,7 +545,7 @@ func (t *DXRawTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string) (
 	})
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.DoDeleteByUid (%s) ", t.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
 	return nil
@@ -554,13 +554,13 @@ func (t *DXRawTable) DoDeleteByUid(aepr *api.DXAPIEndPointRequest, uid string) (
 func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	err = t.DoDelete(aepr, id)
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.RequestHardDelete (%s) ", t.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -568,13 +568,13 @@ func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) (err erro
 func (t *DXRawTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) (err error) {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	err = t.DoDeleteByUid(aepr, uid)
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at %s.RequestHardDeleteByUid (%s) ", t.NameId, err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -708,14 +708,14 @@ func (t *DXRawTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere s
 	if !t.Database.Connected {
 		err := t.Database.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
 	rowsInfo, list, err := db.NamedQueryList(t.Database.Connection, t.FieldTypeMapping, "*", t.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	for i := range list {
@@ -723,7 +723,7 @@ func (t *DXRawTable) DoRequestList(aepr *api.DXAPIEndPointRequest, filterWhere s
 		if onResultList != nil {
 			aListRow, err := onResultList(list[i])
 			if err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 			list[i] = aListRow
 		}
@@ -752,24 +752,24 @@ func (t *DXRawTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterW
 	if !t.Database.Connected {
 		err := t.Database.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	rowsInfo, list, totalRows, totalPage, _, err := db.NamedQueryPaging(t.Database.Connection, t.FieldTypeMapping, "", rowPerPage, pageIndex, "*", t.ListViewNameId,
 		filterWhere, "", filterOrderBy, filterKeyValues)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	for i := range list {
@@ -777,7 +777,7 @@ func (t *DXRawTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterW
 		if onResultList != nil {
 			aListRow, err := onResultList(list[i])
 			if err != nil {
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 			list[i] = aListRow
 		}
@@ -807,14 +807,14 @@ func (t *DXRawTable) RequestListAll(aepr *api.DXAPIEndPointRequest) (err error) 
 func (t *DXRawTable) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterWhere {
 		filterWhere = ""
 	}
 	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterOrderBy {
 		filterOrderBy = ""
@@ -822,7 +822,7 @@ func (t *DXRawTable) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
 
 	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterKeyValues {
 		filterKeyValues = nil
@@ -834,14 +834,14 @@ func (t *DXRawTable) RequestList(aepr *api.DXAPIEndPointRequest) (err error) {
 func (t *DXRawTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err error) {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterWhere {
 		filterWhere = ""
 	}
 	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterOrderBy {
 		filterOrderBy = ""
@@ -849,7 +849,7 @@ func (t *DXRawTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) (err erro
 
 	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterKeyValues {
 		filterKeyValues = nil
@@ -907,14 +907,14 @@ func (t *DXRawTable) RequestCreate(aepr *api.DXAPIEndPointRequest) (err error) {
 func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err error) {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterWhere {
 		filterWhere = ""
 	}
 	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterOrderBy {
 		filterOrderBy = ""
@@ -922,7 +922,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 
 	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if !isExistFilterKeyValues {
 		filterKeyValues = nil
@@ -963,7 +963,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 		err := t.Database.Connect()
 		if err != nil {
 			aepr.Log.Errorf(err, "error At reconnect db At table %s list (%s) ", t.NameId, err.Error())
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
@@ -971,7 +971,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 		filterWhere, "", filterOrderBy, filterKeyValues)
 
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	// Set export options
@@ -984,7 +984,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 	// Get file as stream
 	data, contentType, err := export.ExportToStream(rowsInfo, list, opts)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	// Set response headers
@@ -999,7 +999,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) (err er
 
 	_, err = responseWriter.Write(data)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	aepr.ResponseHeaderSent = true

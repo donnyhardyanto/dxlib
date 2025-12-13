@@ -4,7 +4,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/api"
 	database2 "github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/log"
-	"github.com/pkg/errors"
 )
 
 type DXTableManager2 struct {
@@ -19,7 +18,7 @@ func (tm *DXTableManager2) ConnectAll() (err error) {
 		d, ok := database2.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		t.Database = d
 	}
@@ -27,7 +26,7 @@ func (tm *DXTableManager2) ConnectAll() (err error) {
 		d, ok := database2.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		t.Database = d
 	}

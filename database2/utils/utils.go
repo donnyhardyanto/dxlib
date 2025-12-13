@@ -124,7 +124,7 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 	err = KillConnections(db, dbName)
 	if err != nil {
 		log.Log.Errorf(err, "Failed to kill connections")
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	var query string

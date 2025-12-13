@@ -6,7 +6,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/table2"
-	"github.com/pkg/errors"
 )
 
 type DXTableManager struct {
@@ -24,7 +23,7 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 		d, ok := database2.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		t.Database = d
 	}
@@ -32,7 +31,7 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 		d, ok := database2.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		t.Database = d
 	}
@@ -40,7 +39,7 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 		d, ok := database2.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		t.Database = d
 	}
@@ -48,7 +47,7 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 		d, ok := database.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		t.Database = d
 	}
@@ -56,7 +55,7 @@ func (tm *DXTableManager) ConnectAll() (err error) {
 		d, ok := database.Manager.Databases[t.DatabaseNameId]
 		if !ok {
 			err = log.Log.ErrorAndCreateErrorf("database nameid '%s' not found in database manager", t.DatabaseNameId)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		t.Database = d
 	}

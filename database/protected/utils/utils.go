@@ -109,7 +109,7 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 	err = KillConnections(db, dbName)
 	if err != nil {
 		log.Log.Errorf(err, "Failed to kill connections: %s", err.Error())
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	var query string
@@ -178,13 +178,7 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 	}
 
 	return nil
-	/*
-		query := fmt.Sprintf("CREATE DATABASE "%s"", dbName)
-		_, err := db.Exec(query)
-		if err != nil {
-			return errors.Wrap(err, "error occured")ors.Errorf("failed to create database: %+v", err)
-		}
-		return nil*/
+
 }
 
 func SQLBuildParameterizedWhereClause(driverName string, pv *[]any, template string, values ...string) string {

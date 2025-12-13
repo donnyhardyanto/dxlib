@@ -444,7 +444,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	case "oracle":
 		tx, err := d.TransactionBegin(isolationLevel)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		err = callback(tx)
 		if err != nil {
@@ -453,7 +453,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 			if errTx != nil {
 				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 			}
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		err = tx.Commit()
 		if err != nil {
@@ -462,7 +462,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 			if errTx != nil {
 				log.Errorf(err, "ErrorInCommitRollback: (%v)", errTx.Error())
 			}
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 
 		return nil
@@ -474,7 +474,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		ReadOnly:  false,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	dtx := &DXDatabaseTx{
 		Tx:  tx,
@@ -487,7 +487,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		if errTx != nil {
 			log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())
 		}
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	err = dtx.Tx.Commit()
 	if err != nil {
@@ -496,7 +496,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		if errTx != nil {
 			log.Errorf(err, "ErrorInCommitRollback: (%v)", errTx.Error())
 		}
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 
 	return nil

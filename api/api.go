@@ -319,7 +319,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			aepr.WriteResponseAsError(http.StatusBadRequest, err3)
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%v", err2.Error())
+				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%+v", err2)
 				return
 			}
 			aepr.Log.Errorf(err3, "ONMIDDLEWARE_ERROR:%v\nRaw Request :\n%v\n", err3, string(requestDump))
