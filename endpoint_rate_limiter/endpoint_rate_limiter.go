@@ -3,10 +3,11 @@ package endpoint_rate_limiter
 import (
 	"context"
 	"fmt"
+	"time"
+
 	dxRedis "github.com/donnyhardyanto/dxlib/redis"
 	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
-	"time"
 )
 
 // RateLimitConfig defines the rate limit settings for an API
@@ -121,7 +122,7 @@ func (e *EndpointRateLimiter) Reset(ctx context.Context, groupNameId, identifier
 	pipe.Del(ctx, attemptsKey)
 	pipe.Del(ctx, blockedKey)
 	_, err := pipe.Exec(ctx)
-	return errors.Wrap(err, "error occured")
+	return errors.Wrap(err, "ERROR_IN_ENDPOINT_RATE_LIMITER_RESET")
 }
 
 // GetRemainingAttempts returns the number of remaining attempts for an identifier on a specific API
@@ -153,7 +154,7 @@ func (e *EndpointRateLimiter) ResetAll(ctx context.Context, groupNameId string) 
 	for {
 		keys, cursor, err = p.Connection.Scan(ctx, cursor, pattern, 100).Result()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_IN_ENDPOINT_RATE_LIMITER_RESET_ALL_SCAN_PATTERN")
 		}
 
 		if len(keys) > 0 {
@@ -164,7 +165,7 @@ func (e *EndpointRateLimiter) ResetAll(ctx context.Context, groupNameId string) 
 			}
 			_, err = pipe.Exec(ctx)
 			if err != nil {
-				return errors.Wrap(err, "error occured")
+				return errors.Wrap(err, "ERROR_IN_ENDPOINT_RATE_LIMITER_RESET_ALL_DELETE_KEYS")
 			}
 		}
 

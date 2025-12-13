@@ -85,7 +85,7 @@ func (a *DXApp) Run() (err error) {
 		err = a.InitVault.Start()
 		if err != nil {
 			log.Log.Error(err.Error(), err)
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
@@ -93,21 +93,21 @@ func (a *DXApp) Run() (err error) {
 		err := a.OnDefine()
 		if err != nil {
 			log.Log.Error(err.Error(), err)
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_ON_DEFINE_CALLBACK")
 		}
 	}
 	if a.OnDefineConfiguration != nil {
 		err := a.OnDefineConfiguration()
 		if err != nil {
 			log.Log.Error(err.Error(), err)
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_ON_DEFINE_CONFIGURATION_CALLBACK")
 		}
 	}
 
 	err = a.execute()
 	if err != nil {
 		log.Log.Error(err.Error(), err)
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	return nil
 }
@@ -115,13 +115,13 @@ func (a *DXApp) Run() (err error) {
 func (a *DXApp) loadConfiguration() (err error) {
 	err = configuration.Manager.Load()
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	_, a.IsRedisExist = configuration.Manager.Configurations["redis"]
 	if a.IsRedisExist {
 		err = redis.Manager.LoadFromConfiguration("redis")
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	_, a.IsStorageExist = configuration.Manager.Configurations["storage"]
@@ -139,14 +139,14 @@ func (a *DXApp) loadConfiguration() (err error) {
 	if a.IsObjectStorageExist {
 		err = object_storage.Manager.LoadFromConfiguration("object_storage")
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	_, a.IsAPIExist = configuration.Manager.Configurations["api"]
 	if a.IsAPIExist {
 		err = api.Manager.LoadFromConfiguration("api")
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	return nil
@@ -242,25 +242,25 @@ func (a *DXApp) Stop() (err error) {
 	if a.OnStopping != nil {
 		err := a.OnStopping()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_ON_STOPPING_CALLBACK")
 		}
 	}
 	if a.IsTaskExist {
 		err = task.Manager.StopAll()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	if a.IsAPIExist {
 		err = api.Manager.StopAll()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	if a.IsRedisExist {
 		err = redis.Manager.DisconnectAll()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	if a.IsStorageExist {
@@ -276,7 +276,7 @@ func (a *DXApp) Stop() (err error) {
 	if a.IsObjectStorageExist {
 		err = object_storage.Manager.DisconnectAll()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	log.Log.Info("Stopped")
@@ -288,7 +288,7 @@ func (a *DXApp) execute() (err error) {
 	a.RuntimeErrorGroup, a.RuntimeErrorGroupContext = errgroup.WithContext(core.RootContext)
 	err = a.start()
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return err
 	}
 	if a.IsLoop {
 		defer func() {
@@ -296,8 +296,7 @@ func (a *DXApp) execute() (err error) {
 			if err2 != nil {
 				log.Log.Infof("Error in Stopping.Stop(): (%v)", err2.Error())
 			}
-
-			//log.Log.Info("Stopped")
+			log.Log.Info("Stopping...")
 		}()
 	}
 
@@ -306,7 +305,7 @@ func (a *DXApp) execute() (err error) {
 		err = a.OnExecute()
 		if err != nil {
 			log.Log.Infof("onExecute error (%v)", err.Error())
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 
@@ -315,7 +314,7 @@ func (a *DXApp) execute() (err error) {
 		err = a.RuntimeErrorGroup.Wait()
 		if err != nil {
 			log.Log.Infof("Exit reason: %v", err.Error())
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 	}
 	return nil

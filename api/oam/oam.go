@@ -1,10 +1,10 @@
 package oam
 
 import (
-	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
+
+	"github.com/donnyhardyanto/dxlib/api"
 )
 
 func LogRequest(r *http.Request) (map[string]interface{}, error) {
@@ -37,7 +37,10 @@ func Echo(r *http.Request) (map[string]interface{}, error) {
 
 func Ping(aepr *api.DXAPIEndPointRequest) (err error) {
 	data, err := Echo(aepr.Request)
+	if err != nil {
+		return err
+	}
 	aepr.Log.Infof("Receive (%v): %v", err, data)
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, data)
-	return errors.Wrap(err, "error occured")
+	return nil
 }
