@@ -3,6 +3,9 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"time"
+	_ "time/tzdata"
+
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/log"
@@ -10,8 +13,6 @@ import (
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
-	"time"
-	_ "time/tzdata"
 )
 
 type DXRedis struct {
@@ -63,7 +64,7 @@ func (rs *DXRedisManager) LoadFromConfiguration(configurationNameId string) (err
 		d, ok := v.(utils.JSON)
 		if !ok {
 			err := log.Log.ErrorAndCreateErrorf("Cannot read %s as JSON", k)
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_IN_REDIS_MANAGER_LOAD_FROM_CONFIGURATION")
 		}
 		isConnectAtStart, ok = d["is_connect_at_start"].(bool)
 		if !ok {
@@ -76,7 +77,7 @@ func (rs *DXRedisManager) LoadFromConfiguration(configurationNameId string) (err
 		redisObject := rs.NewRedis(k, isConnectAtStart, mustConnected)
 		err := redisObject.ApplyFromConfiguration()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_IN_REDIS_MANAGER_LOAD_FROM_CONFIGURATION_APPLY_FROM_CONFIGURATION")
 		}
 	}
 	return nil
@@ -89,7 +90,7 @@ func (rs *DXRedisManager) ConnectAllAtStart() (err error) {
 			if v.IsConnectAtStart {
 				err = v.Connect()
 				if err != nil {
-					return errors.Wrap(err, "error occured")
+					return errors.Wrap(err, "ERROR_IN_REDIS_MANAGER_CONNECT_ALL_AT_START_CONNECT")
 				}
 			}
 		}
@@ -102,7 +103,7 @@ func (rs *DXRedisManager) ConnectAll() (err error) {
 	for _, v := range rs.Redises {
 		err = v.Connect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_IN_REDIS_MANAGER_CONNECT_ALL_CONNECT")
 		}
 	}
 	return nil
@@ -113,7 +114,7 @@ func (rs *DXRedisManager) DisconnectAll() (err error) {
 	for _, v := range rs.Redises {
 		err = v.Disconnect()
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_IN_REDIS_MANAGER_DISCONNECT_ALL_DISCONNECT")
 		}
 	}
 	return nil
@@ -125,27 +126,27 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		configurationData, ok := dxlibv3Configuration.Manager.Configurations["redis"]
 		if !ok {
 			err = log.Log.PanicAndCreateErrorf("DXRedis/ApplyFromConfiguration/1", "Redises configuration not found")
-			return errors.Wrap(err, "error occured")
+			return err
 		}
 		m := *(configurationData.Data)
 		redisConfiguration, ok := m[r.NameId].(utils.JSON)
 		if !ok {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Redis %s configuration not found", r.NameId)
-				return errors.Wrap(err, "error occured")
+				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("Manager is unusable, Redis %s configuration not found", r.NameId)
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 		}
 		r.Address, ok = redisConfiguration["address"].(string)
 		if !ok {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Mandatory address field in Redis %s configuration not exist", r.NameId)
-				return errors.Wrap(err, "error occured")
+				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in Redis %s configuration not exist", r.NameId)
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 		}
 		r.UserName, r.HasUserName = redisConfiguration["user_name"].(string)
@@ -154,10 +155,10 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		if err != nil {
 			if r.MustConnected {
 				err := log.Log.PanicAndCreateErrorf("Mandatory database_index field in Redis %s configuration not exist, check configuration and make sure it was integer not a string", r.NameId)
-				return errors.Wrap(err, "error occured")
+				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in Redis %s configuration not exist", r.NameId)
-				return errors.Wrap(err, "error occured")
+				return err
 			}
 		}
 		r.IsConfigured = true
@@ -205,7 +206,7 @@ func (r *DXRedis) Connect() (err error) {
 func (r *DXRedis) Ping() (err error) {
 	err = r.Connection.Ping(r.Context).Err()
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_REDIS_PING")
 	}
 
 	return nil

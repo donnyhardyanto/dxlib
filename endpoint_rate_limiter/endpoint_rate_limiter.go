@@ -86,10 +86,13 @@ func (e *EndpointRateLimiter) IsAllowed(ctx context.Context, groupNameId, identi
 	// Get current attempts
 	attemptsKey := e.getAttemptKey(groupNameId, identifier)
 	attempts, err := p.Connection.Get(ctx, attemptsKey).Int()
-	if err == redis.Nil {
+	if errors.Is(err, redis.Nil) {
 		// Key doesn't exist, first attempt
 		err = p.Connection.Set(ctx, attemptsKey, 1, config.TimeWindow).Err()
-		return errors.Wrap(err, "error occured") == nil, err
+		if err != nil {
+			return false, err
+		}
+		return true, err
 	}
 	if err != nil {
 		return false, err
@@ -109,7 +112,10 @@ func (e *EndpointRateLimiter) IsAllowed(ctx context.Context, groupNameId, identi
 
 	// Increment attempts
 	err = p.Connection.Incr(ctx, attemptsKey).Err()
-	return errors.Wrap(err, "error occured") == nil, err
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // Reset clears the rate limit counters and blocked status for a specific identifier and API

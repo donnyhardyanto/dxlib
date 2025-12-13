@@ -1,9 +1,10 @@
 package os
 
 import (
-	"github.com/pkg/errors"
 	"os"
 	"strconv"
+
+	"github.com/pkg/errors"
 )
 
 import (
@@ -16,12 +17,12 @@ func LoadEnvFile(filename string) error {
 	if os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_LOAD_ENV_FILE_STAT_FILENAME")
 	}
 
 	file, err := os.Open(filename)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_LOAD_ENV_FILE_OPEN")
 	}
 	defer func(file *os.File) {
 		err := file.Close()
@@ -40,12 +41,12 @@ func LoadEnvFile(filename string) error {
 		key, value := parts[0], parts[1]
 		err := os.Setenv(key, value)
 		if err != nil {
-			return errors.Wrap(err, "error occured")
+			return errors.Wrap(err, "ERROR_IN_LOAD_ENV_FILE_SETENV")
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_LOAD_ENV_FILE_SCAN")
 	}
 
 	return nil

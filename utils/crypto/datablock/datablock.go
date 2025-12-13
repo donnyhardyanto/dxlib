@@ -5,12 +5,13 @@ import (
 	"crypto/ed25519"
 	"crypto/sha512"
 	"encoding/hex"
+	"time"
+	_ "time/tzdata"
+
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/donnyhardyanto/dxlib/utils/crypto/aes"
 	"github.com/donnyhardyanto/dxlib/utils/lv"
 	"github.com/pkg/errors"
-	"time"
-	_ "time/tzdata"
 )
 
 var PayloadUnpackTTL = 5 * time.Minute
@@ -66,7 +67,7 @@ func (db *DataBlock) SetTimeNow() error {
 	tAsBytes := []byte(tAsString)
 	err := db.Time.SetValue(tAsBytes)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_DATA_BLOCK_SET_TIME_NOW")
 	}
 	return nil
 }
@@ -74,7 +75,7 @@ func (db *DataBlock) SetTimeNow() error {
 func (db *DataBlock) GenerateNonce() (err error) {
 	err = db.Nonce.SetValue(utils.RandomData(32))
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_DATA_BLOCK_GENERATE_NONCE")
 	}
 	return nil
 }
@@ -82,11 +83,11 @@ func (db *DataBlock) GenerateNonce() (err error) {
 func (db *DataBlock) SetDataValue(data any) (err error) {
 	err = db.Data.SetValue(data)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_DATA_BLOCK_SET_DATA_VALUE")
 	}
 	err = db.GenerateDataHash()
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_DATA_BLOCK_SET_DATA_VALUE_GENERATE_DATA_HASH")
 	}
 	return nil
 }
@@ -96,7 +97,7 @@ func (db *DataBlock) GenerateDataHash() (err error) {
 	x := sha512.Sum512(dataAsBytes)
 	err = db.DataHash.SetValue(x[:])
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_DATA_BLOCK_GENERATE_DATA_HASH")
 	}
 	return nil
 }

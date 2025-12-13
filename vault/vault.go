@@ -2,12 +2,13 @@ package vault
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
-	"strconv"
-	"strings"
 )
 
 type DXVaultInterface interface {
@@ -79,7 +80,7 @@ func (hv *DXHashicorpVault) Start() (err error) {
 	config.Address = hv.Address
 	hv.Client, err = vault.NewClient(config)
 	if err != nil {
-		return errors.Wrap(err, "error occured")
+		return errors.Wrap(err, "ERROR_IN_HASHICORP_VAULT_CLIENT_CREATION")
 	}
 	hv.Client.SetToken(hv.Token)
 	return nil
