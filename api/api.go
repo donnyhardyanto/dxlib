@@ -285,7 +285,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	aepr = p.NewEndPointRequest(requestContext, w, r)
 	defer func() {
-		if (err != nil) && (dxlib.IsDebug) && (p.RequestContentType == utilsHttp.ContentTypeApplicationJSON) {
+		if (err != nil) && (dxlib.IsDebug) && (p.RequestContentType == utilsHttp.RequestContentTypeApplicationJSON) {
 			if aepr.RequestBodyAsBytes != nil {
 				aepr.Log.Infof("%d %s Request: %s", aepr.ResponseStatusCode, r.URL.Path, string(aepr.RequestBodyAsBytes))
 			}

@@ -489,7 +489,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 		}
 	case "POST", "PUT":
 		switch aepr.EndPoint.RequestContentType {
-		case utilsHttp.ContentTypeApplicationOctetStream:
+		case utilsHttp.RequestContentTypeApplicationOctetStream:
 			for _, v := range aepr.EndPoint.Parameters {
 				rpv, ok := aepr.ParameterValues[v.NameId]
 				variablePath := v.NameId
@@ -507,7 +507,7 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 				}
 			}
 			return aepr.preProcessRequestAsApplicationOctetStream()
-		case utilsHttp.ContentTypeApplicationJSON:
+		case utilsHttp.RequestContentTypeApplicationJSON:
 			return aepr.preProcessRequestAsApplicationJSON()
 		default:
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request content-type is not supported yet (%v)", aepr.EndPoint.RequestContentType)

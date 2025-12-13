@@ -13,27 +13,27 @@ import (
 type RequestContentType int
 
 const (
-	ContentTypeNone RequestContentType = iota
-	ContentTypeApplicationOctetStream
-	ContentTypeTextPlain
-	ContentTypeApplicationJSON
-	ContentTypeApplicationXWwwFormUrlEncoded
-	ContentTypeMultiPartFormData
+	RequestContentTypeNone RequestContentType = iota
+	RequestContentTypeApplicationOctetStream
+	RequestContentTypeTextPlain
+	RequestContentTypeApplicationJSON
+	RequestContentTypeApplicationXWwwFormUrlEncoded
+	RequestContentTypeMultiPartFormData
 )
 
 func (t RequestContentType) String() string {
 	switch t {
-	case ContentTypeApplicationJSON:
+	case RequestContentTypeApplicationJSON:
 		return "application/json"
-	case ContentTypeApplicationXWwwFormUrlEncoded:
+	case RequestContentTypeApplicationXWwwFormUrlEncoded:
 		return "application/x-www-form-urlencoded"
-	case ContentTypeMultiPartFormData:
+	case RequestContentTypeMultiPartFormData:
 		return "multipart/form-data"
-	case ContentTypeTextPlain:
+	case RequestContentTypeTextPlain:
 		return "text/plain"
-	case ContentTypeApplicationOctetStream: // Map to application/octet-stream
+	case RequestContentTypeApplicationOctetStream: // Map to application/octet-stream
 		return "application/octet-stream"
-	case ContentTypeNone:
+	case RequestContentTypeNone:
 		return ""
 	default:
 		return ""
