@@ -116,29 +116,29 @@ func (hv *DXHashicorpVault) ResolveAsInt(v string) int {
 }
 
 func (hv *DXHashicorpVault) ResolveAsBool(v string) bool {
-	vi := 0
 	s := hv.VaultMapString(&log.Log, v)
-	if s != "" {
-		s = strings.TrimSpace(s)
-		s = strings.ToLower(s)
-		if slices.Contains([]string{"true", "yes", "on", "1"}, s) {
-			return true
-		}
-		if slices.Contains([]string{"false", "no", "off", "0"}, s) {
-			return false
-		}
-		parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
-		if parseErr != nil {
-			panic(parseErr)
-			return false
-		}
-		vi = int(parsedValue)
-	}
-	if vi == 0 {
+	if s == "" {
 		return false
-	} else {
+	}
+	s = strings.TrimSpace(s)
+	s = strings.ToLower(s)
+	if slices.Contains([]string{"true", "yes", "on", "1"}, s) {
 		return true
 	}
+	if slices.Contains([]string{"false", "no", "off", "0"}, s) {
+		return false
+	}
+	parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
+	if parseErr != nil {
+		panic(parseErr)
+		return false
+	}
+	vi := int(parsedValue)
+	if vi > 1 {
+		return true
+	}
+	
+	return false
 }
 
 func (hv *DXHashicorpVault) ResolveAsString(v string) string {
@@ -148,7 +148,7 @@ func (hv *DXHashicorpVault) ResolveAsString(v string) string {
 func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
-		fmt.Sprintf("GetStringOrDefault/hv.VaultGetData=%s", err.Error())
+		fmt.Printf("GetStringOrDefault/hv.VaultGetData=%s", err.Error())
 		panic(err)
 	}
 	dv, ok := data[v]
@@ -200,19 +200,31 @@ func (hv *DXHashicorpVault) GetBoolOrDefault(v string, d bool) bool {
 	if err != nil {
 		panic(err)
 	}
-	dv, ok := data[v]
+	dv, ok := data[v].(string)
 	if !ok {
 		return d
 	}
-	dvv, err := strconv.ParseInt(dv.(string), 10, 64)
-	if err != nil {
-		panic(err)
+	if dv == "" {
+		return d
 	}
-	if dvv == 0 {
-		return false
-	} else {
+	dv = strings.TrimSpace(dv)
+	dv = strings.ToLower(dv)
+	if slices.Contains([]string{"true", "yes", "on", "1"}, dv) {
 		return true
 	}
+	if slices.Contains([]string{"false", "no", "off", "0"}, dv) {
+		return false
+	}
+	parsedValue, parseErr := strconv.ParseInt(dv, 10, 32)
+	if parseErr != nil {
+		panic(parseErr)
+		return false
+	}
+	vi := int(parsedValue)
+	if vi >= 1 {
+		return true
+	}
+	return false
 }
 
 func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []string, err error) {
