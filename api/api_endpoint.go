@@ -18,6 +18,7 @@ const (
 	EndPointTypeHTTPJSON DXAPIEndPointType = iota
 	EndPointTypeHTTPUploadStream
 	EndPointTypeHTTPDownloadStream
+	EndPointTypeHTTPDownloadStreamV2
 	EndPointTypeWS
 	EndPointTypeHTTPEndToEndEncryptionV1
 	EndPointTypeHTTPEndToEndEncryptionV2
@@ -31,6 +32,8 @@ func (d DXAPIEndPointType) String() string {
 		return "EndPointTypeHTTPUploadStream"
 	case EndPointTypeHTTPDownloadStream:
 		return "EndPointTypeHTTPDownloadStream"
+	case EndPointTypeHTTPDownloadStreamV2:
+		return "EndPointTypeHTTPDownloadStreamV2"
 	case EndPointTypeWS:
 		return "EndPointTypeWS"
 	case EndPointTypeHTTPEndToEndEncryptionV1:

@@ -561,7 +561,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		}
 	case EndPointTypeHTTPEndToEndEncryptionV1:
 		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_JSON_ENDPOINT_TYPE_X_NOT_IMPLEMENTED_YET:%v", aepr.EndPoint.Method)
-	case EndPointTypeHTTPEndToEndEncryptionV2:
+	case EndPointTypeHTTPEndToEndEncryptionV2, EndPointTypeHTTPDownloadStreamV2:
 		preKeyIndex, err := utils.GetStringFromKV(bodyAsJSON, "i")
 		if err != nil {
 			return err
