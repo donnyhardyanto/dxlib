@@ -2,6 +2,7 @@ package vault
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -118,6 +119,14 @@ func (hv *DXHashicorpVault) ResolveAsBool(v string) bool {
 	vi := 0
 	s := hv.VaultMapString(&log.Log, v)
 	if s != "" {
+		s = strings.TrimSpace(s)
+		s = strings.ToLower(s)
+		if slices.Contains([]string{"true", "yes", "on", "1"}, s) {
+			return true
+		}
+		if slices.Contains([]string{"false", "no", "off", "0"}, s) {
+			return false
+		}
 		parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
 		if parseErr != nil {
 			panic(parseErr)
