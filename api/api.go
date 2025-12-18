@@ -296,6 +296,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	err = aepr.PreProcessRequest()
 	if err != nil {
+		if aepr.ResponseHeaderSent {
+			return
+		}
 		aepr.WriteResponseAsError(http.StatusBadRequest, err)
 		requestDump, err2 := aepr.RequestDumpAsString()
 		if err2 != nil {
@@ -315,6 +318,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 		err = middleware(aepr)
 		if err != nil {
+			if aepr.ResponseHeaderSent {
+				return
+			}
 			err3 := errors.Wrap(err, fmt.Sprintf("MIDDLEWARE_ERROR:\n%+v", err))
 			aepr.WriteResponseAsError(http.StatusBadRequest, err3)
 			requestDump, err2 := aepr.RequestDump()
@@ -350,6 +356,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	if p.OnExecute != nil {
 		err = p.OnExecute(aepr)
 		if err != nil {
+			if aepr.ResponseHeaderSent {
+				return
+			}
 			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:\n%+v\n", err)
 
 			requestDump, err2 := aepr.RequestDump()

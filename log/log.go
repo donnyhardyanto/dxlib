@@ -81,7 +81,7 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 	case DXLogLevelWarn:
 		a.Warnf("%s", text)
 	case DXLogLevelError:
-		a.Errorf("%s", text)
+		a.Errorf("%s\n%s", text, stack)
 	case DXLogLevelFatal:
 		a.Fatalf("Terminating... %s", text)
 	case DXLogLevelPanic:
