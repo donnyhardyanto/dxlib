@@ -1,76 +1,80 @@
 package _type
 
 type TypeCompatibilityMappingStruct struct {
-	Api_parameter_type string
-	Go_type            string
-	Db_type_postgres   string
-	Db_type_sqlserver  string
-	Db_type_mysql      string
-	Db_type_oracle     string
+	APIParameterType string
+	JSONType         string
+	GoType           string
+	DbTypePostgreSQL string
+	DbTypeSqlserver  string
+	DbTypeMysql      string
+	DbTypeOracle     string
 }
 
 var Types []TypeCompatibilityMappingStruct
+
+type TModel struct {
+}
 
 func init() {
 	Types = []TypeCompatibilityMappingStruct{}
 	var a TypeCompatibilityMappingStruct
 
 	a = TypeCompatibilityMappingStruct{
-		Api_parameter_type: "string",
-		Go_type:            "string",
-		Db_type_postgres:   "VARCHAR(1024)",
-		Db_type_sqlserver:  "VARCHAR(1024)",
-		Db_type_mysql:      "VARCHAR(1024)",
-		Db_type_oracle:     "VARCHAR(1024)",
+		APIParameterType: "string",
+		GoType:           "string",
+		DbTypePostgreSQL: "VARCHAR(1024)",
+		DbTypeSqlserver:  "VARCHAR(1024)",
+		DbTypeMysql:      "VARCHAR(1024)",
+		DbTypeOracle:     "VARCHAR(1024)",
 	}
 	Types = append(Types, a)
 
 	a = TypeCompatibilityMappingStruct{
-		Api_parameter_type: "int",
-		Go_type:            "int",
-		Db_type_postgres:   "INT",
-		Db_type_sqlserver:  "INT",
-		Db_type_mysql:      "INT",
-		Db_type_oracle:     "INT",
+		APIParameterType: "int",
+		GoType:           "int",
+		DbTypePostgreSQL: "INT",
+		DbTypeSqlserver:  "INT",
+		DbTypeMysql:      "INT",
+		DbTypeOracle:     "INT",
 	}
 	Types = append(Types, a)
 
 	a = TypeCompatibilityMappingStruct{
-		Api_parameter_type: "bool",
-		Go_type:            "bool",
-		Db_type_postgres:   "BOOLEAN",
-		Db_type_sqlserver:  "BIT",
-		Db_type_mysql:      "BOOLEAN",
-		Db_type_oracle:     "NUMBER(1)",
+		APIParameterType: "bool",
+		GoType:           "bool",
+		DbTypePostgreSQL: "BOOLEAN",
+		DbTypeSqlserver:  "BIT",
+		DbTypeMysql:      "BOOLEAN",
+		DbTypeOracle:     "NUMBER(1)",
 	}
 	Types = append(Types, a)
 
 	a = TypeCompatibilityMappingStruct{
-		Api_parameter_type: "float64",
-		Go_type:            "float64",
-		Db_type_postgres:   "FLOAT",
-		Db_type_sqlserver:  "FLOAT",
-		Db_type_mysql:      "FLOAT",
-		Db_type_oracle:     "FLOAT",
+		APIParameterType: "float64",
+		GoType:           "float64",
+		DbTypePostgreSQL: "FLOAT",
+		DbTypeSqlserver:  "FLOAT",
+		DbTypeMysql:      "FLOAT",
+		DbTypeOracle:     "FLOAT",
 	}
 	Types = append(Types, a)
 
 	a = TypeCompatibilityMappingStruct{
-		Api_parameter_type: "[]byte",
-		Go_type:            "[]byte",
-		Db_type_postgres:   "BYTEA",
-		Db_type_sqlserver:  "IMAGE",
-		Db_type_mysql:      "BLOB",
-		Db_type_oracle:     "BLOB",
+		APIParameterType: "[]byte",
+		GoType:           "[]byte",
+		DbTypePostgreSQL: "BYTEA",
+		DbTypeSqlserver:  "IMAGE",
+		DbTypeMysql:      "BLOB",
+		DbTypeOracle:     "BLOB",
 	}
 	Types = append(Types, a)
 
 	a = TypeCompatibilityMappingStruct{
-		Api_parameter_type: "time.Time",
-		Go_type:            "time.Time",
-		Db_type_postgres:   "TIMESTAMP",
-		Db_type_sqlserver:  "DATETIME",
-		Db_type_mysql:      "DATETIME",
-		Db_type_oracle:     "TIMESTAMP",
+		APIParameterType: "time.Time",
+		GoType:           "time.Time",
+		DbTypePostgreSQL: "TIMESTAMP",
+		DbTypeSqlserver:  "DATETIME",
+		DbTypeMysql:      "DATETIME",
+		DbTypeOracle:     "TIMESTAMP",
 	}
 }
