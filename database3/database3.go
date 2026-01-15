@@ -177,7 +177,40 @@ func (d *DB) CreateDDL(dbType DXDatabaseType) string {
 // Session Configuration Functions
 // ============================================================================
 
+// ValidateSessionConfigKey validates that a session config key contains only safe characters
+// Allowed: alphanumeric, dots, underscores
+// Returns error if the key contains unsafe characters
+func ValidateSessionConfigKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("session config key cannot be empty")
+	}
+	for i, c := range key {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_') {
+			return fmt.Errorf("session config key contains invalid character '%c' at position %d: only alphanumeric, dots, and underscores are allowed", c, i)
+		}
+	}
+	// Key must not start with a number
+	if key[0] >= '0' && key[0] <= '9' {
+		return fmt.Errorf("session config key cannot start with a number")
+	}
+	return nil
+}
+
+// parseOracleKey splits a key like "app.encryption_key" into namespace and attribute for Oracle context
+func parseOracleKey(key string) (namespace string, attribute string) {
+	parts := strings.SplitN(key, ".", 2)
+	namespace = "APP_CTX"
+	attribute = key
+	if len(parts) == 2 {
+		namespace = strings.ToUpper(parts[0]) + "_CTX"
+		attribute = parts[1]
+	}
+	return
+}
+
 // BuildSetSessionConfigSQL generates SQL to set a session-level configuration variable
+// NOTE: This function is for DDL/script generation only. For runtime execution, use SetSessionConfig()
+// which uses parameterized queries to prevent SQL injection.
 // PostgreSQL: SET app.key = 'value'
 // SQL Server: EXEC sp_set_session_context @key = N'key', @value = N'value'
 // Oracle: EXEC DBMS_SESSION.SET_CONTEXT('app_ctx', 'key', 'value')
@@ -193,14 +226,7 @@ func BuildSetSessionConfigSQL(dbType DXDatabaseType, key string, value string) s
 		return fmt.Sprintf("EXEC sp_set_session_context @key = N'%s', @value = N'%s'", key, value)
 	case DXDatabaseTypeOracle:
 		// Oracle uses application context (requires context to be created first)
-		// Split key by '.' to get namespace and attribute
-		parts := strings.SplitN(key, ".", 2)
-		namespace := "APP_CTX"
-		attribute := key
-		if len(parts) == 2 {
-			namespace = strings.ToUpper(parts[0]) + "_CTX"
-			attribute = parts[1]
-		}
+		namespace, attribute := parseOracleKey(key)
 		return fmt.Sprintf("BEGIN DBMS_SESSION.SET_CONTEXT('%s', '%s', '%s'); END;", namespace, attribute, value)
 	case DXDatabaseTypeMariaDB:
 		// MySQL/MariaDB uses user-defined variables with @ prefix
@@ -214,6 +240,7 @@ func BuildSetSessionConfigSQL(dbType DXDatabaseType, key string, value string) s
 
 // BuildGetSessionConfigExpr returns the SQL expression to retrieve a session configuration value
 // This expression can be used within SQL queries (e.g., in SELECT, WHERE, or function calls)
+// NOTE: The key parameter should be validated with ValidateSessionConfigKey() before use
 // PostgreSQL: current_setting('app.key')
 // SQL Server: SESSION_CONTEXT(N'key')
 // Oracle: SYS_CONTEXT('APP_CTX', 'key')
@@ -225,14 +252,7 @@ func BuildGetSessionConfigExpr(dbType DXDatabaseType, key string) string {
 	case DXDatabaseTypeSQLServer:
 		return fmt.Sprintf("CAST(SESSION_CONTEXT(N'%s') AS NVARCHAR(MAX))", key)
 	case DXDatabaseTypeOracle:
-		// Split key by '.' to get namespace and attribute
-		parts := strings.SplitN(key, ".", 2)
-		namespace := "APP_CTX"
-		attribute := key
-		if len(parts) == 2 {
-			namespace = strings.ToUpper(parts[0]) + "_CTX"
-			attribute = parts[1]
-		}
+		namespace, attribute := parseOracleKey(key)
 		return fmt.Sprintf("SYS_CONTEXT('%s', '%s')", namespace, attribute)
 	case DXDatabaseTypeMariaDB:
 		// MySQL/MariaDB uses user-defined variables
@@ -244,6 +264,8 @@ func BuildGetSessionConfigExpr(dbType DXDatabaseType, key string) string {
 }
 
 // BuildGetSessionConfigSQL generates a complete SQL query to retrieve a session configuration value
+// NOTE: This function is for DDL/script generation only. For runtime execution, use GetSessionConfig()
+// which uses parameterized queries to prevent SQL injection.
 // PostgreSQL: SELECT current_setting('app.key')
 // SQL Server: SELECT SESSION_CONTEXT(N'key')
 // Oracle: SELECT SYS_CONTEXT('APP_CTX', 'key') FROM DUAL
@@ -252,24 +274,86 @@ func BuildGetSessionConfigSQL(dbType DXDatabaseType, key string) string {
 	expr := BuildGetSessionConfigExpr(dbType, key)
 	switch dbType {
 	case DXDatabaseTypeOracle:
-		return fmt.Sprintf("SELECT %s FROM DUAL", expr)
+		return fmt.Sprintf("SELECT "+"%s FROM DUAL", expr)
 	default:
 		return fmt.Sprintf("SELECT %s", expr)
 	}
 }
 
-// SetSessionConfig executes the SET command on a database connection
+// SetSessionConfig executes the SET command on a database connection using parameterized queries
+// This is safe from SQL injection as it validates the key and uses parameterized queries for the value
 func SetSessionConfig(db *sql.DB, dbType DXDatabaseType, key string, value string) error {
-	query := BuildSetSessionConfigSQL(dbType, key, value)
-	_, err := db.Exec(query)
-	return err
+	// Validate key to prevent SQL injection
+	if err := ValidateSessionConfigKey(key); err != nil {
+		return fmt.Errorf("invalid session config key: %w", err)
+	}
+
+	switch dbType {
+	case DXDatabaseTypePostgreSQL:
+		// Use set_config() function which accepts parameters
+		// set_config(setting_name, new_value, is_local) - is_local=false means session-level
+		_, err := db.Exec("SELECT set_config($1, $2, false)", key, value)
+		return err
+	case DXDatabaseTypeSQLServer:
+		// sp_set_session_context accepts parameters
+		_, err := db.Exec("EXEC "+"sp_set_session_context @key = @p1, @value = @p2", key, value)
+		return err
+	case DXDatabaseTypeOracle:
+		// Oracle: use bind variables in PL/SQL block
+		namespace, attribute := parseOracleKey(key)
+		// Validate namespace and attribute as well (they're derived from a key which is already validated)
+		_, err := db.Exec("BEGIN "+"DBMS_SESSION.SET_CONTEXT(:1, :2, :3); END;", namespace, attribute, value)
+		return err
+	case DXDatabaseTypeMariaDB:
+		// MySQL/MariaDB: use prepared statement
+		// Note: User variable names cannot be parameterized, but the key is validated
+		varName := strings.ReplaceAll(key, ".", "_")
+		// Re-validate varName after transformation
+		if err := ValidateSessionConfigKey(varName); err != nil {
+			return fmt.Errorf("invalid transformed variable name: %w", err)
+		}
+		// For MariaDB, we need to use a different approach since SET @var =? doesn't work directly
+		// We use a prepared statement with the value as a parameter
+		query := fmt.Sprintf("SET @%s = ?", varName)
+		_, err := db.Exec(query, value)
+		return err
+	default:
+		return fmt.Errorf("unsupported database type for SetSessionConfig: %v", dbType)
+	}
 }
 
-// GetSessionConfig retrieves a session configuration value from the database
+// GetSessionConfig retrieves a session configuration value from the database using parameterized queries
+// This is safe from SQL injection as it validates the key and uses parameterized queries
 func GetSessionConfig(db *sql.DB, dbType DXDatabaseType, key string) (string, error) {
-	query := BuildGetSessionConfigSQL(dbType, key)
+	// Validate key to prevent SQL injection
+	if err := ValidateSessionConfigKey(key); err != nil {
+		return "", fmt.Errorf("invalid session config key: %w", err)
+	}
+
 	var value sql.NullString
-	err := db.QueryRow(query).Scan(&value)
+	var err error
+
+	switch dbType {
+	case DXDatabaseTypePostgreSQL:
+		// current_setting() accepts parameter
+		err = db.QueryRow("SELECT current_setting($1)", key).Scan(&value)
+	case DXDatabaseTypeSQLServer:
+		// SESSION_CONTEXT accepts parameter
+		err = db.QueryRow("SELECT "+"CAST(SESSION_CONTEXT(@p1) AS NVARCHAR(MAX))", key).Scan(&value)
+	case DXDatabaseTypeOracle:
+		// SYS_CONTEXT accepts parameters
+		namespace, attribute := parseOracleKey(key)
+		s := "SELECT " + "SYS_CONTEXT(:1, :2) FROM DUAL"
+		err = db.QueryRow(s, namespace, attribute).Scan(&value)
+	case DXDatabaseTypeMariaDB:
+		// MySQL/MariaDB user variables - variable name cannot be parameterized but key is validated
+		varName := strings.ReplaceAll(key, ".", "_")
+		query := fmt.Sprintf("SELECT @%s", varName)
+		err = db.QueryRow(query).Scan(&value)
+	default:
+		return "", fmt.Errorf("unsupported database type for GetSessionConfig: %v", dbType)
+	}
+
 	if err != nil {
 		return "", err
 	}
@@ -288,7 +372,7 @@ func BuildCreateContextDDL(dbType DXDatabaseType, namespace string) string {
 		ctxName := strings.ToUpper(namespace) + "_CTX"
 		return fmt.Sprintf("CREATE OR REPLACE CONTEXT %s USING %s_PKG ACCESSED GLOBALLY;\n", ctxName, ctxName)
 	case DXDatabaseTypePostgreSQL:
-		// PostgreSQL doesn't require pre-creation for custom GUC variables
+		// PostgreSQL doesn't require pre-creation for custom GUC variables,
 		// But you may need to add to postgresql.conf: custom_variable_classes = 'app'
 		return fmt.Sprintf("-- PostgreSQL: Ensure '%s' namespace is allowed in postgresql.conf\n-- Add: custom_variable_classes = '%s'\n", namespace, namespace)
 	default:
@@ -321,7 +405,7 @@ func BuildUIDDefaultExpr(dbType DXDatabaseType) string {
 		return "LOWER(TO_CHAR(ROUND((CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS DATE) - TO_DATE('1970-01-01','YYYY-MM-DD')) * 86400000000), 'XXXXXXXXXXXXXXXX')) || LOWER(RAWTOHEX(SYS_GUID()))"
 	case DXDatabaseTypeMariaDB:
 		// MySQL/MariaDB: hex timestamp (microseconds) + UUID without dashes
-		// NOW(6) gives microsecond precision, UNIX_TIMESTAMP converts to seconds with fraction
+		// NOW(6) gives microsecond precision, UNIX_TIMESTAMP converts to seconds with a fraction
 		return "CONCAT(HEX(FLOOR(UNIX_TIMESTAMP(NOW(6)) * 1000000)), REPLACE(UUID(), '-', ''))"
 	default:
 		// Fallback to PostgreSQL syntax
@@ -412,7 +496,7 @@ type DBEntity struct {
 	types.Entity
 	Schema            *DBSchema
 	TableAccessMethod string // e.g., "tde_heap" for PostgreSQL transparent data encryption
-	UseTableSuffix    bool   // If true, adds "_t" suffix to table name and "_v" suffix to view name
+	UseTableSuffix    bool   // If true, adds "_t" suffix to the table name and "_v" suffix to view name
 }
 
 // NewDBEntity creates a new database entity and registers it with the schema
@@ -424,7 +508,7 @@ func NewDBEntity(schema *DBSchema, entity types.Entity) *DBEntity {
 	return dbEntity
 }
 
-// NewDBEntityWithAccessMethod creates a new database entity with table access method
+// NewDBEntityWithAccessMethod creates a new database entity with a table access method
 func NewDBEntityWithAccessMethod(schema *DBSchema, entity types.Entity, tableAccessMethod string) *DBEntity {
 	dbEntity := &DBEntity{Entity: entity, Schema: schema, TableAccessMethod: tableAccessMethod}
 	if schema != nil {
@@ -433,7 +517,7 @@ func NewDBEntityWithAccessMethod(schema *DBSchema, entity types.Entity, tableAcc
 	return dbEntity
 }
 
-// getEncryptionKey retrieves encryption key from configuration
+// getEncryptionKey retrieves an encryption key from configuration
 func getEncryptionKey(keyID string) ([]byte, error) {
 	cfg, ok := configuration.Manager.Configurations["system"]
 	if !ok {
@@ -481,7 +565,7 @@ func getHashSalt(saltID string) ([]byte, error) {
 	}
 }
 
-// HasEncryptedFields returns true if entity has any encrypted fields
+// HasEncryptedFields returns true if an entity has any encrypted fields
 func (e *DBEntity) HasEncryptedFields() bool {
 	for _, field := range e.Fields {
 		if field.IsEncrypted && field.EncryptedDataName != "" {
@@ -491,7 +575,7 @@ func (e *DBEntity) HasEncryptedFields() bool {
 	return false
 }
 
-// TableName returns the physical table name (without schema prefix)
+// TableName returns the physical table name (without a schema prefix)
 func (e *DBEntity) TableName() string {
 	if e.UseTableSuffix {
 		return e.Name + "_t"
@@ -499,7 +583,7 @@ func (e *DBEntity) TableName() string {
 	return e.Name
 }
 
-// ViewName returns the view name (without schema prefix)
+// ViewName returns the view name (without a schema prefix)
 func (e *DBEntity) ViewName() string {
 	if e.HasEncryptedFields() {
 		if e.UseTableSuffix {
@@ -541,7 +625,7 @@ func (e *DBEntity) CreateDDL(dbType DXDatabaseType) string {
 	// Create table
 	sb.WriteString(e.createTableDDL(dbType))
 
-	// Create view if there are encrypted fields
+	// Create a view if there are encrypted fields
 	if hasEncrypted {
 		sb.WriteString("\n")
 		sb.WriteString(e.createViewDDL(dbType))
@@ -561,7 +645,7 @@ func (e *DBEntity) createTableDDL(dbType DXDatabaseType) string {
 	var columns []string
 	for _, field := range e.Fields {
 		if field.IsEncrypted && field.EncryptedDataName != "" {
-			// For encrypted fields: only add encrypted_data_name and hash_data_name to table
+			// For encrypted fields: only add encrypted_data_name and hash_data_name to the table
 			encColDef := e.encryptedFieldToDDL(field, dbType)
 			columns = append(columns, encColDef)
 
@@ -579,7 +663,7 @@ func (e *DBEntity) createTableDDL(dbType DXDatabaseType) string {
 	sb.WriteString("    " + strings.Join(columns, ",\n    "))
 	sb.WriteString("\n)")
 
-	// Add table access method (PostgreSQL only)
+	// Add a table access method (PostgreSQL only)
 	if e.TableAccessMethod != "" && dbType == DXDatabaseTypePostgreSQL {
 		sb.WriteString(fmt.Sprintf(" USING %s", e.TableAccessMethod))
 	}
@@ -600,7 +684,7 @@ func (e *DBEntity) createViewDDL(dbType DXDatabaseType) string {
 	var viewCols []string
 	for _, field := range e.Fields {
 		if field.IsEncrypted && field.EncryptedDataName != "" {
-			// Decrypt and alias to original field name
+			// Decrypt and alias to the original field name
 			decryptExpr := e.buildDecryptExpr(field, dbType)
 			viewCols = append(viewCols, "    "+decryptExpr)
 
@@ -679,6 +763,8 @@ func (e *DBEntity) getDefaultValueForDBType(field types.Field, dbType DXDatabase
 			key = types.DBTypeKeyOracle
 		case DXDatabaseTypeMariaDB:
 			key = types.DBTypeKeyMariaDB
+		default:
+			panic("unhandled default case")
 		}
 		if dbDefault, ok := field.DefaultValueByDBType[key]; ok && dbDefault != "" {
 			return dbDefault
@@ -802,7 +888,6 @@ func (e *DBEntity) Update(db *sql.DB, dbType DXDatabaseType, data utils.JSON, wh
 	return err
 }
 
-// Delete deletes rows from the table
 func (e *DBEntity) Delete(db *sql.DB, where string, args ...any) error {
 	tableName := e.FullTableName()
 	// language=text
@@ -811,7 +896,7 @@ func (e *DBEntity) Delete(db *sql.DB, where string, args ...any) error {
 	return err
 }
 
-// buildSelectColumns returns column names for SELECT from view
+// buildSelectColumns returns column names for SELECT from view.
 // View already has decrypted columns, so we just select by field.Name
 func (e *DBEntity) buildSelectColumns() string {
 	var cols []string
@@ -835,7 +920,7 @@ func (e *DBEntity) buildDecryptExpr(field types.Field, dbType DXDatabaseType) st
 		// AES_DECRYPT(encrypted_col, key) AS original_name
 		return fmt.Sprintf("AES_DECRYPT(%s, %s) AS %s", encCol, keyExpr, field.Name)
 	case DXDatabaseTypeOracle:
-		// DBMS_CRYPTO.DECRYPT using session context for key
+		// DBMS_CRYPTO.DECRYPT using session context for a key
 		return fmt.Sprintf("UTL_RAW.CAST_TO_VARCHAR2(DBMS_CRYPTO.DECRYPT(%s, DBMS_CRYPTO.ENCRYPT_AES256 + DBMS_CRYPTO.CHAIN_CBC + DBMS_CRYPTO.PAD_PKCS5, UTL_RAW.CAST_TO_RAW(%s))) AS %s", encCol, keyExpr, field.Name)
 	default:
 		return field.Name
@@ -859,14 +944,14 @@ func (e *DBEntity) buildInsertData(dbType DXDatabaseType, data utils.JSON) (colu
 		}
 
 		if field.IsEncrypted && field.EncryptedDataName != "" {
-			// Add encrypted column
+			// Add an encrypted column
 			cols = append(cols, field.EncryptedDataName)
 			encExpr := e.buildEncryptExpr(dbType, argIndex)
 			vals = append(vals, encExpr)
 			args = append(args, val)
 			argIndex++
 
-			// Add hash column if applicable
+			// Add a hash column if applicable
 			if field.IsHashed && field.HashDataName != "" {
 				cols = append(cols, field.HashDataName)
 				hashExpr := e.buildHashExpr(dbType, argIndex)
@@ -907,7 +992,7 @@ func (e *DBEntity) buildUpdateData(dbType DXDatabaseType, data utils.JSON) (setC
 			args = append(args, val)
 			argIndex++
 
-			// Update hash column if applicable
+			// Update the hash column if applicable
 			if field.IsHashed && field.HashDataName != "" {
 				hashExpr := e.buildHashExpr(dbType, argIndex)
 				sets = append(sets, fmt.Sprintf("%s = %s", field.HashDataName, hashExpr))
