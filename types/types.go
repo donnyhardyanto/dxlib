@@ -1,5 +1,10 @@
 package types
 
+import (
+	"fmt"
+	"strings"
+)
+
 type TypeDef struct {
 	APIParameterType string
 	JSONType         string
@@ -28,18 +33,18 @@ const (
 type GoType string
 
 const (
-	GoTypeString              GoType = "string"
-	GoTypeStringPointer       GoType = "*string"
-	GoTypeInt64               GoType = "int64"
-	GoTypeInt64Pointer        GoType = "*int64"
-	GoTypeFloat32             GoType = "float32"
-	GoTypeFloat64             GoType = "float64"
-	GoTypeBool                GoType = "bool"
-	GoTypeTime                GoType = "time.Time"
-	GoTypeMapStringInterface  GoType = "map[string]interface{}"
-	GoTypeSliceInterface      GoType = "[]interface{}"
-	GoTypeSliceString         GoType = "[]string"
-	GoTypeSliceInt64          GoType = "[]int64"
+	GoTypeString                  GoType = "string"
+	GoTypeStringPointer           GoType = "*string"
+	GoTypeInt64                   GoType = "int64"
+	GoTypeInt64Pointer            GoType = "*int64"
+	GoTypeFloat32                 GoType = "float32"
+	GoTypeFloat64                 GoType = "float64"
+	GoTypeBool                    GoType = "bool"
+	GoTypeTime                    GoType = "time.Time"
+	GoTypeMapStringInterface      GoType = "map[string]interface{}"
+	GoTypeSliceInterface          GoType = "[]interface{}"
+	GoTypeSliceString             GoType = "[]string"
+	GoTypeSliceInt64              GoType = "[]int64"
 	GoTypeSliceMapStringInterface GoType = "[]map[string]interface{}"
 )
 
@@ -71,7 +76,7 @@ const (
 	APIParameterTypeFloat64ZP APIParameterType = "float64zp"
 
 	// Boolean type
-	APIParameterTypeBool APIParameterType = "bool"
+	APIParameterTypeBoolean APIParameterType = "bool"
 
 	// Date/Time types
 	APIParameterTypeISO8601 APIParameterType = "iso8601"
@@ -275,7 +280,7 @@ var (
 
 	// Boolean type
 	TypeDefBool = TypeDef{
-		APIParameterType: string(APIParameterTypeBool),
+		APIParameterType: string(APIParameterTypeBoolean),
 		JSONType:         string(JSONTypeBoolean),
 		GoType:           string(GoTypeBool),
 		DbTypePostgreSQL: "BOOLEAN",
@@ -453,7 +458,7 @@ var (
 		APIParameterTypeFloat64ZP: TypeDefFloat64ZP,
 
 		// Boolean type
-		APIParameterTypeBool: TypeDefBool,
+		APIParameterTypeBoolean: TypeDefBool,
 
 		// Date/Time types
 		APIParameterTypeISO8601: TypeDefISO8601,
@@ -471,3 +476,14 @@ var (
 		APIParameterTypeArrayJSONTemplate: TypeDefArrayJSONTemplate,
 	}
 )
+
+func GetTypeDefFromString(s string) (*TypeDef, error) {
+	s = strings.Trim(s, " ")
+	s = strings.ToLower(s)
+	for _, t := range Types {
+		if t.APIParameterType == s {
+			return &t, nil
+		}
+	}
+	return nil, fmt.Errorf("unknown type: %s", s)
+}

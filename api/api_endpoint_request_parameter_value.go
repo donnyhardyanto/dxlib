@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	security "github.com/donnyhardyanto/dxlib/utils/security"
 	"github.com/pkg/errors"
 
@@ -49,7 +50,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 	if aeprpv.RawValue == nil {
 		return nil
 	}
-	if aeprpv.Metadata.Type == "json" {
+	if string(aeprpv.Metadata.Type) == "json" {
 		jsonValue, ok := rv.(map[string]interface{})
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
@@ -71,7 +72,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 
 		}
 	}
-	if aeprpv.Metadata.Type == "array-json-template" {
+	if string(aeprpv.Metadata.Type) == "array-json-template" {
 		jsonArrayValue, ok := rv.([]any)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
@@ -129,9 +130,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 	}
 	rawValueType := utils.TypeAsString(aeprpv.RawValue)
 	nameIdPath := aeprpv.GetNameIdPath()
-	if aeprpv.Metadata.Type != rawValueType {
+	if string(aeprpv.Metadata.Type) != rawValueType {
 		switch aeprpv.Metadata.Type {
-		case "nullable-int64":
+		case dxlibTypes.APIParameterTypeNullableInt64:
 		case "int64", "int64zp", "int64p":
 			if rawValueType == "float64" {
 				if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {

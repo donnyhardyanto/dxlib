@@ -6,6 +6,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/table2"
+	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 )
 
 type DXTableManager struct {
@@ -190,7 +191,7 @@ func init() {
 					StatusCode:  200,
 					Description: "Success - 200",
 					DataTemplate: []*api.DXAPIEndPointParameter{
-						{NameId: "id", Type: "int64", Description: "", IsMustExist: true},
+						{NameId: "id", Type: dxlibTypes.APIParameterTypeInt64, Description: "", IsMustExist: true},
 					},
 				},
 				"invalid_request": &api.DXAPIEndPointResponsePossibility{
@@ -292,10 +293,10 @@ func init() {
 					StatusCode:  200,
 					Description: "Success - 200",
 					DataTemplate: []*api.DXAPIEndPointParameter{
-						{NameId: "list", Type: "json", Description: "", IsMustExist: true, Children: []api.DXAPIEndPointParameter{
-							{NameId: "rows", Type: "array", Description: "", IsMustExist: true},
-							{NameId: "total_rows", Type: "int64", Description: "", IsMustExist: true},
-							{NameId: "total_page", Type: "int64", Description: "", IsMustExist: true},
+						{NameId: "list", Type: dxlibTypes.APIParameterTypeJSON, Description: "", IsMustExist: true, Children: []api.DXAPIEndPointParameter{
+							{NameId: "rows", Type: dxlibTypes.APIParameterTypeArray, Description: "", IsMustExist: true},
+							{NameId: "total_rows", Type: dxlibTypes.APIParameterTypeInt64, Description: "", IsMustExist: true},
+							{NameId: "total_page", Type: dxlibTypes.APIParameterTypeInt64, Description: "", IsMustExist: true},
 						}},
 					},
 				},
