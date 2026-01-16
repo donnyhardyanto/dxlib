@@ -109,6 +109,7 @@ type Field struct {
 	IsUnique             bool
 	DefaultValue         string            // SQL expression for DEFAULT clause (used when DefaultValueByDBType not specified)
 	DefaultValueByDBType map[string]string // Database-specific default values. Keys: "postgresql", "sqlserver", "oracle", "mariadb"
+	References           *Field            // Foreign key reference to another field
 	IsEncrypted          bool
 	IsHashed             bool
 	EncryptedDataName    string
