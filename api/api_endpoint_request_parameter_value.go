@@ -558,27 +558,26 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		return nil
 	}
 }
-func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err
-error) {
-if aeprpv.Metadata.IsMustExist {
-if aeprpv.RawValue == nil {
-return errors.New("MISSING_MANDATORY_FIELD:" + aeprpv.GetNameIdPath())
-}
-}
-if aeprpv.RawValue == nil {
-return nil
-}
-rawValueType := utils.TypeAsString(aeprpv.RawValue)
-nameIdPath := aeprpv.GetNameIdPath()
-if string(aeprpv.Metadata.Type) != rawValueType {
-err = aeprpv.validateWhenNotSameWithRawValue(rawValueType, nameIdPath)
-if err != nil {
-return err
-}
-}
-err = aeprpv.resolveValue(nameIdPathß)
-if err != nil {
-return err
-}
-return nil
+func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
+	if aeprpv.Metadata.IsMustExist {
+		if aeprpv.RawValue == nil {
+			return errors.New("MISSING_MANDATORY_FIELD:" + aeprpv.GetNameIdPath())
+		}
+	}
+	if aeprpv.RawValue == nil {
+		return nil
+	}
+	rawValueType := utils.TypeAsString(aeprpv.RawValue)
+	nameIdPath := aeprpv.GetNameIdPath()
+	if string(aeprpv.Metadata.Type) != rawValueType {
+		err = aeprpv.validateWhenNotSameWithRawValue(rawValueType, nameIdPath)
+		if err != nil {
+			return err
+		}
+	}
+	err = aeprpv.resolveValue(nameIdPath)
+	if err != nil {
+		return err
+	}
+	return nil
 }

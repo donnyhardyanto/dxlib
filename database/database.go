@@ -427,17 +427,8 @@ func formatBoolForDB(b bool, dbType string) string {
 			return "TRUE"
 		}
 		return "FALSE"
-	case "mysql", "mariadb", "sqlserver":
-		if b {
-			return "1"
-		}
-		return "0"
-	case "oracle":
-		if b {
-			return "1"
-		}
-		return "0"
 	default:
+		// case "mysql", "mariadb", "sqlserver", "oracle", default:
 		if b {
 			return "1"
 		}
@@ -625,9 +616,9 @@ func (d *DXDatabase) ShouldSelectOne(tableName string, fieldTypeMapping db.Field
 }
 
 func (d *DXDatabase) SelectOne(tableName string, fieldTypeMapping db.FieldTypeMapping, fieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any,
-	orderbyFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
+	orderByFieldNameDirections db.FieldsOrderBy) (rowsInfo *db.RowsInfo, r utils.JSON, err error) {
 
-	rowsInfo, rr, err := d.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderbyFieldNameDirections, 1, nil)
+	rowsInfo, rr, err := d.Select(tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart, orderByFieldNameDirections, 1, nil)
 	if err != nil {
 		return nil, nil, err
 	}
