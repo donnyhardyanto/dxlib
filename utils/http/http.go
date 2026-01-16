@@ -10,6 +10,11 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
+type ContentType string
+
+const ContentTypeTextPlain ContentType = "text/plain"
+const ContentTypeTextHTML ContentType = "text/html"
+
 type RequestContentType int
 
 const (
