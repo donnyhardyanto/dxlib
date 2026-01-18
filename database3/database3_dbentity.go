@@ -3,6 +3,7 @@ package database3
 import (
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/configuration"
@@ -27,9 +28,10 @@ func dbTypeToKey(dbType DXDatabaseType) string {
 
 type DBEntity struct {
 	types.Entity
-	Schema         *DBSchema
-	TDE            types.TDEConfig // Database-specific TDE configuration
-	UseTableSuffix bool            // If true, adds "_t" suffix to the table name and "_v" suffix to view name
+	Schema                    *DBSchema
+	TDE                       types.TDEConfig // Database-specific TDE configuration
+	UseTableSuffix            bool
+	IsCompositeEncryptedTable bool // If true, adds "_t" suffix to the table name and "_v" suffix to view name
 }
 
 // NewDBEntity creates a new database entity and registers it with the schema
@@ -37,6 +39,12 @@ func NewDBEntity(schema *DBSchema, entity types.Entity, tde types.TDEConfig) *DB
 	dbEntity := &DBEntity{Entity: entity, Schema: schema, TDE: tde}
 	if schema != nil {
 		schema.Entities = append(schema.Entities, dbEntity)
+	}
+	for _, field := range entity.Fields {
+		field.Owner = dbEntity
+		if field.IsReferences && field.References == nil {
+			panic("references field without references")
+		}
 	}
 	return dbEntity
 }
@@ -92,7 +100,7 @@ func getHashSalt(saltID string) ([]byte, error) {
 // HasEncryptedFields returns true if an entity has any encrypted fields
 func (e *DBEntity) HasEncryptedFields() bool {
 	for _, field := range e.Fields {
-		if field.IsEncrypted && field.EncryptedDataName != "" {
+		if field.IsVaulted && field.PhysicalFieldName != "" {
 			return true
 		}
 	}
@@ -101,6 +109,9 @@ func (e *DBEntity) HasEncryptedFields() bool {
 
 // TableName returns the physical table name (without a schema prefix)
 func (e *DBEntity) TableName() string {
+	if e.PhysicalTableName != "" {
+		return e.PhysicalTableName
+	}
 	if e.UseTableSuffix {
 		return e.Name + "_t"
 	}
@@ -109,6 +120,9 @@ func (e *DBEntity) TableName() string {
 
 // ViewName returns the view name (without a schema prefix)
 func (e *DBEntity) ViewName() string {
+	if e.ViewOverTable {
+		return e.Name
+	}
 	if e.HasEncryptedFields() {
 		if e.UseTableSuffix {
 			return e.Name + "_v"
@@ -132,6 +146,26 @@ func (e *DBEntity) FullViewName() string {
 		return e.Schema.Name + "." + e.ViewName()
 	}
 	return e.ViewName()
+}
+
+// getOrderedFields returns field names sorted by Order
+func (e *DBEntity) getOrderedFields() []string {
+	type fieldOrder struct {
+		name  string
+		order int
+	}
+	var fields []fieldOrder
+	for name, field := range e.Fields {
+		fields = append(fields, fieldOrder{name: name, order: field.Order})
+	}
+	sort.Slice(fields, func(i, j int) bool {
+		return fields[i].order < fields[j].order
+	})
+	var names []string
+	for _, f := range fields {
+		names = append(names, f.name)
+	}
+	return names
 }
 
 // CreateDDL generates a DDL script for the entity based on database type
@@ -167,8 +201,9 @@ func (e *DBEntity) createTableDDL(dbType DXDatabaseType) string {
 	sb.WriteString(fmt.Sprintf("CREATE TABLE %s (\n", tableName))
 
 	var columns []string
-	for _, field := range e.Fields {
-		if field.IsEncrypted && field.EncryptedDataName != "" {
+	for _, fieldName := range e.getOrderedFields() {
+		field := e.Fields[fieldName]
+		if field.IsVaulted && field.PhysicalFieldName != "" {
 			// For encrypted fields: only add encrypted_data_name and hash_data_name to the table
 			encColDef := e.encryptedFieldToDDL(field, dbType)
 			columns = append(columns, encColDef)
@@ -179,7 +214,7 @@ func (e *DBEntity) createTableDDL(dbType DXDatabaseType) string {
 			}
 		} else {
 			// For non-encrypted fields: add the original field name
-			colDef := e.fieldToDDL(field, dbType)
+			colDef := e.fieldToDDL(fieldName, *field, dbType)
 			columns = append(columns, colDef)
 		}
 	}
@@ -234,21 +269,22 @@ func (e *DBEntity) createViewDDL(dbType DXDatabaseType) string {
 	sb.WriteString(fmt.Sprintf("CREATE VIEW %s AS\nSELECT\n", viewName))
 
 	var viewCols []string
-	for _, field := range e.Fields {
-		if field.IsEncrypted && field.EncryptedDataName != "" {
+	for _, fieldName := range e.getOrderedFields() {
+		field := e.Fields[fieldName]
+		if field.IsVaulted && field.PhysicalFieldName != "" {
 			// Decrypt and alias to the original field name
-			decryptExpr := e.buildDecryptExpr(field, dbType)
+			decryptExpr := e.buildDecryptExpr(fieldName, field, dbType)
 			viewCols = append(viewCols, "    "+decryptExpr)
 
 			// Also include encrypted column for reference
-			viewCols = append(viewCols, "    "+field.EncryptedDataName)
+			viewCols = append(viewCols, "    "+field.PhysicalFieldName)
 
 			// Include hash column if exists
 			if field.IsHashed && field.HashDataName != "" {
 				viewCols = append(viewCols, "    "+field.HashDataName)
 			}
 		} else {
-			viewCols = append(viewCols, "    "+field.Name)
+			viewCols = append(viewCols, "    "+fieldName)
 		}
 	}
 
@@ -258,12 +294,12 @@ func (e *DBEntity) createViewDDL(dbType DXDatabaseType) string {
 	return sb.String()
 }
 
-func (e *DBEntity) fieldToDDL(field types.Field, dbType DXDatabaseType) string {
+func (e *DBEntity) fieldToDDL(fieldName string, field types.Field, dbType DXDatabaseType) string {
 	key := dbTypeToKey(dbType)
 	dbTypeStr := field.Type.GetDbType(key)
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s %s", field.Name, dbTypeStr))
+	sb.WriteString(fmt.Sprintf("%s %s", fieldName, dbTypeStr))
 
 	// Add PRIMARY KEY constraint
 	if field.IsPrimaryKey {
@@ -286,6 +322,24 @@ func (e *DBEntity) fieldToDDL(field types.Field, dbType DXDatabaseType) string {
 		sb.WriteString(fmt.Sprintf(" DEFAULT %s", defaultValue))
 	}
 
+	// Add REFERENCES constraint for foreign keys
+	if field.References != nil {
+		if refOwner, ok := field.References.Owner.(*DBEntity); ok {
+			// Find the field name in the referenced entity
+			refFieldName := ""
+			for name, f := range refOwner.Fields {
+				if f == field.References {
+					refFieldName = name
+					break
+				}
+			}
+			if refFieldName != "" {
+				sb.WriteString(fmt.Sprintf(" REFERENCES %s.%s (%s)",
+					refOwner.Schema.Name, refOwner.Name, refFieldName))
+			}
+		}
+	}
+
 	return sb.String()
 }
 
@@ -296,18 +350,18 @@ func (e *DBEntity) getDefaultValueForDBType(field types.Field, dbType DXDatabase
 
 	// 1. Check if field has database-specific default
 	if field.DefaultValueByDBType != nil {
-		if dbDefault, ok := field.DefaultValueByDBType[key]; ok && dbDefault != "" {
-			return dbDefault
+		if dbDefault, ok := field.DefaultValueByDBType[key]; ok && dbDefault != nil {
+			return anyToString(dbDefault)
 		}
 	}
 
 	// 2. Check field's generic default value
-	if field.DefaultValue != "" {
-		return field.DefaultValue
+	if field.DefaultValue != nil {
+		return anyToString(field.DefaultValue)
 	}
 
-	// 3. Check DataType's database-specific default (e.g., DataTypeUID)
-	if field.Type.DefaultValueByDBType != nil {
+	// 3. Check DataType's database-specific default (e.g., DataTypeUID) - only if IsAutoIncrement is true
+	if field.IsAutoIncrement && field.Type.DefaultValueByDBType != nil {
 		if dbDefault, ok := field.Type.DefaultValueByDBType[key]; ok && dbDefault != "" {
 			return dbDefault
 		}
@@ -316,13 +370,35 @@ func (e *DBEntity) getDefaultValueForDBType(field types.Field, dbType DXDatabase
 	return ""
 }
 
-func (e *DBEntity) encryptedFieldToDDL(field types.Field, dbType DXDatabaseType) string {
-	key := dbTypeToKey(dbType)
-	dbTypeStr := field.EncryptedDataType.GetDbType(key)
-	return fmt.Sprintf("%s %s", field.EncryptedDataName, dbTypeStr)
+// anyToString converts any value to string for DDL generation
+func anyToString(v any) string {
+	if v == nil {
+		return ""
+	}
+	switch val := v.(type) {
+	case string:
+		return val
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", val)
+	case float32, float64:
+		return fmt.Sprintf("%v", val)
+	case bool:
+		if val {
+			return "true"
+		}
+		return "false"
+	default:
+		return fmt.Sprintf("%v", val)
+	}
 }
 
-func (e *DBEntity) hashedFieldToDDL(field types.Field, dbType DXDatabaseType) string {
+func (e *DBEntity) encryptedFieldToDDL(field *types.Field, dbType DXDatabaseType) string {
+	key := dbTypeToKey(dbType)
+	dbTypeStr := field.PhysicalDataType.GetDbType(key)
+	return fmt.Sprintf("%s %s", field.PhysicalFieldName, dbTypeStr)
+}
+
+func (e *DBEntity) hashedFieldToDDL(field *types.Field, dbType DXDatabaseType) string {
 	key := dbTypeToKey(dbType)
 	dbTypeStr := field.HashDataType.GetDbType(key)
 	return fmt.Sprintf("%s %s", field.HashDataName, dbTypeStr)
@@ -417,33 +493,29 @@ func (e *DBEntity) Delete(db *sql.DB, where string, args ...any) error {
 }
 
 // buildSelectColumns returns column names for SELECT from view.
-// View already has decrypted columns, so we just select by field.Name
+// View already has decrypted columns, so we just select by field name (map key)
 func (e *DBEntity) buildSelectColumns() string {
-	var cols []string
-	for _, field := range e.Fields {
-		cols = append(cols, field.Name)
-	}
-	return strings.Join(cols, ", ")
+	return strings.Join(e.getOrderedFields(), ", ")
 }
 
-func (e *DBEntity) buildDecryptExpr(field types.Field, dbType DXDatabaseType) string {
-	encCol := field.EncryptedDataName
+func (e *DBEntity) buildDecryptExpr(fieldName string, field *types.Field, dbType DXDatabaseType) string {
+	encCol := field.PhysicalFieldName
 	keyExpr := BuildGetSessionConfigExpr(dbType, "app.encryption_key")
 	switch dbType {
 	case DXDatabaseTypePostgreSQL:
 		// pgp_sym_decrypt(encrypted_col, key) AS original_name
-		return fmt.Sprintf("pgp_sym_decrypt(%s, %s) AS %s", encCol, keyExpr, field.Name)
+		return fmt.Sprintf("pgp_sym_decrypt(%s, %s) AS %s", encCol, keyExpr, fieldName)
 	case DXDatabaseTypeSQLServer:
 		// DecryptByPassPhrase(key, encrypted_col) AS original_name
-		return fmt.Sprintf("CONVERT(VARCHAR(MAX), DecryptByPassPhrase(%s, %s)) AS %s", keyExpr, encCol, field.Name)
+		return fmt.Sprintf("CONVERT(VARCHAR(MAX), DecryptByPassPhrase(%s, %s)) AS %s", keyExpr, encCol, fieldName)
 	case DXDatabaseTypeMariaDB:
 		// AES_DECRYPT(encrypted_col, key) AS original_name
-		return fmt.Sprintf("AES_DECRYPT(%s, %s) AS %s", encCol, keyExpr, field.Name)
+		return fmt.Sprintf("AES_DECRYPT(%s, %s) AS %s", encCol, keyExpr, fieldName)
 	case DXDatabaseTypeOracle:
 		// DBMS_CRYPTO.DECRYPT using session context for a key
-		return fmt.Sprintf("UTL_RAW.CAST_TO_VARCHAR2(DBMS_CRYPTO.DECRYPT(%s, DBMS_CRYPTO.ENCRYPT_AES256 + DBMS_CRYPTO.CHAIN_CBC + DBMS_CRYPTO.PAD_PKCS5, UTL_RAW.CAST_TO_RAW(%s))) AS %s", encCol, keyExpr, field.Name)
+		return fmt.Sprintf("UTL_RAW.CAST_TO_VARCHAR2(DBMS_CRYPTO.DECRYPT(%s, DBMS_CRYPTO.ENCRYPT_AES256 + DBMS_CRYPTO.CHAIN_CBC + DBMS_CRYPTO.PAD_PKCS5, UTL_RAW.CAST_TO_RAW(%s))) AS %s", encCol, keyExpr, fieldName)
 	default:
-		return field.Name
+		return fieldName
 	}
 }
 
@@ -452,20 +524,21 @@ func (e *DBEntity) buildInsertData(dbType DXDatabaseType, data utils.JSON) (colu
 	var vals []string
 	argIndex := 1
 
-	for _, field := range e.Fields {
-		val, ok := data[field.Name]
+	for _, fieldName := range e.getOrderedFields() {
+		field := e.Fields[fieldName]
+		val, ok := data[fieldName]
 		if !ok {
 			continue
 		}
 
 		// Validate incoming value matches expected type
-		if err := e.validateFieldValue(field, val); err != nil {
+		if err := e.validateFieldValue(fieldName, field, val); err != nil {
 			return "", "", nil, err
 		}
 
-		if field.IsEncrypted && field.EncryptedDataName != "" {
+		if field.IsVaulted && field.PhysicalFieldName != "" {
 			// Add an encrypted column
-			cols = append(cols, field.EncryptedDataName)
+			cols = append(cols, field.PhysicalFieldName)
 			encExpr := e.buildEncryptExpr(dbType, argIndex)
 			vals = append(vals, encExpr)
 			args = append(args, val)
@@ -480,7 +553,7 @@ func (e *DBEntity) buildInsertData(dbType DXDatabaseType, data utils.JSON) (colu
 				argIndex++
 			}
 		} else {
-			cols = append(cols, field.Name)
+			cols = append(cols, fieldName)
 			vals = append(vals, e.placeholder(dbType, argIndex))
 			args = append(args, val)
 			argIndex++
@@ -494,21 +567,22 @@ func (e *DBEntity) buildUpdateData(dbType DXDatabaseType, data utils.JSON) (setC
 	var sets []string
 	argIndex := 1
 
-	for _, field := range e.Fields {
-		val, ok := data[field.Name]
+	for _, fieldName := range e.getOrderedFields() {
+		field := e.Fields[fieldName]
+		val, ok := data[fieldName]
 		if !ok {
 			continue
 		}
 
 		// Validate incoming value matches expected type
-		if err := e.validateFieldValue(field, val); err != nil {
+		if err := e.validateFieldValue(fieldName, field, val); err != nil {
 			return "", nil, err
 		}
 
-		if field.IsEncrypted && field.EncryptedDataName != "" {
+		if field.IsVaulted && field.PhysicalFieldName != "" {
 			// Update encrypted column
 			encExpr := e.buildEncryptExpr(dbType, argIndex)
-			sets = append(sets, fmt.Sprintf("%s = %s", field.EncryptedDataName, encExpr))
+			sets = append(sets, fmt.Sprintf("%s = %s", field.PhysicalFieldName, encExpr))
 			args = append(args, val)
 			argIndex++
 
@@ -520,7 +594,7 @@ func (e *DBEntity) buildUpdateData(dbType DXDatabaseType, data utils.JSON) (setC
 				argIndex++
 			}
 		} else {
-			sets = append(sets, fmt.Sprintf("%s = %s", field.Name, e.placeholder(dbType, argIndex)))
+			sets = append(sets, fmt.Sprintf("%s = %s", fieldName, e.placeholder(dbType, argIndex)))
 			args = append(args, val)
 			argIndex++
 		}
@@ -576,7 +650,7 @@ func (e *DBEntity) buildHashExpr(dbType DXDatabaseType, argIndex int) string {
 	}
 }
 
-func (e *DBEntity) validateFieldValue(field types.Field, val any) error {
+func (e *DBEntity) validateFieldValue(fieldName string, field *types.Field, val any) error {
 	if val == nil {
 		return nil
 	}
@@ -585,7 +659,7 @@ func (e *DBEntity) validateFieldValue(field types.Field, val any) error {
 	case types.GoTypeString, types.GoTypeStringPointer:
 		if _, ok := val.(string); !ok {
 			if _, ok := val.(*string); !ok {
-				return fmt.Errorf("field %s expects string, got %T", field.Name, val)
+				return fmt.Errorf("field %s expects string, got %T", fieldName, val)
 			}
 		}
 	case types.GoTypeInt64, types.GoTypeInt64Pointer:
@@ -593,22 +667,22 @@ func (e *DBEntity) validateFieldValue(field types.Field, val any) error {
 		case int, int32, int64, float64:
 			// OK - JSON numbers come as float64
 		default:
-			return fmt.Errorf("field %s expects int64, got %T", field.Name, val)
+			return fmt.Errorf("field %s expects int64, got %T", fieldName, val)
 		}
 	case types.GoTypeFloat32:
 		switch val.(type) {
 		case float32, float64:
 			// OK
 		default:
-			return fmt.Errorf("field %s expects float32, got %T", field.Name, val)
+			return fmt.Errorf("field %s expects float32, got %T", fieldName, val)
 		}
 	case types.GoTypeFloat64:
 		if _, ok := val.(float64); !ok {
-			return fmt.Errorf("field %s expects float64, got %T", field.Name, val)
+			return fmt.Errorf("field %s expects float64, got %T", fieldName, val)
 		}
 	case types.GoTypeBool:
 		if _, ok := val.(bool); !ok {
-			return fmt.Errorf("field %s expects bool, got %T", field.Name, val)
+			return fmt.Errorf("field %s expects bool, got %T", fieldName, val)
 		}
 	}
 	return nil
@@ -616,8 +690,9 @@ func (e *DBEntity) validateFieldValue(field types.Field, val any) error {
 
 func (e *DBEntity) scanRow(row *sql.Row) (utils.JSON, error) {
 	result := make(utils.JSON)
-	scanDest := make([]any, len(e.Fields))
-	scanPtrs := make([]any, len(e.Fields))
+	orderedFields := e.getOrderedFields()
+	scanDest := make([]any, len(orderedFields))
+	scanPtrs := make([]any, len(orderedFields))
 
 	for i := range scanDest {
 		scanPtrs[i] = &scanDest[i]
@@ -627,16 +702,17 @@ func (e *DBEntity) scanRow(row *sql.Row) (utils.JSON, error) {
 		return nil, err
 	}
 
-	for i, field := range e.Fields {
-		result[field.Name] = scanDest[i]
+	for i, fieldName := range orderedFields {
+		result[fieldName] = scanDest[i]
 	}
 	return result, nil
 }
 
 func (e *DBEntity) scanRows(rows *sql.Rows) (utils.JSON, error) {
 	result := make(utils.JSON)
-	scanDest := make([]any, len(e.Fields))
-	scanPtrs := make([]any, len(e.Fields))
+	orderedFields := e.getOrderedFields()
+	scanDest := make([]any, len(orderedFields))
+	scanPtrs := make([]any, len(orderedFields))
 
 	for i := range scanDest {
 		scanPtrs[i] = &scanDest[i]
@@ -646,8 +722,8 @@ func (e *DBEntity) scanRows(rows *sql.Rows) (utils.JSON, error) {
 		return nil, err
 	}
 
-	for i, field := range e.Fields {
-		result[field.Name] = scanDest[i]
+	for i, fieldName := range orderedFields {
+		result[fieldName] = scanDest[i]
 	}
 	return result, nil
 }

@@ -101,23 +101,25 @@ func (dt DataType) GetDbType(key string) string {
 }
 
 type Field struct {
-	Name                 string
+	Owner                any
+	Order                int
 	Type                 DataType
 	IsPrimaryKey         bool
 	IsAutoIncrement      bool
 	IsNotNull            bool
 	IsUnique             bool
-	DefaultValue         string            // SQL expression for DEFAULT clause (used when DefaultValueByDBType not specified)
-	DefaultValueByDBType map[string]string // Database-specific default values. Keys: "postgresql", "sqlserver", "oracle", "mariadb"
-	References           *Field            // Foreign key reference to another field
-	IsEncrypted          bool
+	DefaultValue         any            // SQL expression for DEFAULT clause (used when DefaultValueByDBType not specified)
+	DefaultValueByDBType map[string]any // Database-specific default values. Keys: "postgresql", "sqlserver", "oracle", "mariadb"
+	IsReferences         bool
+	References           *Field
+	IsVaulted            bool
 	IsHashed             bool
-	EncryptedDataName    string
-	EncryptedDataType    DataType
-	EncryptedDataKeyID   string
+	PhysicalFieldName    string
+	PhysicalDataType     DataType
+	VaultConfigKeyId     string
 	HashDataName         string
 	HashDataType         DataType
-	HashDataSaltID       string
+	HashSaltConfigKeyId  string
 }
 
 // DBTypeKeyPostgreSQL is the key for PostgreSQL in DefaultValueByDBType map
@@ -185,9 +187,11 @@ func (t TDEConfig) IsEnabled(dbTypeKey string) bool {
 }
 
 type Entity struct {
-	Name   string
-	Type   DataType
-	Fields []Field
+	Name              string
+	Type              DataType
+	Fields            map[string]*Field
+	ViewOverTable     bool   // If true, Name becomes the VIEW
+	PhysicalTableName string // The name of the actual storage TABLE
 }
 
 var (
@@ -423,11 +427,95 @@ var (
 		DbType:           map[string]string{DBTypeKeyPostgreSQL: "INT", DBTypeKeySQLServer: "INT", DBTypeKeyMariaDB: "INT", DBTypeKeyOracle: "NUMBER(10)"},
 	}
 
+	DataTypeString1 = DataType{
+		APIParameterType: "string1",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(1)", DBTypeKeySQLServer: "VARCHAR(1)", DBTypeKeyMariaDB: "VARCHAR(1)", DBTypeKeyOracle: "VARCHAR2(1)"},
+	}
+
+	DataTypeString5 = DataType{
+		APIParameterType: "string5",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(5)", DBTypeKeySQLServer: "VARCHAR(5)", DBTypeKeyMariaDB: "VARCHAR(5)", DBTypeKeyOracle: "VARCHAR2(5)"},
+	}
+
+	DataTypeString10 = DataType{
+		APIParameterType: "string10",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(10)", DBTypeKeySQLServer: "VARCHAR(10)", DBTypeKeyMariaDB: "VARCHAR(10)", DBTypeKeyOracle: "VARCHAR2(10)"},
+	}
+
+	DataTypeString20 = DataType{
+		APIParameterType: "string20",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(20)", DBTypeKeySQLServer: "VARCHAR(20)", DBTypeKeyMariaDB: "VARCHAR(20)", DBTypeKeyOracle: "VARCHAR2(20)"},
+	}
+
+	DataTypeString30 = DataType{
+		APIParameterType: "string30",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(30)", DBTypeKeySQLServer: "VARCHAR(30)", DBTypeKeyMariaDB: "VARCHAR(30)", DBTypeKeyOracle: "VARCHAR2(30)"},
+	}
+
+	DataTypeString50 = DataType{
+		APIParameterType: "string50",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(50)", DBTypeKeySQLServer: "VARCHAR(50)", DBTypeKeyMariaDB: "VARCHAR(50)", DBTypeKeyOracle: "VARCHAR2(50)"},
+	}
+
+	DataTypeString100 = DataType{
+		APIParameterType: "string100",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(100)", DBTypeKeySQLServer: "VARCHAR(100)", DBTypeKeyMariaDB: "VARCHAR(100)", DBTypeKeyOracle: "VARCHAR2(100)"},
+	}
+
 	DataTypeString255 = DataType{
 		APIParameterType: "string255",
 		JSONType:         JSONTypeString,
 		GoType:           GoTypeString,
 		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(255)", DBTypeKeySQLServer: "VARCHAR(255)", DBTypeKeyMariaDB: "VARCHAR(255)", DBTypeKeyOracle: "VARCHAR2(255)"},
+	}
+
+	DataTypeString256 = DataType{
+		APIParameterType: "string256",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(256)", DBTypeKeySQLServer: "VARCHAR(256)", DBTypeKeyMariaDB: "VARCHAR(256)", DBTypeKeyOracle: "VARCHAR2(256)"},
+	}
+
+	DataTypeString500 = DataType{
+		APIParameterType: "string500",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(500)", DBTypeKeySQLServer: "VARCHAR(500)", DBTypeKeyMariaDB: "VARCHAR(500)", DBTypeKeyOracle: "VARCHAR2(500)"},
+	}
+
+	DataTypeString1024 = DataType{
+		APIParameterType: "string1024",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(1024)", DBTypeKeySQLServer: "VARCHAR(1024)", DBTypeKeyMariaDB: "VARCHAR(1024)", DBTypeKeyOracle: "VARCHAR2(1024)"},
+	}
+
+	DataTypeString2048 = DataType{
+		APIParameterType: "string2048",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(2048)", DBTypeKeySQLServer: "VARCHAR(2048)", DBTypeKeyMariaDB: "VARCHAR(2048)", DBTypeKeyOracle: "VARCHAR2(2048)"},
+	}
+
+	DataTypeString8096 = DataType{
+		APIParameterType: "string8096",
+		JSONType:         JSONTypeString,
+		GoType:           GoTypeString,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "VARCHAR(8096)", DBTypeKeySQLServer: "VARCHAR(8096)", DBTypeKeyMariaDB: "TEXT", DBTypeKeyOracle: "CLOB"},
 	}
 
 	DataTypeString32768 = DataType{
@@ -442,6 +530,13 @@ var (
 		JSONType:         JSONTypeString,
 		GoType:           GoTypeString,
 		DbType:           map[string]string{DBTypeKeyPostgreSQL: "NUMERIC(30,4)", DBTypeKeySQLServer: "DECIMAL(30,4)", DBTypeKeyMariaDB: "DECIMAL(30,4)", DBTypeKeyOracle: "NUMBER(30,4)"},
+	}
+
+	DataTypeGeometryPoint = DataType{
+		APIParameterType: "geometry_point",
+		JSONType:         JSONTypeObject,
+		GoType:           GoTypeMapStringInterface,
+		DbType:           map[string]string{DBTypeKeyPostgreSQL: "geometry(Point, 4326)", DBTypeKeySQLServer: "GEOGRAPHY", DBTypeKeyMariaDB: "POINT SRID 4326", DBTypeKeyOracle: "SDO_GEOMETRY"},
 	}
 )
 
