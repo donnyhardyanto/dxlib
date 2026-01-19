@@ -2,8 +2,6 @@ package base
 
 import (
 	"fmt"
-
-	database1Type "github.com/donnyhardyanto/dxlib/database/database_type"
 )
 
 type DXDatabaseType int64
@@ -14,6 +12,7 @@ const (
 	DXDatabaseTypeMariaDB
 	DXDatabaseTypeOracle
 	DXDatabaseTypeSQLServer
+	DXDatabaseTypePostgresSQLV2
 )
 
 func (t DXDatabaseType) String() string {
@@ -26,6 +25,8 @@ func (t DXDatabaseType) String() string {
 		return "sqlserver"
 	case DXDatabaseTypeMariaDB:
 		return "mariadb"
+	case DXDatabaseTypePostgresSQLV2:
+		return "postgres_v2"
 	default:
 		// This helps you see if the value was 999 or 0 or -1
 		return fmt.Sprintf("unknown(%d)", t)
@@ -46,6 +47,8 @@ func (t DXDatabaseType) Driver() string {
 		return "sqlserver"
 	case DXDatabaseTypeMariaDB:
 		return "mysql"
+	case DXDatabaseTypePostgresSQLV2:
+		return "postgres"
 	default:
 		return "unknown"
 	}
@@ -63,12 +66,14 @@ func StringToDXDatabaseType(v string) DXDatabaseType {
 		return DXDatabaseTypeOracle
 	case "sqlserver":
 		return DXDatabaseTypeSQLServer
+	case "postgres_v2", "postgresql_v2":
+		return DXDatabaseTypePostgresSQLV2
 	default:
 		return UnknownDatabaseType
 	}
 }
 
-func Database1DXDatabaseTypeToDXDatabaseType(dbType database1Type.DXDatabaseType) DXDatabaseType {
+/*func Database1DXDatabaseTypeToDXDatabaseType(dbType database1Type.DXDatabaseType) DXDatabaseType {
 	switch dbType {
 	case database1Type.PostgreSQL:
 		return DXDatabaseTypePostgreSQL
@@ -82,3 +87,4 @@ func Database1DXDatabaseTypeToDXDatabaseType(dbType database1Type.DXDatabaseType
 		return UnknownDatabaseType
 	}
 }
+*/

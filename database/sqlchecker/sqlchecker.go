@@ -8,7 +8,7 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/donnyhardyanto/dxlib/database/database_type"
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )
@@ -40,31 +40,31 @@ var (
 	}
 
 	// Maximum identifier lengths per dialect
-	maxIdentifierLengths = map[database_type.DXDatabaseType]int{
-		database_type.PostgreSQL: 63,
-		database_type.MariaDB:    64,
-		database_type.SQLServer:  128,
-		database_type.Oracle:     128,
+	maxIdentifierLengths = map[base.DXDatabaseType]int{
+		base.DXDatabaseTypePostgreSQL: 63,
+		base.DXDatabaseTypeMariaDB:    64,
+		base.DXDatabaseTypeSQLServer:  128,
+		base.DXDatabaseTypeOracle:     128,
 	}
 
 	// Valid operators for each dialect
-	validOperators = map[database_type.DXDatabaseType]map[string]bool{
-		database_type.PostgreSQL: {
+	validOperators = map[base.DXDatabaseType]map[string]bool{
+		base.DXDatabaseTypePostgreSQL: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "ilike": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
 		},
-		database_type.MariaDB: {
+		base.DXDatabaseTypeMariaDB: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
 		},
-		database_type.SQLServer: {
+		base.DXDatabaseTypeSQLServer: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
 		},
-		database_type.Oracle: {
+		base.DXDatabaseTypeOracle: {
 			"=": true, "!=": true, ">": true, "<": true, ">=": true, "<=": true,
 			"like": true, "in": true, "not in": true,
 			"is null": true, "is not null": true,
@@ -73,7 +73,7 @@ var (
 )
 
 // CheckIdentifier validates table and column names
-func CheckIdentifier(identifier string, dialect database_type.DXDatabaseType) error {
+func CheckIdentifier(identifier string, dialect base.DXDatabaseType) error {
 	if identifier == "" {
 		return errors.Errorf("identifier cannot be empty")
 	}
@@ -105,7 +105,7 @@ func CheckIdentifier(identifier string, dialect database_type.DXDatabaseType) er
 }
 
 // CheckOperator validates SQL operators
-func CheckOperator(operator string, dialect database_type.DXDatabaseType) error {
+func CheckOperator(operator string, dialect base.DXDatabaseType) error {
 	op := strings.ToLower(strings.TrimSpace(operator))
 	if ops, ok := validOperators[dialect]; ok {
 		if !ops[op] {
@@ -147,7 +147,7 @@ func CheckValue(value any) error {
 	case map[string]interface{}:
 		// Handle JSONB data type
 		for key, val := range v {
-			if err := CheckIdentifier(key, database_type.PostgreSQL); err != nil {
+			if err := CheckIdentifier(key, base.DXDatabaseTypePostgreSQL); err != nil {
 				return err
 			}
 			if err := CheckValue(val); err != nil {
@@ -224,7 +224,7 @@ func CheckLikePattern(query string) error {
 }
 
 // CheckOrderBy validates ORDER BY expressions
-func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
+func CheckOrderBy(expr string, dialect base.DXDatabaseType) error {
 	if expr == "" {
 		return errors.Errorf("empty order by expression")
 	}
@@ -266,7 +266,7 @@ func CheckOrderBy(expr string, dialect database_type.DXDatabaseType) error {
 }
 
 // CheckBaseQuery validates the base query for suspicious patterns
-func CheckBaseQuery(query string, dialect database_type.DXDatabaseType) error {
+func CheckBaseQuery(query string, dialect base.DXDatabaseType) error {
 	if query == "" {
 		return errors.Errorf("empty query")
 	}
@@ -323,7 +323,7 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 	if AllowRisk {
 		return nil
 	}
-	err = CheckBaseQuery(query, database_type.StringToDXDatabaseType(dbDriverName))
+	err = CheckBaseQuery(query, base.StringToDXDatabaseType(dbDriverName))
 	if err != nil {
 		return errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
 	}
@@ -343,7 +343,7 @@ func CheckAll(dbDriverName string, query string, arg any) (err error) {
 
 	// Check ORDER BY expressions
 	if strings.Contains(query, "ORDER BY") {
-		err = CheckOrderBy(query, database_type.StringToDXDatabaseType(dbDriverName))
+		err = CheckOrderBy(query, base.StringToDXDatabaseType(dbDriverName))
 		if err != nil {
 			return errors.Errorf("SQL_INJECTION_DETECTED:ORDER_BY_VALIDATION_FAILED: %+v", err)
 		}

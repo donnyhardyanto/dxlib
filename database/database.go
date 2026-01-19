@@ -11,6 +11,7 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/database2/sqlfile"
 	utilsSql "github.com/donnyhardyanto/dxlib/utils/security"
@@ -24,7 +25,6 @@ import (
 	goOra "github.com/sijms/go-ora/v2"
 
 	"github.com/donnyhardyanto/dxlib/configuration"
-	"github.com/donnyhardyanto/dxlib/database/database_type"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -34,7 +34,7 @@ type DXDatabaseEventFunc func(dm *DXDatabase, err error)
 type DXDatabase struct {
 	NameId                       string
 	IsConfigured                 bool
-	DatabaseType                 database_type.DXDatabaseType
+	DatabaseType                 base.DXDatabaseType
 	Address                      string
 	UserName                     string
 	UserPassword                 string
@@ -176,14 +176,14 @@ func (d *DXDatabase) GetNonSensitiveConnectionString() string {
 
 func (d *DXDatabase) GetConnectionString() (s string, err error) {
 	switch d.DatabaseType {
-	case database_type.PostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// This database type must strictly use DSN type connection string and cannot using URL type. Somehow it only works in DSN. Don't know why.
 		host, portAsString, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
 		}
 		s = fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s %s", d.UserName, d.UserPassword, host, portAsString, d.DatabaseName, d.ConnectionOptions)
-	case database_type.PostgresSQLV2:
+	case base.DXDatabaseTypePostgresSQLV2:
 		// Using `net/url` is the correct and idiomatic Go way to do this.
 		u := &url.URL{
 			Scheme: "postgresql",
@@ -200,7 +200,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 
 		// u.String() returns the correctly formatted and encoded URI string.
 		s = u.String()
-	case database_type.SQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		/*
 				host, port, err := net.SplitHostPort(d.Address)
 			if err != nil {
@@ -209,7 +209,7 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 						s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;%s", host, port, d.UserName, d.UserPassword, d.DatabaseName, d.ConnectionOptions)
 		*/
 		s = fmt.Sprintf("%s://%s:%s@%s?database=%s&%s", d.DatabaseType.String(), d.UserName, d.UserPassword, d.Address, d.DatabaseName, d.ConnectionOptions)
-	case database_type.Oracle:
+	case base.DXDatabaseTypeOracle:
 		host, port, err := net.SplitHostPort(d.Address)
 		if err != nil {
 			return "", err
@@ -269,8 +269,8 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return err
 			}
 		}
-		d.DatabaseType = database_type.StringToDXDatabaseType(s)
-		if d.DatabaseType == database_type.UnknownDatabaseType {
+		d.DatabaseType = base.StringToDXDatabaseType(s)
+		if d.DatabaseType > base.DXDatabaseTypePostgresSQLV2 {
 			if d.MustConnected {
 				err := log.Log.FatalAndCreateErrorf("Mandatory value of database_type field of Database %s configuration is not supported (%s)", d.NameId, s)
 				return err
@@ -337,7 +337,7 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 func (d *DXDatabase) CheckIsErrorBecauseDbNotExist(err error) bool {
 	s := err.Error()
 	switch d.DatabaseType {
-	case database_type.PostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		t1 := strings.Contains(s, "database")
 		t2 := strings.Contains(s, "not exist")
 		t3 := strings.Contains(s, d.DatabaseName)

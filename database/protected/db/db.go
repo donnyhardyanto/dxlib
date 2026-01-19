@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/database/database_type"
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	databaseProtectedUtils "github.com/donnyhardyanto/dxlib/database2/utils"
@@ -1595,7 +1596,7 @@ func XInsert(db *sqlx.DB, tableName string, fieldNameForRowId string, keyValues 
 		return 0, err
 	}
 
-	newQuery, newArgs, err := database_type.ConvertParamsWithMap(s, kv, database_type.StringToDXDatabaseType(driverName))
+	newQuery, newArgs, err := database_type.ConvertParamsWithMap(s, kv, base.StringToDXDatabaseType(driverName))
 	if err != nil {
 		return 0, err
 	}

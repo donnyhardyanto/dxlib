@@ -9,11 +9,12 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )
 
-type DXDatabaseType int64
+/*type DXDatabaseType int64
 
 const (
 	UnknownDatabaseType DXDatabaseType = iota
@@ -75,7 +76,7 @@ func StringToDXDatabaseType(v string) DXDatabaseType {
 
 		return UnknownDatabaseType
 	}
-}
+}*/
 
 func prepareArray(arr interface{}, driverName string) interface{} {
 	switch driverName {
@@ -323,7 +324,7 @@ func isJSON(str string) bool {
 		(strings.HasPrefix(str, "[") && strings.HasSuffix(str, "]"))
 }
 
-func ConvertParamsWithMap(query string, params map[string]any, dbType DXDatabaseType) (string, []any, error) {
+func ConvertParamsWithMap(query string, params map[string]any, dbType base.DXDatabaseType) (string, []any, error) {
 	re := regexp.MustCompile("[:@$][a-zA-Z][a-zA-Z0-9_]*")
 	matches := re.FindAllString(query, -1)
 
@@ -355,15 +356,15 @@ func ConvertParamsWithMap(query string, params map[string]any, dbType DXDatabase
 	return result, orderedArgs, nil
 }
 
-func getParamPlaceholder(dbType DXDatabaseType, index int) string {
+func getParamPlaceholder(dbType base.DXDatabaseType, index int) string {
 	switch dbType {
-	case PostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		return "$" + strconv.Itoa(index+1)
-	case SQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		return "@p" + strconv.Itoa(index+1)
-	case Oracle:
+	case base.DXDatabaseTypeOracle:
 		return ":" + strconv.Itoa(index+1)
-	case MariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		return "?"
 	default:
 		return "$" + strconv.Itoa(index+1)
