@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/donnyhardyanto/dxlib/types"
 )
 
 // ================== JOIN TYPES ==================
@@ -34,13 +33,13 @@ func (j JoinType) String() string {
 	}
 }
 
-// DBJoin represents a join between two entities
+// DBJoin represents a join between two tables
 type DBJoin struct {
 	JoinType        JoinType
-	TargetEntity    *DBEntity    // The entity to join TO
-	FromLocalField  *types.Field // Field from the source/left entity
-	ToTargetField   *types.Field // Field from the target/right entity
-	TargetTableName string       // Optional: override target table name (for self-joins or subqueries)
+	TargetTable     *DBTable // The table to join TO
+	FromLocalField  *Field   // Field from the source/left table
+	ToTargetField   *Field   // Field from the target/right table
+	TargetTableName string   // Optional: override target table name (for self-joins or subqueries)
 }
 
 // ================== ORDER BY ==================
@@ -68,10 +67,10 @@ type DBOrderBy struct {
 
 // DBViewColumn represents a column in the SELECT clause
 type DBViewColumn struct {
-	SourceEntity *DBEntity    // Which entity this column comes from (nil = from main table)
-	SourceField  *types.Field // The field reference (nil if using Expression)
-	Expression   string       // Raw SQL expression like "COUNT(*)", "SUM(amount)", etc.
-	Alias        string       // AS alias_name (required if Expression is used)
+	SourceTable *DBTable // Which table this column comes from (nil = from main table)
+	SourceField *Field   // The field reference (nil if using Expression)
+	Expression  string   // Raw SQL expression like "COUNT(*)", "SUM(amount)", etc.
+	Alias       string   // AS alias_name (required if Expression is used)
 }
 
 // ================== AGGREGATE FUNCTIONS ==================
@@ -106,50 +105,75 @@ func (a DBAggregateType) String() string {
 // ================== DB VIEW ==================
 
 type DBView struct {
-	Name       string
-	Schema     *DBSchema
-	FromEntity *DBEntity      // Main entity to select from
-	Columns    []DBViewColumn // Columns to select
-	Joins      []DBJoin       // Join clauses
-	Where      string         // WHERE clause (without the "WHERE" keyword)
-	GroupBy    []string       // GROUP BY columns (field names or expressions)
-	Having     string         // HAVING clause (without the "HAVING" keyword)
-	OrderBy    []DBOrderBy    // ORDER BY clause
-	Distinct   bool           // SELECT DISTINCT
+	DBEntity                 // Embedded base entity (Name, Type, Order, Schema)
+	FromTable *DBTable       // Main table to select from
+	Columns   []DBViewColumn // Columns to select
+	Joins     []DBJoin       // Join clauses
+	Where     string         // WHERE clause (without the "WHERE" keyword)
+	GroupBy   []string       // GROUP BY columns (field names or expressions)
+	Having    string         // HAVING clause (without the "HAVING" keyword)
+	OrderBy   []DBOrderBy    // ORDER BY clause
+	Distinct  bool           // SELECT DISTINCT
+	RawSQL    string         // Raw SQL for complex views (bypasses builder when set)
 }
 
 // NewDBView creates a new database view and registers it with the schema
-func NewDBView(schema *DBSchema, name string, fromEntity *DBEntity) *DBView {
+func NewDBView(schema *DBSchema, name string, fromTable *DBTable) *DBView {
 	view := &DBView{
-		Name:       name,
-		Schema:     schema,
-		FromEntity: fromEntity,
-		Columns:    []DBViewColumn{},
-		Joins:      []DBJoin{},
-		GroupBy:    []string{},
-		OrderBy:    []DBOrderBy{},
+		DBEntity: DBEntity{
+			Name:   name,
+			Type:   DBEntityTypeView,
+			Order:  0,
+			Schema: schema,
+		},
+		FromTable: fromTable,
+		Columns:   []DBViewColumn{},
+		Joins:     []DBJoin{},
+		GroupBy:   []string{},
+		OrderBy:   []DBOrderBy{},
+	}
+	if schema != nil {
+		schema.Views = append(schema.Views, view)
+	}
+	return view
+}
+
+// NewDBViewRawSQL creates a database view with raw SQL definition
+// Use this for complex views that are difficult to express with the builder pattern
+func NewDBViewRawSQL(schema *DBSchema, name string, rawSQL string) *DBView {
+	view := &DBView{
+		DBEntity: DBEntity{
+			Name:   name,
+			Type:   DBEntityTypeView,
+			Order:  0,
+			Schema: schema,
+		},
+		RawSQL: rawSQL,
+	}
+	if schema != nil {
+		schema.Views = append(schema.Views, view)
 	}
 	return view
 }
 
 // ================== BUILDER METHODS (for chaining) ==================
 
-// AddColumn adds a simple column from the main entity
-func (v *DBView) AddColumn(field *types.Field, alias string) *DBView {
+// AddColumn adds a simple column from the main table
+func (v *DBView) AddColumn(field *Field, alias string) *DBView {
 	v.Columns = append(v.Columns, DBViewColumn{
-		SourceEntity: nil,
-		SourceField:  field,
-		Alias:        alias,
+		SourceTable: nil,
+		SourceField: field,
+		Alias:       alias,
 	})
 	return v
 }
 
-// AddColumnFromEntity adds a column from a joined entity
-func (v *DBView) AddColumnFromEntity(entity *DBEntity, field *types.Field, alias string) *DBView {
+// AddColumnFromTable adds a column from a joined table
+func (v *DBView) AddColumnFromTable(table *DBTable, field *Field, alias string) *DBView {
 	v.Columns = append(v.Columns, DBViewColumn{
-		SourceEntity: entity,
-		SourceField:  field,
-		Alias:        alias,
+		SourceTable: table,
+		SourceField: field,
+		Alias:       alias,
 	})
 	return v
 }
@@ -163,11 +187,11 @@ func (v *DBView) AddExpression(expr string, alias string) *DBView {
 	return v
 }
 
-// AddJoin adds a join to another entity
-func (v *DBView) AddJoin(joinType JoinType, targetEntity *DBEntity, fromField *types.Field, toField *types.Field) *DBView {
+// AddJoin adds a join to another table
+func (v *DBView) AddJoin(joinType JoinType, targetTable *DBTable, fromField *Field, toField *Field) *DBView {
 	v.Joins = append(v.Joins, DBJoin{
 		JoinType:       joinType,
-		TargetEntity:   targetEntity,
+		TargetTable:    targetTable,
 		FromLocalField: fromField,
 		ToTargetField:  toField,
 	})
@@ -177,6 +201,12 @@ func (v *DBView) AddJoin(joinType JoinType, targetEntity *DBEntity, fromField *t
 // SetWhere sets the WHERE clause
 func (v *DBView) SetWhere(where string) *DBView {
 	v.Where = where
+	return v
+}
+
+// SetOrder sets the view Order (for global view creation ordering)
+func (v *DBView) SetOrder(order int) *DBView {
+	v.Order = order
 	return v
 }
 
@@ -219,6 +249,11 @@ func (v *DBView) FullViewName() string {
 
 // CreateDDL generates the CREATE VIEW DDL statement
 func (v *DBView) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+	// If RawSQL is set, use it directly
+	if v.RawSQL != "" {
+		return fmt.Sprintf("CREATE VIEW %s AS\n%s;\n", v.FullViewName(), v.RawSQL), nil
+	}
+
 	var sb strings.Builder
 
 	// CREATE VIEW
@@ -239,7 +274,7 @@ func (v *DBView) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	sb.WriteString(columns)
 
 	// FROM
-	sb.WriteString(fmt.Sprintf("\nFROM %s", v.FromEntity.FullTableName()))
+	sb.WriteString(fmt.Sprintf("\nFROM %s", v.FromTable.FullTableName()))
 
 	// JOINs
 	for _, join := range v.Joins {
@@ -309,15 +344,15 @@ func (v *DBView) buildColumnExpr(col DBViewColumn, dbType base.DXDatabaseType) (
 		// Field reference
 		fieldName := col.SourceField.GetName()
 		if fieldName == "" {
-			return "", fmt.Errorf("field has no name (not attached to entity)")
+			return "", fmt.Errorf("field has no name (not attached to table)")
 		}
 
-		if col.SourceEntity != nil {
-			// Field from a joined entity: entity_table.field_name
-			expr = col.SourceEntity.FullTableName() + "." + fieldName
+		if col.SourceTable != nil {
+			// Field from a joined table: table.field_name
+			expr = col.SourceTable.FullTableName() + "." + fieldName
 		} else {
-			// Field from the main entity: main_table.field_name
-			expr = v.FromEntity.FullTableName() + "." + fieldName
+			// Field from the main table: main_table.field_name
+			expr = v.FromTable.FullTableName() + "." + fieldName
 		}
 	} else {
 		return "", fmt.Errorf("column must have either Expression or SourceField")
@@ -334,13 +369,13 @@ func (v *DBView) buildColumnExpr(col DBViewColumn, dbType base.DXDatabaseType) (
 // buildJoinClause builds a single JOIN clause
 func (v *DBView) buildJoinClause(join DBJoin, dbType base.DXDatabaseType) (string, error) {
 	// Determine a target table name
-	var targetTable string
+	var targetTableName string
 	if join.TargetTableName != "" {
-		targetTable = join.TargetTableName
-	} else if join.TargetEntity != nil {
-		targetTable = join.TargetEntity.FullTableName()
+		targetTableName = join.TargetTableName
+	} else if join.TargetTable != nil {
+		targetTableName = join.TargetTable.FullTableName()
 	} else {
-		return "", fmt.Errorf("join must have either TargetEntity or TargetTableName")
+		return "", fmt.Errorf("join must have either TargetTable or TargetTableName")
 	}
 
 	// Get field names
@@ -352,23 +387,22 @@ func (v *DBView) buildJoinClause(join DBJoin, dbType base.DXDatabaseType) (strin
 	}
 
 	// Determine the source table for the ON clause
-	var fromTable string
-	// Check if FromLocalField belongs to FromEntity or one of the already joined entities
-	if join.FromLocalField.Owner == v.FromEntity {
-		fromTable = v.FromEntity.FullTableName()
-	} else if ownerEntity, ok := join.FromLocalField.Owner.(*DBEntity); ok {
-		fromTable = ownerEntity.FullTableName()
+	var fromTableName string
+	// Check if FromLocalField belongs to FromTable or one of the already joined tables
+	if join.FromLocalField.Owner == v.FromTable {
+		fromTableName = v.FromTable.FullTableName()
 	} else {
-		fromTable = v.FromEntity.FullTableName()
+		ownerTable := join.FromLocalField.Owner
+		fromTableName = ownerTable.FullTableName()
 	}
 
 	// Build: INNER JOIN target_table ON from_table.from_field = target_table.to_field
 	return fmt.Sprintf("%s %s ON %s.%s = %s.%s",
 		join.JoinType.String(),
-		targetTable,
-		fromTable,
+		targetTableName,
+		fromTableName,
 		fromFieldName,
-		targetTable,
+		targetTableName,
 		toFieldName,
 	), nil
 }

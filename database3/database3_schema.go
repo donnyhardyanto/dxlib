@@ -9,19 +9,21 @@ import (
 )
 
 type DBSchema struct {
-	Name     string
-	Order    int
-	DB       *DB
-	Entities []*DBEntity
+	Name   string
+	Order  int
+	DB     *DB
+	Tables []*DBTable
+	Views  []*DBView
 }
 
 // NewDBSchema creates a new database schema and registers it with the DB
 func NewDBSchema(db *DB, name string, order int) *DBSchema {
 	schema := &DBSchema{
-		Name:     name,
-		Order:    order,
-		DB:       db,
-		Entities: []*DBEntity{},
+		Name:   name,
+		Order:  order,
+		DB:     db,
+		Tables: []*DBTable{},
+		Views:  []*DBView{},
 	}
 	if db != nil {
 		db.Schemas = append(db.Schemas, schema)
@@ -50,38 +52,54 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		panic("unhandled default case")
 	}
 
-	// Add pgcrypto extension for PostgreSQL if any entity has encrypted fields
+	// Add pgcrypto extension for PostgreSQL if any table has encrypted fields
 	if dbType == base.DXDatabaseTypePostgreSQL {
-		for _, entity := range s.Entities {
-			if entity.HasEncryptedFields() {
+		for _, table := range s.Tables {
+			if table.HasEncryptedFields() {
 				sb.WriteString("CREATE EXTENSION IF NOT EXISTS pgcrypto;\n\n")
 				break
 			}
 		}
 	}
 
-	// Create DDL for all entities
-	orderedEntities := make([]*DBEntity, len(s.Entities))
-	copy(orderedEntities, s.Entities)
-	sort.SliceStable(orderedEntities, func(i, j int) bool {
-		return orderedEntities[i].Order < orderedEntities[j].Order
+	// Create DDL for all tables
+	orderedTables := make([]*DBTable, len(s.Tables))
+	copy(orderedTables, s.Tables)
+	sort.SliceStable(orderedTables, func(i, j int) bool {
+		return orderedTables[i].Order < orderedTables[j].Order
 	})
 
-	for _, entity := range orderedEntities {
-		s, err := entity.createTableDDL(dbType)
+	for _, table := range orderedTables {
+		ddl, err := table.createTableDDL(dbType)
 		if err != nil {
 			return "", err
 		}
-		sb.WriteString(s)
+		sb.WriteString(ddl)
 		sb.WriteString("\n")
 	}
 
-	// Create views for entities with encrypted fields (after all tables are created)
-	for _, entity := range orderedEntities {
-		if entity.HasEncryptedFields() {
-			sb.WriteString(entity.createViewDDL(dbType))
+	// Create views for tables with encrypted fields (after all tables are created)
+	for _, table := range orderedTables {
+		if table.HasEncryptedFields() {
+			sb.WriteString(table.createViewDDL(dbType))
 			sb.WriteString("\n")
 		}
+	}
+
+	// Create DDL for all explicit views
+	orderedViews := make([]*DBView, len(s.Views))
+	copy(orderedViews, s.Views)
+	sort.SliceStable(orderedViews, func(i, j int) bool {
+		return orderedViews[i].Order < orderedViews[j].Order
+	})
+
+	for _, view := range orderedViews {
+		ddl, err := view.CreateDDL(dbType)
+		if err != nil {
+			return "", err
+		}
+		sb.WriteString(ddl)
+		sb.WriteString("\n")
 	}
 
 	return sb.String(), nil

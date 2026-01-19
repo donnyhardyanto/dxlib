@@ -88,50 +88,11 @@ const (
 )
 
 type DataType struct {
-	APIParameterType     APIParameterType
-	JSONType             JSONType
-	GoType               GoType
-	DbType               map[base.DXDatabaseType]string // Database-specific SQL types
-	DefaultValueByDBType map[base.DXDatabaseType]string // Database-specific default values for this type
-}
-
-type Field struct {
-	Owner                any
-	Order                int
-	Type                 DataType
-	IsPrimaryKey         bool
-	IsAutoIncrement      bool
-	IsNotNull            bool
-	IsUnique             bool
-	DefaultValue         any                         // SQL expression for DEFAULT clause (used when DefaultValueByDBType not specified)
-	DefaultValueByDBType map[base.DXDatabaseType]any // Database-specific default values. Keys: "postgresql", "sqlserver", "oracle", "mariadb"
-	IsReferences         bool
-	References           *Field
-	IsVaulted            bool
-	IsHashed             bool
-	PhysicalFieldName    string
-	PhysicalDataType     DataType
-	VaultConfigKeyId     string
-	HashDataName         string
-	HashDataType         DataType
-	HashSaltConfigKeyId  string
-}
-
-func (f *Field) GetName() string {
-	if f.Owner == nil {
-		return ""
-	}
-
-	// Use a type assertion to check if Owner is an *Entity
-	if entity, ok := f.Owner.(*Entity); ok {
-		// Range over the map: k is the name (string), field is the pointer (*Field)
-		for k, field := range entity.Fields {
-			if field == f {
-				return k
-			}
-		}
-	}
-	return ""
+	APIParameterType           APIParameterType
+	JSONType                   JSONType
+	GoType                     GoType
+	DbType                     map[base.DXDatabaseType]string // Database-specific SQL types
+	DefaultValueByDatabaseType map[base.DXDatabaseType]string // Database-specific default values for this type
 }
 
 // UID Default Expressions for each database type
@@ -149,14 +110,6 @@ const UIDDefaultExprOracle = "LOWER(TO_CHAR(ROUND((CAST(SYS_EXTRACT_UTC(SYSTIMES
 // UIDDefaultExprMariaDB is the MariaDB/MySQL UID default expression
 const UIDDefaultExprMariaDB = "CONCAT(HEX(FLOOR(UNIX_TIMESTAMP(NOW(6)) * 1000000)), REPLACE(UUID(), '-', ''))"
 
-type Entity struct {
-	Name              string
-	Type              DataType
-	Fields            map[string]*Field
-	ViewOverTable     bool   // If true, Name becomes the VIEW
-	PhysicalTableName string // The name of the actual storage TABLE
-}
-
 var (
 	DataTypeEncryptedBlob = DataType{
 		APIParameterType: APIParameterTypeEncryptedBlob,
@@ -172,11 +125,11 @@ var (
 	}
 
 	DataTypeUID = DataType{
-		APIParameterType:     APIParameterTypeString,
-		JSONType:             JSONTypeString,
-		GoType:               GoTypeString,
-		DbType:               map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR2(1024)"},
-		DefaultValueByDBType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: UIDDefaultExprPostgreSQL, base.DXDatabaseTypeSQLServer: UIDDefaultExprSQLServer, base.DXDatabaseTypeOracle: UIDDefaultExprOracle, base.DXDatabaseTypeMariaDB: UIDDefaultExprMariaDB},
+		APIParameterType:           APIParameterTypeString,
+		JSONType:                   JSONTypeString,
+		GoType:                     GoTypeString,
+		DbType:                     map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR2(1024)"},
+		DefaultValueByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: UIDDefaultExprPostgreSQL, base.DXDatabaseTypeSQLServer: UIDDefaultExprSQLServer, base.DXDatabaseTypeOracle: UIDDefaultExprOracle, base.DXDatabaseTypeMariaDB: UIDDefaultExprMariaDB},
 	}
 
 	DataTypeString = DataType{
