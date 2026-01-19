@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -312,7 +313,7 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTabl
 
 	driverName := tx.DriverName()
 
-	dbType := StringToDXDatabaseType(driverName)
+	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name explicitly
 	if err := CheckIdentifier(dbType, tableName); err != nil {

@@ -6,37 +6,49 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/pkg/errors"
 )
 
-func dbTypeToKey(dbType DXDatabaseType) string {
+/*func dbTypeToKey(dbType base.DXDatabaseType) string {
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		return types.DBTypeKeyPostgreSQL
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		return types.DBTypeKeySQLServer
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		return types.DBTypeKeyOracle
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		return types.DBTypeKeyMariaDB
 	default:
 		return types.DBTypeKeyPostgreSQL
 	}
-}
+}*/
+
+type DBEntityType int
+
+const (
+	DBEntityTypeTable DBEntityType = iota
+	DBEntityTypeView
+	DBEntityTypeMaterializedView
+)
 
 type DBEntity struct {
 	types.Entity
+	Type                      DBEntityType
+	Order                     int
 	Schema                    *DBSchema
-	TDE                       types.TDEConfig // Database-specific TDE configuration
+	TDE                       TDEConfig // Database-specific TDE configuration
 	UseTableSuffix            bool
 	IsCompositeEncryptedTable bool // If true, adds "_t" suffix to the table name and "_v" suffix to view name
 }
 
 // NewDBEntity creates a new database entity and registers it with the schema
-func NewDBEntity(schema *DBSchema, entity types.Entity, tde types.TDEConfig) *DBEntity {
-	dbEntity := &DBEntity{Entity: entity, Schema: schema, TDE: tde}
+func NewDBEntity(schema *DBSchema, order int, entity types.Entity, tde TDEConfig) *DBEntity {
+	dbEntity := &DBEntity{Entity: entity, Order: order, Schema: schema, TDE: tde}
 	if schema != nil {
 		schema.Entities = append(schema.Entities, dbEntity)
 	}
@@ -171,17 +183,21 @@ func (e *DBEntity) getOrderedFields() []string {
 // CreateDDL generates a DDL script for the entity based on database type
 // For entities with encrypted fields: creates table (with encrypted columns only) + view (with decrypted columns)
 // For entities without encrypted fields: creates table only
-func (e *DBEntity) CreateDDL(dbType DXDatabaseType) string {
+func (e *DBEntity) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	var sb strings.Builder
 	hasEncrypted := e.HasEncryptedFields()
 
-	// Add pgcrypto extension for DXDatabaseTypePostgreSQL
-	if dbType == DXDatabaseTypePostgreSQL && hasEncrypted {
+	// Add pgcrypto extension for base.DXDatabaseTypePostgreSQL
+	if dbType == base.DXDatabaseTypePostgreSQL && hasEncrypted {
 		sb.WriteString("CREATE EXTENSION IF NOT EXISTS pgcrypto;\n\n")
 	}
 
 	// Create table
-	sb.WriteString(e.createTableDDL(dbType))
+	s, err := e.createTableDDL(dbType)
+	if err != nil {
+		return "", err
+	}
+	sb.WriteString(s)
 
 	// Create a view if there are encrypted fields
 	if hasEncrypted {
@@ -189,11 +205,11 @@ func (e *DBEntity) CreateDDL(dbType DXDatabaseType) string {
 		sb.WriteString(e.createViewDDL(dbType))
 	}
 
-	return sb.String()
+	return sb.String(), nil
 }
 
 // createTableDDL generates the CREATE TABLE DDL only
-func (e *DBEntity) createTableDDL(dbType DXDatabaseType) string {
+func (e *DBEntity) createTableDDL(dbType base.DXDatabaseType) (string, error) {
 	var sb strings.Builder
 	tableName := e.FullTableName()
 
@@ -205,11 +221,17 @@ func (e *DBEntity) createTableDDL(dbType DXDatabaseType) string {
 		field := e.Fields[fieldName]
 		if field.IsVaulted && field.PhysicalFieldName != "" {
 			// For encrypted fields: only add encrypted_data_name and hash_data_name to the table
-			encColDef := e.encryptedFieldToDDL(field, dbType)
+			encColDef, err := e.encryptedFieldToDDL(field, dbType)
+			if err != nil {
+				return "", err
+			}
 			columns = append(columns, encColDef)
 
 			if field.IsHashed && field.HashDataName != "" {
-				hashColDef := e.hashedFieldToDDL(field, dbType)
+				hashColDef, err := e.hashedFieldToDDL(field, dbType)
+				if err != nil {
+					return "", err
+				}
 				columns = append(columns, hashColDef)
 			}
 		} else {
@@ -227,29 +249,29 @@ func (e *DBEntity) createTableDDL(dbType DXDatabaseType) string {
 
 	sb.WriteString(";\n")
 
-	return sb.String()
+	return sb.String(), nil
 }
 
 // buildTDEClause generates the database-specific TDE clause for CREATE TABLE
-func (e *DBEntity) buildTDEClause(dbType DXDatabaseType) string {
+func (e *DBEntity) buildTDEClause(dbType base.DXDatabaseType) string {
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// PostgreSQL: Use table access method for TDE (e.g., "tde_heap" with pg_tde extension)
 		if e.TDE.PostgreSQLAccessMethod != "" {
 			return fmt.Sprintf(" USING %s", e.TDE.PostgreSQLAccessMethod)
 		}
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		// Oracle: Specify tablespace for encrypted storage
 		if e.TDE.OracleTablespace != "" {
 			return fmt.Sprintf(" TABLESPACE %s", e.TDE.OracleTablespace)
 		}
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		// SQL Server: TDE is database-level, no per-table syntax
 		// Add a comment to indicate TDE expectation if enabled
 		if e.TDE.SQLServerTDEEnabled {
 			return " /* TDE enabled at database level */"
 		}
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// MariaDB/MySQL: Use ENCRYPTION table option for InnoDB
 		if e.TDE.MariaDBEncryption == "Y" {
 			return " ENCRYPTION='Y'"
@@ -261,7 +283,7 @@ func (e *DBEntity) buildTDEClause(dbType DXDatabaseType) string {
 }
 
 // createViewDDL generates the VIEW DDL with decrypted columns
-func (e *DBEntity) createViewDDL(dbType DXDatabaseType) string {
+func (e *DBEntity) createViewDDL(dbType base.DXDatabaseType) string {
 	var sb strings.Builder
 	viewName := e.FullViewName()
 	tableName := e.FullTableName()
@@ -294,12 +316,10 @@ func (e *DBEntity) createViewDDL(dbType DXDatabaseType) string {
 	return sb.String()
 }
 
-func (e *DBEntity) fieldToDDL(fieldName string, field types.Field, dbType DXDatabaseType) string {
-	key := dbTypeToKey(dbType)
-	dbTypeStr := field.Type.GetDbType(key)
+func (e *DBEntity) fieldToDDL(fieldName string, field types.Field, dbType base.DXDatabaseType) string {
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s %s", fieldName, dbTypeStr))
+	sb.WriteString(fmt.Sprintf("%s %s", fieldName, dbType.String()))
 
 	// Add PRIMARY KEY constraint
 	if field.IsPrimaryKey {
@@ -345,12 +365,11 @@ func (e *DBEntity) fieldToDDL(fieldName string, field types.Field, dbType DXData
 
 // getDefaultValueForDBType returns the appropriate default value for the given database type
 // Priority: 1. Field.DefaultValueByDBType, 2. Field.DefaultValue, 3. Field.Type.DefaultValueByDBType
-func (e *DBEntity) getDefaultValueForDBType(field types.Field, dbType DXDatabaseType) string {
-	key := dbTypeToKey(dbType)
+func (e *DBEntity) getDefaultValueForDBType(field types.Field, dbType base.DXDatabaseType) string {
 
 	// 1. Check if field has database-specific default
 	if field.DefaultValueByDBType != nil {
-		if dbDefault, ok := field.DefaultValueByDBType[key]; ok && dbDefault != nil {
+		if dbDefault, ok := field.DefaultValueByDBType[dbType]; ok && dbDefault != nil {
 			return anyToString(dbDefault)
 		}
 	}
@@ -362,7 +381,7 @@ func (e *DBEntity) getDefaultValueForDBType(field types.Field, dbType DXDatabase
 
 	// 3. Check DataType's database-specific default (e.g., DataTypeUID) - only if IsAutoIncrement is true
 	if field.IsAutoIncrement && field.Type.DefaultValueByDBType != nil {
-		if dbDefault, ok := field.Type.DefaultValueByDBType[key]; ok && dbDefault != "" {
+		if dbDefault, ok := field.Type.DefaultValueByDBType[dbType]; ok && dbDefault != "" {
 			return dbDefault
 		}
 	}
@@ -392,25 +411,32 @@ func anyToString(v any) string {
 	}
 }
 
-func (e *DBEntity) encryptedFieldToDDL(field *types.Field, dbType DXDatabaseType) string {
-	key := dbTypeToKey(dbType)
-	dbTypeStr := field.PhysicalDataType.GetDbType(key)
-	return fmt.Sprintf("%s %s", field.PhysicalFieldName, dbTypeStr)
+func (e *DBEntity) encryptedFieldToDDL(field *types.Field, dbType base.DXDatabaseType) (string, error) {
+	dbTypeStr, ok := field.PhysicalDataType.DbType[dbType]
+	if !ok {
+		return "", errors.Errorf("entity: %s, field: %s - unknown database type: %v",
+			e.Name, field.GetName(), dbType)
+	}
+	return fmt.Sprintf("%s %s", field.PhysicalFieldName, dbTypeStr), nil
 }
 
-func (e *DBEntity) hashedFieldToDDL(field *types.Field, dbType DXDatabaseType) string {
-	key := dbTypeToKey(dbType)
-	dbTypeStr := field.HashDataType.GetDbType(key)
-	return fmt.Sprintf("%s %s", field.HashDataName, dbTypeStr)
+func (e *DBEntity) hashedFieldToDDL(field *types.Field, dbType base.DXDatabaseType) (string, error) {
+
+	dbTypeStr, ok := field.HashDataType.DbType[dbType]
+	if !ok {
+		return "", errors.Errorf("entity: %s, field: %s - unknown database type: %v",
+			e.Name, field.GetName(), dbType)
+	}
+	return fmt.Sprintf("%s %s", field.HashDataName, dbTypeStr), nil
 }
 
 // SelectOne selects a single row from the view (decrypted data)
-func (e *DBEntity) SelectOne(db *sql.DB, dbType DXDatabaseType, where string, args ...any) (utils.JSON, error) {
+func (e *DBEntity) SelectOne(db *sql.DB, dbType base.DXDatabaseType, where string, args ...any) (utils.JSON, error) {
 	columns := e.buildSelectColumns()
 	viewName := e.FullViewName()
 
 	var query string
-	if dbType == DXDatabaseTypeSQLServer {
+	if dbType == base.DXDatabaseTypeSQLServer {
 		// language=text
 		query = fmt.Sprintf("SELECT TOP 1 %s FROM %s WHERE %s", columns, viewName, where)
 	} else {
@@ -422,7 +448,7 @@ func (e *DBEntity) SelectOne(db *sql.DB, dbType DXDatabaseType, where string, ar
 }
 
 // SelectMany selects multiple rows from the view (decrypted data)
-func (e *DBEntity) SelectMany(db *sql.DB, dbType DXDatabaseType, where string, args ...any) ([]utils.JSON, error) {
+func (e *DBEntity) SelectMany(db *sql.DB, dbType base.DXDatabaseType, where string, args ...any) ([]utils.JSON, error) {
 	columns := e.buildSelectColumns()
 	viewName := e.FullViewName()
 
@@ -456,7 +482,7 @@ func (e *DBEntity) SelectMany(db *sql.DB, dbType DXDatabaseType, where string, a
 }
 
 // Insert inserts a new row into the table
-func (e *DBEntity) Insert(db *sql.DB, dbType DXDatabaseType, data utils.JSON) error {
+func (e *DBEntity) Insert(db *sql.DB, dbType base.DXDatabaseType, data utils.JSON) error {
 	columns, values, args, err := e.buildInsertData(dbType, data)
 	if err != nil {
 		return err
@@ -470,7 +496,7 @@ func (e *DBEntity) Insert(db *sql.DB, dbType DXDatabaseType, data utils.JSON) er
 }
 
 // Update updates existing rows in the table
-func (e *DBEntity) Update(db *sql.DB, dbType DXDatabaseType, data utils.JSON, where string, whereArgs ...any) error {
+func (e *DBEntity) Update(db *sql.DB, dbType base.DXDatabaseType, data utils.JSON, where string, whereArgs ...any) error {
 	setClause, args, err := e.buildUpdateData(dbType, data)
 	if err != nil {
 		return err
@@ -498,20 +524,20 @@ func (e *DBEntity) buildSelectColumns() string {
 	return strings.Join(e.getOrderedFields(), ", ")
 }
 
-func (e *DBEntity) buildDecryptExpr(fieldName string, field *types.Field, dbType DXDatabaseType) string {
+func (e *DBEntity) buildDecryptExpr(fieldName string, field *types.Field, dbType base.DXDatabaseType) string {
 	encCol := field.PhysicalFieldName
 	keyExpr := BuildGetSessionConfigExpr(dbType, "app.encryption_key")
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// pgp_sym_decrypt(encrypted_col, key) AS original_name
 		return fmt.Sprintf("pgp_sym_decrypt(%s, %s) AS %s", encCol, keyExpr, fieldName)
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		// DecryptByPassPhrase(key, encrypted_col) AS original_name
 		return fmt.Sprintf("CONVERT(VARCHAR(MAX), DecryptByPassPhrase(%s, %s)) AS %s", keyExpr, encCol, fieldName)
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// AES_DECRYPT(encrypted_col, key) AS original_name
 		return fmt.Sprintf("AES_DECRYPT(%s, %s) AS %s", encCol, keyExpr, fieldName)
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		// DBMS_CRYPTO.DECRYPT using session context for a key
 		return fmt.Sprintf("UTL_RAW.CAST_TO_VARCHAR2(DBMS_CRYPTO.DECRYPT(%s, DBMS_CRYPTO.ENCRYPT_AES256 + DBMS_CRYPTO.CHAIN_CBC + DBMS_CRYPTO.PAD_PKCS5, UTL_RAW.CAST_TO_RAW(%s))) AS %s", encCol, keyExpr, fieldName)
 	default:
@@ -519,7 +545,7 @@ func (e *DBEntity) buildDecryptExpr(fieldName string, field *types.Field, dbType
 	}
 }
 
-func (e *DBEntity) buildInsertData(dbType DXDatabaseType, data utils.JSON) (columns string, values string, args []any, err error) {
+func (e *DBEntity) buildInsertData(dbType base.DXDatabaseType, data utils.JSON) (columns string, values string, args []any, err error) {
 	var cols []string
 	var vals []string
 	argIndex := 1
@@ -563,7 +589,7 @@ func (e *DBEntity) buildInsertData(dbType DXDatabaseType, data utils.JSON) (colu
 	return strings.Join(cols, ", "), strings.Join(vals, ", "), args, nil
 }
 
-func (e *DBEntity) buildUpdateData(dbType DXDatabaseType, data utils.JSON) (setClause string, args []any, err error) {
+func (e *DBEntity) buildUpdateData(dbType base.DXDatabaseType, data utils.JSON) (setClause string, args []any, err error) {
 	var sets []string
 	argIndex := 1
 
@@ -603,47 +629,47 @@ func (e *DBEntity) buildUpdateData(dbType DXDatabaseType, data utils.JSON) (setC
 	return strings.Join(sets, ", "), args, nil
 }
 
-func (e *DBEntity) placeholder(dbType DXDatabaseType, index int) string {
+func (e *DBEntity) placeholder(dbType base.DXDatabaseType, index int) string {
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		return fmt.Sprintf("$%d", index)
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		return fmt.Sprintf("@p%d", index)
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		return fmt.Sprintf(":p%d", index)
-	default: // DXDatabaseTypeMariaDB/MySQL
+	default: // base.DXDatabaseTypeMariaDB/MySQL
 		return "?"
 	}
 }
 
-func (e *DBEntity) buildEncryptExpr(dbType DXDatabaseType, argIndex int) string {
+func (e *DBEntity) buildEncryptExpr(dbType base.DXDatabaseType, argIndex int) string {
 	placeholder := e.placeholder(dbType, argIndex)
 	keyExpr := BuildGetSessionConfigExpr(dbType, "app.encryption_key")
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		return fmt.Sprintf("pgp_sym_encrypt(%s::text, %s)", placeholder, keyExpr)
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		return fmt.Sprintf("EncryptByPassPhrase(%s, %s)", keyExpr, placeholder)
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		return fmt.Sprintf("AES_ENCRYPT(%s, %s)", placeholder, keyExpr)
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		return fmt.Sprintf("DBMS_CRYPTO.ENCRYPT(UTL_RAW.CAST_TO_RAW(%s), DBMS_CRYPTO.ENCRYPT_AES256 + DBMS_CRYPTO.CHAIN_CBC + DBMS_CRYPTO.PAD_PKCS5, UTL_RAW.CAST_TO_RAW(%s))", placeholder, keyExpr)
 	default:
 		return placeholder
 	}
 }
 
-func (e *DBEntity) buildHashExpr(dbType DXDatabaseType, argIndex int) string {
+func (e *DBEntity) buildHashExpr(dbType base.DXDatabaseType, argIndex int) string {
 	placeholder := e.placeholder(dbType, argIndex)
 	saltExpr := BuildGetSessionConfigExpr(dbType, "app.hash_salt")
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		return fmt.Sprintf("digest(%s || %s, 'sha256')", placeholder, saltExpr)
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		return fmt.Sprintf("HASHBYTES('SHA2_256', CONCAT(%s, %s))", placeholder, saltExpr)
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		return fmt.Sprintf("SHA2(CONCAT(%s, %s), 256)", placeholder, saltExpr)
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		return fmt.Sprintf("DBMS_CRYPTO.HASH(UTL_RAW.CAST_TO_RAW(%s || %s), DBMS_CRYPTO.HASH_SH256)", placeholder, saltExpr)
 	default:
 		return placeholder

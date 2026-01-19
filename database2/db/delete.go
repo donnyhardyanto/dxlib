@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -38,7 +39,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 
 	// Get the database driver name
 	driverName := strings.ToLower(db.DriverName())
-	dbType := StringToDXDatabaseType(driverName)
+	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
 	if err := CheckIdentifier(dbType, tableName); err != nil {
@@ -213,7 +214,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 
 	// Get the database driver name
 	driverName := strings.ToLower(tx.DriverName())
-	dbType := StringToDXDatabaseType(driverName)
+	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
 	if err := CheckIdentifier(dbType, tableName); err != nil {

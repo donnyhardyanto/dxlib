@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/types"
 )
 
@@ -50,20 +51,20 @@ func parseOracleKey(key string) (namespace string, attribute string) {
 // SQL Server: EXEC sp_set_session_context @key = N'key', @value = N'value'
 // Oracle: EXEC DBMS_SESSION.SET_CONTEXT('app_ctx', 'key', 'value')
 // MariaDB/MySQL: SET @key = 'value'
-func BuildSetSessionConfigSQL(dbType DXDatabaseType, key string, value string) string {
+func BuildSetSessionConfigSQL(dbType base.DXDatabaseType, key string, value string) string {
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// PostgreSQL uses SET for custom GUC variables
 		// Key format: "namespace.variable" e.g., "app.encryption_key"
 		return fmt.Sprintf("SET %s = '%s'", key, value)
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		// SQL Server 2016+ uses sp_set_session_context
 		return fmt.Sprintf("EXEC sp_set_session_context @key = N'%s', @value = N'%s'", key, value)
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		// Oracle uses application context (requires context to be created first)
 		namespace, attribute := parseOracleKey(key)
 		return fmt.Sprintf("BEGIN DBMS_SESSION.SET_CONTEXT('%s', '%s', '%s'); END;", namespace, attribute, value)
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// MySQL/MariaDB uses user-defined variables with @ prefix
 		// Replace dots with underscores for variable name
 		varName := strings.ReplaceAll(key, ".", "_")
@@ -80,16 +81,16 @@ func BuildSetSessionConfigSQL(dbType DXDatabaseType, key string, value string) s
 // SQL Server: SESSION_CONTEXT(N'key')
 // Oracle: SYS_CONTEXT('APP_CTX', 'key')
 // MariaDB/MySQL: @key
-func BuildGetSessionConfigExpr(dbType DXDatabaseType, key string) string {
+func BuildGetSessionConfigExpr(dbType base.DXDatabaseType, key string) string {
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		return fmt.Sprintf("current_setting('%s')", key)
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		return fmt.Sprintf("CAST(SESSION_CONTEXT(N'%s') AS NVARCHAR(MAX))", key)
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		namespace, attribute := parseOracleKey(key)
 		return fmt.Sprintf("SYS_CONTEXT('%s', '%s')", namespace, attribute)
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// MySQL/MariaDB uses user-defined variables
 		varName := strings.ReplaceAll(key, ".", "_")
 		return fmt.Sprintf("@%s", varName)
@@ -105,10 +106,10 @@ func BuildGetSessionConfigExpr(dbType DXDatabaseType, key string) string {
 // SQL Server: SELECT SESSION_CONTEXT(N'key')
 // Oracle: SELECT SYS_CONTEXT('APP_CTX', 'key') FROM DUAL
 // MariaDB/MySQL: SELECT @key
-func BuildGetSessionConfigSQL(dbType DXDatabaseType, key string) string {
+func BuildGetSessionConfigSQL(dbType base.DXDatabaseType, key string) string {
 	expr := BuildGetSessionConfigExpr(dbType, key)
 	switch dbType {
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		return fmt.Sprintf("SELECT "+"%s FROM DUAL", expr)
 	default:
 		return fmt.Sprintf("SELECT %s", expr)
@@ -117,29 +118,29 @@ func BuildGetSessionConfigSQL(dbType DXDatabaseType, key string) string {
 
 // SetSessionConfig executes the SET command on a database connection using parameterized queries
 // This is safe from SQL injection as it validates the key and uses parameterized queries for the value
-func SetSessionConfig(db *sql.DB, dbType DXDatabaseType, key string, value string) error {
+func SetSessionConfig(db *sql.DB, dbType base.DXDatabaseType, key string, value string) error {
 	// Validate key to prevent SQL injection
 	if err := ValidateSessionConfigKey(key); err != nil {
 		return fmt.Errorf("invalid session config key: %w", err)
 	}
 
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// Use set_config() function which accepts parameters
 		// set_config(setting_name, new_value, is_local) - is_local=false means session-level
 		_, err := db.Exec("SELECT set_config($1, $2, false)", key, value)
 		return err
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		// sp_set_session_context accepts parameters
 		_, err := db.Exec("EXEC "+"sp_set_session_context @key = @p1, @value = @p2", key, value)
 		return err
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		// Oracle: use bind variables in PL/SQL block
 		namespace, attribute := parseOracleKey(key)
 		// Validate namespace and attribute as well (they're derived from a key which is already validated)
 		_, err := db.Exec("BEGIN "+"DBMS_SESSION.SET_CONTEXT(:1, :2, :3); END;", namespace, attribute, value)
 		return err
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// MySQL/MariaDB: use prepared statement
 		// Note: User variable names cannot be parameterized, but the key is validated
 		varName := strings.ReplaceAll(key, ".", "_")
@@ -159,7 +160,7 @@ func SetSessionConfig(db *sql.DB, dbType DXDatabaseType, key string, value strin
 
 // GetSessionConfig retrieves a session configuration value from the database using parameterized queries
 // This is safe from SQL injection as it validates the key and uses parameterized queries
-func GetSessionConfig(db *sql.DB, dbType DXDatabaseType, key string) (string, error) {
+func GetSessionConfig(db *sql.DB, dbType base.DXDatabaseType, key string) (string, error) {
 	// Validate key to prevent SQL injection
 	if err := ValidateSessionConfigKey(key); err != nil {
 		return "", fmt.Errorf("invalid session config key: %w", err)
@@ -169,18 +170,18 @@ func GetSessionConfig(db *sql.DB, dbType DXDatabaseType, key string) (string, er
 	var err error
 
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// current_setting() accepts parameter
 		err = db.QueryRow("SELECT current_setting($1)", key).Scan(&value)
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		// SESSION_CONTEXT accepts parameter
 		err = db.QueryRow("SELECT "+"CAST(SESSION_CONTEXT(@p1) AS NVARCHAR(MAX))", key).Scan(&value)
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		// SYS_CONTEXT accepts parameters
 		namespace, attribute := parseOracleKey(key)
 		s := "SELECT " + "SYS_CONTEXT(:1, :2) FROM DUAL"
 		err = db.QueryRow(s, namespace, attribute).Scan(&value)
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// MySQL/MariaDB user variables - variable name cannot be parameterized but key is validated
 		varName := strings.ReplaceAll(key, ".", "_")
 		query := fmt.Sprintf("SELECT @%s", varName)
@@ -200,13 +201,13 @@ func GetSessionConfig(db *sql.DB, dbType DXDatabaseType, key string) (string, er
 
 // BuildCreateContextDDL generates DDL to create the application context (required for Oracle)
 // For other databases, this returns an empty string or comment
-func BuildCreateContextDDL(dbType DXDatabaseType, namespace string) string {
+func BuildCreateContextDDL(dbType base.DXDatabaseType, namespace string) string {
 	switch dbType {
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		// Oracle requires creating a context before using it
 		ctxName := strings.ToUpper(namespace) + "_CTX"
 		return fmt.Sprintf("CREATE OR REPLACE CONTEXT %s USING %s_PKG ACCESSED GLOBALLY;\n", ctxName, ctxName)
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// PostgreSQL doesn't require pre-creation for custom GUC variables,
 		// But you may need to add to postgresql.conf: custom_variable_classes = 'app'
 		return fmt.Sprintf("-- PostgreSQL: Ensure '%s' namespace is allowed in postgresql.conf\n-- Add: custom_variable_classes = '%s'\n", namespace, namespace)
@@ -221,15 +222,15 @@ func BuildCreateContextDDL(dbType DXDatabaseType, namespace string) string {
 
 // BuildUIDDefaultExpr generates a database-specific default expression for unique ID generation
 // Format: hex(timestamp_microseconds) + uuid
-func BuildUIDDefaultExpr(dbType DXDatabaseType) string {
+func BuildUIDDefaultExpr(dbType base.DXDatabaseType) string {
 	switch dbType {
-	case DXDatabaseTypePostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		return types.UIDDefaultExprPostgreSQL
-	case DXDatabaseTypeSQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		return types.UIDDefaultExprSQLServer
-	case DXDatabaseTypeOracle:
+	case base.DXDatabaseTypeOracle:
 		return types.UIDDefaultExprOracle
-	case DXDatabaseTypeMariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		return types.UIDDefaultExprMariaDB
 	default:
 		return types.UIDDefaultExprPostgreSQL

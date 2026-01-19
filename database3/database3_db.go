@@ -2,95 +2,23 @@ package database3
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
-	database1Type "github.com/donnyhardyanto/dxlib/database/database_type"
+	"github.com/donnyhardyanto/dxlib/base"
 )
-
-type DXDatabaseType int64
-
-const (
-	UnknownDatabaseType DXDatabaseType = iota
-	DXDatabaseTypePostgreSQL
-	DXDatabaseTypeMariaDB
-	DXDatabaseTypeOracle
-	DXDatabaseTypeSQLServer
-	DXDatabaseTypeDeprecatedMysql
-)
-
-func (t DXDatabaseType) String() string {
-	switch t {
-	case DXDatabaseTypePostgreSQL:
-		return "postgres"
-	case DXDatabaseTypeOracle:
-		return "oracle"
-	case DXDatabaseTypeSQLServer:
-		return "sqlserver"
-	case DXDatabaseTypeMariaDB:
-		return "mariadb"
-	default:
-		return "unknown"
-	}
-}
-
-func (t DXDatabaseType) Driver() string {
-	switch t {
-	case DXDatabaseTypePostgreSQL:
-		return "postgres"
-	case DXDatabaseTypeOracle:
-		return "oracle"
-	case DXDatabaseTypeSQLServer:
-		return "sqlserver"
-	case DXDatabaseTypeMariaDB:
-		return "mysql"
-	default:
-		return "unknown"
-	}
-}
-
-func StringToDXDatabaseType(v string) DXDatabaseType {
-	switch v {
-	case "postgres", "postgresql":
-		return DXDatabaseTypePostgreSQL
-	case "mysql":
-		return DXDatabaseTypeMariaDB
-	case "mariadb":
-		return DXDatabaseTypeMariaDB
-	case "oracle":
-		return DXDatabaseTypeOracle
-	case "sqlserver":
-		return DXDatabaseTypeSQLServer
-	default:
-		return UnknownDatabaseType
-	}
-}
-
-func Database1DXDatabaseTypeToDXDatabaseType(dbType database1Type.DXDatabaseType) DXDatabaseType {
-	switch dbType {
-	case database1Type.PostgreSQL:
-		return DXDatabaseTypePostgreSQL
-	case database1Type.MariaDB:
-		return DXDatabaseTypeMariaDB
-	case database1Type.Oracle:
-		return DXDatabaseTypeOracle
-	case database1Type.SQLServer:
-		return DXDatabaseTypeSQLServer
-	default:
-		return UnknownDatabaseType
-	}
-}
 
 // DB represents a database with extensions and schemas
 type DB struct {
 	Name       string
-	Extensions map[DXDatabaseType][]string // Database-specific extensions/features
+	Extensions map[base.DXDatabaseType][]string // Database-specific extensions/features
 	Schemas    []*DBSchema
 }
 
 // NewDB creates a new database with optional extensions
-func NewDB(name string, extensions map[DXDatabaseType][]string) *DB {
+func NewDB(name string, extensions map[base.DXDatabaseType][]string) *DB {
 	if extensions == nil {
-		extensions = make(map[DXDatabaseType][]string)
+		extensions = make(map[base.DXDatabaseType][]string)
 	}
 	return &DB{
 		Name:       name,
@@ -100,23 +28,23 @@ func NewDB(name string, extensions map[DXDatabaseType][]string) *DB {
 }
 
 // AddExtensions adds extensions for a specific database type
-func (d *DB) AddExtensions(dbType DXDatabaseType, extensions ...string) {
+func (d *DB) AddExtensions(dbType base.DXDatabaseType, extensions ...string) {
 	if d.Extensions == nil {
-		d.Extensions = make(map[DXDatabaseType][]string)
+		d.Extensions = make(map[base.DXDatabaseType][]string)
 	}
 	d.Extensions[dbType] = append(d.Extensions[dbType], extensions...)
 }
 
 // SetExtensions sets extensions for a specific database type (replaces existing)
-func (d *DB) SetExtensions(dbType DXDatabaseType, extensions []string) {
+func (d *DB) SetExtensions(dbType base.DXDatabaseType, extensions []string) {
 	if d.Extensions == nil {
-		d.Extensions = make(map[DXDatabaseType][]string)
+		d.Extensions = make(map[base.DXDatabaseType][]string)
 	}
 	d.Extensions[dbType] = extensions
 }
 
 // GetExtensions returns extensions for a specific database type
-func (d *DB) GetExtensions(dbType DXDatabaseType) []string {
+func (d *DB) GetExtensions(dbType base.DXDatabaseType) []string {
 	if d.Extensions == nil {
 		return nil
 	}
@@ -124,20 +52,20 @@ func (d *DB) GetExtensions(dbType DXDatabaseType) []string {
 }
 
 // CreateDDL generates DDL script for the database including extensions and all schemas
-func (d *DB) CreateDDL(dbType DXDatabaseType) string {
+func (d *DB) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	var sb strings.Builder
 
 	// Get extensions for the specific database type
 	extensions := d.GetExtensions(dbType)
 	if len(extensions) > 0 {
 		switch dbType {
-		case DXDatabaseTypePostgreSQL:
+		case base.DXDatabaseTypePostgreSQL:
 			// PostgreSQL: CREATE EXTENSION
 			for _, ext := range extensions {
 				sb.WriteString(fmt.Sprintf("CREATE EXTENSION IF NOT EXISTS %s;\n", ext))
 			}
 			sb.WriteString("\n")
-		case DXDatabaseTypeSQLServer:
+		case base.DXDatabaseTypeSQLServer:
 			// SQL Server: Enable features/configurations
 			for _, feature := range extensions {
 				sb.WriteString(fmt.Sprintf("-- Enable SQL Server feature: %s\n", feature))
@@ -145,14 +73,14 @@ func (d *DB) CreateDDL(dbType DXDatabaseType) string {
 				sb.WriteString(fmt.Sprintf("EXEC sp_configure '%s', 1;\nRECONFIGURE;\n", feature))
 			}
 			sb.WriteString("\n")
-		case DXDatabaseTypeMariaDB:
+		case base.DXDatabaseTypeMariaDB:
 			// MySQL/MariaDB: Install plugins or enable features
 			for _, plugin := range extensions {
 				sb.WriteString(fmt.Sprintf("-- Install MariaDB/MySQL plugin: %s\n", plugin))
 				sb.WriteString(fmt.Sprintf("INSTALL PLUGIN IF NOT EXISTS %s;\n", plugin))
 			}
 			sb.WriteString("\n")
-		case DXDatabaseTypeOracle:
+		case base.DXDatabaseTypeOracle:
 			// Oracle: Grant privileges or enable features (typically done by DBA)
 			for _, feature := range extensions {
 				sb.WriteString(fmt.Sprintf("-- Oracle feature/package: %s (ensure enabled by DBA)\n", feature))
@@ -164,10 +92,20 @@ func (d *DB) CreateDDL(dbType DXDatabaseType) string {
 	}
 
 	// Create all schemas
-	for _, schema := range d.Schemas {
-		sb.WriteString(schema.CreateDDL(dbType))
+	orderedSchemas := make([]*DBSchema, len(d.Schemas))
+	copy(orderedSchemas, d.Schemas)
+	sort.SliceStable(orderedSchemas, func(i, j int) bool {
+		return orderedSchemas[i].Order < orderedSchemas[j].Order
+	})
+
+	for _, schema := range orderedSchemas {
+		s, err := schema.CreateDDL(dbType)
+		if err != nil {
+			return "", err
+		}
+		sb.WriteString(s)
 		sb.WriteString("\n")
 	}
 
-	return sb.String()
+	return sb.String(), nil
 }

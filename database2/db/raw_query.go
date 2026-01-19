@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -11,7 +12,7 @@ import (
 
 func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
-	dbt := StringToDXDatabaseType(db.DriverName())
+	dbt := base.StringToDXDatabaseType(db.DriverName())
 	err = CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
@@ -51,7 +52,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 
-	dbt := StringToDXDatabaseType(tx.DriverName())
+	dbt := base.StringToDXDatabaseType(tx.DriverName())
 	err = CheckAll(dbt, query, arg)
 	if err != nil {
 		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
@@ -98,7 +99,7 @@ func QueryRows(
 		modifiedSQL string
 		args        []interface{}
 	)
-	dbt := StringToDXDatabaseType(db.DriverName())
+	dbt := base.StringToDXDatabaseType(db.DriverName())
 
 	// First, convert named parameters to positional parameters (? placeholders)
 	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
@@ -108,11 +109,11 @@ func QueryRows(
 
 	// Then handle database-specific parameter styles
 	switch dbt {
-	case PostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case Oracle:
+	case base.DXDatabaseTypeOracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -122,7 +123,7 @@ func QueryRows(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case MariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -131,7 +132,7 @@ func QueryRows(
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case SQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -152,7 +153,7 @@ func RawCount(
 		modifiedSQL string
 		args        []interface{}
 	)
-	dbt := StringToDXDatabaseType(db.DriverName())
+	dbt := base.StringToDXDatabaseType(db.DriverName())
 
 	magicVariableName := "dx_internal_rowcount_x58f2"
 	s := fmt.Sprintf("select count(*) as %s %s", magicVariableName, fromWhereJoinPartSqlStatement)
@@ -165,11 +166,11 @@ func RawCount(
 
 	// Then handle database-specific parameter styles
 	switch dbt {
-	case PostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case Oracle:
+	case base.DXDatabaseTypeOracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -179,7 +180,7 @@ func RawCount(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case MariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -188,7 +189,7 @@ func RawCount(
 		}
 		modifiedSQL = db.Rebind(modifiedSQL)
 
-	case SQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = db.Rebind(modifiedSQL)
 
@@ -231,7 +232,7 @@ func TxQueryRows(
 		args        []interface{}
 	)
 
-	dbt := StringToDXDatabaseType(tx.DriverName())
+	dbt := base.StringToDXDatabaseType(tx.DriverName())
 
 	// First, convert named parameters to positional parameters (? placeholders)
 	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
@@ -241,11 +242,11 @@ func TxQueryRows(
 
 	// Then handle database-specific parameter styles
 	switch dbt {
-	case PostgreSQL:
+	case base.DXDatabaseTypePostgreSQL:
 		// PostgreSQL uses $1, $2, etc.
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
-	case Oracle:
+	case base.DXDatabaseTypeOracle:
 		// For go-ora, we need to use sql.Named for each parameter
 		// Keep the original SQL with :name parameters (no modification needed)
 
@@ -255,7 +256,7 @@ func TxQueryRows(
 			args = append(args, sql.Named(name, value))
 		}
 
-	case MariaDB:
+	case base.DXDatabaseTypeMariaDB:
 		// MariaDB uses ? placeholders
 		// Convert to question mark format if needed for IN clauses
 		modifiedSQL, args, err = sqlx.In(modifiedSQL, args...)
@@ -264,7 +265,7 @@ func TxQueryRows(
 		}
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
-	case SQLServer:
+	case base.DXDatabaseTypeSQLServer:
 		// SQL Server uses @p1, @p2, etc.
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
