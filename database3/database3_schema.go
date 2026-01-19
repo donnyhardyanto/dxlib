@@ -9,21 +9,23 @@ import (
 )
 
 type DBSchema struct {
-	Name   string
-	Order  int
-	DB     *DB
-	Tables []*DBTable
-	Views  []*DBView
+	Name              string
+	Order             int
+	DB                *DB
+	Tables            []*DBTable
+	Views             []*DBView
+	MaterializedViews []*DBMaterializedView
 }
 
 // NewDBSchema creates a new database schema and registers it with the DB
 func NewDBSchema(db *DB, name string, order int) *DBSchema {
 	schema := &DBSchema{
-		Name:   name,
-		Order:  order,
-		DB:     db,
-		Tables: []*DBTable{},
-		Views:  []*DBView{},
+		Name:              name,
+		Order:             order,
+		DB:                db,
+		Tables:            []*DBTable{},
+		Views:             []*DBView{},
+		MaterializedViews: []*DBMaterializedView{},
 	}
 	if db != nil {
 		db.Schemas = append(db.Schemas, schema)
@@ -95,6 +97,22 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 
 	for _, view := range orderedViews {
 		ddl, err := view.CreateDDL(dbType)
+		if err != nil {
+			return "", err
+		}
+		sb.WriteString(ddl)
+		sb.WriteString("\n")
+	}
+
+	// Create DDL for all materialized views (after views, since MVs may depend on views)
+	orderedMVs := make([]*DBMaterializedView, len(s.MaterializedViews))
+	copy(orderedMVs, s.MaterializedViews)
+	sort.SliceStable(orderedMVs, func(i, j int) bool {
+		return orderedMVs[i].Order < orderedMVs[j].Order
+	})
+
+	for _, mv := range orderedMVs {
+		ddl, err := mv.CreateDDL(dbType)
 		if err != nil {
 			return "", err
 		}

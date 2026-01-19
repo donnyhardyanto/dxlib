@@ -61,8 +61,7 @@ type DBTable struct {
 }
 
 // NewDBTable creates a new database table and registers it with the schema.
-// It also resolves field References to ResolvedReferenceField pointers.
-// Panics if any References string cannot be resolved.
+// Note: Field References are resolved lazily by DB.Init() using the Order field.
 func NewDBTable(schema *DBSchema, name string, order int, fields map[string]*Field, tde TDEConfig) *DBTable {
 	dbTable := &DBTable{
 		DBEntity: DBEntity{
@@ -77,53 +76,10 @@ func NewDBTable(schema *DBSchema, name string, order int, fields map[string]*Fie
 	if schema != nil {
 		schema.Tables = append(schema.Tables, dbTable)
 	}
-	for fieldName, field := range dbTable.Fields {
+	for _, field := range dbTable.Fields {
 		field.Owner = dbTable
-
-		// Resolve References to ResolvedReferenceField
-		if field.References != "" && schema != nil {
-			resolvedField := resolveReference(schema, field.References)
-			if resolvedField == nil {
-				panic(fmt.Sprintf("NewDBTable %s.%s: field '%s' references '%s' not found",
-					schema.Name, name, fieldName, field.References))
-			}
-			field.ResolvedReferenceField = resolvedField
-		}
 	}
 	return dbTable
-}
-
-// resolveReference resolves a reference string "schema.table.field" to a *Field pointer.
-// Returns nil if not found.
-func resolveReference(currentSchema *DBSchema, reference string) *Field {
-	if currentSchema == nil || currentSchema.DB == nil {
-		return nil
-	}
-
-	// Parse reference: "schema.table.field"
-	parts := strings.Split(reference, ".")
-	if len(parts) != 3 {
-		return nil
-	}
-	schemaName, tableName, fieldName := parts[0], parts[1], parts[2]
-
-	// Find schema in DB
-	for _, schema := range currentSchema.DB.Schemas {
-		if schema.Name == schemaName {
-			// Find table in schema
-			for _, table := range schema.Tables {
-				if table.Name == tableName {
-					// Find field in table
-					if field, ok := table.Fields[fieldName]; ok {
-						return field
-					}
-					return nil
-				}
-			}
-			return nil
-		}
-	}
-	return nil
 }
 
 // ============================================================================
