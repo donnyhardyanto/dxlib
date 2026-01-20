@@ -3,11 +3,12 @@ package log
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
 	"runtime/debug"
 
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 type DXLogLevel int
@@ -47,6 +48,13 @@ type DXLog struct {
 var Format DXLogFormat
 var OnError func(errPrev error, severity DXLogLevel, location string, text string, stack string) (err error)
 
+// Custom slog levels for TRACE, FATAL, and PANIC
+const (
+	LevelTrace slog.Level = slog.LevelDebug - 4
+	LevelFatal slog.Level = slog.LevelError + 4
+	LevelPanic slog.Level = slog.LevelError + 8
+)
+
 func NewLog(parentLog *DXLog, context context.Context, prefix string) DXLog {
 	if parentLog != nil {
 		if parentLog.Prefix != "" {
@@ -70,80 +78,43 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 		text = text + "\n" + err.Error()
 	}
 
-	a := logrus.WithFields(logrus.Fields{"prefix": l.Prefix, "location": location})
+	attrs := []any{
+		slog.String("prefix", l.Prefix),
+		slog.String("location", location),
+	}
+
 	switch severity {
 	case DXLogLevelTrace:
-		a.Tracef("%s", text)
+		slog.Log(context.Background(), LevelTrace, text, attrs...)
 	case DXLogLevelDebug:
-		a.Debugf("%s", text)
+		slog.Debug(text, attrs...)
 	case DXLogLevelInfo:
-		a.Infof("%s", text)
+		slog.Info(text, attrs...)
 	case DXLogLevelWarn:
-		a.Warnf("%s", text)
+		slog.Warn(text, attrs...)
 	case DXLogLevelError:
-		a.Errorf("%s\n%s", text, stack)
+		attrs = append(attrs, slog.String("stack", stack))
+		slog.Error(text, attrs...)
 	case DXLogLevelFatal:
-		a.Fatalf("Terminating... %s", text)
+		slog.Log(context.Background(), LevelFatal, "Terminating... "+text, attrs...)
+		os.Exit(1)
 	case DXLogLevelPanic:
 		stack = string(debug.Stack())
-		a = a.WithField("stack", stack)
-		a.Fatalf("%s", text)
+		attrs = append(attrs, slog.String("stack", stack))
+		slog.Log(context.Background(), LevelPanic, text, attrs...)
+		os.Exit(1)
 	default:
-		a.Printf("%s", text)
+		slog.Info(text, attrs...)
 	}
+
 	if OnError != nil {
 		err2 := OnError(err, severity, location, text, stack)
 		if err2 != nil {
-			a.Warnf("ERROR_ON_ERROR_HANDLER: %+v", err2)
+			slog.Warn("ERROR_ON_ERROR_HANDLER", slog.Any("error", err2))
 		}
-
 	}
 }
 
-/*
-	func (l *DXLog) LogText2(err error, severity DXLogLevel, location string, text string, v ...any) {
-		stack := ""
-		if v == nil {
-			text = fmt.Sprint(text)
-		} else {
-			text = fmt.Sprintf(text, v...)
-		}
-		if err != nil {
-			location = l.Prefix
-			stack = fmt.Sprintf("%+v", err)
-			//		text = text + "\n" + err.Error()
-		}
-
-		a := logrus.WithFields(logrus.Fields{"prefix": l.Prefix, "location": location})
-		switch severity {
-		case DXLogLevelTrace:
-			a.Tracef("%s", text)
-		case DXLogLevelDebug:
-			a.Debugf("%s", text)
-		case DXLogLevelInfo:
-			a.Infof("%s", text)
-		case DXLogLevelWarn:
-			a.Warnf("%s", text)
-		case DXLogLevelError:
-			a.Errorf("%s", text)
-		case DXLogLevelFatal:
-			a.Fatalf("Terminating... %s", text)
-		case DXLogLevelPanic:
-			stack = string(debug.Stack())
-			a = a.WithField("stack", stack)
-			a.Fatalf("%s", text)
-		default:
-			a.Printf("%s", text)
-		}
-		if OnError != nil {
-			err2 := OnError(err, severity, location, text, stack)
-			if err2 != nil {
-				a.Warnf("ERROR_ON_ERROR_HANDLER: %+v", err2)
-			}
-
-		}
-	}
-*/
 func (l *DXLog) Trace(text string) {
 	l.LogText(nil, DXLogLevelTrace, l.Prefix, text)
 }
@@ -277,19 +248,22 @@ func (l *DXLog) PanicAndCreateErrorf(location, text string, v ...any) (err error
 var Log DXLog
 
 func SetFormatJSON() {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: LevelTrace,
+	})
+	slog.SetDefault(slog.New(handler))
 	Format = DXLogFormatJSON
 }
 
 func SetFormatText() {
-	logrus.SetFormatter(&logrus.TextFormatter{})
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: LevelTrace,
+	})
+	slog.SetDefault(slog.New(handler))
 	Format = DXLogFormatText
 }
 
 func init() {
-	//logrus.SetFlags(log.Ldate | log.Lmicroseconds | log.LUTC)
-	//	logrus.SetReportCaller(true)
-	logrus.SetLevel(logrus.TraceLevel)
 	SetFormatJSON()
 	Log = NewLog(nil, core.RootContext, "")
 }
