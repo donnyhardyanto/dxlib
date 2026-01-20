@@ -7,8 +7,10 @@ import (
 	"math"
 	_ "time/tzdata"
 
+	"github.com/donnyhardyanto/dxlib/assets"
 	"github.com/donnyhardyanto/dxlib/utils/crypto/rand"
 	"github.com/fogleman/gg"
+	"github.com/golang/freetype/truetype"
 )
 
 type ICaptcha interface {
@@ -46,9 +48,13 @@ func (c *Captcha) GenerateImage(captchaText string) ([]byte, error) {
 		dc.Stroke()
 	}
 
-	if err := dc.LoadFontFace("./captcha.ttf", 52); err != nil {
+	// Load font from embedded bytes
+	font, err := truetype.Parse(assets.CaptchaFontBytes)
+	if err != nil {
 		return nil, err
 	}
+	face := truetype.NewFace(font, &truetype.Options{Size: 52})
+	dc.SetFontFace(face)
 
 	// Wave parameters
 	baselineY := 20.0
@@ -73,7 +79,7 @@ func (c *Captcha) GenerateImage(captchaText string) ([]byte, error) {
 	}
 
 	var img bytes.Buffer
-	err := png.Encode(&img, dc.Image())
+	err = png.Encode(&img, dc.Image())
 	if err != nil {
 		return nil, err
 	}

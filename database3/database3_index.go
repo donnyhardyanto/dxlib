@@ -1,0 +1,312 @@
+package database3
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/donnyhardyanto/dxlib/base"
+)
+
+// ============================================================================
+// DBIndex - Database index entity
+// ============================================================================
+
+// DBIndexMethod represents the index method/type
+type DBIndexMethod string
+
+const (
+	DBIndexMethodBTree DBIndexMethod = "BTREE"
+	DBIndexMethodHash  DBIndexMethod = "HASH"
+	DBIndexMethodGiST  DBIndexMethod = "GIST"
+	DBIndexMethodGIN   DBIndexMethod = "GIN"
+	DBIndexMethodSPGiST DBIndexMethod = "SPGIST"
+	DBIndexMethodBRIN  DBIndexMethod = "BRIN"
+)
+
+// DBIndexColumn represents a column in the index
+type DBIndexColumn struct {
+	Name       string
+	Order      string // ASC, DESC, empty for default
+	NullsOrder string // NULLS FIRST, NULLS LAST, empty for default
+}
+
+// DBIndex represents a database index
+type DBIndex struct {
+	DBEntity
+	Columns       []DBIndexColumn
+	IsUnique      bool
+	Method        DBIndexMethod // BTREE, HASH, GIST, etc.
+	Where         string        // Partial index condition (PostgreSQL)
+	Include       []string      // INCLUDE columns (PostgreSQL 11+)
+	Tablespace    string        // Optional tablespace
+	Concurrent    bool          // CREATE INDEX CONCURRENTLY (PostgreSQL)
+	IfNotExists   bool          // CREATE INDEX IF NOT EXISTS
+
+	// Owner reference - either Table or MaterializedView (set by NewDBIndex*)
+	OwnerTable            *DBTable
+	OwnerMaterializedView *DBMaterializedView
+}
+
+// NewDBIndexForTable creates a new index for a table
+func NewDBIndexForTable(table *DBTable, name string, order int, columns []DBIndexColumn, isUnique bool) *DBIndex {
+	idx := &DBIndex{
+		DBEntity: DBEntity{
+			Name:   name,
+			Type:   DBEntityTypeIndex,
+			Order:  order,
+			Schema: table.Schema,
+		},
+		Columns:    columns,
+		IsUnique:   isUnique,
+		Method:     DBIndexMethodBTree,
+		OwnerTable: table,
+	}
+	table.Indexes = append(table.Indexes, idx)
+	return idx
+}
+
+// NewDBIndexForMaterializedView creates a new index for a materialized view
+func NewDBIndexForMaterializedView(mv *DBMaterializedView, name string, order int, columns []DBIndexColumn, isUnique bool) *DBIndex {
+	idx := &DBIndex{
+		DBEntity: DBEntity{
+			Name:   name,
+			Type:   DBEntityTypeIndex,
+			Order:  order,
+			Schema: mv.Schema,
+		},
+		Columns:               columns,
+		IsUnique:              isUnique,
+		Method:                DBIndexMethodBTree,
+		OwnerMaterializedView: mv,
+	}
+	mv.Indexes = append(mv.Indexes, idx)
+	return idx
+}
+
+// SetMethod sets the index method
+func (i *DBIndex) SetMethod(method DBIndexMethod) *DBIndex {
+	i.Method = method
+	return i
+}
+
+// SetWhere sets the partial index condition
+func (i *DBIndex) SetWhere(condition string) *DBIndex {
+	i.Where = condition
+	return i
+}
+
+// SetInclude sets the INCLUDE columns
+func (i *DBIndex) SetInclude(columns []string) *DBIndex {
+	i.Include = columns
+	return i
+}
+
+// GetOwnerName returns the name of the table or materialized view that owns this index
+func (i *DBIndex) GetOwnerName() string {
+	if i.OwnerTable != nil {
+		return i.OwnerTable.FullTableName()
+	}
+	if i.OwnerMaterializedView != nil {
+		return i.OwnerMaterializedView.FullName()
+	}
+	return ""
+}
+
+// CreateDDL generates DDL script for the index based on database type
+func (i *DBIndex) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+	switch dbType {
+	case base.DXDatabaseTypePostgreSQL:
+		return i.createPostgreSQLDDL(), nil
+	case base.DXDatabaseTypeSQLServer:
+		return i.createSQLServerDDL(), nil
+	case base.DXDatabaseTypeMariaDB:
+		return i.createMariaDBDDL(), nil
+	case base.DXDatabaseTypeOracle:
+		return i.createOracleDDL(), nil
+	default:
+		return "", fmt.Errorf("unsupported database type: %v", dbType)
+	}
+}
+
+func (i *DBIndex) createPostgreSQLDDL() string {
+	var sb strings.Builder
+
+	sb.WriteString("CREATE ")
+	if i.IsUnique {
+		sb.WriteString("UNIQUE ")
+	}
+	sb.WriteString("INDEX ")
+	if i.Concurrent {
+		sb.WriteString("CONCURRENTLY ")
+	}
+	if i.IfNotExists {
+		sb.WriteString("IF NOT EXISTS ")
+	}
+	sb.WriteString(i.Name)
+	sb.WriteString(" ON ")
+	sb.WriteString(i.GetOwnerName())
+
+	// Method
+	if i.Method != "" && i.Method != DBIndexMethodBTree {
+		sb.WriteString(" USING ")
+		sb.WriteString(string(i.Method))
+	}
+
+	// Columns
+	sb.WriteString(" (")
+	var cols []string
+	for _, col := range i.Columns {
+		colStr := col.Name
+		if col.Order != "" {
+			colStr += " " + col.Order
+		}
+		if col.NullsOrder != "" {
+			colStr += " " + col.NullsOrder
+		}
+		cols = append(cols, colStr)
+	}
+	sb.WriteString(strings.Join(cols, ", "))
+	sb.WriteString(")")
+
+	// Include columns
+	if len(i.Include) > 0 {
+		sb.WriteString(" INCLUDE (")
+		sb.WriteString(strings.Join(i.Include, ", "))
+		sb.WriteString(")")
+	}
+
+	// Tablespace
+	if i.Tablespace != "" {
+		sb.WriteString(" TABLESPACE ")
+		sb.WriteString(i.Tablespace)
+	}
+
+	// Where clause for partial index
+	if i.Where != "" {
+		sb.WriteString(" WHERE ")
+		sb.WriteString(i.Where)
+	}
+
+	sb.WriteString(";\n")
+
+	return sb.String()
+}
+
+func (i *DBIndex) createSQLServerDDL() string {
+	var sb strings.Builder
+
+	sb.WriteString("CREATE ")
+	if i.IsUnique {
+		sb.WriteString("UNIQUE ")
+	}
+	// SQL Server supports CLUSTERED/NONCLUSTERED
+	sb.WriteString("NONCLUSTERED INDEX ")
+	sb.WriteString(i.Name)
+	sb.WriteString(" ON ")
+	sb.WriteString(i.GetOwnerName())
+
+	// Columns
+	sb.WriteString(" (")
+	var cols []string
+	for _, col := range i.Columns {
+		colStr := col.Name
+		if col.Order != "" {
+			colStr += " " + col.Order
+		}
+		cols = append(cols, colStr)
+	}
+	sb.WriteString(strings.Join(cols, ", "))
+	sb.WriteString(")")
+
+	// Include columns
+	if len(i.Include) > 0 {
+		sb.WriteString(" INCLUDE (")
+		sb.WriteString(strings.Join(i.Include, ", "))
+		sb.WriteString(")")
+	}
+
+	// Where clause for filtered index
+	if i.Where != "" {
+		sb.WriteString(" WHERE ")
+		sb.WriteString(i.Where)
+	}
+
+	sb.WriteString(";\n")
+
+	return sb.String()
+}
+
+func (i *DBIndex) createMariaDBDDL() string {
+	var sb strings.Builder
+
+	sb.WriteString("CREATE ")
+	if i.IsUnique {
+		sb.WriteString("UNIQUE ")
+	}
+	sb.WriteString("INDEX ")
+	sb.WriteString(i.Name)
+	sb.WriteString(" ON ")
+	sb.WriteString(i.GetOwnerName())
+
+	// Method (MySQL/MariaDB supports BTREE and HASH for some storage engines)
+	if i.Method != "" && i.Method != DBIndexMethodBTree {
+		sb.WriteString(" USING ")
+		sb.WriteString(string(i.Method))
+	}
+
+	// Columns
+	sb.WriteString(" (")
+	var cols []string
+	for _, col := range i.Columns {
+		colStr := col.Name
+		if col.Order != "" {
+			colStr += " " + col.Order
+		}
+		cols = append(cols, colStr)
+	}
+	sb.WriteString(strings.Join(cols, ", "))
+	sb.WriteString(")")
+
+	sb.WriteString(";\n")
+
+	return sb.String()
+}
+
+func (i *DBIndex) createOracleDDL() string {
+	var sb strings.Builder
+
+	sb.WriteString("CREATE ")
+	if i.IsUnique {
+		sb.WriteString("UNIQUE ")
+	}
+	sb.WriteString("INDEX ")
+	sb.WriteString(i.FullName())
+	sb.WriteString(" ON ")
+	sb.WriteString(i.GetOwnerName())
+
+	// Columns
+	sb.WriteString(" (")
+	var cols []string
+	for _, col := range i.Columns {
+		colStr := col.Name
+		if col.Order != "" {
+			colStr += " " + col.Order
+		}
+		if col.NullsOrder != "" {
+			colStr += " " + col.NullsOrder
+		}
+		cols = append(cols, colStr)
+	}
+	sb.WriteString(strings.Join(cols, ", "))
+	sb.WriteString(")")
+
+	// Tablespace
+	if i.Tablespace != "" {
+		sb.WriteString(" TABLESPACE ")
+		sb.WriteString(i.Tablespace)
+	}
+
+	sb.WriteString(";\n")
+
+	return sb.String()
+}
