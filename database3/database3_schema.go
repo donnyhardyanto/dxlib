@@ -59,16 +59,6 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		panic("unhandled default case")
 	}
 
-	// Add pgcrypto extension for PostgreSQL if any table has encrypted fields
-	if dbType == base.DXDatabaseTypePostgreSQL {
-		for _, table := range s.Tables {
-			if table.HasEncryptedFields() {
-				sb.WriteString("CREATE EXTENSION IF NOT EXISTS pgcrypto;\n\n")
-				break
-			}
-		}
-	}
-
 	// 1. Create DDL for all functions (before tables, as triggers may reference them)
 	orderedFunctions := make([]*DBFunction, len(s.Functions))
 	copy(orderedFunctions, s.Functions)
@@ -93,7 +83,7 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	})
 
 	for _, table := range orderedTables {
-		ddl, err := table.createTableDDL(dbType)
+		ddl, err := table.CreateDDL(dbType)
 		if err != nil {
 			return "", err
 		}
@@ -141,15 +131,7 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		}
 	}
 
-	// 5. Create views for tables with encrypted fields (after all tables are created)
-	for _, table := range orderedTables {
-		if table.HasEncryptedFields() {
-			sb.WriteString(table.createViewDDL(dbType))
-			sb.WriteString("\n")
-		}
-	}
-
-	// 6. Create DDL for all explicit views
+	// 5. Create DDL for all explicit views
 	orderedViews := make([]*DBView, len(s.Views))
 	copy(orderedViews, s.Views)
 	sort.SliceStable(orderedViews, func(i, j int) bool {
@@ -165,7 +147,7 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		sb.WriteString("\n")
 	}
 
-	// 7. Create DDL for all materialized views (after views, since MVs may depend on views)
+	// 6. Create DDL for all materialized views (after views, since MVs may depend on views)
 	orderedMVs := make([]*DBMaterializedView, len(s.MaterializedViews))
 	copy(orderedMVs, s.MaterializedViews)
 	sort.SliceStable(orderedMVs, func(i, j int) bool {
@@ -181,7 +163,7 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		sb.WriteString("\n")
 	}
 
-	// 8. Create indexes for materialized views
+	// 7. Create indexes for materialized views
 	for _, mv := range orderedMVs {
 		orderedIndexes := make([]*DBIndex, len(mv.Indexes))
 		copy(orderedIndexes, mv.Indexes)

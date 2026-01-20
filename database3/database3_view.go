@@ -305,6 +305,20 @@ func (v *DBView) SetDistinct(distinct bool) *DBView {
 	return v
 }
 
+// AddDecryptedColumn adds a column that decrypts an encrypted physical column.
+// encryptedColumn: the physical column name (e.g., "fullname_encrypted")
+// alias: the name to expose in the view (e.g., "fullname")
+// keyConfigName: the session config key for the encryption key (e.g., "app.encryption_key")
+func (v *DBView) AddDecryptedColumn(encryptedColumn string, alias string, keyConfigName string) *DBView {
+	// Store the decryption expression - will be built in CreateDDL based on dbType
+	expr := fmt.Sprintf("DECRYPT(%s, %s)", encryptedColumn, keyConfigName)
+	v.Columns = append(v.Columns, DBViewColumn{
+		Expression: expr,
+		Alias:      alias,
+	})
+	return v
+}
+
 // ================== DDL GENERATION ==================
 
 // FullViewName returns the view name with a schema prefix
@@ -406,8 +420,17 @@ func (v *DBView) buildColumnExpr(col DBViewColumn, dbType base.DXDatabaseType) (
 	var expr string
 
 	if col.Expression != "" {
-		// Raw expression like COUNT(*), SUM(amount)
-		expr = col.Expression
+		// Check if it's a DECRYPT placeholder expression
+		if strings.HasPrefix(col.Expression, "DECRYPT(") {
+			decryptExpr, err := v.buildDecryptExpr(col.Expression, dbType)
+			if err != nil {
+				return "", err
+			}
+			expr = decryptExpr
+		} else {
+			// Raw expression like COUNT(*), SUM(amount)
+			expr = col.Expression
+		}
 	} else if col.SourceField != nil {
 		// Field reference
 		fieldName := col.SourceField.GetName()
@@ -432,6 +455,33 @@ func (v *DBView) buildColumnExpr(col DBViewColumn, dbType base.DXDatabaseType) (
 	}
 
 	return expr, nil
+}
+
+// buildDecryptExpr converts DECRYPT(column, keyConfig) placeholder to database-specific decryption
+func (v *DBView) buildDecryptExpr(placeholder string, dbType base.DXDatabaseType) (string, error) {
+	// Parse DECRYPT(column, keyConfig)
+	inner := strings.TrimPrefix(placeholder, "DECRYPT(")
+	inner = strings.TrimSuffix(inner, ")")
+	parts := strings.SplitN(inner, ", ", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid DECRYPT expression: %s", placeholder)
+	}
+	encColumn := parts[0]
+	keyConfigName := parts[1]
+
+	keyExpr := BuildGetSessionConfigExpr(dbType, keyConfigName)
+	switch dbType {
+	case base.DXDatabaseTypePostgreSQL:
+		return fmt.Sprintf("pgp_sym_decrypt(%s, %s)", encColumn, keyExpr), nil
+	case base.DXDatabaseTypeSQLServer:
+		return fmt.Sprintf("CONVERT(VARCHAR(MAX), DecryptByPassPhrase(%s, %s))", keyExpr, encColumn), nil
+	case base.DXDatabaseTypeMariaDB:
+		return fmt.Sprintf("AES_DECRYPT(%s, %s)", encColumn, keyExpr), nil
+	case base.DXDatabaseTypeOracle:
+		return fmt.Sprintf("UTL_RAW.CAST_TO_VARCHAR2(DBMS_CRYPTO.DECRYPT(%s, DBMS_CRYPTO.ENCRYPT_AES256 + DBMS_CRYPTO.CHAIN_CBC + DBMS_CRYPTO.PAD_PKCS5, UTL_RAW.CAST_TO_RAW(%s)))", encColumn, keyExpr), nil
+	default:
+		return encColumn, nil
+	}
 }
 
 // buildJoinClause builds a single JOIN clause
