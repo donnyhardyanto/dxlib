@@ -7,6 +7,74 @@ import (
 	"github.com/donnyhardyanto/dxlib/base"
 )
 
+// ================== VIEW/TABLE REFERENCE ==================
+
+// DBViewRef represents a reference to a view or table by name (for use in FROM/JOIN)
+// Use this when you need to reference a view or table that is not defined as DBTable
+type DBViewRef struct {
+	Schema *DBSchema // Schema pointer (e.g., PartnerManagementSchema)
+	Name   string    // View/table name (e.g., "v_field_executor")
+	Alias  string    // Optional alias for use in queries (e.g., "vfe")
+}
+
+// NewDBViewRef creates a new view reference using schema pointer and name string
+// Use this when the view/table is not defined as a Go variable
+func NewDBViewRef(schema *DBSchema, name, alias string) *DBViewRef {
+	return &DBViewRef{
+		Schema: schema,
+		Name:   name,
+		Alias:  alias,
+	}
+}
+
+// NewDBViewRefFromTable creates a view reference from an existing DBTable
+// Use this when referencing a table that is defined as *DBTable in Go
+func NewDBViewRefFromTable(table *DBTable, alias string) *DBViewRef {
+	return &DBViewRef{
+		Schema: table.Schema,
+		Name:   table.Name,
+		Alias:  alias,
+	}
+}
+
+// NewDBViewRefFromView creates a view reference from an existing DBView
+// Use this when referencing a view that is defined as *DBView in Go
+func NewDBViewRefFromView(view *DBView, alias string) *DBViewRef {
+	return &DBViewRef{
+		Schema: view.Schema,
+		Name:   view.Name,
+		Alias:  alias,
+	}
+}
+
+// FullName returns schema.name
+func (v *DBViewRef) FullName() string {
+	if v.Schema != nil && v.Schema.Name != "" {
+		return v.Schema.Name + "." + v.Name
+	}
+	return v.Name
+}
+
+// RefName returns the alias if set, otherwise the full name (for use in SELECT/JOIN ON)
+func (v *DBViewRef) RefName() string {
+	if v.Alias != "" {
+		return v.Alias
+	}
+	return v.FullName()
+}
+
+// ================== JOIN BY NAME ==================
+
+// DBJoinByName represents a join using string-based table/field names
+// Use this when joining to views or when *Field references are not available
+type DBJoinByName struct {
+	JoinType      JoinType
+	TargetViewRef *DBViewRef // The view/table to join TO
+	FromFieldExpr string     // Field expression from source (e.g., "vfe.id" or just "id")
+	ToFieldExpr   string     // Field expression from target (e.g., "fee.user_role_membership_id")
+	OnCondition   string     // Optional: full ON condition override (e.g., "a.id = b.id AND a.type = b.type")
+}
+
 // ================== JOIN TYPES ==================
 
 type JoinType int

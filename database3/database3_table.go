@@ -58,6 +58,8 @@ type DBTable struct {
 	UseTableSuffix    bool
 	ViewOverTable     bool
 	PhysicalTableName string
+	Indexes           []*DBIndex   // Indexes on this table
+	Triggers          []*DBTrigger // Triggers on this table
 }
 
 // NewDBTable creates a new database table and registers it with the schema.
@@ -344,7 +346,17 @@ func (t *DBTable) createViewDDL(dbType base.DXDatabaseType) string {
 func (t *DBTable) fieldToDDL(fieldName string, field Field, dbType base.DXDatabaseType) string {
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s %s", fieldName, dbType.String()))
+
+	// Get the SQL data type for this database type
+	sqlType := ""
+	if field.Type.DbType != nil {
+		sqlType = field.Type.DbType[dbType]
+	}
+	if sqlType == "" {
+		sqlType = "TEXT" // Fallback if no type mapping exists
+	}
+
+	sb.WriteString(fmt.Sprintf("%s %s", fieldName, sqlType))
 
 	// Add PRIMARY KEY constraint
 	if field.IsPrimaryKey {
@@ -380,20 +392,31 @@ func (t *DBTable) fieldToDDL(fieldName string, field Field, dbType base.DXDataba
 	return sb.String()
 }
 
+// isStringFieldType checks if the field type is a string type that should be quoted in SQL
+func isStringFieldType(field Field) bool {
+	switch field.Type.GoType {
+	case types.GoTypeString, types.GoTypeStringPointer:
+		return true
+	default:
+		return false
+	}
+}
+
 // getDefaultValueForDBType returns the appropriate default value for the given database type
 // Priority: 1. Field.DefaultValueByDBType, 2. Field.DefaultValue, 3. Field.Type.DefaultValueByDatabaseType
+// For string fields, the value will be automatically quoted with SQL single quotes
 func (t *DBTable) getDefaultValueForDBType(field Field, dbType base.DXDatabaseType) string {
 
 	// 1. Check if field has database-specific default
 	if field.DefaultValueByDBType != nil {
 		if dbDefault, ok := field.DefaultValueByDBType[dbType]; ok && dbDefault != nil {
-			return anyToString(dbDefault)
+			return valueToSQLLiteral(field, dbDefault)
 		}
 	}
 
 	// 2. Check field's generic default value
 	if field.DefaultValue != nil {
-		return anyToString(field.DefaultValue)
+		return valueToSQLLiteral(field, field.DefaultValue)
 	}
 
 	// 3. Check DataType's database-specific default (t.g., DataTypeUID) - only if IsAutoIncrement is true
@@ -404,6 +427,27 @@ func (t *DBTable) getDefaultValueForDBType(field Field, dbType base.DXDatabaseTy
 	}
 
 	return ""
+}
+
+// valueToSQLLiteral converts a value to SQL literal format based on field type
+// For string fields, the value is wrapped with SQL single quotes
+// For other types, the value is converted to string as-is
+func valueToSQLLiteral(field Field, v any) string {
+	if v == nil {
+		return ""
+	}
+
+	// For string field types, wrap with SQL single quotes
+	if isStringFieldType(field) {
+		if strVal, ok := v.(string); ok {
+			// Escape single quotes by doubling them
+			escaped := strings.ReplaceAll(strVal, "'", "''")
+			return fmt.Sprintf("'%s'", escaped)
+		}
+	}
+
+	// For non-string types, use anyToString
+	return anyToString(v)
 }
 
 // anyToString converts any value to string for DDL generation

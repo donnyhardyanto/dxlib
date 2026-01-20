@@ -10,6 +10,9 @@ const (
 	DBEntityTypeTable DBEntityType = iota
 	DBEntityTypeView
 	DBEntityTypeMaterializedView
+	DBEntityTypeFunction
+	DBEntityTypeIndex
+	DBEntityTypeTrigger
 )
 
 // ============================================================================

@@ -12,9 +12,11 @@ type DBSchema struct {
 	Name              string
 	Order             int
 	DB                *DB
+	Functions         []*DBFunction
 	Tables            []*DBTable
 	Views             []*DBView
 	MaterializedViews []*DBMaterializedView
+	Triggers          []*DBTrigger // Pointer list to all triggers in this schema (owned by tables)
 }
 
 // NewDBSchema creates a new database schema and registers it with the DB
@@ -23,9 +25,11 @@ func NewDBSchema(db *DB, name string, order int) *DBSchema {
 		Name:              name,
 		Order:             order,
 		DB:                db,
+		Functions:         []*DBFunction{},
 		Tables:            []*DBTable{},
 		Views:             []*DBView{},
 		MaterializedViews: []*DBMaterializedView{},
+		Triggers:          []*DBTrigger{},
 	}
 	if db != nil {
 		db.Schemas = append(db.Schemas, schema)
@@ -34,6 +38,7 @@ func NewDBSchema(db *DB, name string, order int) *DBSchema {
 }
 
 // CreateDDL generates DDL script for the schema and all its entities
+// Order: function -> table -> (index table) -> trigger table -> view -> materialized view -> index materialized view
 func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	var sb strings.Builder
 
@@ -64,7 +69,23 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		}
 	}
 
-	// Create DDL for all tables
+	// 1. Create DDL for all functions (before tables, as triggers may reference them)
+	orderedFunctions := make([]*DBFunction, len(s.Functions))
+	copy(orderedFunctions, s.Functions)
+	sort.SliceStable(orderedFunctions, func(i, j int) bool {
+		return orderedFunctions[i].Order < orderedFunctions[j].Order
+	})
+
+	for _, fn := range orderedFunctions {
+		ddl, err := fn.CreateDDL(dbType)
+		if err != nil {
+			return "", err
+		}
+		sb.WriteString(ddl)
+		sb.WriteString("\n")
+	}
+
+	// 2. Create DDL for all tables
 	orderedTables := make([]*DBTable, len(s.Tables))
 	copy(orderedTables, s.Tables)
 	sort.SliceStable(orderedTables, func(i, j int) bool {
@@ -80,7 +101,47 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		sb.WriteString("\n")
 	}
 
-	// Create views for tables with encrypted fields (after all tables are created)
+	// 3. Create indexes for tables
+	for _, table := range orderedTables {
+		orderedIndexes := make([]*DBIndex, len(table.Indexes))
+		copy(orderedIndexes, table.Indexes)
+		sort.SliceStable(orderedIndexes, func(i, j int) bool {
+			return orderedIndexes[i].Order < orderedIndexes[j].Order
+		})
+
+		for _, idx := range orderedIndexes {
+			ddl, err := idx.CreateDDL(dbType)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(ddl)
+		}
+		if len(orderedIndexes) > 0 {
+			sb.WriteString("\n")
+		}
+	}
+
+	// 4. Create triggers for tables
+	for _, table := range orderedTables {
+		orderedTriggers := make([]*DBTrigger, len(table.Triggers))
+		copy(orderedTriggers, table.Triggers)
+		sort.SliceStable(orderedTriggers, func(i, j int) bool {
+			return orderedTriggers[i].Order < orderedTriggers[j].Order
+		})
+
+		for _, trigger := range orderedTriggers {
+			ddl, err := trigger.CreateDDL(dbType)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(ddl)
+		}
+		if len(orderedTriggers) > 0 {
+			sb.WriteString("\n")
+		}
+	}
+
+	// 5. Create views for tables with encrypted fields (after all tables are created)
 	for _, table := range orderedTables {
 		if table.HasEncryptedFields() {
 			sb.WriteString(table.createViewDDL(dbType))
@@ -88,7 +149,7 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		}
 	}
 
-	// Create DDL for all explicit views
+	// 6. Create DDL for all explicit views
 	orderedViews := make([]*DBView, len(s.Views))
 	copy(orderedViews, s.Views)
 	sort.SliceStable(orderedViews, func(i, j int) bool {
@@ -104,7 +165,7 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		sb.WriteString("\n")
 	}
 
-	// Create DDL for all materialized views (after views, since MVs may depend on views)
+	// 7. Create DDL for all materialized views (after views, since MVs may depend on views)
 	orderedMVs := make([]*DBMaterializedView, len(s.MaterializedViews))
 	copy(orderedMVs, s.MaterializedViews)
 	sort.SliceStable(orderedMVs, func(i, j int) bool {
@@ -118,6 +179,26 @@ func (s *DBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		}
 		sb.WriteString(ddl)
 		sb.WriteString("\n")
+	}
+
+	// 8. Create indexes for materialized views
+	for _, mv := range orderedMVs {
+		orderedIndexes := make([]*DBIndex, len(mv.Indexes))
+		copy(orderedIndexes, mv.Indexes)
+		sort.SliceStable(orderedIndexes, func(i, j int) bool {
+			return orderedIndexes[i].Order < orderedIndexes[j].Order
+		})
+
+		for _, idx := range orderedIndexes {
+			ddl, err := idx.CreateDDL(dbType)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(ddl)
+		}
+		if len(orderedIndexes) > 0 {
+			sb.WriteString("\n")
+		}
 	}
 
 	return sb.String(), nil
