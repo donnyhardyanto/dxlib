@@ -699,6 +699,44 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 
 }
 
+// ExecuteSQLContent executes SQL from string content (for embedded SQL)
+func (d *DXDatabase) ExecuteSQLContent(content string) (r sql.Result, err error) {
+	err = d.CheckConnectionAndReconnect()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			log.Log.Errorf(err, "Error executing SQL content (%v)", err.Error())
+		}
+	}()
+
+	driverName := d.Connection.DriverName()
+	switch driverName {
+	case "sqlserver", "postgres", "oracle":
+		log.Log.Info("Executing SQL content... start")
+		sqlFile := sqlfile.New()
+
+		// Load from content
+		err = sqlFile.Content(content)
+		if err != nil {
+			return nil, err
+		}
+
+		// Execute the queries
+		_, err = sqlFile.Exec(d.Connection.DB)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		err = log.Log.FatalAndCreateErrorf("Driver %s is not supported", driverName)
+		return nil, err
+	}
+	log.Log.Info("SQL content executed successfully!")
+	return r, nil
+}
+
 func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 	err = d.EnsureConnection()
 	if err != nil {
@@ -718,6 +756,41 @@ func (d *DXDatabase) ExecuteCreateScripts() (rs []sql.Result, err error) {
 			return rs, err
 		}
 		log.Log.Infof("Executing file %d:'%s'... done", k+1, v)
+		rs = append(rs, r)
+	}
+	return rs, nil
+}
+
+// SQLContentProvider is a function type that returns SQL content for a given path key
+type SQLContentProvider func(path string) (string, error)
+
+// ExecuteCreateScriptsFromEmbedded executes create scripts using embedded content provider
+// The contentProvider function should return SQL content for each path key in CreateScriptFiles
+func (d *DXDatabase) ExecuteCreateScriptsFromEmbedded(contentProvider SQLContentProvider) (rs []sql.Result, err error) {
+	err = d.EnsureConnection()
+	if err != nil {
+		return nil, err
+	}
+
+	rs = []sql.Result{}
+	for k, v := range d.CreateScriptFiles {
+		content, err := contentProvider(v)
+		if err != nil {
+			log.Log.Errorf(err, "Error getting embedded content for %d:'%s' (%s)", k, v, err.Error())
+			return rs, err
+		}
+
+		r, err := d.ExecuteSQLContent(content)
+		if err != nil {
+			log.Log.Errorf(err, "Error executing embedded script %d:'%s' (%s)", k, v, err.Error())
+			var sqlErr mssql.Error
+			if errors.As(err, &sqlErr) {
+				log.Log.Errorf(err, "SQL Server Error Number: %d, State: %d, Message: %s",
+					sqlErr.Number, sqlErr.State, sqlErr.Message)
+			}
+			return rs, err
+		}
+		log.Log.Infof("Executing embedded script %d:'%s'... done", k+1, v)
 		rs = append(rs, r)
 	}
 	return rs, nil

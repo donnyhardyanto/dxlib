@@ -77,6 +77,24 @@ func (s *SqlFile) Files(files ...string) error {
 	return nil
 }
 
+// Content add and load queries from string content (for embedded SQL)
+func (s *SqlFile) Content(content string) error {
+	queries := loadFromContent(content)
+	s.queries = append(s.queries, queries...)
+	return nil
+}
+
+// loadFromContent parses SQL content from string
+func loadFromContent(content string) []string {
+	// Remove comments while preserving newlines
+	s := removeComments(content)
+
+	// Split into statements
+	statements := splitSQLStatements(s)
+
+	return statements
+}
+
 // Directory add and load queries from *.sql files in specified directory
 func (s *SqlFile) Directory(dir string) error {
 	files, err := os.ReadDir(dir)
