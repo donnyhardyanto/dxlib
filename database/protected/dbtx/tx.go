@@ -8,7 +8,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/database/sqlchecker"
 	utils2 "github.com/donnyhardyanto/dxlib/database2/utils"
 	"github.com/jmoiron/sqlx"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/log"

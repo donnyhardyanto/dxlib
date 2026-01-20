@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/database2/db"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 func TranslateFilterWhereToWhereKV(filterWhereAsString string, filterKeyValues map[string]interface{}) (map[string]interface{}, error) {

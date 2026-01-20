@@ -11,7 +11,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 type Number interface {

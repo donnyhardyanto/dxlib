@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/jmoiron/sqlx"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"strings"
 )
 

@@ -4,7 +4,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 import (

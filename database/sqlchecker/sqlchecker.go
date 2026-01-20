@@ -9,7 +9,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/shopspring/decimal"
 )
 

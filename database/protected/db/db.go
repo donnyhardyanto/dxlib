@@ -12,7 +12,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	_ "github.com/sijms/go-ora/v2/network"
 	"strconv"
 	"strings"

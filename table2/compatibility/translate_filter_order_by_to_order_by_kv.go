@@ -3,7 +3,7 @@ package compatibility
 import (
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 func TranslateFilterOrderByToOrderByKV(filterOrderBy string) (map[string]string, error) {

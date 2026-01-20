@@ -7,7 +7,7 @@ import (
 
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	security "github.com/donnyhardyanto/dxlib/utils/security"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 
 	_ "time/tzdata"
 

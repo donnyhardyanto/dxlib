@@ -10,7 +10,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/table2"
 	"github.com/donnyhardyanto/dxlib/vault"
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 
 	"golang.org/x/sync/errgroup"
 

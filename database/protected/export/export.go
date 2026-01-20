@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/donnyhardyanto/dxlib/database/protected/db"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/xuri/excelize/v2"
 	"os"
 	"path/filepath"

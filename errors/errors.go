@@ -22,6 +22,102 @@ import (
 )
 
 // ============================================================================
+// Stack Types (compatible with github.com/pkg/errors)
+// ============================================================================
+
+// Frame represents a program counter inside a stack frame.
+// For historical reasons if Frame is interpreted as a uintptr
+// its value represents the program counter + 1.
+type Frame uintptr
+
+// pc returns the program counter for this frame;
+// multiple frames may have the same PC value.
+func (f Frame) pc() uintptr { return uintptr(f) - 1 }
+
+// Format formats the frame according to the fmt.Formatter interface.
+//
+//	%s    source file
+//	%d    source line
+//	%n    function name
+//	%v    equivalent to %s:%d
+//
+// Format accepts flags that alter the printing of some verbs, as follows:
+//
+//	%+s   function name and path of source file relative to the compile time
+//	      GOPATH separated by \n\t (<funcname>\n\t<path>)
+//	%+v   equivalent to %+s:%d
+func (f Frame) Format(s fmt.State, verb rune) {
+	pc := f.pc()
+	fn := runtime.FuncForPC(pc)
+	if fn == nil {
+		io.WriteString(s, "unknown")
+		return
+	}
+
+	switch verb {
+	case 's':
+		file, _ := fn.FileLine(pc)
+		if s.Flag('+') {
+			io.WriteString(s, fn.Name())
+			io.WriteString(s, "\n\t")
+			io.WriteString(s, file)
+		} else {
+			io.WriteString(s, file)
+		}
+	case 'd':
+		_, line := fn.FileLine(pc)
+		io.WriteString(s, fmt.Sprintf("%d", line))
+	case 'n':
+		io.WriteString(s, fn.Name())
+	case 'v':
+		f.Format(s, 's')
+		io.WriteString(s, ":")
+		f.Format(s, 'd')
+	}
+}
+
+// StackTrace is a stack of Frames from innermost (newest) to outermost (oldest).
+type StackTrace []Frame
+
+// Format formats the stack of Frames according to the fmt.Formatter interface.
+//
+//	%s	lists source files for each Frame in the stack
+//	%v	lists the source file and line number for each Frame in the stack
+//
+// Format accepts flags that alter the printing of some verbs, as follows:
+//
+//	%+v   Prints filename, function, and line number for each Frame in the stack.
+func (st StackTrace) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		switch {
+		case s.Flag('+'):
+			for _, f := range st {
+				io.WriteString(s, "\n")
+				f.Format(s, verb)
+			}
+		case s.Flag('#'):
+			fmt.Fprintf(s, "%#v", []Frame(st))
+		default:
+			st.formatSlice(s, verb)
+		}
+	case 's':
+		st.formatSlice(s, verb)
+	}
+}
+
+func (st StackTrace) formatSlice(s fmt.State, verb rune) {
+	io.WriteString(s, "[")
+	for i, f := range st {
+		if i > 0 {
+			io.WriteString(s, " ")
+		}
+		f.Format(s, verb)
+	}
+	io.WriteString(s, "]")
+}
+
+// ============================================================================
 // Stack Capture (Fast Path)
 // ============================================================================
 
@@ -36,6 +132,16 @@ func captureStack(skip int) []uintptr {
 	stack := make([]uintptr, n)
 	copy(stack, pcs[:n])
 	return stack
+}
+
+// captureStackTrace returns a StackTrace ([]Frame) instead of []uintptr
+func captureStackTrace(skip int) StackTrace {
+	pcs := captureStack(skip + 1)
+	st := make(StackTrace, len(pcs))
+	for i, pc := range pcs {
+		st[i] = Frame(pc)
+	}
+	return st
 }
 
 // ============================================================================
@@ -61,6 +167,16 @@ func (e *stackError) Error() string {
 
 func (e *stackError) Unwrap() error {
 	return e.cause
+}
+
+// StackTrace returns the stack trace as a StackTrace type.
+// This is compatible with github.com/pkg/errors.
+func (e *stackError) StackTrace() StackTrace {
+	st := make(StackTrace, len(e.stack))
+	for i, pc := range e.stack {
+		st[i] = Frame(pc)
+	}
+	return st
 }
 
 // Format implements fmt.Formatter for lazy stack resolution

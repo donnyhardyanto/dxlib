@@ -7,7 +7,7 @@ import (
 
 	dxRedis "github.com/donnyhardyanto/dxlib/redis"
 	"github.com/go-redis/redis/v8"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 // RateLimitConfig defines the rate limit settings for an API

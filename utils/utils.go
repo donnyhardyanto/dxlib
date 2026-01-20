@@ -19,7 +19,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/donnyhardyanto/dxlib/log"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 // JSON is a type alias for map[string]any, representing a JSON object.

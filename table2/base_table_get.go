@@ -5,7 +5,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 func (bt *DXBaseTable2) GetById(log *log.DXLog, id int64) (rowsInfo *db.DXDatabaseTableRowsInfo, r utils.JSON, err error) {

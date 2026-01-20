@@ -20,7 +20,7 @@ import (
 	pq "github.com/knetic/go-namedparameterquery"
 	_ "github.com/lib/pq"
 	mssql "github.com/microsoft/go-mssqldb"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	_ "github.com/sijms/go-ora/v2"
 	goOra "github.com/sijms/go-ora/v2"
 

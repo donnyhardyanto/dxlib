@@ -6,7 +6,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib"
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 
 	"net"
 	"net/http"

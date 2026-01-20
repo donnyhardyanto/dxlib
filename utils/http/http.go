@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 
 	"github.com/donnyhardyanto/dxlib/utils"
 )

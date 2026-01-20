@@ -6,7 +6,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {

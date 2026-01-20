@@ -6,7 +6,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/base"
 	mssql "github.com/microsoft/go-mssqldb"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	goOra "github.com/sijms/go-ora/v2"
 
 	"fmt"

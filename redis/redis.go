@@ -12,7 +12,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/go-redis/redis/v8"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 type DXRedis struct {

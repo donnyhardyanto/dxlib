@@ -3,7 +3,7 @@ package table2
 import (
 	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 func (bt *DXBaseTable2) Insert(newKeyValues utils.JSON) (newId int64, newUid string, err error) {

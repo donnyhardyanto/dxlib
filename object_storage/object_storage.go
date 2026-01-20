@@ -16,7 +16,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 type DXObjectStorageType int64

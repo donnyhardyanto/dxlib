@@ -15,7 +15,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/table2"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 /*

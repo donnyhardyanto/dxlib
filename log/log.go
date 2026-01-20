@@ -8,7 +8,7 @@ import (
 	"runtime/debug"
 
 	"github.com/donnyhardyanto/dxlib/core"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 type DXLogLevel int

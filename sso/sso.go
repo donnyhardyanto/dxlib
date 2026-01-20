@@ -11,7 +11,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 var OrganizationManager DXOrganizationsManager

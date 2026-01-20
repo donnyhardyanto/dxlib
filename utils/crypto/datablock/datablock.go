@@ -11,7 +11,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/donnyhardyanto/dxlib/utils/crypto/aes"
 	"github.com/donnyhardyanto/dxlib/utils/lv"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 var PayloadUnpackTTL = 5 * time.Minute

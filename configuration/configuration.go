@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"gopkg.in/yaml.v3"
 
 	"github.com/donnyhardyanto/dxlib/log"
