@@ -8,7 +8,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/object_storage"
-	"github.com/donnyhardyanto/dxlib/table2"
+	"github.com/donnyhardyanto/dxlib/table3"
 	"github.com/donnyhardyanto/dxlib/vault"
 	"github.com/newrelic/go-agent/v3/newrelic"
 
@@ -163,19 +163,11 @@ func (a *DXApp) start() (err error) {
 		}
 	}
 	if a.IsStorageExist {
-		/*err = database2.Manager.ConnectAllAtStart()
+		err = database2.Manager.ConnectAllAtStart()
 		if err != nil {
 			return err
 		}
 		err = table3.Manager.ConnectAll()
-		if err != nil {
-			return err
-		}
-		*/err = database2.Manager.ConnectAllAtStart()
-		if err != nil {
-			return err
-		}
-		err = table2.Manager.ConnectAll()
 		if err != nil {
 			return err
 		}
@@ -262,10 +254,6 @@ func (a *DXApp) Stop() (err error) {
 		}
 	}
 	if a.IsStorageExist {
-		/*		err = database.Manager.DisconnectAll()
-				if err != nil {
-					return err
-				}*/
 		err = database2.Manager.DisconnectAll()
 		if err != nil {
 			return err

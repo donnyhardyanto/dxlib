@@ -10,9 +10,10 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/base"
+	"github.com/donnyhardyanto/dxlib/database2"
 	"github.com/donnyhardyanto/dxlib/database2/db"
 	"github.com/donnyhardyanto/dxlib/database2/export"
-	"github.com/donnyhardyanto/dxlib/database3"
+	"github.com/donnyhardyanto/dxlib/database2/models"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
@@ -255,12 +256,12 @@ func (pr *PagingResult) ToResponseJSON() utils.JSON {
 }
 
 // ============================================================================
-// Standalone Paging Functions - using database3.DXDatabase3
+// Standalone Paging Functions - using database2.DXDatabase
 // ============================================================================
 
-// NamedQueryPaging executes a paging query using database3.DXDatabase3
+// NamedQueryPaging executes a paging query using database2.DXDatabase
 func NamedQueryPaging(
-	dxDb3 *database3.DXDatabase3,
+	dxDb3 *database2.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
@@ -276,7 +277,7 @@ func NamedQueryPaging(
 	}
 
 	rowsInfo, list, totalRows, totalPages, _, err := db.NamedQueryPaging(
-		dxDb3.Database.Connection,
+		dxDb3.Connection,
 		fieldTypeMapping,
 		"",
 		rowPerPage,
@@ -302,7 +303,7 @@ func NamedQueryPaging(
 
 // NamedQueryPagingWithBuilder executes a paging query using QueryBuilder and database3
 func NamedQueryPagingWithBuilder(
-	dxDb3 *database3.DXDatabase3,
+	dxDb3 *database2.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
@@ -316,7 +317,7 @@ func NamedQueryPagingWithBuilder(
 // DoNamedQueryPagingResponse executes paging and writes standard JSON response
 func DoNamedQueryPagingResponse(
 	aepr *api.DXAPIEndPointRequest,
-	dxDb3 *database3.DXDatabase3,
+	dxDb3 *database2.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
@@ -335,7 +336,7 @@ func DoNamedQueryPagingResponse(
 // DoNamedQueryPagingResponseWithBuilder executes paging with QueryBuilder and writes response
 func DoNamedQueryPagingResponseWithBuilder(
 	aepr *api.DXAPIEndPointRequest,
-	dxDb3 *database3.DXDatabase3,
+	dxDb3 *database2.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
@@ -353,8 +354,8 @@ func DoNamedQueryPagingResponseWithBuilder(
 // DXRawTable3 wraps database3 with connection management and basic CRUD
 type DXRawTable3 struct {
 	DatabaseNameId             string
-	Database                   *database3.DXDatabase3
-	DBTable                    *database3.DBTable
+	Database                   *database2.DXDatabase
+	DBTable                    *models.DBTable
 	TableNameDirect            string // Used when DBTable is nil
 	FieldNameForRowId          string
 	FieldNameForRowUid         string
@@ -370,7 +371,7 @@ type DXRawTable3 struct {
 // EnsureDatabase ensures database connection is initialized
 func (t *DXRawTable3) EnsureDatabase() error {
 	if t.Database == nil {
-		t.Database = database3.Manager3.GetOrCreate(t.DatabaseNameId)
+		t.Database = database2.Manager.GetOrCreate(t.DatabaseNameId)
 		if t.Database == nil {
 			return errors.Errorf("database not found: %s", t.DatabaseNameId)
 		}
@@ -380,10 +381,10 @@ func (t *DXRawTable3) EnsureDatabase() error {
 
 // GetDbType returns the database type
 func (t *DXRawTable3) GetDbType() base.DXDatabaseType {
-	if t.Database == nil || t.Database.Database == nil {
+	if t.Database == nil {
 		return base.DXDatabaseTypePostgreSQL
 	}
-	return t.Database.Database.DatabaseType
+	return t.Database.DatabaseType
 }
 
 // TableName returns the full table name from DBTable or TableNameDirect
@@ -407,7 +408,7 @@ func (t *DXRawTable3) Insert(l *log.DXLog, data utils.JSON, returningFieldNames 
 }
 
 // TxInsert inserts within a transaction
-func (t *DXRawTable3) TxInsert(dtx *database3.DXDatabaseTx3, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXRawTable3) TxInsert(dtx *database2.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	return dtx.Insert(t.TableName(), data, returningFieldNames)
 }
 
@@ -422,7 +423,7 @@ func (t *DXRawTable3) InsertReturningId(l *log.DXLog, data utils.JSON) (int64, e
 }
 
 // TxInsertReturningId is a simplified TxInsert that returns just the new ID (backward compatible)
-func (t *DXRawTable3) TxInsertReturningId(dtx *database3.DXDatabaseTx3, data utils.JSON) (int64, error) {
+func (t *DXRawTable3) TxInsertReturningId(dtx *database2.DXDatabaseTx, data utils.JSON) (int64, error) {
 	_, returningValues, err := t.TxInsert(dtx, data, []string{t.FieldNameForRowId})
 	if err != nil {
 		return 0, err
@@ -478,7 +479,7 @@ func (t *DXRawTable3) Update(l *log.DXLog, data utils.JSON, where utils.JSON, re
 }
 
 // TxUpdate updates within a transaction
-func (t *DXRawTable3) TxUpdate(dtx *database3.DXDatabaseTx3, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable3) TxUpdate(dtx *database2.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	return dtx.Update(t.TableName(), data, where, returningFieldNames)
 }
 
@@ -489,7 +490,7 @@ func (t *DXRawTable3) UpdateSimple(data utils.JSON, where utils.JSON) (sql.Resul
 }
 
 // TxUpdateSimple is a simplified transaction update (backward compatible)
-func (t *DXRawTable3) TxUpdateSimple(dtx *database3.DXDatabaseTx3, data utils.JSON, where utils.JSON) (sql.Result, error) {
+func (t *DXRawTable3) TxUpdateSimple(dtx *database2.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxUpdate(dtx, data, where, nil)
 	return result, err
 }
@@ -501,7 +502,7 @@ func (t *DXRawTable3) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.R
 }
 
 // TxUpdateById updates a single row by ID within a transaction
-func (t *DXRawTable3) TxUpdateById(dtx *database3.DXDatabaseTx3, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXRawTable3) TxUpdateById(dtx *database2.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxUpdate(dtx, data, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
@@ -544,8 +545,8 @@ func (t *DXRawTable3) Delete(l *log.DXLog, where utils.JSON, returningFieldNames
 }
 
 // TxDelete deletes within a transaction
-func (t *DXRawTable3) TxDelete(dtx *database3.DXDatabaseTx3, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
-	return dtx.Delete(t.TableName(), where, returningFieldNames)
+func (t *DXRawTable3) TxDelete(dtx *database2.DXDatabaseTx, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+	return dtx.TxDelete(t.TableName(), where, returningFieldNames)
 }
 
 // DeleteById deletes a single row by ID
@@ -555,7 +556,7 @@ func (t *DXRawTable3) DeleteById(l *log.DXLog, id int64) (sql.Result, error) {
 }
 
 // TxDeleteById deletes a single row by ID within a transaction
-func (t *DXRawTable3) TxDeleteById(dtx *database3.DXDatabaseTx3, id int64) (sql.Result, error) {
+func (t *DXRawTable3) TxDeleteById(dtx *database2.DXDatabaseTx, id int64) (sql.Result, error) {
 	result, _, err := t.TxDelete(dtx, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
@@ -673,30 +674,30 @@ func (t *DXRawTable3) ShouldGetByNameId(l *log.DXLog, nameId string) (*db.DXData
 // ============================================================================
 
 // TxSelect returns multiple rows within a transaction
-func (t *DXRawTable3) TxSelect(dtx *database3.DXDatabaseTx3, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable3) TxSelect(dtx *database2.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	return dtx.Select(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
 
 // TxSelectOne returns a single row within a transaction
-func (t *DXRawTable3) TxSelectOne(dtx *database3.DXDatabaseTx3, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable3) TxSelectOne(dtx *database2.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return dtx.SelectOne(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxShouldSelectOne returns a single row or error if not found within a transaction
-func (t *DXRawTable3) TxShouldSelectOne(dtx *database3.DXDatabaseTx3, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable3) TxShouldSelectOne(dtx *database2.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return dtx.ShouldSelectOne(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxGetById returns a row by ID within a transaction
-func (t *DXRawTable3) TxGetById(dtx *database3.DXDatabaseTx3, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable3) TxGetById(dtx *database2.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
 // TxShouldGetById returns a row by ID or error if not found within a transaction
-func (t *DXRawTable3) TxShouldGetById(dtx *database3.DXDatabaseTx3, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable3) TxShouldGetById(dtx *database2.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
@@ -742,7 +743,7 @@ func (t *DXRawTable3) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (s
 }
 
 // TxUpsert inserts or updates within a transaction
-func (t *DXRawTable3) TxUpsert(dtx *database3.DXDatabaseTx3, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXRawTable3) TxUpsert(dtx *database2.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	_, existing, err := t.TxSelectOne(dtx, nil, where, nil, nil, nil)
 	if err != nil {
 		return nil, 0, err
@@ -786,7 +787,7 @@ func (t *DXRawTable3) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereCla
 	}
 
 	rowsInfo, list, totalRows, totalPages, _, err := db.NamedQueryPaging(
-		t.Database.Database.Connection,
+		t.Database.Connection,
 		t.FieldTypeMapping,
 		"",
 		rowPerPage,
@@ -908,7 +909,7 @@ func (t *DXTable3) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []s
 }
 
 // TxInsert inserts within a transaction with audit fields
-func (t *DXTable3) TxInsert(dtx *database3.DXDatabaseTx3, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXTable3) TxInsert(dtx *database2.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	t.SetInsertAuditFields(nil, data)
 	return t.DXRawTable3.TxInsert(dtx, data, returningFieldNames)
 }
@@ -930,7 +931,7 @@ func (t *DXTable3) Update(l *log.DXLog, data utils.JSON, where utils.JSON, retur
 }
 
 // TxUpdate updates within a transaction with audit fields
-func (t *DXTable3) TxUpdate(dtx *database3.DXDatabaseTx3, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXTable3) TxUpdate(dtx *database2.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	t.SetUpdateAuditFields(nil, data)
 	return t.DXRawTable3.TxUpdate(dtx, data, where, returningFieldNames)
 }
@@ -942,7 +943,7 @@ func (t *DXTable3) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Resu
 }
 
 // TxUpdateById updates within a transaction with audit fields
-func (t *DXTable3) TxUpdateById(dtx *database3.DXDatabaseTx3, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXTable3) TxUpdateById(dtx *database2.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
 	t.SetUpdateAuditFields(nil, data)
 	return t.DXRawTable3.TxUpdateById(dtx, id, data)
 }
@@ -989,7 +990,7 @@ func (t *DXTable3) SoftDelete(l *log.DXLog, where utils.JSON) (sql.Result, error
 }
 
 // TxSoftDelete marks rows as deleted within a transaction
-func (t *DXTable3) TxSoftDelete(dtx *database3.DXDatabaseTx3, where utils.JSON) (sql.Result, error) {
+func (t *DXTable3) TxSoftDelete(dtx *database2.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	data := utils.JSON{
 		"is_deleted": true,
 	}
@@ -1004,7 +1005,7 @@ func (t *DXTable3) SoftDeleteById(l *log.DXLog, id int64) (sql.Result, error) {
 }
 
 // TxSoftDeleteById marks a row as deleted by ID within a transaction
-func (t *DXTable3) TxSoftDeleteById(dtx *database3.DXDatabaseTx3, id int64) (sql.Result, error) {
+func (t *DXTable3) TxSoftDeleteById(dtx *database2.DXDatabaseTx, id int64) (sql.Result, error) {
 	return t.TxSoftDelete(dtx, utils.JSON{t.FieldNameForRowId: id})
 }
 
@@ -1110,30 +1111,30 @@ func (t *DXTable3) ShouldGetByNameIdNotDeleted(l *log.DXLog, nameId string) (*db
 // ============================================================================
 
 // TxSelect returns non-deleted rows within a transaction
-func (t *DXTable3) TxSelect(dtx *database3.DXDatabaseTx3, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable3) TxSelect(dtx *database2.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	return t.DXRawTable3.TxSelect(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
 // TxSelectOne returns a single non-deleted row within a transaction
-func (t *DXTable3) TxSelectOne(dtx *database3.DXDatabaseTx3, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable3) TxSelectOne(dtx *database2.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.DXRawTable3.TxSelectOne(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, forUpdatePart)
 }
 
 // TxShouldSelectOne returns a single non-deleted row or error if not found within a transaction
-func (t *DXTable3) TxShouldSelectOne(dtx *database3.DXDatabaseTx3, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable3) TxShouldSelectOne(dtx *database2.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.DXRawTable3.TxShouldSelectOne(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, forUpdatePart)
 }
 
 // TxGetByIdNotDeleted returns a non-deleted row by ID within a transaction
-func (t *DXTable3) TxGetByIdNotDeleted(dtx *database3.DXDatabaseTx3, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable3) TxGetByIdNotDeleted(dtx *database2.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
 // TxShouldGetByIdNotDeleted returns a non-deleted row by ID or error if not found within a transaction
-func (t *DXTable3) TxShouldGetByIdNotDeleted(dtx *database3.DXDatabaseTx3, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable3) TxShouldGetByIdNotDeleted(dtx *database2.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
@@ -1256,7 +1257,7 @@ func (t *DXTable3) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.
 }
 
 // TxUpsert inserts or updates within a transaction with audit fields
-func (t *DXTable3) TxUpsert(dtx *database3.DXDatabaseTx3, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXTable3) TxUpsert(dtx *database2.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	_, existing, err := t.DXRawTable3.TxSelectOne(dtx, nil, where, nil, nil, nil)
 	if err != nil {
 		return nil, 0, err
@@ -1288,7 +1289,7 @@ func (t *DXRawTable3) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []ut
 }
 
 // TxShouldGetByNameId returns a row by NameId within a transaction or error if not found
-func (t *DXRawTable3) TxShouldGetByNameId(dtx *database3.DXDatabaseTx3, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable3) TxShouldGetByNameId(dtx *database2.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -1296,7 +1297,7 @@ func (t *DXRawTable3) TxShouldGetByNameId(dtx *database3.DXDatabaseTx3, nameId s
 }
 
 // TxHardDelete deletes rows within a transaction (hard delete)
-func (t *DXRawTable3) TxHardDelete(dtx *database3.DXDatabaseTx3, where utils.JSON) (sql.Result, error) {
+func (t *DXRawTable3) TxHardDelete(dtx *database2.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxDelete(dtx, where, nil)
 	return result, err
 }
@@ -1522,7 +1523,7 @@ func (t *DXRawTable3) RequestListDownload(aepr *api.DXAPIEndPointRequest) error 
 	}
 
 	rowsInfo, list, _, _, _, err := db.NamedQueryPaging(
-		t.Database.Database.Connection,
+		t.Database.Connection,
 		db.DXDatabaseTableFieldTypeMapping(t.FieldTypeMapping),
 		"",
 		rowPerPage,
@@ -1677,7 +1678,7 @@ func (t *DXTable3) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils
 }
 
 // TxShouldGetByNameIdNotDeleted returns a non-deleted row by NameId within a transaction or error if not found
-func (t *DXTable3) TxShouldGetByNameIdNotDeleted(dtx *database3.DXDatabaseTx3, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable3) TxShouldGetByNameIdNotDeleted(dtx *database2.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -1685,12 +1686,12 @@ func (t *DXTable3) TxShouldGetByNameIdNotDeleted(dtx *database3.DXDatabaseTx3, n
 }
 
 // TxShouldGetByNameId is an alias for TxShouldGetByNameIdNotDeleted
-func (t *DXTable3) TxShouldGetByNameId(dtx *database3.DXDatabaseTx3, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable3) TxShouldGetByNameId(dtx *database2.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldGetByNameIdNotDeleted(dtx, nameId)
 }
 
 // TxHardDelete deletes rows within a transaction (bypasses soft-delete)
-func (t *DXTable3) TxHardDelete(dtx *database3.DXDatabaseTx3, where utils.JSON) (sql.Result, error) {
+func (t *DXTable3) TxHardDelete(dtx *database2.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.DXRawTable3.TxDelete(dtx, where, nil)
 	return result, err
 }
@@ -2078,6 +2079,23 @@ type DXTable3Manager struct {
 	StandardOperationResponsePossibility map[string]map[string]*api.DXAPIEndPointResponsePossibility
 }
 
+// ConnectAll connects all registered tables to their databases
+func (tm *DXTable3Manager) ConnectAll() error {
+	for _, t := range tm.Tables {
+		err := t.EnsureDatabase()
+		if err != nil {
+			return err
+		}
+	}
+	for _, t := range tm.RawTables {
+		err := t.EnsureDatabase()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Manager is the global table3 manager instance
 var Manager = DXTable3Manager{
 	Tables:    make(map[string]*DXTable3),
@@ -2239,8 +2257,8 @@ func (m *DXTable3Manager) GetRawTable(name string) *DXRawTable3 {
 	return m.RawTables[name]
 }
 
-// NewDXRawTable3 creates a new DXRawTable3 wrapping a database3.DBTable
-func NewDXRawTable3(databaseNameId string, dbTable *database3.DBTable, fieldNameForRowId string) *DXRawTable3 {
+// NewDXRawTable3 creates a new DXRawTable3 wrapping a models.DBTable
+func NewDXRawTable3(databaseNameId string, dbTable *models.DBTable, fieldNameForRowId string) *DXRawTable3 {
 	return &DXRawTable3{
 		DatabaseNameId:    databaseNameId,
 		DBTable:           dbTable,
@@ -2249,7 +2267,7 @@ func NewDXRawTable3(databaseNameId string, dbTable *database3.DBTable, fieldName
 }
 
 // NewDXRawTable3WithView creates a new DXRawTable3 with a custom list view
-func NewDXRawTable3WithView(databaseNameId string, dbTable *database3.DBTable, fieldNameForRowId, listViewNameId string) *DXRawTable3 {
+func NewDXRawTable3WithView(databaseNameId string, dbTable *models.DBTable, fieldNameForRowId, listViewNameId string) *DXRawTable3 {
 	return &DXRawTable3{
 		DatabaseNameId:    databaseNameId,
 		DBTable:           dbTable,
@@ -2258,8 +2276,8 @@ func NewDXRawTable3WithView(databaseNameId string, dbTable *database3.DBTable, f
 	}
 }
 
-// NewDXTable3 creates a new DXTable3 wrapping a database3.DBTable
-func NewDXTable3(databaseNameId string, dbTable *database3.DBTable, fieldNameForRowId string) *DXTable3 {
+// NewDXTable3 creates a new DXTable3 wrapping a models.DBTable
+func NewDXTable3(databaseNameId string, dbTable *models.DBTable, fieldNameForRowId string) *DXTable3 {
 	return &DXTable3{
 		DXRawTable3: DXRawTable3{
 			DatabaseNameId:    databaseNameId,
@@ -2270,7 +2288,7 @@ func NewDXTable3(databaseNameId string, dbTable *database3.DBTable, fieldNameFor
 }
 
 // NewDXTable3WithView creates a new DXTable3 with a custom list view
-func NewDXTable3WithView(databaseNameId string, dbTable *database3.DBTable, fieldNameForRowId, listViewNameId string) *DXTable3 {
+func NewDXTable3WithView(databaseNameId string, dbTable *models.DBTable, fieldNameForRowId, listViewNameId string) *DXTable3 {
 	return &DXTable3{
 		DXRawTable3: DXRawTable3{
 			DatabaseNameId:    databaseNameId,
@@ -2282,10 +2300,10 @@ func NewDXTable3WithView(databaseNameId string, dbTable *database3.DBTable, fiel
 }
 
 // ============================================================================
-// Simple Factory Functions - without database3.DBTable (for gradual migration)
+// Simple Factory Functions - without models.DBTable (for gradual migration)
 // ============================================================================
 
-// NewDXRawTable3Simple creates a DXRawTable3 with direct table name (no database3.DBTable needed)
+// NewDXRawTable3Simple creates a DXRawTable3 with direct table name (no models.DBTable needed)
 func NewDXRawTable3Simple(databaseNameId, tableName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId string) *DXRawTable3 {
 	return &DXRawTable3{
 		DatabaseNameId:        databaseNameId,
@@ -2297,7 +2315,7 @@ func NewDXRawTable3Simple(databaseNameId, tableName, listViewNameId, fieldNameFo
 	}
 }
 
-// NewDXTable3Simple creates a DXTable3 with direct table name (no database3.DBTable needed)
+// NewDXTable3Simple creates a DXTable3 with direct table name (no models.DBTable needed)
 func NewDXTable3Simple(databaseNameId, tableName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId string) *DXTable3 {
 	return &DXTable3{
 		DXRawTable3: DXRawTable3{
@@ -2434,7 +2452,7 @@ func (pt *DXPropertyTable3) SetAsInt(l *log.DXLog, propertyId string, value int)
 }
 
 // TxSetAsInt sets an int property value within a transaction
-func (pt *DXPropertyTable3) TxSetAsInt(dtx *database3.DXDatabaseTx3, propertyId string, value int) error {
+func (pt *DXPropertyTable3) TxSetAsInt(dtx *database2.DXDatabaseTx, propertyId string, value int) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
@@ -2501,7 +2519,7 @@ func (pt *DXPropertyTable3) SetAsJSON(l *log.DXLog, propertyId string, value map
 }
 
 // TxSetAsJSON sets a JSON property value within a transaction
-func (pt *DXPropertyTable3) TxSetAsJSON(dtx *database3.DXDatabaseTx3, propertyId string, value map[string]any) error {
+func (pt *DXPropertyTable3) TxSetAsJSON(dtx *database2.DXDatabaseTx, propertyId string, value map[string]any) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return errors.Wrap(err, "TxSetAsJSON.Marshal")

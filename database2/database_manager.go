@@ -102,6 +102,14 @@ func (dm *DXDatabaseManager) DisconnectAll() (err error) {
 	return err
 }
 
+// GetOrCreate gets an existing database or creates a new one with default settings
+func (dm *DXDatabaseManager) GetOrCreate(nameId string) *DXDatabase {
+	if d, exists := dm.Databases[nameId]; exists {
+		return d
+	}
+	return dm.NewDatabase(nameId, false, false)
+}
+
 func (dm *DXDatabaseManager) NewDatabaseScript(nameId string, files []string) *DXDatabaseScript {
 	ds := DXDatabaseScript{
 		Owner:  dm,

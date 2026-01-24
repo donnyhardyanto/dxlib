@@ -122,6 +122,21 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 	return dtx, nil
 }
 
+// Finish commits if no error, rollbacks if error
+func (dtx *DXDatabaseTx) Finish(l *log.DXLog, err error) {
+	if err != nil {
+		err2 := dtx.Rollback()
+		if err2 != nil {
+			l.Errorf(err, "ROLLBACK_ERROR:%+v", err2)
+		}
+	} else {
+		err2 := dtx.Commit()
+		if err2 != nil {
+			l.Errorf(err2, "COMMIT_ERROR:%+v", err2)
+		}
+	}
+}
+
 func (d *DXDatabase) CheckConnection() (err error) {
 	err = d.EnsureConnection()
 	if err != nil {
