@@ -4,15 +4,15 @@ import (
 	"github.com/donnyhardyanto/dxlib/base"
 )
 
-// TDEConfig holds Transparent Data Encryption configuration for different database types
+// ModelDBTDEConfig holds Transparent Data Encryption configuration for different database types
 // Each database has different TDE approaches:
 // - PostgreSQL: Uses table access method (e.g., "tde_heap" with pg_tde extension)
 // - Oracle: Uses encrypted tablespace (tables created in pre-configured encrypted tablespace)
 // - SQL Server: Database-level TDE (no per-table syntax, just a marker that TDE is expected)
 // - MariaDB/MySQL: Uses InnoDB table encryption option (ENCRYPTION='Y')
-type TDEConfig struct {
+type ModelDBTDEConfig struct {
 	// PostgreSQL: Table access method name for TDE (e.g., "tde_heap")
-	PostgreSQLAccessMethod string
+	ModelDBPostgreSQLAccessMethod string
 
 	// Oracle: Encrypted tablespace name where the table will be created
 	OracleTablespace string
@@ -26,10 +26,10 @@ type TDEConfig struct {
 }
 
 // IsEnabled checks if TDE is configured for the specified database type key
-func (t TDEConfig) IsEnabled(dbType base.DXDatabaseType) bool {
+func (t ModelDBTDEConfig) IsEnabled(dbType base.DXDatabaseType) bool {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
-		return t.PostgreSQLAccessMethod != ""
+		return t.ModelDBPostgreSQLAccessMethod != ""
 	case base.DXDatabaseTypeOracle:
 		return t.OracleTablespace != ""
 	case base.DXDatabaseTypeSQLServer:

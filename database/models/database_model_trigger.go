@@ -8,60 +8,60 @@ import (
 )
 
 // ============================================================================
-// DBTrigger - Database trigger entity
+// ModelDBTrigger - Database trigger entity
 // ============================================================================
 
-// DBTriggerTiming represents when the trigger fires
-type DBTriggerTiming string
+// ModelDBTriggerTiming represents when the trigger fires
+type ModelDBTriggerTiming string
 
 const (
-	DBTriggerTimingBefore  DBTriggerTiming = "BEFORE"
-	DBTriggerTimingAfter   DBTriggerTiming = "AFTER"
-	DBTriggerTimingInsteadOf DBTriggerTiming = "INSTEAD OF"
+	ModelDBTriggerTimingBefore    ModelDBTriggerTiming = "BEFORE"
+	ModelDBTriggerTimingAfter     ModelDBTriggerTiming = "AFTER"
+	ModelDBTriggerTimingInsteadOf ModelDBTriggerTiming = "INSTEAD OF"
 )
 
-// DBTriggerEvent represents the event that fires the trigger
-type DBTriggerEvent string
+// ModelDBTriggerEvent represents the event that fires the trigger
+type ModelDBTriggerEvent string
 
 const (
-	DBTriggerEventInsert DBTriggerEvent = "INSERT"
-	DBTriggerEventUpdate DBTriggerEvent = "UPDATE"
-	DBTriggerEventDelete DBTriggerEvent = "DELETE"
-	DBTriggerEventTruncate DBTriggerEvent = "TRUNCATE"
+	ModelDBTriggerEventInsert   ModelDBTriggerEvent = "INSERT"
+	ModelDBTriggerEventUpdate   ModelDBTriggerEvent = "UPDATE"
+	ModelDBTriggerEventDelete   ModelDBTriggerEvent = "DELETE"
+	ModelDBTriggerEventTruncate ModelDBTriggerEvent = "TRUNCATE"
 )
 
 // DBTriggerScope represents the trigger scope
-type DBTriggerScope string
+type ModelDBTriggerScope string
 
 const (
-	DBTriggerScopeRow       DBTriggerScope = "FOR EACH ROW"
-	DBTriggerScopeStatement DBTriggerScope = "FOR EACH STATEMENT"
+	ModelDBTriggerScopeRow       ModelDBTriggerScope = "FOR EACH ROW"
+	ModelDBTriggerScopeStatement ModelDBTriggerScope = "FOR EACH STATEMENT"
 )
 
-// DBTrigger represents a database trigger
-type DBTrigger struct {
-	DBEntity
-	Timing           DBTriggerTiming
-	Events           []DBTriggerEvent      // INSERT, UPDATE, DELETE, TRUNCATE
-	UpdateColumns    []string              // Columns for UPDATE OF (optional)
-	Scope            DBTriggerScope        // FOR EACH ROW or FOR EACH STATEMENT
-	When             string                // WHEN condition (optional)
-	ExecuteFunction  *DBFunction           // Reference to the function to execute
-	ExecuteFunctionName string             // Or just the function name if not using DBFunction reference
-	IsConstraint     bool                  // Constraint trigger (PostgreSQL)
-	Deferrable       bool                  // DEFERRABLE (constraint triggers)
-	InitiallyDeferred bool                 // INITIALLY DEFERRED (constraint triggers)
+// ModelDBTrigger represents a database trigger
+type ModelDBTrigger struct {
+	ModelDBEntity
+	Timing              ModelDBTriggerTiming
+	Events              []ModelDBTriggerEvent // INSERT, UPDATE, DELETE, TRUNCATE
+	UpdateColumns       []string              // Columns for UPDATE OF (optional)
+	Scope               ModelDBTriggerScope   // FOR EACH ROW or FOR EACH STATEMENT
+	When                string                // WHEN condition (optional)
+	ExecuteFunction     *ModelDBFunction      // Reference to the function to execute
+	ExecuteFunctionName string                // Or just the function name if not using ModelDBFunction reference
+	IsConstraint        bool                  // Constraint trigger (PostgreSQL)
+	Deferrable          bool                  // DEFERRABLE (constraint triggers)
+	InitiallyDeferred   bool                  // INITIALLY DEFERRED (constraint triggers)
 
 	// Owner reference - the table this trigger is on
-	OwnerTable *DBTable
+	OwnerTable *ModelDBTable
 }
 
-// NewDBTrigger creates a new trigger for a table
-func NewDBTrigger(table *DBTable, name string, order int, timing DBTriggerTiming, events []DBTriggerEvent, scope DBTriggerScope, executeFunctionName string) *DBTrigger {
-	trigger := &DBTrigger{
-		DBEntity: DBEntity{
+// NewModelDBTrigger creates a new trigger for a table
+func NewModelDBTrigger(table *ModelDBTable, name string, order int, timing ModelDBTriggerTiming, events []ModelDBTriggerEvent, scope ModelDBTriggerScope, executeFunctionName string) *ModelDBTrigger {
+	trigger := &ModelDBTrigger{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeTrigger,
+			Type:   ModelDBEntityTypeTrigger,
 			Order:  order,
 			Schema: table.Schema,
 		},
@@ -82,26 +82,26 @@ func NewDBTrigger(table *DBTable, name string, order int, timing DBTriggerTiming
 }
 
 // SetExecuteFunction sets the function reference
-func (t *DBTrigger) SetExecuteFunction(fn *DBFunction) *DBTrigger {
+func (t *ModelDBTrigger) SetExecuteFunction(fn *ModelDBFunction) *ModelDBTrigger {
 	t.ExecuteFunction = fn
 	t.ExecuteFunctionName = fn.FullName()
 	return t
 }
 
 // SetWhen sets the WHEN condition
-func (t *DBTrigger) SetWhen(condition string) *DBTrigger {
+func (t *ModelDBTrigger) SetWhen(condition string) *ModelDBTrigger {
 	t.When = condition
 	return t
 }
 
 // SetUpdateColumns sets the columns for UPDATE OF
-func (t *DBTrigger) SetUpdateColumns(columns []string) *DBTrigger {
+func (t *ModelDBTrigger) SetUpdateColumns(columns []string) *ModelDBTrigger {
 	t.UpdateColumns = columns
 	return t
 }
 
 // GetOwnerName returns the name of the table that owns this trigger
-func (t *DBTrigger) GetOwnerName() string {
+func (t *ModelDBTrigger) GetOwnerName() string {
 	if t.OwnerTable != nil {
 		return t.OwnerTable.FullTableName()
 	}
@@ -109,7 +109,7 @@ func (t *DBTrigger) GetOwnerName() string {
 }
 
 // CreateDDL generates DDL script for the trigger based on database type
-func (t *DBTrigger) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+func (t *ModelDBTrigger) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
 		return t.createPostgreSQLDDL(), nil
@@ -124,7 +124,7 @@ func (t *DBTrigger) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	}
 }
 
-func (t *DBTrigger) createPostgreSQLDDL() string {
+func (t *ModelDBTrigger) createPostgreSQLDDL() string {
 	var sb strings.Builder
 
 	sb.WriteString("CREATE TRIGGER ")
@@ -137,7 +137,7 @@ func (t *DBTrigger) createPostgreSQLDDL() string {
 	var eventStrs []string
 	for _, event := range t.Events {
 		eventStr := string(event)
-		if event == DBTriggerEventUpdate && len(t.UpdateColumns) > 0 {
+		if event == ModelDBTriggerEventUpdate && len(t.UpdateColumns) > 0 {
 			eventStr += " OF " + strings.Join(t.UpdateColumns, ", ")
 		}
 		eventStrs = append(eventStrs, eventStr)
@@ -177,7 +177,7 @@ func (t *DBTrigger) createPostgreSQLDDL() string {
 	return sb.String()
 }
 
-func (t *DBTrigger) createSQLServerDDL() string {
+func (t *ModelDBTrigger) createSQLServerDDL() string {
 	var sb strings.Builder
 
 	sb.WriteString("CREATE TRIGGER ")
@@ -204,7 +204,7 @@ func (t *DBTrigger) createSQLServerDDL() string {
 	return sb.String()
 }
 
-func (t *DBTrigger) createMariaDBDDL() string {
+func (t *ModelDBTrigger) createMariaDBDDL() string {
 	var sb strings.Builder
 
 	// MariaDB/MySQL triggers: one trigger per timing/event combination
@@ -229,7 +229,7 @@ func (t *DBTrigger) createMariaDBDDL() string {
 	return sb.String()
 }
 
-func (t *DBTrigger) createOracleDDL() string {
+func (t *ModelDBTrigger) createOracleDDL() string {
 	var sb strings.Builder
 
 	sb.WriteString("CREATE OR REPLACE TRIGGER ")
@@ -242,7 +242,7 @@ func (t *DBTrigger) createOracleDDL() string {
 	var eventStrs []string
 	for _, event := range t.Events {
 		eventStr := string(event)
-		if event == DBTriggerEventUpdate && len(t.UpdateColumns) > 0 {
+		if event == ModelDBTriggerEventUpdate && len(t.UpdateColumns) > 0 {
 			eventStr += " OF " + strings.Join(t.UpdateColumns, ", ")
 		}
 		eventStrs = append(eventStrs, eventStr)
@@ -254,7 +254,7 @@ func (t *DBTrigger) createOracleDDL() string {
 	sb.WriteString("\n")
 
 	// Oracle uses FOR EACH ROW or nothing (statement level is default)
-	if t.Scope == DBTriggerScopeRow {
+	if t.Scope == ModelDBTriggerScopeRow {
 		sb.WriteString("FOR EACH ROW\n")
 	}
 

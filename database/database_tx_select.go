@@ -1,9 +1,9 @@
-package database2
+package database
 
 import (
-	"github.com/donnyhardyanto/dxlib/database2/db"
-	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/donnyhardyanto/dxlib/database/db"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 func (dtx *DXDatabaseTx) Select(tableName string, fieldTypeMapping db.DXDatabaseTableFieldTypeMapping, showFieldNames []string, whereAndFieldNameValues utils.JSON, joinSQLPart any, groupBy []string, havingClause utils.JSON, orderByFieldNameDirections db.DXDatabaseTableFieldsOrderBy,

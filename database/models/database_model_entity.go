@@ -1,33 +1,33 @@
 package models
 
 // ============================================================================
-// DBEntity Type Constants
+// ModelDBEntity Type Constants
 // ============================================================================
 
-type DBEntityType int
+type ModelDBEntityType int
 
 const (
-	DBEntityTypeTable DBEntityType = iota
-	DBEntityTypeView
-	DBEntityTypeMaterializedView
-	DBEntityTypeFunction
-	DBEntityTypeIndex
-	DBEntityTypeTrigger
+	ModelDBEntityTypeTable ModelDBEntityType = iota
+	ModelDBEntityTypeView
+	ModelDBEntityTypeMaterializedView
+	ModelDBEntityTypeFunction
+	ModelDBEntityTypeIndex
+	ModelDBEntityTypeTrigger
 )
 
 // ============================================================================
-// DBEntity - Base struct for all database entities (tables, views)
+// ModelDBEntity - Base struct for all database entities (tables, views)
 // ============================================================================
 
-type DBEntity struct {
+type ModelDBEntity struct {
 	Name   string
-	Type   DBEntityType
+	Type   ModelDBEntityType
 	Order  int
-	Schema *DBSchema
+	Schema *ModelDBSchema
 }
 
 // FullName returns the entity name with schema prefix
-func (t *DBEntity) FullName() string {
+func (t *ModelDBEntity) FullName() string {
 	if t.Schema != nil && t.Schema.Name != "" {
 		return t.Schema.Name + "." + t.Name
 	}

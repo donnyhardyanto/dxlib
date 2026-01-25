@@ -8,13 +8,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 	"github.com/donnyhardyanto/dxlib/utils/lv"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DXAPIUser struct {
@@ -54,6 +58,42 @@ func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
 		r[k] = v.Value
 	}
 	return r
+}
+
+// logResponseTrace logs response phase trace information for Grafana monitoring
+func (aepr *DXAPIEndPointRequest) logResponseTrace(phase string, startTime time.Time, statusCode int, errMsg string) {
+	spanCtx := trace.SpanFromContext(aepr.Context).SpanContext()
+	traceId := spanCtx.TraceID().String()
+	spanId := spanCtx.SpanID().String()
+
+	durationMs := float64(time.Since(startTime).Microseconds()) / 1000.0
+
+	endpoint := ""
+	method := ""
+	if aepr.EndPoint != nil {
+		endpoint = aepr.EndPoint.Uri
+	}
+	if aepr.Request != nil {
+		method = aepr.Request.Method
+	}
+
+	attrs := []any{
+		slog.String("trace_id", traceId),
+		slog.String("span_id", spanId),
+		slog.String("request_id", aepr.Id),
+		slog.String("phase", phase),
+		slog.String("endpoint", endpoint),
+		slog.String("method", method),
+		slog.Float64("duration_ms", durationMs),
+		slog.Int("status_code", statusCode),
+		slog.Int("body_size", len(aepr.RequestBodyAsBytes)),
+	}
+
+	if errMsg != "" {
+		attrs = append(attrs, slog.String("error", errMsg))
+	}
+
+	slog.Info("EXECUTION_TRACE", attrs...)
 }
 
 func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
@@ -177,11 +217,11 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, re
 	if err2 != nil {
 		requestDump = "DUMP REQUEST FAIL"
 	}
-
+	err = errors.New(msg)
 	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
 	_ = aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, msg)
 
-	return nil
+	return err
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend error) {
@@ -274,8 +314,13 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header map[string]string, bodyAsBytes []byte) {
+	// TRACE: response_write_start
+	responseWriteStartTime := time.Now()
+	aepr.logResponseTrace("response_write_start", responseWriteStartTime, statusCode, "")
+
 	if aepr.ResponseHeaderSent {
 		_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:RESPONSE_HEADER_ALREADY_SENT")
+		aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "RESPONSE_HEADER_ALREADY_SENT")
 		return
 	}
 	responseWriter := *aepr.GetResponseWriter()
@@ -285,6 +330,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		preKeyIndex, err := utils.GetStringFromKV(aepr.EncryptionParameters, "PRE_KEY_INDEX")
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_PRE_KEY_INDEX:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_GET_PRE_KEY_INDEX")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -300,6 +346,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		lvPayLoadStatusCode, err := lv.NewLV([]byte(payLoadStatusCodeAsBase64))
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_STATUS_CODE:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_NEW_LV_PAYLOAD_STATUS_CODE")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -307,6 +354,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		payLoadHeaderAsBytes, err := json.Marshal(header)
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_MARSHAL_PAYLOAD_HEADER_AS_BYTES:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_MARSHAL_PAYLOAD_HEADER_AS_BYTES")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -315,6 +363,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		lvPayLoadHeader, err := lv.NewLV([]byte(payLoadHeaderAsBase64))
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_HEADER:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_NEW_LV_PAYLOAD_HEADER")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -324,6 +373,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		lvPayLoadBody, err := lv.NewLV([]byte(payLoadBodyAsBase64))
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_NEW_LV_PAYLOAD_BODY:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_NEW_LV_PAYLOAD_BODY")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -331,18 +381,21 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		edB0PrivateKeyAsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "ED_B0_PRIVATE_KEY_AS_BYTES")
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_ED_B0_PRIVATE_KEY_AS_BYTES:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_GET_ED_B0_PRIVATE_KEY_AS_BYTES")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		sharedKey2AsBytes, err := utils.GetBytesFromKV(aepr.EncryptionParameters, "SHARED_KEY_2_AS_BYTES")
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_SHARED_KEY_2_AS_BYTES:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_GET_SHARED_KEY_2_AS_BYTES")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		if OnE2EEPrekeyPack == nil {
 			aepr.Log.Errorf(err, "NOT_IMPLEMENTED:OnE2EEPrekeyPack_IS_NIL:%v", aepr.EndPoint.EndPointType)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusUnprocessableEntity, "OnE2EEPrekeyPack_IS_NIL")
 			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
@@ -350,6 +403,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		dataBlockEnvelopeAsHexString, err := OnE2EEPrekeyPack(aepr, preKeyIndex, edB0PrivateKeyAsBytes, sharedKey2AsBytes, lvPayLoadStatusCode, lvPayLoadHeader, lvPayLoadBody)
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_PACKLVPAYLOAD:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_PACKLVPAYLOAD")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -365,12 +419,14 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		rawBodyAsBytes, err := json.Marshal(rawPayload)
 		if aepr.ResponseBodySent {
 			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:RESPONSE_BODY_ALREADY_SENT")
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "RESPONSE_BODY_ALREADY_SENT")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		_, err = responseWriter.Write(rawBodyAsBytes)
 		if err != nil {
 			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_WRITE_RESPONSE=%s", err.Error())
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "ERROR_AT_WRITE_RESPONSE")
 			responseWriter.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -383,6 +439,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 				aepr._responseErrorAsString = string(bodyAsBytes)
 			}
 		}
+
+		// TRACE: response_write_end (E2EE success)
+		aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "")
 
 	default:
 		for k, v := range header {
@@ -394,11 +453,13 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		aepr.ResponseHeaderSent = true
 		if aepr.ResponseBodySent {
 			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:RESPONSE_BODY_ALREADY_SENT")
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "RESPONSE_BODY_ALREADY_SENT")
 			return
 		}
 		_, err := responseWriter.Write(bodyAsBytes)
 		if err != nil {
 			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_WRITE_RESPONSE=%s", err.Error())
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "ERROR_AT_WRITE_RESPONSE")
 			return
 		}
 		aepr.ResponseBodySent = true
@@ -409,6 +470,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 				aepr._responseErrorAsString = string(bodyAsBytes)
 			}
 		}
+
+		// TRACE: response_write_end (default success)
+		aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "")
 	}
 	return
 }

@@ -1,4 +1,4 @@
-package database2
+package database
 
 import (
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"

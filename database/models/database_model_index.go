@@ -8,57 +8,57 @@ import (
 )
 
 // ============================================================================
-// DBIndex - Database index entity
+// ModelDBIndex - Database index entity
 // ============================================================================
 
-// DBIndexMethod represents the index method/type
-type DBIndexMethod string
+// ModelDBIndexMethod represents the index method/type
+type ModelDBIndexMethod string
 
 const (
-	DBIndexMethodBTree DBIndexMethod = "BTREE"
-	DBIndexMethodHash  DBIndexMethod = "HASH"
-	DBIndexMethodGiST  DBIndexMethod = "GIST"
-	DBIndexMethodGIN   DBIndexMethod = "GIN"
-	DBIndexMethodSPGiST DBIndexMethod = "SPGIST"
-	DBIndexMethodBRIN  DBIndexMethod = "BRIN"
+	ModelDBIndexMethodBTree  ModelDBIndexMethod = "BTREE"
+	ModelDBIndexMethodHash   ModelDBIndexMethod = "HASH"
+	ModelDBIndexMethodGiST   ModelDBIndexMethod = "GIST"
+	ModelDBIndexMethodGIN    ModelDBIndexMethod = "GIN"
+	ModelDBIndexMethodSPGiST ModelDBIndexMethod = "SPGIST"
+	ModelDBIndexMethodBRIN   ModelDBIndexMethod = "BRIN"
 )
 
-// DBIndexColumn represents a column in the index
-type DBIndexColumn struct {
+// ModelDBIndexColumn represents a column in the index
+type ModelDBIndexColumn struct {
 	Name       string
 	Order      string // ASC, DESC, empty for default
 	NullsOrder string // NULLS FIRST, NULLS LAST, empty for default
 }
 
-// DBIndex represents a database index
-type DBIndex struct {
-	DBEntity
-	Columns       []DBIndexColumn
-	IsUnique      bool
-	Method        DBIndexMethod // BTREE, HASH, GIST, etc.
-	Where         string        // Partial index condition (PostgreSQL)
-	Include       []string      // INCLUDE columns (PostgreSQL 11+)
-	Tablespace    string        // Optional tablespace
-	Concurrent    bool          // CREATE INDEX CONCURRENTLY (PostgreSQL)
-	IfNotExists   bool          // CREATE INDEX IF NOT EXISTS
+// ModelDBIndex represents a database index
+type ModelDBIndex struct {
+	ModelDBEntity
+	Columns     []ModelDBIndexColumn
+	IsUnique    bool
+	Method      ModelDBIndexMethod // BTREE, HASH, GIST, etc.
+	Where       string             // Partial index condition (PostgreSQL)
+	Include     []string           // INCLUDE columns (PostgreSQL 11+)
+	Tablespace  string             // Optional tablespace
+	Concurrent  bool               // CREATE INDEX CONCURRENTLY (PostgreSQL)
+	IfNotExists bool               // CREATE INDEX IF NOT EXISTS
 
 	// Owner reference - either Table or MaterializedView (set by NewDBIndex*)
-	OwnerTable            *DBTable
-	OwnerMaterializedView *DBMaterializedView
+	OwnerTable            *ModelDBTable
+	OwnerMaterializedView *ModelDBMaterializedView
 }
 
 // NewDBIndexForTable creates a new index for a table
-func NewDBIndexForTable(table *DBTable, name string, order int, columns []DBIndexColumn, isUnique bool) *DBIndex {
-	idx := &DBIndex{
-		DBEntity: DBEntity{
+func NewModelDBIndexForTable(table *ModelDBTable, name string, order int, columns []ModelDBIndexColumn, isUnique bool) *ModelDBIndex {
+	idx := &ModelDBIndex{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeIndex,
+			Type:   ModelDBEntityTypeIndex,
 			Order:  order,
 			Schema: table.Schema,
 		},
 		Columns:    columns,
 		IsUnique:   isUnique,
-		Method:     DBIndexMethodBTree,
+		Method:     ModelDBIndexMethodBTree,
 		OwnerTable: table,
 	}
 	table.Indexes = append(table.Indexes, idx)
@@ -66,17 +66,17 @@ func NewDBIndexForTable(table *DBTable, name string, order int, columns []DBInde
 }
 
 // NewDBIndexForMaterializedView creates a new index for a materialized view
-func NewDBIndexForMaterializedView(mv *DBMaterializedView, name string, order int, columns []DBIndexColumn, isUnique bool) *DBIndex {
-	idx := &DBIndex{
-		DBEntity: DBEntity{
+func NewModelDBIndexForMaterializedView(mv *ModelDBMaterializedView, name string, order int, columns []ModelDBIndexColumn, isUnique bool) *ModelDBIndex {
+	idx := &ModelDBIndex{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeIndex,
+			Type:   ModelDBEntityTypeIndex,
 			Order:  order,
 			Schema: mv.Schema,
 		},
 		Columns:               columns,
 		IsUnique:              isUnique,
-		Method:                DBIndexMethodBTree,
+		Method:                ModelDBIndexMethodBTree,
 		OwnerMaterializedView: mv,
 	}
 	mv.Indexes = append(mv.Indexes, idx)
@@ -84,25 +84,25 @@ func NewDBIndexForMaterializedView(mv *DBMaterializedView, name string, order in
 }
 
 // SetMethod sets the index method
-func (i *DBIndex) SetMethod(method DBIndexMethod) *DBIndex {
+func (i *ModelDBIndex) SetMethod(method ModelDBIndexMethod) *ModelDBIndex {
 	i.Method = method
 	return i
 }
 
 // SetWhere sets the partial index condition
-func (i *DBIndex) SetWhere(condition string) *DBIndex {
+func (i *ModelDBIndex) SetWhere(condition string) *ModelDBIndex {
 	i.Where = condition
 	return i
 }
 
 // SetInclude sets the INCLUDE columns
-func (i *DBIndex) SetInclude(columns []string) *DBIndex {
+func (i *ModelDBIndex) SetInclude(columns []string) *ModelDBIndex {
 	i.Include = columns
 	return i
 }
 
 // GetOwnerName returns the name of the table or materialized view that owns this index
-func (i *DBIndex) GetOwnerName() string {
+func (i *ModelDBIndex) GetOwnerName() string {
 	if i.OwnerTable != nil {
 		return i.OwnerTable.FullTableName()
 	}
@@ -113,7 +113,7 @@ func (i *DBIndex) GetOwnerName() string {
 }
 
 // CreateDDL generates DDL script for the index based on database type
-func (i *DBIndex) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+func (i *ModelDBIndex) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
 		return i.createPostgreSQLDDL(), nil
@@ -128,7 +128,7 @@ func (i *DBIndex) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	}
 }
 
-func (i *DBIndex) createPostgreSQLDDL() string {
+func (i *ModelDBIndex) createPostgreSQLDDL() string {
 	var sb strings.Builder
 
 	sb.WriteString("CREATE ")
@@ -147,7 +147,7 @@ func (i *DBIndex) createPostgreSQLDDL() string {
 	sb.WriteString(i.GetOwnerName())
 
 	// Method
-	if i.Method != "" && i.Method != DBIndexMethodBTree {
+	if i.Method != "" && i.Method != ModelDBIndexMethodBTree {
 		sb.WriteString(" USING ")
 		sb.WriteString(string(i.Method))
 	}
@@ -192,7 +192,7 @@ func (i *DBIndex) createPostgreSQLDDL() string {
 	return sb.String()
 }
 
-func (i *DBIndex) createSQLServerDDL() string {
+func (i *ModelDBIndex) createSQLServerDDL() string {
 	var sb strings.Builder
 
 	sb.WriteString("CREATE ")
@@ -236,7 +236,7 @@ func (i *DBIndex) createSQLServerDDL() string {
 	return sb.String()
 }
 
-func (i *DBIndex) createMariaDBDDL() string {
+func (i *ModelDBIndex) createMariaDBDDL() string {
 	var sb strings.Builder
 
 	sb.WriteString("CREATE ")
@@ -249,7 +249,7 @@ func (i *DBIndex) createMariaDBDDL() string {
 	sb.WriteString(i.GetOwnerName())
 
 	// Method (MySQL/MariaDB supports BTREE and HASH for some storage engines)
-	if i.Method != "" && i.Method != DBIndexMethodBTree {
+	if i.Method != "" && i.Method != ModelDBIndexMethodBTree {
 		sb.WriteString(" USING ")
 		sb.WriteString(string(i.Method))
 	}
@@ -272,7 +272,7 @@ func (i *DBIndex) createMariaDBDDL() string {
 	return sb.String()
 }
 
-func (i *DBIndex) createOracleDDL() string {
+func (i *ModelDBIndex) createOracleDDL() string {
 	var sb strings.Builder
 
 	sb.WriteString("CREATE ")

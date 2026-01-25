@@ -236,11 +236,3 @@ func BuildUIDDefaultExpr(dbType base.DXDatabaseType) string {
 		return types.UIDDefaultExprPostgreSQL
 	}
 }
-
-// Re-export UID constants from types package for backward compatibility
-const (
-	UIDDefaultExprPostgreSQL = types.UIDDefaultExprPostgreSQL
-	UIDDefaultExprSQLServer  = types.UIDDefaultExprSQLServer
-	UIDDefaultExprOracle     = types.UIDDefaultExprOracle
-	UIDDefaultExprMariaDB    = types.UIDDefaultExprMariaDB
-)

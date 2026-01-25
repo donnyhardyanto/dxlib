@@ -12,20 +12,20 @@ import (
 )
 
 // ============================================================================
-// DBTable - Table entity (embeds DBEntity)
+// ModelDBTable - Table entity (embeds ModelDBEntity)
 // ============================================================================
 
-type KeySource int
+type ModelDBKeySource int
 
 const (
-	KeySourceRaw KeySource = iota
-	KeySourceEnv
-	KeySourceConfig
-	KeySourceDbSessionCurrentSetting
+	ModelDBKeySourceRaw ModelDBKeySource = iota
+	ModelDBKeySourceEnv
+	ModelDBKeySourceConfig
+	ModelDBKeySourceDbSessionCurrentSetting
 )
 
-type Field struct {
-	Owner                  *DBTable
+type ModelDBField struct {
+	Owner                  *ModelDBTable
 	Order                  int
 	Type                   types.DataType
 	IsPrimaryKey           bool
@@ -35,18 +35,18 @@ type Field struct {
 	DefaultValue           any                         // SQL expression for DEFAULT clause (used when DefaultValueByDBType not specified)
 	DefaultValueByDBType   map[base.DXDatabaseType]any // Database-specific default values. Keys: "postgresql", "sqlserver", "oracle", "mariadb"
 	References             string                      // Foreign key reference in format "schema.table.field"
-	ResolvedReferenceField *Field                      // Resolved reference field pointer (set by NewDBTable)
+	ResolvedReferenceField *ModelDBField               // Resolved reference field pointer (set by NewModelDBTable)
 
 	// for encrypted field only
 	DecryptedFieldName  string
-	EncryptionKeySource KeySource // "config" (PostgreSQL current_setting), "literal", "env"
+	EncryptionKeySource ModelDBKeySource // "config" (PostgreSQL current_setting), "literal", "env"
 	EncryptionKeyValue  string    // e.g., "app.encryption_key" for config, or literal key value
 	HashFieldName       string    // e.g., "fullname_hashed" - companion hash field name
-	HashSaltKeySource   KeySource // "config", "literal", "env"
+	HashSaltKeySource   ModelDBKeySource // "config", "literal", "env"
 	HashSaltKeyValue    string    // salt value or config name
 }
 
-func (f *Field) GetName() string {
+func (f *ModelDBField) GetName() string {
 	if f.Owner == nil {
 		return ""
 	}
@@ -58,23 +58,23 @@ func (f *Field) GetName() string {
 	return ""
 }
 
-type DBTable struct {
-	DBEntity
-	Fields            map[string]*Field
-	TDE               TDEConfig // Database-specific TDE configuration
+type ModelDBTable struct {
+	ModelDBEntity
+	Fields            map[string]*ModelDBField
+	TDE               ModelDBTDEConfig // Database-specific TDE configuration
 	UseTableSuffix    bool
 	PhysicalTableName string
-	Indexes           []*DBIndex   // Indexes on this table
-	Triggers          []*DBTrigger // Triggers on this table
+	Indexes           []*ModelDBIndex   // Indexes on this table
+	Triggers          []*ModelDBTrigger // Triggers on this table
 }
 
-// NewDBTable creates a new database table and registers it with the schema.
-// Note: Field References are resolved lazily by DB.Init() using the Order field.
-func NewDBTable(schema *DBSchema, name string, order int, fields map[string]*Field, tde TDEConfig) *DBTable {
-	dbTable := &DBTable{
-		DBEntity: DBEntity{
+// NewModelDBTable creates a new database table and registers it with the schema.
+// Note: ModelDBField References are resolved lazily by ModelDB.Init() using the Order field.
+func NewModelDBTable(schema *ModelDBSchema, name string, order int, fields map[string]*ModelDBField, tde ModelDBTDEConfig) *ModelDBTable {
+	dbTable := &ModelDBTable{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeTable,
+			Type:   ModelDBEntityTypeTable,
 			Order:  order,
 			Schema: schema,
 		},
@@ -91,11 +91,11 @@ func NewDBTable(schema *DBSchema, name string, order int, fields map[string]*Fie
 }
 
 // ============================================================================
-// DBTable Methods
+// ModelDBTable Methods
 // ============================================================================
 
 // TableName returns the physical table name (without a schema prefix)
-func (t *DBTable) TableName() string {
+func (t *ModelDBTable) TableName() string {
 	if t.PhysicalTableName != "" {
 		return t.PhysicalTableName
 	}
@@ -106,7 +106,7 @@ func (t *DBTable) TableName() string {
 }
 
 // FullTableName returns the table name with schema prefix if schema is set
-func (t *DBTable) FullTableName() string {
+func (t *ModelDBTable) FullTableName() string {
 	if t.Schema != nil && t.Schema.Name != "" {
 		return t.Schema.Name + "." + t.TableName()
 	}
@@ -114,7 +114,7 @@ func (t *DBTable) FullTableName() string {
 }
 
 // getOrderedFields returns field names sorted by Order
-func (t *DBTable) getOrderedFields() []string {
+func (t *ModelDBTable) getOrderedFields() []string {
 	type fieldOrder struct {
 		name  string
 		order int
@@ -134,7 +134,7 @@ func (t *DBTable) getOrderedFields() []string {
 }
 
 // CreateDDL generates a DDL script for the table based on database type
-func (t *DBTable) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+func (t *ModelDBTable) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	var sb strings.Builder
 	tableName := t.FullTableName()
 
@@ -159,12 +159,12 @@ func (t *DBTable) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 }
 
 // buildTDEClause generates the database-specific TDE clause for CREATE TABLE
-func (t *DBTable) buildTDEClause(dbType base.DXDatabaseType) string {
+func (t *ModelDBTable) buildTDEClause(dbType base.DXDatabaseType) string {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
 		// PostgreSQL: Use table access method for TDE (t.g., "tde_heap" with pg_tde extension)
-		if t.TDE.PostgreSQLAccessMethod != "" {
-			return fmt.Sprintf(" USING %s", t.TDE.PostgreSQLAccessMethod)
+		if t.TDE.ModelDBPostgreSQLAccessMethod != "" {
+			return fmt.Sprintf(" USING %s", t.TDE.ModelDBPostgreSQLAccessMethod)
 		}
 	case base.DXDatabaseTypeOracle:
 		// Oracle: Specify tablespace for encrypted storage
@@ -188,7 +188,7 @@ func (t *DBTable) buildTDEClause(dbType base.DXDatabaseType) string {
 	return ""
 }
 
-func (t *DBTable) fieldToDDL(fieldName string, field Field, dbType base.DXDatabaseType) string {
+func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType base.DXDatabaseType) string {
 
 	var sb strings.Builder
 
@@ -238,7 +238,7 @@ func (t *DBTable) fieldToDDL(fieldName string, field Field, dbType base.DXDataba
 }
 
 // isStringFieldType checks if the field type is a string type that should be quoted in SQL
-func isStringFieldType(field Field) bool {
+func isStringFieldType(field ModelDBField) bool {
 	switch field.Type.GoType {
 	case types.GoTypeString, types.GoTypeStringPointer:
 		return true
@@ -248,9 +248,9 @@ func isStringFieldType(field Field) bool {
 }
 
 // getDefaultValueForDBType returns the appropriate default value for the given database type
-// Priority: 1. Field.DefaultValueByDBType, 2. Field.DefaultValue, 3. Field.Type.DefaultValueByDatabaseType
+// Priority: 1. ModelDBField.DefaultValueByDBType, 2. ModelDBField.DefaultValue, 3. ModelDBField.Type.DefaultValueByDatabaseType
 // For string fields, the value will be automatically quoted with SQL single quotes
-func (t *DBTable) getDefaultValueForDBType(field Field, dbType base.DXDatabaseType) string {
+func (t *ModelDBTable) getDefaultValueForDBType(field ModelDBField, dbType base.DXDatabaseType) string {
 
 	// 1. Check if the field has a database-specific default
 	if field.DefaultValueByDBType != nil {
@@ -277,7 +277,7 @@ func (t *DBTable) getDefaultValueForDBType(field Field, dbType base.DXDatabaseTy
 // valueToSQLLiteral converts a value to SQL literal format based on field type
 // For string fields, the value is wrapped with SQL single quotes
 // For other types, the value is converted to string as-is
-func valueToSQLLiteral(field Field, v any) string {
+func valueToSQLLiteral(field ModelDBField, v any) string {
 	if v == nil {
 		return ""
 	}
@@ -318,7 +318,7 @@ func anyToString(v any) string {
 }
 
 // SelectOne selects a single row from the table
-func (t *DBTable) SelectOne(db *sql.DB, dbType base.DXDatabaseType, where string, args ...any) (utils.JSON, error) {
+func (t *ModelDBTable) SelectOne(db *sql.DB, dbType base.DXDatabaseType, where string, args ...any) (utils.JSON, error) {
 	columns := t.buildSelectColumns()
 	tableName := t.FullTableName()
 
@@ -335,7 +335,7 @@ func (t *DBTable) SelectOne(db *sql.DB, dbType base.DXDatabaseType, where string
 }
 
 // SelectMany selects multiple rows from the table
-func (t *DBTable) SelectMany(db *sql.DB, dbType base.DXDatabaseType, where string, args ...any) ([]utils.JSON, error) {
+func (t *ModelDBTable) SelectMany(db *sql.DB, dbType base.DXDatabaseType, where string, args ...any) ([]utils.JSON, error) {
 	columns := t.buildSelectColumns()
 	tableName := t.FullTableName()
 
@@ -369,7 +369,7 @@ func (t *DBTable) SelectMany(db *sql.DB, dbType base.DXDatabaseType, where strin
 }
 
 // Insert inserts a new row into the table
-func (t *DBTable) Insert(db *sql.DB, dbType base.DXDatabaseType, data utils.JSON) error {
+func (t *ModelDBTable) Insert(db *sql.DB, dbType base.DXDatabaseType, data utils.JSON) error {
 	columns, values, args, err := t.buildInsertData(dbType, data)
 	if err != nil {
 		return err
@@ -383,7 +383,7 @@ func (t *DBTable) Insert(db *sql.DB, dbType base.DXDatabaseType, data utils.JSON
 }
 
 // Update updates existing rows in the table
-func (t *DBTable) Update(db *sql.DB, dbType base.DXDatabaseType, data utils.JSON, where string, whereArgs ...any) error {
+func (t *ModelDBTable) Update(db *sql.DB, dbType base.DXDatabaseType, data utils.JSON, where string, whereArgs ...any) error {
 	setClause, args, err := t.buildUpdateData(dbType, data)
 	if err != nil {
 		return err
@@ -397,7 +397,7 @@ func (t *DBTable) Update(db *sql.DB, dbType base.DXDatabaseType, data utils.JSON
 	return err
 }
 
-func (t *DBTable) Delete(db *sql.DB, where string, args ...any) error {
+func (t *ModelDBTable) Delete(db *sql.DB, where string, args ...any) error {
 	tableName := t.FullTableName()
 	// language=text
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s", tableName, where)
@@ -406,11 +406,11 @@ func (t *DBTable) Delete(db *sql.DB, where string, args ...any) error {
 }
 
 // buildSelectColumns returns column names for SELECT
-func (t *DBTable) buildSelectColumns() string {
+func (t *ModelDBTable) buildSelectColumns() string {
 	return strings.Join(t.getOrderedFields(), ", ")
 }
 
-func (t *DBTable) buildInsertData(dbType base.DXDatabaseType, data utils.JSON) (columns string, values string, args []any, err error) {
+func (t *ModelDBTable) buildInsertData(dbType base.DXDatabaseType, data utils.JSON) (columns string, values string, args []any, err error) {
 	var cols []string
 	var vals []string
 	argIndex := 1
@@ -477,7 +477,7 @@ func (t *DBTable) buildInsertData(dbType base.DXDatabaseType, data utils.JSON) (
 }
 
 // isAutoGeneratedHashField checks if a field is a hash field makauto-generated by an encrypted field
-func (t *DBTable) isAutoGeneratedHashField(fieldName string) bool {
+func (t *ModelDBTable) isAutoGeneratedHashField(fieldName string) bool {
 	for _, field := range t.Fields {
 		if field.HashFieldName == fieldName {
 			return true
@@ -487,7 +487,7 @@ func (t *DBTable) isAutoGeneratedHashField(fieldName string) bool {
 }
 
 // encryptExpression returns the database-specific encryption expression
-func (t *DBTable) encryptExpression(dbType base.DXDatabaseType, argIndex int, keySource KeySource, keyValue string) string {
+func (t *ModelDBTable) encryptExpression(dbType base.DXDatabaseType, argIndex int, keySource ModelDBKeySource, keyValue string) string {
 	placeholder := t.placeholder(dbType, argIndex)
 	keyExpr := t.keyExpression(dbType, keySource, keyValue)
 
@@ -507,7 +507,7 @@ func (t *DBTable) encryptExpression(dbType base.DXDatabaseType, argIndex int, ke
 }
 
 // hashExpression returns the database-specific hash expression with optional salt
-func (t *DBTable) hashExpression(dbType base.DXDatabaseType, argIndex int, saltSource KeySource, saltValue string) string {
+func (t *ModelDBTable) hashExpression(dbType base.DXDatabaseType, argIndex int, saltSource ModelDBKeySource, saltValue string) string {
 	placeholder := t.placeholder(dbType, argIndex)
 
 	// If salt is specified, concatenate salt with value
@@ -532,15 +532,15 @@ func (t *DBTable) hashExpression(dbType base.DXDatabaseType, argIndex int, saltS
 }
 
 // keyExpression returns the database-specific key retrieval expression
-func (t *DBTable) keyExpression(dbType base.DXDatabaseType, source KeySource, value string) string {
+func (t *ModelDBTable) keyExpression(dbType base.DXDatabaseType, source ModelDBKeySource, value string) string {
 	if value == "" {
 		return "''"
 	}
 
 	switch source {
-	case KeySourceRaw:
+	case ModelDBKeySourceRaw:
 		return fmt.Sprintf("'%s'", value)
-	case KeySourceEnv:
+	case ModelDBKeySourceEnv:
 		// Environment variables - database specific
 		switch dbType {
 		case base.DXDatabaseTypePostgreSQL:
@@ -548,7 +548,7 @@ func (t *DBTable) keyExpression(dbType base.DXDatabaseType, source KeySource, va
 		default:
 			return fmt.Sprintf("'%s'", value)
 		}
-	case KeySourceConfig:
+	case ModelDBKeySourceConfig:
 		switch dbType {
 		case base.DXDatabaseTypePostgreSQL:
 			return fmt.Sprintf("current_setting('%s')", value)
@@ -561,7 +561,7 @@ func (t *DBTable) keyExpression(dbType base.DXDatabaseType, source KeySource, va
 		default:
 			return fmt.Sprintf("'%s'", value)
 		}
-	case KeySourceDbSessionCurrentSetting:
+	case ModelDBKeySourceDbSessionCurrentSetting:
 		switch dbType {
 		case base.DXDatabaseTypePostgreSQL:
 			return fmt.Sprintf("current_setting('%s')", value)
@@ -580,7 +580,7 @@ func (t *DBTable) keyExpression(dbType base.DXDatabaseType, source KeySource, va
 }
 
 // concatExpression returns the database-specific string concatenation expression
-func (t *DBTable) concatExpression(dbType base.DXDatabaseType, expr1, expr2 string) string {
+func (t *ModelDBTable) concatExpression(dbType base.DXDatabaseType, expr1, expr2 string) string {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL, base.DXDatabaseTypeMariaDB:
 		return fmt.Sprintf("CONCAT(%s, %s)", expr1, expr2)
@@ -593,7 +593,7 @@ func (t *DBTable) concatExpression(dbType base.DXDatabaseType, expr1, expr2 stri
 	}
 }
 
-func (t *DBTable) buildUpdateData(dbType base.DXDatabaseType, data utils.JSON) (setClause string, args []any, err error) {
+func (t *ModelDBTable) buildUpdateData(dbType base.DXDatabaseType, data utils.JSON) (setClause string, args []any, err error) {
 	var sets []string
 	argIndex := 1
 
@@ -655,7 +655,7 @@ func (t *DBTable) buildUpdateData(dbType base.DXDatabaseType, data utils.JSON) (
 	return strings.Join(sets, ", "), args, nil
 }
 
-func (t *DBTable) placeholder(dbType base.DXDatabaseType, index int) string {
+func (t *ModelDBTable) placeholder(dbType base.DXDatabaseType, index int) string {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
 		return fmt.Sprintf("$%d", index)
@@ -668,7 +668,7 @@ func (t *DBTable) placeholder(dbType base.DXDatabaseType, index int) string {
 	}
 }
 
-func (t *DBTable) validateFieldValue(fieldName string, field *Field, val any) error {
+func (t *ModelDBTable) validateFieldValue(fieldName string, field *ModelDBField, val any) error {
 	if val == nil {
 		return nil
 	}
@@ -706,7 +706,7 @@ func (t *DBTable) validateFieldValue(fieldName string, field *Field, val any) er
 	return nil
 }
 
-func (t *DBTable) scanRow(row *sql.Row) (utils.JSON, error) {
+func (t *ModelDBTable) scanRow(row *sql.Row) (utils.JSON, error) {
 	result := make(utils.JSON)
 	orderedFields := t.getOrderedFields()
 	scanDest := make([]any, len(orderedFields))
@@ -726,7 +726,7 @@ func (t *DBTable) scanRow(row *sql.Row) (utils.JSON, error) {
 	return result, nil
 }
 
-func (t *DBTable) scanRows(rows *sql.Rows) (utils.JSON, error) {
+func (t *ModelDBTable) scanRows(rows *sql.Rows) (utils.JSON, error) {
 	result := make(utils.JSON)
 	orderedFields := t.getOrderedFields()
 	scanDest := make([]any, len(orderedFields))

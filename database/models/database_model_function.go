@@ -8,47 +8,47 @@ import (
 )
 
 // ============================================================================
-// DBFunction - Database function/stored procedure entity
+// ModelDBFunction - Database function/stored procedure entity
 // ============================================================================
 
-// DBFunctionParameter represents a function parameter
-type DBFunctionParameter struct {
+// ModelDBFunctionParameter represents a function parameter
+type ModelDBFunctionParameter struct {
 	Name         string
-	DataType     string                      // Generic type string
+	DataType     string                         // Generic type string
 	DataTypeByDB map[base.DXDatabaseType]string // Database-specific type override
-	Mode         string                      // IN, OUT, INOUT (default: IN)
-	DefaultValue string                      // Optional default value
+	Mode         string                         // IN, OUT, INOUT (default: IN)
+	DefaultValue string                         // Optional default value
 }
 
-// DBFunction represents a database function or stored procedure
-type DBFunction struct {
-	DBEntity
-	Parameters   []DBFunctionParameter
-	ReturnType   string                      // Return type (e.g., "TRIGGER", "INTEGER", "TABLE", "VOID")
-	ReturnTypeByDB map[base.DXDatabaseType]string // Database-specific return type override
-	Language     string                      // plpgsql, sql, etc.
-	Body         string                      // Function body (between $$ and $$)
-	BodyByDB     map[base.DXDatabaseType]string // Database-specific body override
-	IsReplace    bool                        // CREATE OR REPLACE
-	Volatility   string                      // VOLATILE, STABLE, IMMUTABLE (PostgreSQL)
-	SecurityDefiner bool                     // SECURITY DEFINER vs SECURITY INVOKER
+// ModelDBFunction represents a database function or stored procedure
+type ModelDBFunction struct {
+	ModelDBEntity
+	Parameters      []ModelDBFunctionParameter
+	ReturnType      string                         // Return type (e.g., "TRIGGER", "INTEGER", "TABLE", "VOID")
+	ReturnTypeByDB  map[base.DXDatabaseType]string // Database-specific return type override
+	Language        string                         // plpgsql, sql, etc.
+	Body            string                         // Function body (between $$ and $$)
+	BodyByDB        map[base.DXDatabaseType]string // Database-specific body override
+	IsReplace       bool                           // CREATE OR REPLACE
+	Volatility      string                         // VOLATILE, STABLE, IMMUTABLE (PostgreSQL)
+	SecurityDefiner bool                           // SECURITY DEFINER vs SECURITY INVOKER
 }
 
-// NewDBFunction creates a new database function and registers it with the schema
-func NewDBFunction(schema *DBSchema, name string, order int, returnType string, language string, body string) *DBFunction {
-	fn := &DBFunction{
-		DBEntity: DBEntity{
+// NewModelDBFunction creates a new database function and registers it with the schema
+func NewModelDBFunction(schema *ModelDBSchema, name string, order int, returnType string, language string, body string) *ModelDBFunction {
+	fn := &ModelDBFunction{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeFunction,
+			Type:   ModelDBEntityTypeFunction,
 			Order:  order,
 			Schema: schema,
 		},
-		Parameters:   []DBFunctionParameter{},
-		ReturnType:   returnType,
-		Language:     language,
-		Body:         body,
-		IsReplace:    true, // Default to CREATE OR REPLACE
-		Volatility:   "",
+		Parameters:      []ModelDBFunctionParameter{},
+		ReturnType:      returnType,
+		Language:        language,
+		Body:            body,
+		IsReplace:       true, // Default to CREATE OR REPLACE
+		Volatility:      "",
 		SecurityDefiner: false,
 	}
 	if schema != nil {
@@ -58,11 +58,11 @@ func NewDBFunction(schema *DBSchema, name string, order int, returnType string, 
 }
 
 // AddParameter adds a parameter to the function
-func (f *DBFunction) AddParameter(name string, dataType string, mode string, defaultValue string) *DBFunction {
+func (f *ModelDBFunction) AddParameter(name string, dataType string, mode string, defaultValue string) *ModelDBFunction {
 	if mode == "" {
 		mode = "IN"
 	}
-	f.Parameters = append(f.Parameters, DBFunctionParameter{
+	f.Parameters = append(f.Parameters, ModelDBFunctionParameter{
 		Name:         name,
 		DataType:     dataType,
 		Mode:         mode,
@@ -72,7 +72,7 @@ func (f *DBFunction) AddParameter(name string, dataType string, mode string, def
 }
 
 // SetBodyByDB sets database-specific function body
-func (f *DBFunction) SetBodyByDB(dbType base.DXDatabaseType, body string) *DBFunction {
+func (f *ModelDBFunction) SetBodyByDB(dbType base.DXDatabaseType, body string) *ModelDBFunction {
 	if f.BodyByDB == nil {
 		f.BodyByDB = make(map[base.DXDatabaseType]string)
 	}
@@ -81,7 +81,7 @@ func (f *DBFunction) SetBodyByDB(dbType base.DXDatabaseType, body string) *DBFun
 }
 
 // CreateDDL generates DDL script for the function based on database type
-func (f *DBFunction) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+func (f *ModelDBFunction) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
 		return f.createPostgreSQLDDL(), nil
@@ -96,7 +96,7 @@ func (f *DBFunction) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	}
 }
 
-func (f *DBFunction) createPostgreSQLDDL() string {
+func (f *ModelDBFunction) createPostgreSQLDDL() string {
 	var sb strings.Builder
 
 	// CREATE OR REPLACE FUNCTION
@@ -172,7 +172,7 @@ func (f *DBFunction) createPostgreSQLDDL() string {
 	return sb.String()
 }
 
-func (f *DBFunction) createSQLServerDDL() string {
+func (f *ModelDBFunction) createSQLServerDDL() string {
 	var sb strings.Builder
 
 	// SQL Server uses CREATE PROCEDURE or CREATE FUNCTION
@@ -232,7 +232,7 @@ func (f *DBFunction) createSQLServerDDL() string {
 	return sb.String()
 }
 
-func (f *DBFunction) createMariaDBDDL() string {
+func (f *ModelDBFunction) createMariaDBDDL() string {
 	var sb strings.Builder
 
 	// MariaDB/MySQL
@@ -280,7 +280,7 @@ func (f *DBFunction) createMariaDBDDL() string {
 	return sb.String()
 }
 
-func (f *DBFunction) createOracleDDL() string {
+func (f *ModelDBFunction) createOracleDDL() string {
 	var sb strings.Builder
 
 	// Oracle

@@ -1,4 +1,4 @@
-package database2
+package database
 
 import (
 	"database/sql"
@@ -7,10 +7,10 @@ import (
 	"net"
 	"strings"
 
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
 	mssql "github.com/microsoft/go-mssqldb"
-	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 // StackTraceError is a custom error type that preserves stack traces

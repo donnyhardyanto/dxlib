@@ -8,27 +8,27 @@ import (
 	"github.com/donnyhardyanto/dxlib/base"
 )
 
-// DB represents a database with extensions and schemas
-type DB struct {
+// ModelDB represents a database with extensions and schemas
+type ModelDB struct {
 	Name       string
 	Extensions map[base.DXDatabaseType][]string // Database-specific extensions/features
-	Schemas    []*DBSchema
+	Schemas    []*ModelDBSchema
 }
 
-// NewDB creates a new database with optional extensions
-func NewDB(name string, extensions map[base.DXDatabaseType][]string) *DB {
+// NewModelDB creates a new database with optional extensions
+func NewModelDB(name string, extensions map[base.DXDatabaseType][]string) *ModelDB {
 	if extensions == nil {
 		extensions = make(map[base.DXDatabaseType][]string)
 	}
-	return &DB{
+	return &ModelDB{
 		Name:       name,
 		Extensions: extensions,
-		Schemas:    []*DBSchema{},
+		Schemas:    []*ModelDBSchema{},
 	}
 }
 
 // AddExtensions adds extensions for a specific database type
-func (d *DB) AddExtensions(dbType base.DXDatabaseType, extensions ...string) {
+func (d *ModelDB) AddExtensions(dbType base.DXDatabaseType, extensions ...string) {
 	if d.Extensions == nil {
 		d.Extensions = make(map[base.DXDatabaseType][]string)
 	}
@@ -36,7 +36,7 @@ func (d *DB) AddExtensions(dbType base.DXDatabaseType, extensions ...string) {
 }
 
 // SetExtensions sets extensions for a specific database type (replaces existing)
-func (d *DB) SetExtensions(dbType base.DXDatabaseType, extensions []string) {
+func (d *ModelDB) SetExtensions(dbType base.DXDatabaseType, extensions []string) {
 	if d.Extensions == nil {
 		d.Extensions = make(map[base.DXDatabaseType][]string)
 	}
@@ -44,7 +44,7 @@ func (d *DB) SetExtensions(dbType base.DXDatabaseType, extensions []string) {
 }
 
 // GetExtensions returns extensions for a specific database type
-func (d *DB) GetExtensions(dbType base.DXDatabaseType) []string {
+func (d *ModelDB) GetExtensions(dbType base.DXDatabaseType) []string {
 	if d.Extensions == nil {
 		return nil
 	}
@@ -54,9 +54,9 @@ func (d *DB) GetExtensions(dbType base.DXDatabaseType) []string {
 // Init resolves all field References to ResolvedReferenceField pointers.
 // Tables are processed in Order to ensure referenced tables are resolved first.
 // Returns an error if any References string cannot be resolved.
-func (d *DB) Init() error {
+func (d *ModelDB) Init() error {
 	// Collect all tables from all schemas
-	var allTables []*DBTable
+	var allTables []*ModelDBTable
 	for _, schema := range d.Schemas {
 		allTables = append(allTables, schema.Tables...)
 	}
@@ -72,7 +72,7 @@ func (d *DB) Init() error {
 			if field.References != "" {
 				resolvedField := d.resolveReference(field.References)
 				if resolvedField == nil {
-					return fmt.Errorf("DB.Init: %s.%s field '%s' references '%s' not found",
+					return fmt.Errorf("ModelDB.Init: %s.%s field '%s' references '%s' not found",
 						table.Schema.Name, table.Name, fieldName, field.References)
 				}
 				field.ResolvedReferenceField = resolvedField
@@ -82,9 +82,9 @@ func (d *DB) Init() error {
 	return nil
 }
 
-// resolveReference resolves a reference string "schema.table.field" to a *Field pointer.
+// resolveReference resolves a reference string "schema.table.field" to a *ModelDBField pointer.
 // Returns nil if not found.
-func (d *DB) resolveReference(reference string) *Field {
+func (d *ModelDB) resolveReference(reference string) *ModelDBField {
 	// Parse reference: "schema.table.field"
 	parts := strings.Split(reference, ".")
 	if len(parts) != 3 {
@@ -92,7 +92,7 @@ func (d *DB) resolveReference(reference string) *Field {
 	}
 	schemaName, tableName, fieldName := parts[0], parts[1], parts[2]
 
-	// Find schema in DB
+	// Find schema in ModelDB
 	for _, schema := range d.Schemas {
 		if schema.Name == schemaName {
 			// Find table in schema
@@ -112,7 +112,7 @@ func (d *DB) resolveReference(reference string) *Field {
 }
 
 // CreateDDL generates DDL script for the database including extensions and all schemas
-func (d *DB) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+func (d *ModelDB) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	var sb strings.Builder
 
 	// Get extensions for the specific database type
@@ -152,7 +152,7 @@ func (d *DB) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	}
 
 	// Create all schemas
-	orderedSchemas := make([]*DBSchema, len(d.Schemas))
+	orderedSchemas := make([]*ModelDBSchema, len(d.Schemas))
 	copy(orderedSchemas, d.Schemas)
 	sort.SliceStable(orderedSchemas, func(i, j int) bool {
 		return orderedSchemas[i].Order < orderedSchemas[j].Order

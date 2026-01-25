@@ -1,8 +1,8 @@
-package database2
+package database
 
 import (
 	"database/sql"
-	"github.com/donnyhardyanto/dxlib/database2/db"
+	"github.com/donnyhardyanto/dxlib/database/db"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )

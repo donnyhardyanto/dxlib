@@ -10,37 +10,37 @@ import (
 // ================== VIEW/TABLE REFERENCE ==================
 
 // DBViewRef represents a reference to a view or table by name (for use in FROM/JOIN)
-// Use this when you need to reference a view or table that is not defined as DBTable
-type DBViewRef struct {
-	Schema *DBSchema // Schema pointer (e.g., PartnerManagementSchema)
-	Name   string    // View/table name (e.g., "v_field_executor")
-	Alias  string    // Optional alias for use in queries (e.g., "vfe")
+// Use this when you need to reference a view or table that is not defined as ModelDBTable
+type ModelDBViewRef struct {
+	Schema *ModelDBSchema // Schema pointer (e.g., PartnerManagementSchema)
+	Name   string         // View/table name (e.g., "v_field_executor")
+	Alias  string         // Optional alias for use in queries (e.g., "vfe")
 }
 
 // NewDBViewRef creates a new view reference using schema pointer and name string
 // Use this when the view/table is not defined as a Go variable
-func NewDBViewRef(schema *DBSchema, name, alias string) *DBViewRef {
-	return &DBViewRef{
+func NewModelDBViewRef(schema *ModelDBSchema, name, alias string) *ModelDBViewRef {
+	return &ModelDBViewRef{
 		Schema: schema,
 		Name:   name,
 		Alias:  alias,
 	}
 }
 
-// NewDBViewRefFromTable creates a view reference from an existing DBTable
-// Use this when referencing a table that is defined as *DBTable in Go
-func NewDBViewRefFromTable(table *DBTable, alias string) *DBViewRef {
-	return &DBViewRef{
+// NewDBViewRefFromTable creates a view reference from an existing ModelDBTable
+// Use this when referencing a table that is defined as *ModelDBTable in Go
+func NewModelDBViewRefFromTable(table *ModelDBTable, alias string) *ModelDBViewRef {
+	return &ModelDBViewRef{
 		Schema: table.Schema,
 		Name:   table.Name,
 		Alias:  alias,
 	}
 }
 
-// NewDBViewRefFromView creates a view reference from an existing DBView
-// Use this when referencing a view that is defined as *DBView in Go
-func NewDBViewRefFromView(view *DBView, alias string) *DBViewRef {
-	return &DBViewRef{
+// NewDBViewRefFromView creates a view reference from an existing ModelDBView
+// Use this when referencing a view that is defined as *ModelDBView in Go
+func NewModelDBViewRefFromView(view *ModelDBView, alias string) *ModelDBViewRef {
+	return &ModelDBViewRef{
 		Schema: view.Schema,
 		Name:   view.Name,
 		Alias:  alias,
@@ -48,7 +48,7 @@ func NewDBViewRefFromView(view *DBView, alias string) *DBViewRef {
 }
 
 // FullName returns schema.name
-func (v *DBViewRef) FullName() string {
+func (v *ModelDBViewRef) FullName() string {
 	if v.Schema != nil && v.Schema.Name != "" {
 		return v.Schema.Name + "." + v.Name
 	}
@@ -56,7 +56,7 @@ func (v *DBViewRef) FullName() string {
 }
 
 // RefName returns the alias if set, otherwise the full name (for use in SELECT/JOIN ON)
-func (v *DBViewRef) RefName() string {
+func (v *ModelDBViewRef) RefName() string {
 	if v.Alias != "" {
 		return v.Alias
 	}
@@ -65,140 +65,140 @@ func (v *DBViewRef) RefName() string {
 
 // ================== JOIN BY NAME ==================
 
-// DBJoinByName represents a join using string-based table/field names
-// Use this when joining to views or when *Field references are not available
-type DBJoinByName struct {
-	JoinType      JoinType
-	TargetViewRef *DBViewRef // The view/table to join TO
-	FromFieldExpr string     // Field expression from source (e.g., "vfe.id" or just "id")
-	ToFieldExpr   string     // Field expression from target (e.g., "fee.user_role_membership_id")
+// ModelDBJoinByName represents a join using string-based table/field names
+// Use this when joining to views or when *ModelDBField references are not available
+type ModelDBJoinByName struct {
+	JoinType      ModelDBJoinType
+	TargetViewRef *ModelDBViewRef // The view/table to join TO
+	FromFieldExpr string     // ModelDBField expression from source (e.g., "vfe.id" or just "id")
+	ToFieldExpr   string     // ModelDBField expression from target (e.g., "fee.user_role_membership_id")
 	OnCondition   string     // Optional: full ON condition override (e.g., "a.id = b.id AND a.type = b.type")
 }
 
 // ================== JOIN TYPES ==================
 
-type JoinType int
+type ModelDBJoinType int
 
 const (
-	JoinTypeInner JoinType = iota
-	JoinTypeLeft
-	JoinTypeRight
-	JoinTypeFull
+	ModelDBJoinTypeInner ModelDBJoinType = iota
+	ModelDBJoinTypeLeft
+	ModelDBJoinTypeRight
+	ModelDBJoinTypeFull
 )
 
-func (j JoinType) String() string {
+func (j ModelDBJoinType) String() string {
 	switch j {
-	case JoinTypeInner:
+	case ModelDBJoinTypeInner:
 		return "INNER JOIN"
-	case JoinTypeLeft:
+	case ModelDBJoinTypeLeft:
 		return "LEFT JOIN"
-	case JoinTypeRight:
+	case ModelDBJoinTypeRight:
 		return "RIGHT JOIN"
-	case JoinTypeFull:
+	case ModelDBJoinTypeFull:
 		return "FULL OUTER JOIN"
 	default:
 		return "INNER JOIN"
 	}
 }
 
-// DBJoin represents a join between two tables
-type DBJoin struct {
-	JoinType        JoinType
-	TargetTable     *DBTable // The table to join TO
-	FromLocalField  *Field   // Field from the source/left table
-	ToTargetField   *Field   // Field from the target/right table
-	TargetTableName string   // Optional: override target table name (for self-joins or subqueries)
+// ModelDBJoin represents a join between two tables
+type ModelDBJoin struct {
+	JoinType        ModelDBJoinType
+	TargetTable     *ModelDBTable // The table to join TO
+	FromLocalField  *ModelDBField // ModelDBField from the source/left table
+	ToTargetField   *ModelDBField // ModelDBField from the target/right table
+	TargetTableName string        // Optional: override target table name (for self-joins or subqueries)
 }
 
 // ================== ORDER BY ==================
 
-type DBOrderByType int
+type ModelDBOrderByType int
 
 const (
-	DBOrderByTypeAsc DBOrderByType = iota
-	DBOrderByTypeDesc
+	ModelDBOrderByTypeAsc ModelDBOrderByType = iota
+	ModelDBOrderByTypeDesc
 )
 
-func (o DBOrderByType) String() string {
-	if o == DBOrderByTypeDesc {
+func (o ModelDBOrderByType) String() string {
+	if o == ModelDBOrderByTypeDesc {
 		return "DESC"
 	}
 	return "ASC"
 }
 
-type DBOrderBy struct {
+type ModelDBOrderBy struct {
 	ColumnExpr  string // Can be field name or expression like "COUNT(*)"
-	OrderByType DBOrderByType
+	OrderByType ModelDBOrderByType
 }
 
 // ================== VIEW COLUMN ==================
 
 // DBViewColumn represents a column in the SELECT clause
-type DBViewColumn struct {
-	SourceTable *DBTable // Which table this column comes from (nil = from main table)
-	SourceField *Field   // The field reference (nil if using Expression)
-	Expression  string   // Raw SQL expression like "COUNT(*)", "SUM(amount)", etc.
-	Alias       string   // AS alias_name (required if Expression is used)
+type ModelDBViewColumn struct {
+	SourceTable *ModelDBTable // Which table this column comes from (nil = from main table)
+	SourceField *ModelDBField // The field reference (nil if using Expression)
+	Expression  string        // Raw SQL expression like "COUNT(*)", "SUM(amount)", etc.
+	Alias       string        // AS alias_name (required if Expression is used)
 }
 
 // ================== AGGREGATE FUNCTIONS ==================
 
-type DBAggregateType int
+type ModelDBAggregateType int
 
 const (
-	DBAggregateCount DBAggregateType = iota
-	DBAggregateSum
-	DBAggregateAvg
-	DBAggregateMin
-	DBAggregateMax
+	ModelDBAggregateCount ModelDBAggregateType = iota
+	ModelDBAggregateSum
+	ModelDBAggregateAvg
+	ModelDBAggregateMin
+	ModelDBAggregateMax
 )
 
-func (a DBAggregateType) String() string {
+func (a ModelDBAggregateType) String() string {
 	switch a {
-	case DBAggregateCount:
+	case ModelDBAggregateCount:
 		return "COUNT"
-	case DBAggregateSum:
+	case ModelDBAggregateSum:
 		return "SUM"
-	case DBAggregateAvg:
+	case ModelDBAggregateAvg:
 		return "AVG"
-	case DBAggregateMin:
+	case ModelDBAggregateMin:
 		return "MIN"
-	case DBAggregateMax:
+	case ModelDBAggregateMax:
 		return "MAX"
 	default:
 		return "COUNT"
 	}
 }
 
-// ================== DB VIEW ==================
+// ================== ModelDB VIEW ==================
 
-type DBView struct {
-	DBEntity                 // Embedded base entity (Name, Type, Order, Schema)
-	FromTable *DBTable       // Main table to select from
-	Columns   []DBViewColumn // Columns to select
-	Joins     []DBJoin       // Join clauses
-	Where     string         // WHERE clause (without the "WHERE" keyword)
-	GroupBy   []string       // GROUP BY columns (field names or expressions)
-	Having    string         // HAVING clause (without the "HAVING" keyword)
-	OrderBy   []DBOrderBy    // ORDER BY clause
-	Distinct  bool           // SELECT DISTINCT
-	RawSQL    string         // Raw SQL for complex views (bypasses builder when set)
+type ModelDBView struct {
+	ModelDBEntity                // Embedded base entity (Name, Type, Order, Schema)
+	FromTable     *ModelDBTable  // Main table to select from
+	Columns       []ModelDBViewColumn // Columns to select
+	Joins         []ModelDBJoin  // Join clauses
+	Where         string         // WHERE clause (without the "WHERE" keyword)
+	GroupBy       []string       // GROUP BY columns (field names or expressions)
+	Having        string         // HAVING clause (without the "HAVING" keyword)
+	OrderBy       []ModelDBOrderBy    // ORDER BY clause
+	Distinct      bool           // SELECT DISTINCT
+	RawSQL        string         // Raw SQL for complex views (bypasses builder when set)
 }
 
 // NewDBView creates a new database view and registers it with the schema
-func NewDBView(schema *DBSchema, name string, fromTable *DBTable) *DBView {
-	view := &DBView{
-		DBEntity: DBEntity{
+func NewModelDBView(schema *ModelDBSchema, name string, fromTable *ModelDBTable) *ModelDBView {
+	view := &ModelDBView{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeView,
+			Type:   ModelDBEntityTypeView,
 			Order:  0,
 			Schema: schema,
 		},
 		FromTable: fromTable,
-		Columns:   []DBViewColumn{},
-		Joins:     []DBJoin{},
+		Columns:   []ModelDBViewColumn{},
+		Joins:     []ModelDBJoin{},
 		GroupBy:   []string{},
-		OrderBy:   []DBOrderBy{},
+		OrderBy:   []ModelDBOrderBy{},
 	}
 	if schema != nil {
 		schema.Views = append(schema.Views, view)
@@ -208,11 +208,11 @@ func NewDBView(schema *DBSchema, name string, fromTable *DBTable) *DBView {
 
 // NewDBViewRawSQL creates a database view with raw SQL definition
 // Use this for complex views that are difficult to express with the builder pattern
-func NewDBViewRawSQL(schema *DBSchema, name string, rawSQL string) *DBView {
-	view := &DBView{
-		DBEntity: DBEntity{
+func NewModelDBViewRawSQL(schema *ModelDBSchema, name string, rawSQL string) *ModelDBView {
+	view := &ModelDBView{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeView,
+			Type:   ModelDBEntityTypeView,
 			Order:  0,
 			Schema: schema,
 		},
@@ -227,8 +227,8 @@ func NewDBViewRawSQL(schema *DBSchema, name string, rawSQL string) *DBView {
 // ================== BUILDER METHODS (for chaining) ==================
 
 // AddColumn adds a simple column from the main table
-func (v *DBView) AddColumn(field *Field, alias string) *DBView {
-	v.Columns = append(v.Columns, DBViewColumn{
+func (v *ModelDBView) AddColumn(field *ModelDBField, alias string) *ModelDBView {
+	v.Columns = append(v.Columns, ModelDBViewColumn{
 		SourceTable: nil,
 		SourceField: field,
 		Alias:       alias,
@@ -237,8 +237,8 @@ func (v *DBView) AddColumn(field *Field, alias string) *DBView {
 }
 
 // AddColumnFromTable adds a column from a joined table
-func (v *DBView) AddColumnFromTable(table *DBTable, field *Field, alias string) *DBView {
-	v.Columns = append(v.Columns, DBViewColumn{
+func (v *ModelDBView) AddColumnFromTable(table *ModelDBTable, field *ModelDBField, alias string) *ModelDBView {
+	v.Columns = append(v.Columns, ModelDBViewColumn{
 		SourceTable: table,
 		SourceField: field,
 		Alias:       alias,
@@ -247,8 +247,8 @@ func (v *DBView) AddColumnFromTable(table *DBTable, field *Field, alias string) 
 }
 
 // AddExpression adds a raw SQL expression (like COUNT(*), SUM(amount))
-func (v *DBView) AddExpression(expr string, alias string) *DBView {
-	v.Columns = append(v.Columns, DBViewColumn{
+func (v *ModelDBView) AddExpression(expr string, alias string) *ModelDBView {
+	v.Columns = append(v.Columns, ModelDBViewColumn{
 		Expression: expr,
 		Alias:      alias,
 	})
@@ -256,8 +256,8 @@ func (v *DBView) AddExpression(expr string, alias string) *DBView {
 }
 
 // AddJoin adds a join to another table
-func (v *DBView) AddJoin(joinType JoinType, targetTable *DBTable, fromField *Field, toField *Field) *DBView {
-	v.Joins = append(v.Joins, DBJoin{
+func (v *ModelDBView) AddJoin(joinType ModelDBJoinType, targetTable *ModelDBTable, fromField *ModelDBField, toField *ModelDBField) *ModelDBView {
+	v.Joins = append(v.Joins, ModelDBJoin{
 		JoinType:       joinType,
 		TargetTable:    targetTable,
 		FromLocalField: fromField,
@@ -267,32 +267,32 @@ func (v *DBView) AddJoin(joinType JoinType, targetTable *DBTable, fromField *Fie
 }
 
 // SetWhere sets the WHERE clause
-func (v *DBView) SetWhere(where string) *DBView {
+func (v *ModelDBView) SetWhere(where string) *ModelDBView {
 	v.Where = where
 	return v
 }
 
 // SetOrder sets the view Order (for global view creation ordering)
-func (v *DBView) SetOrder(order int) *DBView {
+func (v *ModelDBView) SetOrder(order int) *ModelDBView {
 	v.Order = order
 	return v
 }
 
 // AddGroupBy adds a GROUP BY column
-func (v *DBView) AddGroupBy(columnExpr string) *DBView {
+func (v *ModelDBView) AddGroupBy(columnExpr string) *ModelDBView {
 	v.GroupBy = append(v.GroupBy, columnExpr)
 	return v
 }
 
 // SetHaving sets the HAVING clause
-func (v *DBView) SetHaving(having string) *DBView {
+func (v *ModelDBView) SetHaving(having string) *ModelDBView {
 	v.Having = having
 	return v
 }
 
 // AddOrderBy adds an ORDER BY column
-func (v *DBView) AddOrderBy(columnExpr string, orderType DBOrderByType) *DBView {
-	v.OrderBy = append(v.OrderBy, DBOrderBy{
+func (v *ModelDBView) AddOrderBy(columnExpr string, orderType ModelDBOrderByType) *ModelDBView {
+	v.OrderBy = append(v.OrderBy, ModelDBOrderBy{
 		ColumnExpr:  columnExpr,
 		OrderByType: orderType,
 	})
@@ -300,7 +300,7 @@ func (v *DBView) AddOrderBy(columnExpr string, orderType DBOrderByType) *DBView 
 }
 
 // SetDistinct enables SELECT DISTINCT
-func (v *DBView) SetDistinct(distinct bool) *DBView {
+func (v *ModelDBView) SetDistinct(distinct bool) *ModelDBView {
 	v.Distinct = distinct
 	return v
 }
@@ -309,10 +309,10 @@ func (v *DBView) SetDistinct(distinct bool) *DBView {
 // encryptedColumn: the physical column name (e.g., "fullname_encrypted")
 // alias: the name to expose in the view (e.g., "fullname")
 // keyConfigName: the session config key for the encryption key (e.g., "app.encryption_key")
-func (v *DBView) AddDecryptedColumn(encryptedColumn string, alias string, keyConfigName string) *DBView {
+func (v *ModelDBView) AddDecryptedColumn(encryptedColumn string, alias string, keyConfigName string) *ModelDBView {
 	// Store the decryption expression - will be built in CreateDDL based on dbType
 	expr := fmt.Sprintf("DECRYPT(%s, %s)", encryptedColumn, keyConfigName)
-	v.Columns = append(v.Columns, DBViewColumn{
+	v.Columns = append(v.Columns, ModelDBViewColumn{
 		Expression: expr,
 		Alias:      alias,
 	})
@@ -322,7 +322,7 @@ func (v *DBView) AddDecryptedColumn(encryptedColumn string, alias string, keyCon
 // ================== DDL GENERATION ==================
 
 // FullViewName returns the view name with a schema prefix
-func (v *DBView) FullViewName() string {
+func (v *ModelDBView) FullViewName() string {
 	if v.Schema != nil && v.Schema.Name != "" {
 		return v.Schema.Name + "." + v.Name
 	}
@@ -330,7 +330,7 @@ func (v *DBView) FullViewName() string {
 }
 
 // CreateDDL generates the CREATE VIEW DDL statement
-func (v *DBView) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+func (v *ModelDBView) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	// If RawSQL is set, use it directly
 	if v.RawSQL != "" {
 		return fmt.Sprintf("CREATE VIEW %s AS\n%s;\n", v.FullViewName(), v.RawSQL), nil
@@ -398,7 +398,7 @@ func (v *DBView) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 }
 
 // buildSelectColumns builds the SELECT column list
-func (v *DBView) buildSelectColumns(dbType base.DXDatabaseType) (string, error) {
+func (v *ModelDBView) buildSelectColumns(dbType base.DXDatabaseType) (string, error) {
 	if len(v.Columns) == 0 {
 		return "    *", nil
 	}
@@ -416,7 +416,7 @@ func (v *DBView) buildSelectColumns(dbType base.DXDatabaseType) (string, error) 
 }
 
 // buildColumnExpr builds a single column expression
-func (v *DBView) buildColumnExpr(col DBViewColumn, dbType base.DXDatabaseType) (string, error) {
+func (v *ModelDBView) buildColumnExpr(col ModelDBViewColumn, dbType base.DXDatabaseType) (string, error) {
 	var expr string
 
 	if col.Expression != "" {
@@ -432,17 +432,17 @@ func (v *DBView) buildColumnExpr(col DBViewColumn, dbType base.DXDatabaseType) (
 			expr = col.Expression
 		}
 	} else if col.SourceField != nil {
-		// Field reference
+		// ModelDBField reference
 		fieldName := col.SourceField.GetName()
 		if fieldName == "" {
 			return "", fmt.Errorf("field has no name (not attached to table)")
 		}
 
 		if col.SourceTable != nil {
-			// Field from a joined table: table.field_name
+			// ModelDBField from a joined table: table.field_name
 			expr = col.SourceTable.FullTableName() + "." + fieldName
 		} else {
-			// Field from the main table: main_table.field_name
+			// ModelDBField from the main table: main_table.field_name
 			expr = v.FromTable.FullTableName() + "." + fieldName
 		}
 	} else {
@@ -458,7 +458,7 @@ func (v *DBView) buildColumnExpr(col DBViewColumn, dbType base.DXDatabaseType) (
 }
 
 // buildDecryptExpr converts DECRYPT(column, keyConfig) placeholder to database-specific decryption
-func (v *DBView) buildDecryptExpr(placeholder string, dbType base.DXDatabaseType) (string, error) {
+func (v *ModelDBView) buildDecryptExpr(placeholder string, dbType base.DXDatabaseType) (string, error) {
 	// Parse DECRYPT(column, keyConfig)
 	inner := strings.TrimPrefix(placeholder, "DECRYPT(")
 	inner = strings.TrimSuffix(inner, ")")
@@ -485,7 +485,7 @@ func (v *DBView) buildDecryptExpr(placeholder string, dbType base.DXDatabaseType
 }
 
 // buildJoinClause builds a single JOIN clause
-func (v *DBView) buildJoinClause(join DBJoin, dbType base.DXDatabaseType) (string, error) {
+func (v *ModelDBView) buildJoinClause(join ModelDBJoin, dbType base.DXDatabaseType) (string, error) {
 	// Determine a target table name
 	var targetTableName string
 	if join.TargetTableName != "" {
@@ -526,7 +526,7 @@ func (v *DBView) buildJoinClause(join DBJoin, dbType base.DXDatabaseType) (strin
 }
 
 // DropDDL generates the DROP VIEW DDL statement
-func (v *DBView) DropDDL(dbType base.DXDatabaseType) string {
+func (v *ModelDBView) DropDDL(dbType base.DXDatabaseType) string {
 	switch dbType {
 	case base.DXDatabaseTypeSQLServer:
 		return fmt.Sprintf("IF OBJECT_ID('%s', 'V') IS NOT NULL DROP VIEW %s;\n", v.FullViewName(), v.FullViewName())
@@ -538,7 +538,7 @@ func (v *DBView) DropDDL(dbType base.DXDatabaseType) string {
 }
 
 // CreateOrReplaceDDL generates CREATE OR REPLACE VIEW (where supported)
-func (v *DBView) CreateOrReplaceDDL(dbType base.DXDatabaseType) (string, error) {
+func (v *ModelDBView) CreateOrReplaceDDL(dbType base.DXDatabaseType) (string, error) {
 	switch dbType {
 	case base.DXDatabaseTypeSQLServer:
 		// SQL Server doesn't support CREATE OR REPLACE, use DROP + CREATE

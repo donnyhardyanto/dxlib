@@ -7,51 +7,51 @@ import (
 	"github.com/donnyhardyanto/dxlib/base"
 )
 
-// DBMaterializedView represents a materialized view in the database
+// ModelDBMaterializedView represents a materialized view in the database
 // Supports both builder pattern (for simple queries) and RawSQL (for complex queries)
 // Low IQ Tax Code Principle: Simple queries use builder, complex queries use RawSQL
-type DBMaterializedView struct {
-	DBEntity                    // Embedded base entity (Name, Type, Order, Schema)
+type ModelDBMaterializedView struct {
+	ModelDBEntity               // Embedded base entity (Name, Type, Order, Schema)
 	UseTDE             bool     // If true, use USING tde_heap (PostgreSQL specific)
 	UniqueIndexColumns []string // Columns for unique index (required for CONCURRENTLY refresh)
 
 	// Builder pattern fields - Source table/view (use ONE of these)
-	FromTable   *DBTable   // Main table to select from (when using DBTable)
-	FromViewRef *DBViewRef // Main view/table to select from (when using view reference by name)
+	FromTable   *ModelDBTable // Main table to select from (when using ModelDBTable)
+	FromViewRef *ModelDBViewRef    // Main view/table to select from (when using view reference by name)
 
 	// Builder pattern fields - Columns and clauses
-	Columns     []DBViewColumn // Columns to select (for DBTable fields)
-	ColumnExprs []string       // Column expressions as strings (for view references)
-	Joins       []DBJoin       // Join clauses (for DBTable)
-	JoinsByName []DBJoinByName // Join clauses using view/table names
-	Where       string         // WHERE clause (without the "WHERE" keyword)
-	GroupBy     []string       // GROUP BY columns (field names or expressions)
-	Having      string         // HAVING clause (without the "HAVING" keyword)
-	OrderBy     []DBOrderBy    // ORDER BY clause
-	Distinct    bool           // SELECT DISTINCT
+	Columns     []ModelDBViewColumn      // Columns to select (for ModelDBTable fields)
+	ColumnExprs []string            // Column expressions as strings (for view references)
+	Joins       []ModelDBJoin       // Join clauses (for ModelDBTable)
+	JoinsByName []ModelDBJoinByName // Join clauses using view/table names
+	Where       string              // WHERE clause (without the "WHERE" keyword)
+	GroupBy     []string            // GROUP BY columns (field names or expressions)
+	Having      string              // HAVING clause (without the "HAVING" keyword)
+	OrderBy     []ModelDBOrderBy         // ORDER BY clause
+	Distinct    bool                // SELECT DISTINCT
 
 	// RawSQL for complex queries (CTEs, RECURSIVE, window functions, etc.)
 	// When set, bypasses builder pattern entirely
 	RawSQL string
 
 	// Indexes on this materialized view
-	Indexes []*DBIndex
+	Indexes []*ModelDBIndex
 }
 
-// NewDBMaterializedView creates a materialized view using builder pattern
-func NewDBMaterializedView(schema *DBSchema, name string, fromTable *DBTable, useTDE bool, uniqueIndexColumns []string) *DBMaterializedView {
-	mv := &DBMaterializedView{
-		DBEntity: DBEntity{
+// NewModelDBMaterializedView creates a materialized view using builder pattern
+func NewModelDBMaterializedView(schema *ModelDBSchema, name string, fromTable *ModelDBTable, useTDE bool, uniqueIndexColumns []string) *ModelDBMaterializedView {
+	mv := &ModelDBMaterializedView{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeMaterializedView,
+			Type:   ModelDBEntityTypeMaterializedView,
 			Order:  0,
 			Schema: schema,
 		},
 		FromTable:          fromTable,
-		Columns:            []DBViewColumn{},
-		Joins:              []DBJoin{},
+		Columns:            []ModelDBViewColumn{},
+		Joins:              []ModelDBJoin{},
 		GroupBy:            []string{},
-		OrderBy:            []DBOrderBy{},
+		OrderBy:            []ModelDBOrderBy{},
 		UseTDE:             useTDE,
 		UniqueIndexColumns: uniqueIndexColumns,
 	}
@@ -61,21 +61,21 @@ func NewDBMaterializedView(schema *DBSchema, name string, fromTable *DBTable, us
 	return mv
 }
 
-// NewDBMaterializedViewFromViewRef creates a materialized view from a view reference
-// Use this when the source is a view (not a DBTable)
-func NewDBMaterializedViewFromViewRef(schema *DBSchema, name string, fromViewRef *DBViewRef, useTDE bool, uniqueIndexColumns []string) *DBMaterializedView {
-	mv := &DBMaterializedView{
-		DBEntity: DBEntity{
+// NewModelDBMaterializedViewFromViewRef creates a materialized view from a view reference
+// Use this when the source is a view (not a ModelDBTable)
+func NewModelDBMaterializedViewFromViewRef(schema *ModelDBSchema, name string, fromViewRef *ModelDBViewRef, useTDE bool, uniqueIndexColumns []string) *ModelDBMaterializedView {
+	mv := &ModelDBMaterializedView{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeMaterializedView,
+			Type:   ModelDBEntityTypeMaterializedView,
 			Order:  0,
 			Schema: schema,
 		},
 		FromViewRef:        fromViewRef,
 		ColumnExprs:        []string{},
-		JoinsByName:        []DBJoinByName{},
+		JoinsByName:        []ModelDBJoinByName{},
 		GroupBy:            []string{},
-		OrderBy:            []DBOrderBy{},
+		OrderBy:            []ModelDBOrderBy{},
 		UseTDE:             useTDE,
 		UniqueIndexColumns: uniqueIndexColumns,
 	}
@@ -85,13 +85,13 @@ func NewDBMaterializedViewFromViewRef(schema *DBSchema, name string, fromViewRef
 	return mv
 }
 
-// NewDBMaterializedViewRawSQL creates a materialized view with raw SQL
+// NewModelDBMaterializedViewRawSQL creates a materialized view with raw SQL
 // Use this for complex queries (CTEs, RECURSIVE, window functions, etc.)
-func NewDBMaterializedViewRawSQL(schema *DBSchema, name string, rawSQL string, useTDE bool, uniqueIndexColumns []string) *DBMaterializedView {
-	mv := &DBMaterializedView{
-		DBEntity: DBEntity{
+func NewModelDBMaterializedViewRawSQL(schema *ModelDBSchema, name string, rawSQL string, useTDE bool, uniqueIndexColumns []string) *ModelDBMaterializedView {
+	mv := &ModelDBMaterializedView{
+		ModelDBEntity: ModelDBEntity{
 			Name:   name,
-			Type:   DBEntityTypeMaterializedView,
+			Type:   ModelDBEntityTypeMaterializedView,
 			Order:  0,
 			Schema: schema,
 		},
@@ -106,7 +106,7 @@ func NewDBMaterializedViewRawSQL(schema *DBSchema, name string, rawSQL string, u
 }
 
 // SetOrder sets the view Order (for global view creation ordering)
-func (mv *DBMaterializedView) SetOrder(order int) *DBMaterializedView {
+func (mv *ModelDBMaterializedView) SetOrder(order int) *ModelDBMaterializedView {
 	mv.Order = order
 	return mv
 }
@@ -114,8 +114,8 @@ func (mv *DBMaterializedView) SetOrder(order int) *DBMaterializedView {
 // ================== BUILDER METHODS (for chaining) ==================
 
 // AddColumn adds a simple column from the main table
-func (mv *DBMaterializedView) AddColumn(field *Field, alias string) *DBMaterializedView {
-	mv.Columns = append(mv.Columns, DBViewColumn{
+func (mv *ModelDBMaterializedView) AddColumn(field *ModelDBField, alias string) *ModelDBMaterializedView {
+	mv.Columns = append(mv.Columns, ModelDBViewColumn{
 		SourceTable: nil,
 		SourceField: field,
 		Alias:       alias,
@@ -124,8 +124,8 @@ func (mv *DBMaterializedView) AddColumn(field *Field, alias string) *DBMateriali
 }
 
 // AddColumnFromTable adds a column from a joined table
-func (mv *DBMaterializedView) AddColumnFromTable(table *DBTable, field *Field, alias string) *DBMaterializedView {
-	mv.Columns = append(mv.Columns, DBViewColumn{
+func (mv *ModelDBMaterializedView) AddColumnFromTable(table *ModelDBTable, field *ModelDBField, alias string) *ModelDBMaterializedView {
+	mv.Columns = append(mv.Columns, ModelDBViewColumn{
 		SourceTable: table,
 		SourceField: field,
 		Alias:       alias,
@@ -134,8 +134,8 @@ func (mv *DBMaterializedView) AddColumnFromTable(table *DBTable, field *Field, a
 }
 
 // AddExpression adds a raw SQL expression (like COUNT(*), SUM(amount))
-func (mv *DBMaterializedView) AddExpression(expr string, alias string) *DBMaterializedView {
-	mv.Columns = append(mv.Columns, DBViewColumn{
+func (mv *ModelDBMaterializedView) AddExpression(expr string, alias string) *ModelDBMaterializedView {
+	mv.Columns = append(mv.Columns, ModelDBViewColumn{
 		Expression: expr,
 		Alias:      alias,
 	})
@@ -143,8 +143,8 @@ func (mv *DBMaterializedView) AddExpression(expr string, alias string) *DBMateri
 }
 
 // AddJoin adds a join to another table
-func (mv *DBMaterializedView) AddJoin(joinType JoinType, targetTable *DBTable, fromField *Field, toField *Field) *DBMaterializedView {
-	mv.Joins = append(mv.Joins, DBJoin{
+func (mv *ModelDBMaterializedView) AddJoin(joinType ModelDBJoinType, targetTable *ModelDBTable, fromField *ModelDBField, toField *ModelDBField) *ModelDBMaterializedView {
+	mv.Joins = append(mv.Joins, ModelDBJoin{
 		JoinType:       joinType,
 		TargetTable:    targetTable,
 		FromLocalField: fromField,
@@ -154,26 +154,26 @@ func (mv *DBMaterializedView) AddJoin(joinType JoinType, targetTable *DBTable, f
 }
 
 // SetWhere sets the WHERE clause
-func (mv *DBMaterializedView) SetWhere(where string) *DBMaterializedView {
+func (mv *ModelDBMaterializedView) SetWhere(where string) *ModelDBMaterializedView {
 	mv.Where = where
 	return mv
 }
 
 // AddGroupBy adds a GROUP BY column
-func (mv *DBMaterializedView) AddGroupBy(columnExpr string) *DBMaterializedView {
+func (mv *ModelDBMaterializedView) AddGroupBy(columnExpr string) *ModelDBMaterializedView {
 	mv.GroupBy = append(mv.GroupBy, columnExpr)
 	return mv
 }
 
 // SetHaving sets the HAVING clause
-func (mv *DBMaterializedView) SetHaving(having string) *DBMaterializedView {
+func (mv *ModelDBMaterializedView) SetHaving(having string) *ModelDBMaterializedView {
 	mv.Having = having
 	return mv
 }
 
 // AddOrderBy adds an ORDER BY column
-func (mv *DBMaterializedView) AddOrderBy(columnExpr string, orderType DBOrderByType) *DBMaterializedView {
-	mv.OrderBy = append(mv.OrderBy, DBOrderBy{
+func (mv *ModelDBMaterializedView) AddOrderBy(columnExpr string, orderType ModelDBOrderByType) *ModelDBMaterializedView {
+	mv.OrderBy = append(mv.OrderBy, ModelDBOrderBy{
 		ColumnExpr:  columnExpr,
 		OrderByType: orderType,
 	})
@@ -181,7 +181,7 @@ func (mv *DBMaterializedView) AddOrderBy(columnExpr string, orderType DBOrderByT
 }
 
 // SetDistinct enables SELECT DISTINCT
-func (mv *DBMaterializedView) SetDistinct(distinct bool) *DBMaterializedView {
+func (mv *ModelDBMaterializedView) SetDistinct(distinct bool) *ModelDBMaterializedView {
 	mv.Distinct = distinct
 	return mv
 }
@@ -190,7 +190,7 @@ func (mv *DBMaterializedView) SetDistinct(distinct bool) *DBMaterializedView {
 
 // AddColumnExpr adds a column expression string (for use with FromViewRef)
 // Example: "vfe.id AS user_role_membership_id" or "COUNT(*) as total"
-func (mv *DBMaterializedView) AddColumnExpr(expr string) *DBMaterializedView {
+func (mv *ModelDBMaterializedView) AddColumnExpr(expr string) *ModelDBMaterializedView {
 	mv.ColumnExprs = append(mv.ColumnExprs, expr)
 	return mv
 }
@@ -198,8 +198,8 @@ func (mv *DBMaterializedView) AddColumnExpr(expr string) *DBMaterializedView {
 // AddJoinByName adds a join to a view/table by name
 // fromFieldExpr: field from source table (e.g., "vfe.id")
 // toFieldExpr: field from target (e.g., "fee.user_role_membership_id")
-func (mv *DBMaterializedView) AddJoinByName(joinType JoinType, targetViewRef *DBViewRef, fromFieldExpr, toFieldExpr string) *DBMaterializedView {
-	mv.JoinsByName = append(mv.JoinsByName, DBJoinByName{
+func (mv *ModelDBMaterializedView) AddJoinByName(joinType ModelDBJoinType, targetViewRef *ModelDBViewRef, fromFieldExpr, toFieldExpr string) *ModelDBMaterializedView {
+	mv.JoinsByName = append(mv.JoinsByName, ModelDBJoinByName{
 		JoinType:      joinType,
 		TargetViewRef: targetViewRef,
 		FromFieldExpr: fromFieldExpr,
@@ -210,8 +210,8 @@ func (mv *DBMaterializedView) AddJoinByName(joinType JoinType, targetViewRef *DB
 
 // AddJoinByNameWithCondition adds a join with a custom ON condition
 // onCondition: full ON condition (e.g., "a.id = b.id AND a.type = b.type")
-func (mv *DBMaterializedView) AddJoinByNameWithCondition(joinType JoinType, targetViewRef *DBViewRef, onCondition string) *DBMaterializedView {
-	mv.JoinsByName = append(mv.JoinsByName, DBJoinByName{
+func (mv *ModelDBMaterializedView) AddJoinByNameWithCondition(joinType ModelDBJoinType, targetViewRef *ModelDBViewRef, onCondition string) *ModelDBMaterializedView {
+	mv.JoinsByName = append(mv.JoinsByName, ModelDBJoinByName{
 		JoinType:      joinType,
 		TargetViewRef: targetViewRef,
 		OnCondition:   onCondition,
@@ -222,7 +222,7 @@ func (mv *DBMaterializedView) AddJoinByNameWithCondition(joinType JoinType, targ
 // ================== DDL GENERATION ==================
 
 // FullMaterializedViewName returns the materialized view name with schema prefix
-func (mv *DBMaterializedView) FullMaterializedViewName() string {
+func (mv *ModelDBMaterializedView) FullMaterializedViewName() string {
 	if mv.Schema != nil && mv.Schema.Name != "" {
 		return mv.Schema.Name + "." + mv.Name
 	}
@@ -230,7 +230,7 @@ func (mv *DBMaterializedView) FullMaterializedViewName() string {
 }
 
 // CreateDDL generates the CREATE MATERIALIZED VIEW DDL statement
-func (mv *DBMaterializedView) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+func (mv *ModelDBMaterializedView) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	// Get the SELECT SQL - either from RawSQL or build from fields
 	selectSQL, err := mv.buildSelectSQL(dbType)
 	if err != nil {
@@ -308,7 +308,7 @@ func (mv *DBMaterializedView) CreateDDL(dbType base.DXDatabaseType) (string, err
 }
 
 // buildSelectSQL returns the SELECT SQL - either from RawSQL or builds from fields
-func (mv *DBMaterializedView) buildSelectSQL(dbType base.DXDatabaseType) (string, error) {
+func (mv *ModelDBMaterializedView) buildSelectSQL(dbType base.DXDatabaseType) (string, error) {
 	// If RawSQL is set, use it directly (for complex queries)
 	if mv.RawSQL != "" {
 		return mv.RawSQL, nil
@@ -362,7 +362,7 @@ func (mv *DBMaterializedView) buildSelectSQL(dbType base.DXDatabaseType) (string
 		}
 		fmt.Fprintf(&sb, "\nFROM %s", fromClause)
 	} else {
-		// Using DBTable
+		// Using ModelDBTable
 		fmt.Fprintf(&sb, "\nFROM %s", mv.FromTable.FullTableName())
 	}
 
@@ -410,7 +410,7 @@ func (mv *DBMaterializedView) buildSelectSQL(dbType base.DXDatabaseType) (string
 }
 
 // buildSelectColumns builds the SELECT column list
-func (mv *DBMaterializedView) buildSelectColumns(dbType base.DXDatabaseType) (string, error) {
+func (mv *ModelDBMaterializedView) buildSelectColumns(dbType base.DXDatabaseType) (string, error) {
 	if len(mv.Columns) == 0 {
 		return "    *", nil
 	}
@@ -428,24 +428,24 @@ func (mv *DBMaterializedView) buildSelectColumns(dbType base.DXDatabaseType) (st
 }
 
 // buildColumnExpr builds a single column expression
-func (mv *DBMaterializedView) buildColumnExpr(col DBViewColumn) (string, error) {
+func (mv *ModelDBMaterializedView) buildColumnExpr(col ModelDBViewColumn) (string, error) {
 	var expr string
 
 	if col.Expression != "" {
 		// Raw expression like COUNT(*), SUM(amount)
 		expr = col.Expression
 	} else if col.SourceField != nil {
-		// Field reference
+		// ModelDBField reference
 		fieldName := col.SourceField.GetName()
 		if fieldName == "" {
 			return "", fmt.Errorf("field has no name (not attached to table)")
 		}
 
 		if col.SourceTable != nil {
-			// Field from a joined table: table.field_name
+			// ModelDBField from a joined table: table.field_name
 			expr = col.SourceTable.FullTableName() + "." + fieldName
 		} else {
-			// Field from the main table: main_table.field_name
+			// ModelDBField from the main table: main_table.field_name
 			expr = mv.FromTable.FullTableName() + "." + fieldName
 		}
 	} else {
@@ -461,7 +461,7 @@ func (mv *DBMaterializedView) buildColumnExpr(col DBViewColumn) (string, error) 
 }
 
 // buildJoinClause builds a single JOIN clause
-func (mv *DBMaterializedView) buildJoinClause(join DBJoin) (string, error) {
+func (mv *ModelDBMaterializedView) buildJoinClause(join ModelDBJoin) (string, error) {
 	// Determine target table name
 	var targetTableName string
 	if join.TargetTableName != "" {
@@ -501,7 +501,7 @@ func (mv *DBMaterializedView) buildJoinClause(join DBJoin) (string, error) {
 }
 
 // buildJoinByNameClause builds a JOIN clause using view/table name references
-func (mv *DBMaterializedView) buildJoinByNameClause(join DBJoinByName) string {
+func (mv *ModelDBMaterializedView) buildJoinByNameClause(join ModelDBJoinByName) string {
 	// Build target reference with optional alias
 	targetRef := join.TargetViewRef.FullName()
 	if join.TargetViewRef.Alias != "" {
@@ -522,7 +522,7 @@ func (mv *DBMaterializedView) buildJoinByNameClause(join DBJoinByName) string {
 }
 
 // DropDDL generates the DROP MATERIALIZED VIEW DDL statement
-func (mv *DBMaterializedView) DropDDL(dbType base.DXDatabaseType) string {
+func (mv *ModelDBMaterializedView) DropDDL(dbType base.DXDatabaseType) string {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
 		return fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s;\n", mv.FullMaterializedViewName())
@@ -538,7 +538,7 @@ func (mv *DBMaterializedView) DropDDL(dbType base.DXDatabaseType) string {
 }
 
 // RefreshDDL generates the REFRESH MATERIALIZED VIEW DDL statement
-func (mv *DBMaterializedView) RefreshDDL(dbType base.DXDatabaseType, concurrently bool) (string, error) {
+func (mv *ModelDBMaterializedView) RefreshDDL(dbType base.DXDatabaseType, concurrently bool) (string, error) {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
 		if concurrently && len(mv.UniqueIndexColumns) > 0 {
