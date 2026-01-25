@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/base"
+	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/donnyhardyanto/dxlib/errors"
@@ -18,9 +19,11 @@ func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error
 
 	result, err = db.Exec(query, arg...)
 	if err != nil {
+		log.Log.Errorf(err, "DB_RAW_EXEC_ERROR sql=%s", query)
 		return nil, err
 	}
 
+	log.Log.Debugf("DB_RAW_EXEC sql=%s", query)
 	return result, nil
 }
 
@@ -33,9 +36,11 @@ func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err err
 
 	result, err = tx.Exec(query, arg...)
 	if err != nil {
+		log.Log.Errorf(err, "DB_RAW_TX_EXEC_ERROR sql=%s", query)
 		return nil, err
 	}
 
+	log.Log.Debugf("DB_RAW_TX_EXEC sql=%s", query)
 	return result, nil
 }
 

@@ -347,11 +347,11 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				if dxlib.IsDebug {
 					// Include debug info in debug mode
 					responseBody = utils.JSON{
-						"status":       "Internal Server Error",
-						"status_code":  http.StatusInternalServerError,
-						"reason":       "PANIC_RECOVERED",
+						"status":        "Internal Server Error",
+						"status_code":   http.StatusInternalServerError,
+						"reason":        "PANIC_RECOVERED",
 						"panic_message": panicMsg,
-						"stack_trace":  stackTrace,
+						"stack_trace":   stackTrace,
 					}
 				} else {
 					// Generic error in production
@@ -489,14 +489,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if aepr.ResponseHeaderSent {
 				return
 			}
-			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:\n%+v\n", err)
 
+			// Log request dump for debugging (before encryption)
 			requestDump, err2 := aepr.RequestDump()
 			if err2 != nil {
-				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%+v", err2)
-				return
+				aepr.Log.Warnf("REQUEST_DUMP_ERROR:%+v", err2)
+			} else {
+				aepr.Log.Infof("ONEXECUTE_ERROR_REQUEST_DUMP:\n%s", string(requestDump))
 			}
-			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:%+v\nRaw Request :\n%+v\n", err, string(requestDump))
 
 			if !aepr.ResponseHeaderSent {
 				s := fmt.Sprintf("ONEXECUTE_ERROR:%+v", err)

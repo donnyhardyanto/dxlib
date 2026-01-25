@@ -132,142 +132,52 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 		return v, nil
 
 	case []string:
-		// Handle string arrays based on database type
-		switch driverName {
-		case "postgres", "postgresql":
-			// PostgreSQL has native array support
-			return pq.Array(v.([]string)), nil
-		case "oracle", "sqlserver", "mysql", "mariadb":
-			// These databases don't have native array types
-			// Convert to JSON string representation
-			vx, err := utils.ArrayToJSON[string](v.([]string))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
-		default:
-			// For unknown databases, use JSON representation as fallback
-			vx, err := utils.ArrayToJSON[string](v.([]string))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
+		// Convert to JSON string for cross-database compatibility (jsonb/json columns)
+		vx, err := utils.ArrayToJSON(v.([]string))
+		if err != nil {
+			return nil, err
 		}
+		return vx, nil
 
 	case []int:
-		// Handle int arrays based on database type
-		switch driverName {
-		case "postgres", "postgresql":
-			// PostgreSQL has native array support
-			return pq.Array(v.([]int)), nil
-		case "oracle", "sqlserver", "mysql", "mariadb":
-			// These databases don't have native array types
-			// Convert to JSON string representation
-			vx, err := utils.ArrayToJSON[int](v.([]int))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
-		default:
-			// For unknown databases, use JSON representation as fallback
-			vx, err := utils.ArrayToJSON[int](v.([]int))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
+		// Convert to JSON string for cross-database compatibility (jsonb/json columns)
+		vx, err := utils.ArrayToJSON(v.([]int))
+		if err != nil {
+			return nil, err
 		}
+		return vx, nil
 
 	case []int64:
-		// Handle int64 arrays based on database type
-		switch driverName {
-		case "postgres", "postgresql":
-			// PostgreSQL has native array support
-			return pq.Array(v.([]int64)), nil
-		case "oracle", "sqlserver", "mysql", "mariadb":
-			// These databases don't have native array types
-			// Convert to JSON string representation
-			vx, err := utils.ArrayToJSON[int64](v.([]int64))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
-		default:
-			// For unknown databases, use JSON representation as fallback
-			vx, err := utils.ArrayToJSON[int64](v.([]int64))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
+		// Convert to JSON string for cross-database compatibility (jsonb/json columns)
+		vx, err := utils.ArrayToJSON(v.([]int64))
+		if err != nil {
+			return nil, err
 		}
+		return vx, nil
 
 	case []float32:
-		// Handle float32 arrays based on database type
-		switch driverName {
-		case "postgres", "postgresql":
-			// PostgreSQL has native array support
-			return pq.Array(v.([]float32)), nil
-		case "oracle", "sqlserver", "mysql", "mariadb":
-			// These databases don't have native array types
-			// Convert to JSON string representation
-			vx, err := utils.ArrayToJSON[float32](v.([]float32))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
-		default:
-			// For unknown databases, use JSON representation as fallback
-			vx, err := utils.ArrayToJSON[float32](v.([]float32))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
+		// Convert to JSON string for cross-database compatibility (jsonb/json columns)
+		vx, err := utils.ArrayToJSON(v.([]float32))
+		if err != nil {
+			return nil, err
 		}
+		return vx, nil
 
 	case []float64:
-		// Handle float64 arrays based on database type
-		switch driverName {
-		case "postgres", "postgresql":
-			// PostgreSQL has native array support
-			return pq.Array(v.([]float64)), nil
-		case "oracle", "sqlserver", "mysql", "mariadb":
-			// These databases don't have native array types
-			// Convert to JSON string representation
-			vx, err := utils.ArrayToJSON[float64](v.([]float64))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
-		default:
-			// For unknown databases, use JSON representation as fallback
-			vx, err := utils.ArrayToJSON[float64](v.([]float64))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
+		// Convert to JSON string for cross-database compatibility (jsonb/json columns)
+		vx, err := utils.ArrayToJSON(v.([]float64))
+		if err != nil {
+			return nil, err
 		}
+		return vx, nil
 
 	case []bool:
-		// Handle boolean arrays based on database type
-		switch driverName {
-		case "postgres", "postgresql":
-			// PostgreSQL has native array support
-			return pq.Array(v.([]bool)), nil
-		case "oracle", "sqlserver", "mysql", "mariadb":
-			// These databases don't have native array types
-			// Convert to JSON string representation
-			vx, err := utils.ArrayToJSON[bool](v.([]bool))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
-		default:
-			// For unknown databases, use JSON representation as fallback
-			vx, err := utils.ArrayToJSON[bool](v.([]bool))
-			if err != nil {
-				return nil, err
-			}
-			return vx, nil
+		// Convert to JSON string for cross-database compatibility (jsonb/json columns)
+		vx, err := utils.ArrayToJSON(v.([]bool))
+		if err != nil {
+			return nil, err
 		}
+		return vx, nil
 
 	case time.Time:
 		// Ensure consistent time formatting across databases

@@ -62,6 +62,9 @@ func SQLPartUpdateSetFieldValues(setFieldValues utils.JSON, driverName string) (
 //   - Oracle: RETURNING INTO clause
 //   - MySQL: Separate SELECT query after UPDATE (with limitations)
 func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+	defer func() {
+		LogDBUpdate(tableName, setFieldNameValues, whereAndFieldNameValues, err)
+	}()
 	// Basic input validation
 	if db == nil {
 		return nil, nil, errors.New("database connection is nil")
@@ -125,16 +128,24 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 	// Initialize result values
 	returningFieldValues = []utils.JSON{}
 
-	// Combine SET and WHERE values
+	// Combine SET and WHERE values with conversion
 	combinedParams := utils.JSON{}
 	for k, v := range setFieldNameValues {
 		if _, ok := v.(SQLExpression); !ok {
-			combinedParams[k] = v
+			convertedValue, convErr := DbDriverConvertValueTypeToDBCompatible(driverName, v)
+			if convErr != nil {
+				return nil, nil, errors.Wrapf(convErr, "failed to convert SET field value: %s", k)
+			}
+			combinedParams[k] = convertedValue
 		}
 	}
 	for k, v := range whereAndFieldNameValues {
 		if _, ok := v.(SQLExpression); !ok {
-			combinedParams[k] = v
+			convertedValue, convErr := DbDriverConvertValueTypeToDBCompatible(driverName, v)
+			if convErr != nil {
+				return nil, nil, errors.Wrapf(convErr, "failed to convert WHERE field value: %s", k)
+			}
+			combinedParams[k] = convertedValue
 		}
 	}
 
@@ -293,6 +304,10 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 }
 
 func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+	defer func() {
+		LogDBUpdate(tableName, setFieldValues, whereAndFieldNameValues, err)
+	}()
+
 	// Basic input validation
 	if tx == nil {
 		return nil, nil, errors.New("database transaction connection is nil")
@@ -356,16 +371,24 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 	// Initialize result values
 	returningFieldValues = []utils.JSON{}
 
-	// Combine SET and WHERE values
+	// Combine SET and WHERE values with conversion
 	combinedParams := utils.JSON{}
 	for k, v := range setFieldValues {
 		if _, ok := v.(SQLExpression); !ok {
-			combinedParams[k] = v
+			convertedValue, convErr := DbDriverConvertValueTypeToDBCompatible(driverName, v)
+			if convErr != nil {
+				return nil, nil, errors.Wrapf(convErr, "failed to convert SET field value: %s", k)
+			}
+			combinedParams[k] = convertedValue
 		}
 	}
 	for k, v := range whereAndFieldNameValues {
 		if _, ok := v.(SQLExpression); !ok {
-			combinedParams[k] = v
+			convertedValue, convErr := DbDriverConvertValueTypeToDBCompatible(driverName, v)
+			if convErr != nil {
+				return nil, nil, errors.Wrapf(convErr, "failed to convert WHERE field value: %s", k)
+			}
+			combinedParams[k] = convertedValue
 		}
 	}
 

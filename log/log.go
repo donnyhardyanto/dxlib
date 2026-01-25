@@ -83,6 +83,8 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 		slog.String("location", location),
 	}
 
+	shouldExit := false
+
 	switch severity {
 	case DXLogLevelTrace:
 		slog.Log(context.Background(), LevelTrace, text, attrs...)
@@ -97,12 +99,12 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 		slog.Error(text, attrs...)
 	case DXLogLevelFatal:
 		slog.Log(context.Background(), LevelFatal, "Terminating... "+text, attrs...)
-		os.Exit(1)
+		shouldExit = true
 	case DXLogLevelPanic:
 		stack = string(debug.Stack())
 		attrs = append(attrs, slog.String("stack", stack))
 		slog.Log(context.Background(), LevelPanic, text, attrs...)
-		os.Exit(1)
+		shouldExit = true
 	default:
 		slog.Info(text, attrs...)
 	}
@@ -112,6 +114,10 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 		if err2 != nil {
 			slog.Warn("ERROR_ON_ERROR_HANDLER", slog.Any("error", err2))
 		}
+	}
+
+	if shouldExit {
+		os.Exit(1)
 	}
 }
 

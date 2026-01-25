@@ -102,7 +102,7 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 	// By default, print out the unmodified req.RequestURI, which
 	// is always set for incoming server requests. But because we
 	// previously used req.URL.RequestURI and the docs weren't
-	// always so clear about when to use DumpRequest vs
+	// always so clear about when to use DumpRequest vs.
 	// DumpRequestOut, fall back to the old way if the caller
 	// provides a non-server Request.
 	req := aepr.Request
@@ -303,14 +303,18 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 		_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:ERROR_AT_MARSHAL_JSON=%s", err.Error())
 		return
 	}
+
+	// Log response before encryption for debugging
+	if statusCode != http.StatusOK {
+		aepr.Log.Infof("RESPONSE_DUMP_BEFORE_ENCRYPT:\n%s", string(jsonBytes))
+	}
+
 	if header == nil {
 		header = map[string]string{}
 	}
 	header["Content-Type"] = "application/json"
 
 	aepr.WriteResponseAsBytes(statusCode, header, jsonBytes)
-
-	return
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header map[string]string, bodyAsBytes []byte) {

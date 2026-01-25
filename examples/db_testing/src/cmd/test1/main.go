@@ -6,7 +6,6 @@ import (
 	"github.com/donnyhardyanto/dxlib/app"
 	"github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/database"
-	"github.com/donnyhardyanto/dxlib/database/protected/dbtx"
 	"github.com/donnyhardyanto/dxlib/database/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/table"
@@ -111,37 +110,39 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 	defer dtx.Finish(&log.Log, err)
 
 	var aId int64
-	aId, err = dbtx.TxInsert(&log.Log, true, dtx.Tx, "test1.test1_table", map[string]any{
+	_, returningData, err := dtx.Insert("test1.test1_table", map[string]any{
 		"name":  "abc",
 		"at":    "2024-01-10 15:16:17.001+07:00",
 		"is_ok": true,
-	})
+	}, []string{"id"})
 	if err != nil {
 		return err
 	}
+	aId = returningData["id"].(int64)
 
-	log.Log.Infof("Update result aId2: %v", aId)
+	log.Log.Infof("Update result aId: %v", aId)
 
-	table1 := table.Manager.NewTable(db.NameId, "test1.test1_table", "test1",
-		"test1_table", "id", "id", "", "")
+	table1 := table.NewDXTable3Simple(db.NameId, "test1.test1_table", "test1.test1_table",
+		"id", "", "")
 
-	aId2, err := table1.TxInsert(dtx, map[string]any{
+	_, returningData2, err := table1.TxInsert(dtx, map[string]any{
 		"name":  "zfx",
 		"at":    "2024-01-10 15:16:17.001+07:00",
 		"is_ok": false,
-	})
+	}, []string{"id"})
 	if err != nil {
 		return err
 	}
+	aId2 := returningData2["id"].(int64)
 
 	log.Log.Infof("Update result aId2: %v", aId2)
 
 	var r sql.Result
-	r, err = table1.TxUpdate(dtx, map[string]any{
+	r, _, err = table1.TxUpdate(dtx, map[string]any{
 		"name": "bc1",
 	}, map[string]any{
 		"id": aId,
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}

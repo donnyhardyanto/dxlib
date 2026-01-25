@@ -29,6 +29,9 @@ import (
 //   - Oracle: RETURNING INTO clause
 //   - MySQL: Not supported for DELETE err if requested)
 func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+	defer func() {
+		LogDBDelete(tableName, whereAndFieldNameValues, err)
+	}()
 	// Basic input validation
 	if db == nil {
 		return nil, nil, errors.New("database connection is nil")
@@ -76,6 +79,20 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 		return nil, nil, errors.New("DELETE without WHERE clause is not allowed")
 	}
 
+	// Convert WHERE values to DB-compatible types
+	convertedWhereValues := utils.JSON{}
+	for k, v := range whereAndFieldNameValues {
+		if _, ok := v.(SQLExpression); !ok {
+			convertedValue, convErr := DbDriverConvertValueTypeToDBCompatible(driverName, v)
+			if convErr != nil {
+				return nil, nil, errors.Wrapf(convErr, "failed to convert WHERE field value: %s", k)
+			}
+			convertedWhereValues[k] = convertedValue
+		} else {
+			convertedWhereValues[k] = v
+		}
+	}
+
 	// Initialize result values
 	returningFieldValues = []utils.JSON{}
 
@@ -91,7 +108,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err := Exec(db, baseSQL, whereAndFieldNameValues)
+			result, err := Exec(db, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -106,7 +123,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 			returningClause,
 		}, " ")
 
-		_, rows, err := QueryRows(db, nil, sqlStatement, whereAndFieldNameValues)
+		_, rows, err := QueryRows(db, nil, sqlStatement, convertedWhereValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with RETURNING clause")
 		}
@@ -122,7 +139,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 				tableName,
 				effectiveWhere,
 			}, " ")
-			result, err := Exec(db, baseSQL, whereAndFieldNameValues)
+			result, err := Exec(db, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -144,7 +161,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := QueryRows(db, nil, sqlStatement, whereAndFieldNameValues)
+		_, rows, err := QueryRows(db, nil, sqlStatement, convertedWhereValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with OUTPUT clause")
 		}
@@ -161,7 +178,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err := Exec(db, baseSQL, whereAndFieldNameValues)
+			result, err := Exec(db, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle delete")
 			}
@@ -204,6 +221,10 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 
 // TxDelete executes an SQL DELETE statement within a transaction with support for returning values
 func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+	defer func() {
+		LogDBDelete(tableName, whereAndFieldNameValues, err)
+	}()
+
 	// Basic input validation
 	if tx == nil {
 		return nil, nil, errors.New("database transaction connection is nil")
@@ -251,6 +272,20 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 		return nil, nil, errors.New("DELETE without WHERE clause is not allowed")
 	}
 
+	// Convert WHERE values to DB-compatible types
+	convertedWhereValues := utils.JSON{}
+	for k, v := range whereAndFieldNameValues {
+		if _, ok := v.(SQLExpression); !ok {
+			convertedValue, convErr := DbDriverConvertValueTypeToDBCompatible(driverName, v)
+			if convErr != nil {
+				return nil, nil, errors.Wrapf(convErr, "failed to convert WHERE field value: %s", k)
+			}
+			convertedWhereValues[k] = convertedValue
+		} else {
+			convertedWhereValues[k] = v
+		}
+	}
+
 	// Initialize result values
 	returningFieldValues = []utils.JSON{}
 
@@ -266,7 +301,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err = TxExec(tx, baseSQL, whereAndFieldNameValues)
+			result, err = TxExec(tx, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -281,7 +316,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 			returningClause,
 		}, " ")
 
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, whereAndFieldNameValues)
+		_, rows, err := TxQueryRows(tx, nil, sqlStatement, convertedWhereValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with RETURNING clause")
 		}
@@ -297,7 +332,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 				tableName,
 				effectiveWhere,
 			}, " ")
-			result, err := TxExec(tx, baseSQL, whereAndFieldNameValues)
+			result, err := TxExec(tx, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -319,7 +354,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, whereAndFieldNameValues)
+		_, rows, err := TxQueryRows(tx, nil, sqlStatement, convertedWhereValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with OUTPUT clause")
 		}
@@ -336,7 +371,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err = TxExec(tx, baseSQL, whereAndFieldNameValues)
+			result, err = TxExec(tx, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle delete")
 			}

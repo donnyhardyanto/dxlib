@@ -2,15 +2,16 @@ package testing
 
 import (
 	"encoding/json"
-	dxlibv3HttpClient "github.com/donnyhardyanto/dxlib/utils/http/client"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httputil"
 	"testing"
 
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
+	dxlibv3HttpClient "github.com/donnyhardyanto/dxlib/utils/http/client"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
+	"github.com/stretchr/testify/assert"
 )
 
 var Counter = 0

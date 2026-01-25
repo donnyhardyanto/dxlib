@@ -348,11 +348,11 @@ func DoNamedQueryPagingResponseWithBuilder(
 }
 
 // ============================================================================
-// DXRawTable3 - Basic table wrapper without soft-delete
+// DXRawTable - Basic table wrapper without soft-delete
 // ============================================================================
 
-// DXRawTable3 wraps database3 with connection management and basic CRUD
-type DXRawTable3 struct {
+// DXRawTable wraps database3 with connection management and basic CRUD
+type DXRawTable struct {
 	DatabaseNameId             string
 	Database                   *database.DXDatabase
 	DBTable                    *models.ModelDBTable
@@ -369,7 +369,7 @@ type DXRawTable3 struct {
 }
 
 // EnsureDatabase ensures database connection is initialized
-func (t *DXRawTable3) EnsureDatabase() error {
+func (t *DXRawTable) EnsureDatabase() error {
 	if t.Database == nil {
 		t.Database = database.Manager.GetOrCreate(t.DatabaseNameId)
 		if t.Database == nil {
@@ -380,7 +380,7 @@ func (t *DXRawTable3) EnsureDatabase() error {
 }
 
 // GetDbType returns the database type
-func (t *DXRawTable3) GetDbType() base.DXDatabaseType {
+func (t *DXRawTable) GetDbType() base.DXDatabaseType {
 	if t.Database == nil {
 		return base.DXDatabaseTypePostgreSQL
 	}
@@ -388,7 +388,7 @@ func (t *DXRawTable3) GetDbType() base.DXDatabaseType {
 }
 
 // TableName returns the full table name from DBTable or TableNameDirect
-func (t *DXRawTable3) TableName() string {
+func (t *DXRawTable) TableName() string {
 	if t.DBTable != nil {
 		return t.DBTable.FullTableName()
 	}
@@ -400,7 +400,7 @@ func (t *DXRawTable3) TableName() string {
 // ============================================================================
 
 // Insert inserts a new row and returns result
-func (t *DXRawTable3) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXRawTable) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
@@ -408,12 +408,12 @@ func (t *DXRawTable3) Insert(l *log.DXLog, data utils.JSON, returningFieldNames 
 }
 
 // TxInsert inserts within a transaction
-func (t *DXRawTable3) TxInsert(dtx *database.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXRawTable) TxInsert(dtx *database.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	return dtx.Insert(t.TableName(), data, returningFieldNames)
 }
 
 // InsertReturningId is a simplified insert that returns just the new ID (backward compatible)
-func (t *DXRawTable3) InsertReturningId(l *log.DXLog, data utils.JSON) (int64, error) {
+func (t *DXRawTable) InsertReturningId(l *log.DXLog, data utils.JSON) (int64, error) {
 	_, returningValues, err := t.Insert(l, data, []string{t.FieldNameForRowId})
 	if err != nil {
 		return 0, err
@@ -423,7 +423,7 @@ func (t *DXRawTable3) InsertReturningId(l *log.DXLog, data utils.JSON) (int64, e
 }
 
 // TxInsertReturningId is a simplified TxInsert that returns just the new ID (backward compatible)
-func (t *DXRawTable3) TxInsertReturningId(dtx *database.DXDatabaseTx, data utils.JSON) (int64, error) {
+func (t *DXRawTable) TxInsertReturningId(dtx *database.DXDatabaseTx, data utils.JSON) (int64, error) {
 	_, returningValues, err := t.TxInsert(dtx, data, []string{t.FieldNameForRowId})
 	if err != nil {
 		return 0, err
@@ -433,7 +433,7 @@ func (t *DXRawTable3) TxInsertReturningId(dtx *database.DXDatabaseTx, data utils
 }
 
 // DoInsert is an API helper that inserts and writes response
-func (t *DXRawTable3) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
+func (t *DXRawTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return 0, err
 	}
@@ -471,7 +471,7 @@ func (t *DXRawTable3) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) 
 // ============================================================================
 
 // Update updates rows matching where condition
-func (t *DXRawTable3) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
@@ -479,36 +479,36 @@ func (t *DXRawTable3) Update(l *log.DXLog, data utils.JSON, where utils.JSON, re
 }
 
 // TxUpdate updates within a transaction
-func (t *DXRawTable3) TxUpdate(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) TxUpdate(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	return dtx.Update(t.TableName(), data, where, returningFieldNames)
 }
 
 // UpdateSimple is a simplified update that just takes data and where (backward compatible)
-func (t *DXRawTable3) UpdateSimple(data utils.JSON, where utils.JSON) (sql.Result, error) {
+func (t *DXRawTable) UpdateSimple(data utils.JSON, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.Update(nil, data, where, nil)
 	return result, err
 }
 
 // TxUpdateSimple is a simplified transaction update (backward compatible)
-func (t *DXRawTable3) TxUpdateSimple(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, error) {
+func (t *DXRawTable) TxUpdateSimple(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxUpdate(dtx, data, where, nil)
 	return result, err
 }
 
 // UpdateById updates a single row by ID
-func (t *DXRawTable3) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXRawTable) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
 	result, _, err := t.Update(l, data, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
 
 // TxUpdateById updates a single row by ID within a transaction
-func (t *DXRawTable3) TxUpdateById(dtx *database.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXRawTable) TxUpdateById(dtx *database.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxUpdate(dtx, data, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
 
 // DoUpdate is an API helper that updates and writes response
-func (t *DXRawTable3) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
+func (t *DXRawTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
 	_, row, err := t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return err
@@ -528,7 +528,16 @@ func (t *DXRawTable3) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data ut
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
+	// Re-fetch and return updated row
+	_, updatedRow, err := t.ShouldGetById(&aepr.Log, id)
+	if err != nil {
+		return err
+	}
+
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: updatedRow,
+	})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
 	return nil
 }
 
@@ -537,7 +546,7 @@ func (t *DXRawTable3) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data ut
 // ============================================================================
 
 // Delete performs hard delete of rows matching where condition
-func (t *DXRawTable3) Delete(l *log.DXLog, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) Delete(l *log.DXLog, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
@@ -545,24 +554,24 @@ func (t *DXRawTable3) Delete(l *log.DXLog, where utils.JSON, returningFieldNames
 }
 
 // TxDelete deletes within a transaction
-func (t *DXRawTable3) TxDelete(dtx *database.DXDatabaseTx, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) TxDelete(dtx *database.DXDatabaseTx, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	return dtx.TxDelete(t.TableName(), where, returningFieldNames)
 }
 
 // DeleteById deletes a single row by ID
-func (t *DXRawTable3) DeleteById(l *log.DXLog, id int64) (sql.Result, error) {
+func (t *DXRawTable) DeleteById(l *log.DXLog, id int64) (sql.Result, error) {
 	result, _, err := t.Delete(l, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
 
 // TxDeleteById deletes a single row by ID within a transaction
-func (t *DXRawTable3) TxDeleteById(dtx *database.DXDatabaseTx, id int64) (sql.Result, error) {
+func (t *DXRawTable) TxDeleteById(dtx *database.DXDatabaseTx, id int64) (sql.Result, error) {
 	result, _, err := t.TxDelete(dtx, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
 
 // DoDelete is an API helper that deletes and writes response
-func (t *DXRawTable3) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
+func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 	_, row, err := t.ShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return err
@@ -585,7 +594,7 @@ func (t *DXRawTable3) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 // ============================================================================
 
 // Select returns multiple rows matching where condition
-func (t *DXRawTable3) Select(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) Select(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
@@ -594,7 +603,7 @@ func (t *DXRawTable3) Select(l *log.DXLog, fieldNames []string, where utils.JSON
 }
 
 // SelectOne returns a single row matching where condition
-func (t *DXRawTable3) SelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) SelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
@@ -603,7 +612,7 @@ func (t *DXRawTable3) SelectOne(l *log.DXLog, fieldNames []string, where utils.J
 }
 
 // ShouldSelectOne returns a single row or error if not found
-func (t *DXRawTable3) ShouldSelectOne(l *log.DXLog, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) ShouldSelectOne(l *log.DXLog, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
@@ -612,17 +621,17 @@ func (t *DXRawTable3) ShouldSelectOne(l *log.DXLog, where utils.JSON, joinSQLPar
 }
 
 // GetById returns a row by ID
-func (t *DXRawTable3) GetById(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetById(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.SelectOne(l, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // ShouldGetById returns a row by ID or error if not found
-func (t *DXRawTable3) ShouldGetById(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetById(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // GetByUid returns a row by UID
-func (t *DXRawTable3) GetByUid(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByUid(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -630,7 +639,7 @@ func (t *DXRawTable3) GetByUid(l *log.DXLog, uid string) (*db.DXDatabaseTableRow
 }
 
 // ShouldGetByUid returns a row by UID or error if not found
-func (t *DXRawTable3) ShouldGetByUid(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByUid(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -638,7 +647,7 @@ func (t *DXRawTable3) ShouldGetByUid(l *log.DXLog, uid string) (*db.DXDatabaseTa
 }
 
 // GetByUtag returns a row by Utag
-func (t *DXRawTable3) GetByUtag(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByUtag(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
@@ -646,7 +655,7 @@ func (t *DXRawTable3) GetByUtag(l *log.DXLog, utag string) (*db.DXDatabaseTableR
 }
 
 // ShouldGetByUtag returns a row by Utag or error if not found
-func (t *DXRawTable3) ShouldGetByUtag(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByUtag(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
@@ -654,7 +663,7 @@ func (t *DXRawTable3) ShouldGetByUtag(l *log.DXLog, utag string) (*db.DXDatabase
 }
 
 // GetByNameId returns a row by NameId
-func (t *DXRawTable3) GetByNameId(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByNameId(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -662,7 +671,7 @@ func (t *DXRawTable3) GetByNameId(l *log.DXLog, nameId string) (*db.DXDatabaseTa
 }
 
 // ShouldGetByNameId returns a row by NameId or error if not found
-func (t *DXRawTable3) ShouldGetByNameId(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByNameId(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -674,30 +683,30 @@ func (t *DXRawTable3) ShouldGetByNameId(l *log.DXLog, nameId string) (*db.DXData
 // ============================================================================
 
 // TxSelect returns multiple rows within a transaction
-func (t *DXRawTable3) TxSelect(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) TxSelect(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	return dtx.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
 
 // TxSelectOne returns a single row within a transaction
-func (t *DXRawTable3) TxSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) TxSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return dtx.SelectOne(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxShouldSelectOne returns a single row or error if not found within a transaction
-func (t *DXRawTable3) TxShouldSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) TxShouldSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return dtx.ShouldSelectOne(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxGetById returns a row by ID within a transaction
-func (t *DXRawTable3) TxGetById(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxGetById(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
 // TxShouldGetById returns a row by ID or error if not found within a transaction
-func (t *DXRawTable3) TxShouldGetById(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxShouldGetById(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
@@ -706,7 +715,7 @@ func (t *DXRawTable3) TxShouldGetById(dtx *database.DXDatabaseTx, id int64) (*db
 // ============================================================================
 
 // Count returns total row count
-func (t *DXRawTable3) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
+func (t *DXRawTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return 0, err
 	}
@@ -718,7 +727,7 @@ func (t *DXRawTable3) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (in
 // ============================================================================
 
 // Upsert inserts or updates a row based on where condition
-func (t *DXRawTable3) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXRawTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, 0, err
 	}
@@ -743,7 +752,7 @@ func (t *DXRawTable3) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (s
 }
 
 // TxUpsert inserts or updates within a transaction
-func (t *DXRawTable3) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXRawTable) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	_, existing, err := t.TxSelectOne(dtx, nil, where, nil, nil, nil)
 	if err != nil {
 		return nil, 0, err
@@ -768,7 +777,7 @@ func (t *DXRawTable3) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, wher
 // ============================================================================
 
 // GetListViewName returns the view name for list queries (falls back to table name)
-func (t *DXRawTable3) GetListViewName() string {
+func (t *DXRawTable) GetListViewName() string {
 	if t.ListViewNameId != "" {
 		return t.ListViewNameId
 	}
@@ -776,12 +785,12 @@ func (t *DXRawTable3) GetListViewName() string {
 }
 
 // NewQueryBuilder creates a QueryBuilder with the table's database type
-func (t *DXRawTable3) NewQueryBuilder() *QueryBuilder {
+func (t *DXRawTable) NewQueryBuilder() *QueryBuilder {
 	return NewQueryBuilder(t.GetDbType())
 }
 
 // Paging executes a paging query with WHERE clause and ORDER BY
-func (t *DXRawTable3) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
+func (t *DXRawTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, err
 	}
@@ -812,13 +821,13 @@ func (t *DXRawTable3) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereCla
 }
 
 // PagingWithBuilder executes a paging query using a QueryBuilder
-func (t *DXRawTable3) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
+func (t *DXRawTable) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
 	whereClause, args := qb.Build()
 	return t.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
 // DoPaging is an API helper that handles paging
-func (t *DXRawTable3) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
+func (t *DXRawTable) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
 	result, err := t.Paging(&aepr.Log, rowPerPage, pageIndex, whereClause, orderBy, args)
 	if err != nil {
 		aepr.Log.Errorf(err, "Error at paging table %s (%s)", t.TableName(), err.Error())
@@ -828,13 +837,13 @@ func (t *DXRawTable3) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageI
 }
 
 // DoPagingWithBuilder is an API helper using QueryBuilder
-func (t *DXRawTable3) DoPagingWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
+func (t *DXRawTable) DoPagingWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
 	whereClause, args := qb.Build()
 	return t.DoPaging(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
 // DoPagingResponse executes paging and writes standard JSON response
-func (t *DXRawTable3) DoPagingResponse(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) error {
+func (t *DXRawTable) DoPagingResponse(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) error {
 	result, err := t.DoPaging(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
 	if err != nil {
 		return err
@@ -844,18 +853,18 @@ func (t *DXRawTable3) DoPagingResponse(aepr *api.DXAPIEndPointRequest, rowPerPag
 }
 
 // DoPagingResponseWithBuilder executes paging with QueryBuilder and writes response
-func (t *DXRawTable3) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) error {
+func (t *DXRawTable) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) error {
 	whereClause, args := qb.Build()
 	return t.DoPagingResponse(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
 // ============================================================================
-// DXTable3 - Table wrapper with soft-delete and audit fields
+// DXTable - Table wrapper with soft-delete and audit fields
 // ============================================================================
 
-// DXTable3 extends DXRawTable3 with soft-delete and audit fields
-type DXTable3 struct {
-	DXRawTable3
+// DXTable extends DXRawTable with soft-delete and audit fields
+type DXTable struct {
+	DXRawTable
 }
 
 // ============================================================================
@@ -863,7 +872,7 @@ type DXTable3 struct {
 // ============================================================================
 
 // SetInsertAuditFields sets created_at, created_by_user_id, etc. for insert
-func (t *DXTable3) SetInsertAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
+func (t *DXTable) SetInsertAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
 	now := time.Now().UTC()
 
 	data["is_deleted"] = false
@@ -884,7 +893,7 @@ func (t *DXTable3) SetInsertAuditFields(aepr *api.DXAPIEndPointRequest, data uti
 }
 
 // SetUpdateAuditFields sets last_modified_at, last_modified_by_user_id, etc. for update
-func (t *DXTable3) SetUpdateAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
+func (t *DXTable) SetUpdateAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
 	now := time.Now().UTC()
 
 	data["last_modified_at"] = now
@@ -903,21 +912,21 @@ func (t *DXTable3) SetUpdateAuditFields(aepr *api.DXAPIEndPointRequest, data uti
 // ============================================================================
 
 // Insert inserts with audit fields
-func (t *DXTable3) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXTable) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	t.SetInsertAuditFields(nil, data)
-	return t.DXRawTable3.Insert(l, data, returningFieldNames)
+	return t.DXRawTable.Insert(l, data, returningFieldNames)
 }
 
 // TxInsert inserts within a transaction with audit fields
-func (t *DXTable3) TxInsert(dtx *database.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXTable) TxInsert(dtx *database.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	t.SetInsertAuditFields(nil, data)
-	return t.DXRawTable3.TxInsert(dtx, data, returningFieldNames)
+	return t.DXRawTable.TxInsert(dtx, data, returningFieldNames)
 }
 
 // DoInsert is an API helper with audit fields
-func (t *DXTable3) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
+func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
-	return t.DXRawTable3.DoInsert(aepr, data)
+	return t.DXRawTable.DoInsert(aepr, data)
 }
 
 // ============================================================================
@@ -925,31 +934,31 @@ func (t *DXTable3) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (in
 // ============================================================================
 
 // Update updates with audit fields
-func (t *DXTable3) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable3.Update(l, data, where, returningFieldNames)
+	return t.DXRawTable.Update(l, data, where, returningFieldNames)
 }
 
 // TxUpdate updates within a transaction with audit fields
-func (t *DXTable3) TxUpdate(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXTable) TxUpdate(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable3.TxUpdate(dtx, data, where, returningFieldNames)
+	return t.DXRawTable.TxUpdate(dtx, data, where, returningFieldNames)
 }
 
 // UpdateById updates with audit fields
-func (t *DXTable3) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXTable) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable3.UpdateById(l, id, data)
+	return t.DXRawTable.UpdateById(l, id, data)
 }
 
 // TxUpdateById updates within a transaction with audit fields
-func (t *DXTable3) TxUpdateById(dtx *database.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXTable) TxUpdateById(dtx *database.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable3.TxUpdateById(dtx, id, data)
+	return t.DXRawTable.TxUpdateById(dtx, id, data)
 }
 
 // DoUpdate is an API helper with audit fields
-func (t *DXTable3) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
+func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
 	_, row, err := t.ShouldGetByIdNotDeleted(&aepr.Log, id)
 	if err != nil {
 		return err
@@ -966,12 +975,21 @@ func (t *DXTable3) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils
 
 	t.SetUpdateAuditFields(aepr, data)
 
-	_, err = t.DXRawTable3.UpdateById(&aepr.Log, id, data)
+	_, err = t.DXRawTable.UpdateById(&aepr.Log, id, data)
 	if err != nil {
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
+	// Re-fetch and return updated row
+	_, updatedRow, err := t.ShouldGetByIdNotDeleted(&aepr.Log, id)
+	if err != nil {
+		return err
+	}
+
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: updatedRow,
+	})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
 	return nil
 }
 
@@ -980,37 +998,37 @@ func (t *DXTable3) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils
 // ============================================================================
 
 // SoftDelete marks rows as deleted
-func (t *DXTable3) SoftDelete(l *log.DXLog, where utils.JSON) (sql.Result, error) {
+func (t *DXTable) SoftDelete(l *log.DXLog, where utils.JSON) (sql.Result, error) {
 	data := utils.JSON{
 		"is_deleted": true,
 	}
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := t.DXRawTable3.Update(l, data, where, nil)
+	result, _, err := t.DXRawTable.Update(l, data, where, nil)
 	return result, err
 }
 
 // TxSoftDelete marks rows as deleted within a transaction
-func (t *DXTable3) TxSoftDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
+func (t *DXTable) TxSoftDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	data := utils.JSON{
 		"is_deleted": true,
 	}
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := t.DXRawTable3.TxUpdate(dtx, data, where, nil)
+	result, _, err := t.DXRawTable.TxUpdate(dtx, data, where, nil)
 	return result, err
 }
 
 // SoftDeleteById marks a row as deleted by ID
-func (t *DXTable3) SoftDeleteById(l *log.DXLog, id int64) (sql.Result, error) {
+func (t *DXTable) SoftDeleteById(l *log.DXLog, id int64) (sql.Result, error) {
 	return t.SoftDelete(l, utils.JSON{t.FieldNameForRowId: id})
 }
 
 // TxSoftDeleteById marks a row as deleted by ID within a transaction
-func (t *DXTable3) TxSoftDeleteById(dtx *database.DXDatabaseTx, id int64) (sql.Result, error) {
+func (t *DXTable) TxSoftDeleteById(dtx *database.DXDatabaseTx, id int64) (sql.Result, error) {
 	return t.TxSoftDelete(dtx, utils.JSON{t.FieldNameForRowId: id})
 }
 
 // DoSoftDelete is an API helper for soft delete
-func (t *DXTable3) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
+func (t *DXTable) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 	_, row, err := t.ShouldGetByIdNotDeleted(&aepr.Log, id)
 	if err != nil {
 		return err
@@ -1024,7 +1042,7 @@ func (t *DXTable3) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error 
 	}
 	t.SetUpdateAuditFields(aepr, data)
 
-	_, err = t.DXRawTable3.UpdateById(&aepr.Log, id, data)
+	_, err = t.DXRawTable.UpdateById(&aepr.Log, id, data)
 	if err != nil {
 		return err
 	}
@@ -1038,7 +1056,7 @@ func (t *DXTable3) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error 
 // ============================================================================
 
 // addNotDeletedFilter adds is_deleted=false to where condition
-func (t *DXTable3) addNotDeletedFilter(where utils.JSON) utils.JSON {
+func (t *DXTable) addNotDeletedFilter(where utils.JSON) utils.JSON {
 	if where == nil {
 		where = utils.JSON{}
 	}
@@ -1047,35 +1065,35 @@ func (t *DXTable3) addNotDeletedFilter(where utils.JSON) utils.JSON {
 }
 
 // Select returns non-deleted rows
-func (t *DXTable3) Select(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable) Select(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return t.DXRawTable3.Select(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
+	return t.DXRawTable.Select(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
 // SelectOne returns a single non-deleted row
-func (t *DXTable3) SelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable) SelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable3.SelectOne(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
+	return t.DXRawTable.SelectOne(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
 }
 
 // ShouldSelectOne returns a single non-deleted row or error if not found
-func (t *DXTable3) ShouldSelectOne(l *log.DXLog, where utils.JSON, joinSQLPart any,
+func (t *DXTable) ShouldSelectOne(l *log.DXLog, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable3.ShouldSelectOne(l, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
+	return t.DXRawTable.ShouldSelectOne(l, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
 }
 
 // GetByIdNotDeleted returns a non-deleted row by ID
-func (t *DXTable3) GetByIdNotDeleted(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) GetByIdNotDeleted(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.SelectOne(l, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // ShouldGetByIdNotDeleted returns a non-deleted row by ID or error if not found
-func (t *DXTable3) ShouldGetByIdNotDeleted(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) ShouldGetByIdNotDeleted(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // GetByUidNotDeleted returns a non-deleted row by UID
-func (t *DXTable3) GetByUidNotDeleted(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) GetByUidNotDeleted(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -1083,7 +1101,7 @@ func (t *DXTable3) GetByUidNotDeleted(l *log.DXLog, uid string) (*db.DXDatabaseT
 }
 
 // ShouldGetByUidNotDeleted returns a non-deleted row by UID or error if not found
-func (t *DXTable3) ShouldGetByUidNotDeleted(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) ShouldGetByUidNotDeleted(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -1091,7 +1109,7 @@ func (t *DXTable3) ShouldGetByUidNotDeleted(l *log.DXLog, uid string) (*db.DXDat
 }
 
 // GetByNameIdNotDeleted returns a non-deleted row by NameId
-func (t *DXTable3) GetByNameIdNotDeleted(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) GetByNameIdNotDeleted(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -1099,7 +1117,7 @@ func (t *DXTable3) GetByNameIdNotDeleted(l *log.DXLog, nameId string) (*db.DXDat
 }
 
 // ShouldGetByNameIdNotDeleted returns a non-deleted row by NameId or error if not found
-func (t *DXTable3) ShouldGetByNameIdNotDeleted(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) ShouldGetByNameIdNotDeleted(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -1111,30 +1129,30 @@ func (t *DXTable3) ShouldGetByNameIdNotDeleted(l *log.DXLog, nameId string) (*db
 // ============================================================================
 
 // TxSelect returns non-deleted rows within a transaction
-func (t *DXTable3) TxSelect(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable) TxSelect(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return t.DXRawTable3.TxSelect(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
+	return t.DXRawTable.TxSelect(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
 // TxSelectOne returns a single non-deleted row within a transaction
-func (t *DXTable3) TxSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable) TxSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable3.TxSelectOne(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, forUpdatePart)
+	return t.DXRawTable.TxSelectOne(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, forUpdatePart)
 }
 
 // TxShouldSelectOne returns a single non-deleted row or error if not found within a transaction
-func (t *DXTable3) TxShouldSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable) TxShouldSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable3.TxShouldSelectOne(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, forUpdatePart)
+	return t.DXRawTable.TxShouldSelectOne(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, forUpdatePart)
 }
 
 // TxGetByIdNotDeleted returns a non-deleted row by ID within a transaction
-func (t *DXTable3) TxGetByIdNotDeleted(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) TxGetByIdNotDeleted(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
 // TxShouldGetByIdNotDeleted returns a non-deleted row by ID or error if not found within a transaction
-func (t *DXTable3) TxShouldGetByIdNotDeleted(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) TxShouldGetByIdNotDeleted(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
@@ -1143,8 +1161,8 @@ func (t *DXTable3) TxShouldGetByIdNotDeleted(dtx *database.DXDatabaseTx, id int6
 // ============================================================================
 
 // Count returns total non-deleted row count
-func (t *DXTable3) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
-	return t.DXRawTable3.Count(l, t.addNotDeletedFilter(where), joinSQLPart)
+func (t *DXTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
+	return t.DXRawTable.Count(l, t.addNotDeletedFilter(where), joinSQLPart)
 }
 
 // ============================================================================
@@ -1152,19 +1170,19 @@ func (t *DXTable3) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64
 // ============================================================================
 
 // NewQueryBuilder creates a QueryBuilder with NotDeleted filter pre-applied
-func (t *DXTable3) NewQueryBuilder() *QueryBuilder {
+func (t *DXTable) NewQueryBuilder() *QueryBuilder {
 	qb := NewQueryBuilder(t.GetDbType())
 	qb.NotDeleted()
 	return qb
 }
 
 // NewQueryBuilderRaw creates a QueryBuilder without NotDeleted filter (for special cases)
-func (t *DXTable3) NewQueryBuilderRaw() *QueryBuilder {
+func (t *DXTable) NewQueryBuilderRaw() *QueryBuilder {
 	return NewQueryBuilder(t.GetDbType())
 }
 
 // addNotDeletedToWhere adds is_deleted filter to existing WHERE clause
-func (t *DXTable3) addNotDeletedToWhere(whereClause string) string {
+func (t *DXTable) addNotDeletedToWhere(whereClause string) string {
 	var notDeletedClause string
 	switch t.GetDbType() {
 	case base.DXDatabaseTypeSQLServer:
@@ -1180,33 +1198,33 @@ func (t *DXTable3) addNotDeletedToWhere(whereClause string) string {
 }
 
 // Paging executes a paging query with automatic is_deleted filter
-func (t *DXTable3) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
-	return t.DXRawTable3.Paging(l, rowPerPage, pageIndex, t.addNotDeletedToWhere(whereClause), orderBy, args)
+func (t *DXTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
+	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, t.addNotDeletedToWhere(whereClause), orderBy, args)
 }
 
 // PagingWithBuilder executes a paging query using a QueryBuilder (assumes NotDeleted already added)
-func (t *DXTable3) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
+func (t *DXTable) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
 	whereClause, args := qb.Build()
-	return t.DXRawTable3.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
+	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
 // PagingIncludeDeleted executes a paging query including deleted records
-func (t *DXTable3) PagingIncludeDeleted(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
-	return t.DXRawTable3.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
+func (t *DXTable) PagingIncludeDeleted(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
+	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
 // DoPaging is an API helper with automatic is_deleted filter
-func (t *DXTable3) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
+func (t *DXTable) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
 	return t.Paging(&aepr.Log, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
 // DoPagingWithBuilder is an API helper using QueryBuilder
-func (t *DXTable3) DoPagingWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
+func (t *DXTable) DoPagingWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
 	return t.PagingWithBuilder(&aepr.Log, rowPerPage, pageIndex, qb, orderBy)
 }
 
 // DoPagingResponse executes paging and writes standard JSON response
-func (t *DXTable3) DoPagingResponse(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) error {
+func (t *DXTable) DoPagingResponse(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) error {
 	result, err := t.DoPaging(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
 	if err != nil {
 		return err
@@ -1216,7 +1234,7 @@ func (t *DXTable3) DoPagingResponse(aepr *api.DXAPIEndPointRequest, rowPerPage, 
 }
 
 // DoPagingResponseWithBuilder executes paging with QueryBuilder and writes response
-func (t *DXTable3) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) error {
+func (t *DXTable) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) error {
 	result, err := t.DoPagingWithBuilder(aepr, rowPerPage, pageIndex, qb, orderBy)
 	if err != nil {
 		return err
@@ -1230,12 +1248,12 @@ func (t *DXTable3) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest, r
 // ============================================================================
 
 // Upsert inserts or updates with audit fields
-func (t *DXTable3) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, 0, err
 	}
 
-	_, existing, err := t.DXRawTable3.SelectOne(l, nil, where, nil, nil)
+	_, existing, err := t.DXRawTable.SelectOne(l, nil, where, nil, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -1257,8 +1275,8 @@ func (t *DXTable3) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.
 }
 
 // TxUpsert inserts or updates within a transaction with audit fields
-func (t *DXTable3) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
-	_, existing, err := t.DXRawTable3.TxSelectOne(dtx, nil, where, nil, nil, nil)
+func (t *DXTable) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+	_, existing, err := t.DXRawTable.TxSelectOne(dtx, nil, where, nil, nil, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -1280,16 +1298,16 @@ func (t *DXTable3) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where u
 }
 
 // ============================================================================
-// DXRawTable3 - Additional API Helper Methods
+// DXRawTable - Additional API Helper Methods
 // ============================================================================
 
 // SelectAll returns all rows from the table
-func (t *DXRawTable3) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
+func (t *DXRawTable) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	return t.Select(l, nil, nil, nil, nil, nil, nil)
 }
 
 // TxShouldGetByNameId returns a row by NameId within a transaction or error if not found
-func (t *DXRawTable3) TxShouldGetByNameId(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxShouldGetByNameId(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -1297,13 +1315,13 @@ func (t *DXRawTable3) TxShouldGetByNameId(dtx *database.DXDatabaseTx, nameId str
 }
 
 // TxHardDelete deletes rows within a transaction (hard delete)
-func (t *DXRawTable3) TxHardDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
+func (t *DXRawTable) TxHardDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxDelete(dtx, where, nil)
 	return result, err
 }
 
 // RequestPagingList handles list/paging API requests
-func (t *DXRawTable3) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
@@ -1348,7 +1366,7 @@ func (t *DXRawTable3) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // RequestRead handles read by ID API requests
-func (t *DXRawTable3) RequestRead(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestRead(aepr *api.DXAPIEndPointRequest) error {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -1362,13 +1380,15 @@ func (t *DXRawTable3) RequestRead(aepr *api.DXAPIEndPointRequest) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
 	}
 
-	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, row)
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: row,
+	})
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
 	return nil
 }
 
 // RequestReadByUid handles read by UID API requests
-func (t *DXRawTable3) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
 	if err != nil {
 		return err
@@ -1382,13 +1402,15 @@ func (t *DXRawTable3) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", uid)
 	}
 
-	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, row)
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: row,
+	})
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
 	return nil
 }
 
 // RequestReadByUtag handles read by Utag API requests
-func (t *DXRawTable3) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) error {
 	_, utag, err := aepr.GetParameterValueAsString("utag")
 	if err != nil {
 		return err
@@ -1408,7 +1430,7 @@ func (t *DXRawTable3) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // RequestEdit handles edit by ID API requests
-func (t *DXRawTable3) RequestEdit(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestEdit(aepr *api.DXAPIEndPointRequest) error {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -1430,7 +1452,7 @@ func (t *DXRawTable3) RequestEdit(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // RequestHardDelete handles hard delete by ID API requests
-func (t *DXRawTable3) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -1440,17 +1462,20 @@ func (t *DXRawTable3) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // DoCreate inserts a row and writes API response (suppresses errors)
-func (t *DXRawTable3) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
-	newId, err := t.DoInsert(aepr, data)
+func (t *DXRawTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
+	newId, err := t.InsertReturningId(&aepr.Log, data)
 	if err != nil {
 		aepr.WriteResponseAsError(http.StatusConflict, err)
 		return 0, nil
 	}
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.FieldNameForRowId: newId,
+	}))
 	return newId, nil
 }
 
 // RequestReadByNameId handles read by NameId API requests
-func (t *DXRawTable3) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error {
 	_, nameId, err := aepr.GetParameterValueAsString(t.FieldNameForRowNameId)
 	if err != nil {
 		return err
@@ -1464,13 +1489,15 @@ func (t *DXRawTable3) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error 
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", nameId)
 	}
 
-	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, row)
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: row,
+	})
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
 	return nil
 }
 
 // RequestListDownload handles list download API requests (export to xlsx/csv/xls)
-func (t *DXRawTable3) RequestListDownload(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) error {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
@@ -1585,21 +1612,17 @@ func (t *DXRawTable3) RequestListDownload(aepr *api.DXAPIEndPointRequest) error 
 }
 
 // RequestCreate handles create API requests (alias for backward compatibility)
-func (t *DXRawTable3) RequestCreate(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXRawTable) RequestCreate(aepr *api.DXAPIEndPointRequest) error {
 	data := utils.JSON{}
 	for k, v := range aepr.ParameterValues {
 		data[k] = v.Value
 	}
-	newId, err := t.DoCreate(aepr, data)
-	if err != nil {
-		return err
-	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{"id": newId})
-	return nil
+	_, err := t.DoCreate(aepr, data)
+	return err
 }
 
 // DoEdit is an alias for DoUpdate (backward compatibility)
-func (t *DXRawTable3) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
+func (t *DXRawTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
 	return t.DoUpdate(aepr, id, data)
 }
 
@@ -1607,7 +1630,7 @@ func (t *DXRawTable3) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, data util
 type OnResultList func(aepr *api.DXAPIEndPointRequest, list []utils.JSON) ([]utils.JSON, error)
 
 // DoRequestPagingList handles paging with optional result processing
-func (t *DXRawTable3) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) error {
+func (t *DXRawTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) error {
 	isExistFilterWhere, customFilterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
@@ -1669,16 +1692,16 @@ func (t *DXRawTable3) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filter
 }
 
 // ============================================================================
-// DXTable3 - Additional API Helper Methods (with soft-delete)
+// DXTable - Additional API Helper Methods (with soft-delete)
 // ============================================================================
 
 // SelectAll returns all non-deleted rows from the table
-func (t *DXTable3) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
+func (t *DXTable) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	return t.Select(l, nil, nil, nil, nil, nil, nil)
 }
 
 // TxShouldGetByNameIdNotDeleted returns a non-deleted row by NameId within a transaction or error if not found
-func (t *DXTable3) TxShouldGetByNameIdNotDeleted(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) TxShouldGetByNameIdNotDeleted(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -1686,18 +1709,18 @@ func (t *DXTable3) TxShouldGetByNameIdNotDeleted(dtx *database.DXDatabaseTx, nam
 }
 
 // TxShouldGetByNameId is an alias for TxShouldGetByNameIdNotDeleted
-func (t *DXTable3) TxShouldGetByNameId(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) TxShouldGetByNameId(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldGetByNameIdNotDeleted(dtx, nameId)
 }
 
 // TxHardDelete deletes rows within a transaction (bypasses soft-delete)
-func (t *DXTable3) TxHardDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
-	result, _, err := t.DXRawTable3.TxDelete(dtx, where, nil)
+func (t *DXTable) TxHardDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
+	result, _, err := t.DXRawTable.TxDelete(dtx, where, nil)
 	return result, err
 }
 
 // RequestPagingList handles list/paging API requests (with is_deleted filter)
-func (t *DXTable3) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
@@ -1742,7 +1765,7 @@ func (t *DXTable3) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // RequestRead handles read by ID API requests (with is_deleted filter)
-func (t *DXTable3) RequestRead(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestRead(aepr *api.DXAPIEndPointRequest) error {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -1756,13 +1779,15 @@ func (t *DXTable3) RequestRead(aepr *api.DXAPIEndPointRequest) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
 	}
 
-	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, row)
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: row,
+	})
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
 	return nil
 }
 
 // RequestReadByUid handles read by UID API requests (with is_deleted filter)
-func (t *DXTable3) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
 	if err != nil {
 		return err
@@ -1776,13 +1801,15 @@ func (t *DXTable3) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", uid)
 	}
 
-	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, row)
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: row,
+	})
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
 	return nil
 }
 
 // RequestEdit handles edit by ID API requests (with is_deleted filter and audit fields)
-func (t *DXTable3) RequestEdit(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestEdit(aepr *api.DXAPIEndPointRequest) error {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -1804,7 +1831,7 @@ func (t *DXTable3) RequestEdit(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // RequestReadByNameId handles read by NameId API requests (with is_deleted filter)
-func (t *DXTable3) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error {
 	_, nameId, err := aepr.GetParameterValueAsString(t.FieldNameForRowNameId)
 	if err != nil {
 		return err
@@ -1818,18 +1845,20 @@ func (t *DXTable3) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", nameId)
 	}
 
-	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, row)
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: row,
+	})
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
 	return nil
 }
 
 // DoEdit is an alias for DoUpdate (backward compatibility)
-func (t *DXTable3) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
+func (t *DXTable) DoEdit(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
 	return t.DoUpdate(aepr, id, data)
 }
 
 // DoRequestPagingList handles paging with optional result processing (with is_deleted filter)
-func (t *DXTable3) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) error {
+func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) error {
 	isExistFilterWhere, customFilterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
@@ -1891,7 +1920,7 @@ func (t *DXTable3) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhe
 }
 
 // RequestSoftDelete handles soft delete by ID API requests
-func (t *DXTable3) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) error {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -1901,7 +1930,7 @@ func (t *DXTable3) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // RequestHardDelete handles hard delete by ID API requests (bypasses soft-delete)
-func (t *DXTable3) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
 	if err != nil {
 		return err
@@ -1915,7 +1944,7 @@ func (t *DXTable3) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
 	}
 
-	_, err = t.DXRawTable3.DeleteById(&aepr.Log, id)
+	_, err = t.DXRawTable.DeleteById(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -1924,49 +1953,36 @@ func (t *DXTable3) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 	return nil
 }
 
-// DoCreate inserts a row with audit fields and writes API response (suppresses errors)
-func (t *DXTable3) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
+// DoCreate inserts a row with audit fields and writes API response
+func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
-	newId, err := t.DXRawTable3.DoInsert(aepr, data)
+	newId, err := t.DXRawTable.InsertReturningId(&aepr.Log, data)
 	if err != nil {
-		aepr.WriteResponseAsError(http.StatusConflict, err)
-		return 0, nil
+		return 0, err
 	}
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.FieldNameForRowId: newId,
+	}))
 	return newId, nil
 }
 
 // RequestCreate handles create API requests (reads parameters and inserts)
-func (t *DXTable3) RequestCreate(aepr *api.DXAPIEndPointRequest) error {
-	_, data, err := aepr.GetParameterValueAsJSON("new")
-	if err != nil {
-		return err
+func (t *DXTable) RequestCreate(aepr *api.DXAPIEndPointRequest) error {
+	data := utils.JSON{}
+	for k, v := range aepr.ParameterValues {
+		data[k] = v.Value
 	}
-
-	newId, err := t.DoCreate(aepr, data)
-	if err != nil {
-		return err
-	}
-
-	_, row, err := t.ShouldGetByIdNotDeleted(&aepr.Log, newId)
-	if err != nil {
-		return err
-	}
-
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utils.JSON{
-		"data": utils.JSON{
-			t.ResponseEnvelopeObjectName: row,
-		},
-	})
-	return nil
+	_, err := t.DoCreate(aepr, data)
+	return err
 }
 
 // RequestPagingListAll handles paging list all API requests (no filter, all records)
-func (t *DXTable3) RequestPagingListAll(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestPagingListAll(aepr *api.DXAPIEndPointRequest) error {
 	return t.DoRequestPagingList(aepr, "", "", nil, nil)
 }
 
 // RequestList handles list API requests (with filters from parameters)
-func (t *DXTable3) RequestList(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestList(aepr *api.DXAPIEndPointRequest) error {
 	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
 	if err != nil {
 		return err
@@ -1993,12 +2009,12 @@ func (t *DXTable3) RequestList(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // RequestListAll handles list all API requests (no paging, all records)
-func (t *DXTable3) RequestListAll(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestListAll(aepr *api.DXAPIEndPointRequest) error {
 	return t.RequestList(aepr)
 }
 
 // RequestEditByUid handles edit by UID API requests
-func (t *DXTable3) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
 	if err != nil {
 		return err
@@ -2023,7 +2039,7 @@ func (t *DXTable3) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
 }
 
 // RequestSoftDeleteByUid handles soft delete by UID API requests
-func (t *DXTable3) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
 	if err != nil {
 		return err
@@ -2043,7 +2059,7 @@ func (t *DXTable3) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) error 
 }
 
 // RequestHardDeleteByUid handles hard delete by UID API requests
-func (t *DXTable3) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
+func (t *DXTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
 	if err != nil {
 		return err
@@ -2059,7 +2075,7 @@ func (t *DXTable3) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error 
 		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "CANNOT_GET_ID_FROM_ROW")
 	}
 
-	_, err = t.DXRawTable3.DeleteById(&aepr.Log, id)
+	_, err = t.DXRawTable.DeleteById(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -2072,10 +2088,10 @@ func (t *DXTable3) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error 
 // Table3 Manager - Registry for tables
 // ============================================================================
 
-// DXTable3Manager manages a collection of DXTable3 instances
+// DXTable3Manager manages a collection of DXTable instances
 type DXTable3Manager struct {
-	Tables                               map[string]*DXTable3
-	RawTables                            map[string]*DXRawTable3
+	Tables                               map[string]*DXTable
+	RawTables                            map[string]*DXRawTable
 	StandardOperationResponsePossibility map[string]map[string]*api.DXAPIEndPointResponsePossibility
 }
 
@@ -2098,8 +2114,8 @@ func (tm *DXTable3Manager) ConnectAll() error {
 
 // Manager is the global table3 manager instance
 var Manager = DXTable3Manager{
-	Tables:    make(map[string]*DXTable3),
-	RawTables: make(map[string]*DXRawTable3),
+	Tables:    make(map[string]*DXTable),
+	RawTables: make(map[string]*DXRawTable),
 	StandardOperationResponsePossibility: map[string]map[string]*api.DXAPIEndPointResponsePossibility{
 		"create": {
 			"success": &api.DXAPIEndPointResponsePossibility{
@@ -2237,38 +2253,38 @@ var Manager = DXTable3Manager{
 	},
 }
 
-// RegisterTable registers a DXTable3 with the manager
-func (m *DXTable3Manager) RegisterTable(name string, table *DXTable3) {
+// RegisterTable registers a DXTable with the manager
+func (m *DXTable3Manager) RegisterTable(name string, table *DXTable) {
 	m.Tables[name] = table
 }
 
-// RegisterRawTable registers a DXRawTable3 with the manager
-func (m *DXTable3Manager) RegisterRawTable(name string, table *DXRawTable3) {
+// RegisterRawTable registers a DXRawTable with the manager
+func (m *DXTable3Manager) RegisterRawTable(name string, table *DXRawTable) {
 	m.RawTables[name] = table
 }
 
-// GetTable returns a registered DXTable3 by name
-func (m *DXTable3Manager) GetTable(name string) *DXTable3 {
+// GetTable returns a registered DXTable by name
+func (m *DXTable3Manager) GetTable(name string) *DXTable {
 	return m.Tables[name]
 }
 
-// GetRawTable returns a registered DXRawTable3 by name
-func (m *DXTable3Manager) GetRawTable(name string) *DXRawTable3 {
+// GetRawTable returns a registered DXRawTable by name
+func (m *DXTable3Manager) GetRawTable(name string) *DXRawTable {
 	return m.RawTables[name]
 }
 
-// NewDXRawTable3 creates a new DXRawTable3 wrapping a models.ModelDBTable
-func NewDXRawTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXRawTable3 {
-	return &DXRawTable3{
+// NewDXRawTable3 creates a new DXRawTable wrapping a models.ModelDBTable
+func NewDXRawTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXRawTable {
+	return &DXRawTable{
 		DatabaseNameId:    databaseNameId,
 		DBTable:           dbTable,
 		FieldNameForRowId: fieldNameForRowId,
 	}
 }
 
-// NewDXRawTable3WithView creates a new DXRawTable3 with a custom list view
-func NewDXRawTable3WithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXRawTable3 {
-	return &DXRawTable3{
+// NewDXRawTable3WithView creates a new DXRawTable with a custom list view
+func NewDXRawTable3WithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXRawTable {
+	return &DXRawTable{
 		DatabaseNameId:    databaseNameId,
 		DBTable:           dbTable,
 		FieldNameForRowId: fieldNameForRowId,
@@ -2276,10 +2292,10 @@ func NewDXRawTable3WithView(databaseNameId string, dbTable *models.ModelDBTable,
 	}
 }
 
-// NewDXTable3 creates a new DXTable3 wrapping a models.ModelDBTable
-func NewDXTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXTable3 {
-	return &DXTable3{
-		DXRawTable3: DXRawTable3{
+// NewDXTable3 creates a new DXTable wrapping a models.ModelDBTable
+func NewDXTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXTable {
+	return &DXTable{
+		DXRawTable: DXRawTable{
 			DatabaseNameId:    databaseNameId,
 			DBTable:           dbTable,
 			FieldNameForRowId: fieldNameForRowId,
@@ -2287,10 +2303,10 @@ func NewDXTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNameF
 	}
 }
 
-// NewDXTable3WithView creates a new DXTable3 with a custom list view
-func NewDXTable3WithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXTable3 {
-	return &DXTable3{
-		DXRawTable3: DXRawTable3{
+// NewDXTable3WithView creates a new DXTable with a custom list view
+func NewDXTable3WithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXTable {
+	return &DXTable{
+		DXRawTable: DXRawTable{
 			DatabaseNameId:    databaseNameId,
 			DBTable:           dbTable,
 			FieldNameForRowId: fieldNameForRowId,
@@ -2303,52 +2319,58 @@ func NewDXTable3WithView(databaseNameId string, dbTable *models.ModelDBTable, fi
 // Simple Factory Functions - without models.ModelDBTable (for gradual migration)
 // ============================================================================
 
-// NewDXRawTable3Simple creates a DXRawTable3 with direct table name (no models.ModelDBTable needed)
-func NewDXRawTable3Simple(databaseNameId, tableName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId string) *DXRawTable3 {
-	return &DXRawTable3{
-		DatabaseNameId:        databaseNameId,
-		TableNameDirect:       tableName,
-		ListViewNameId:        listViewNameId,
-		FieldNameForRowId:     fieldNameForRowId,
-		FieldNameForRowUid:    fieldNameForRowUid,
-		FieldNameForRowNameId: fieldNameForRowNameId,
+// NewDXRawTable3Simple creates a DXRawTable with direct table name (no models.ModelDBTable needed)
+func NewDXRawTable3Simple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string) *DXRawTable {
+	return &DXRawTable{
+		DatabaseNameId:             databaseNameId,
+		TableNameDirect:            tableName,
+		ResultObjectName:           resultObjectName,
+		ListViewNameId:             listViewNameId,
+		FieldNameForRowId:          fieldNameForRowId,
+		FieldNameForRowUid:         fieldNameForRowUid,
+		FieldNameForRowNameId:      fieldNameForRowNameId,
+		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 	}
 }
 
-// NewDXTable3Simple creates a DXTable3 with direct table name (no models.ModelDBTable needed)
-func NewDXTable3Simple(databaseNameId, tableName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId string) *DXTable3 {
-	return &DXTable3{
-		DXRawTable3: DXRawTable3{
-			DatabaseNameId:        databaseNameId,
-			TableNameDirect:       tableName,
-			ListViewNameId:        listViewNameId,
-			FieldNameForRowId:     fieldNameForRowId,
-			FieldNameForRowUid:    fieldNameForRowUid,
-			FieldNameForRowNameId: fieldNameForRowNameId,
+// NewDXTable3Simple creates a DXTable with direct table name (no models.ModelDBTable needed)
+func NewDXTable3Simple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string) *DXTable {
+	return &DXTable{
+		DXRawTable: DXRawTable{
+			DatabaseNameId:             databaseNameId,
+			TableNameDirect:            tableName,
+			ResultObjectName:           resultObjectName,
+			ListViewNameId:             listViewNameId,
+			FieldNameForRowId:          fieldNameForRowId,
+			FieldNameForRowUid:         fieldNameForRowUid,
+			FieldNameForRowNameId:      fieldNameForRowNameId,
+			ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 		},
 	}
 }
 
 // ============================================================================
-// DXPropertyTable3 - Property Table for key-value storage with typed values
+// DXPropertyTable - Property Table for key-value storage with typed values
 // ============================================================================
 
-// DXPropertyTable3 is a table specialized for storing typed property values
-type DXPropertyTable3 struct {
-	DXTable3
+// DXPropertyTable is a table specialized for storing typed property values
+type DXPropertyTable struct {
+	DXTable
 }
 
-// NewDXPropertyTable3Simple creates a DXPropertyTable3 with direct table name
-func NewDXPropertyTable3Simple(databaseNameId, tableName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId string) *DXPropertyTable3 {
-	return &DXPropertyTable3{
-		DXTable3: DXTable3{
-			DXRawTable3: DXRawTable3{
-				DatabaseNameId:        databaseNameId,
-				TableNameDirect:       tableName,
-				ListViewNameId:        listViewNameId,
-				FieldNameForRowId:     fieldNameForRowId,
-				FieldNameForRowUid:    fieldNameForRowUid,
-				FieldNameForRowNameId: fieldNameForRowNameId,
+// NewDXPropertyTable3Simple creates a DXPropertyTable with direct table name
+func NewDXPropertyTable3Simple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string) *DXPropertyTable {
+	return &DXPropertyTable{
+		DXTable: DXTable{
+			DXRawTable: DXRawTable{
+				DatabaseNameId:             databaseNameId,
+				TableNameDirect:            tableName,
+				ResultObjectName:           resultObjectName,
+				ListViewNameId:             listViewNameId,
+				FieldNameForRowId:          fieldNameForRowId,
+				FieldNameForRowUid:         fieldNameForRowUid,
+				FieldNameForRowNameId:      fieldNameForRowNameId,
+				ResponseEnvelopeObjectName: responseEnvelopeObjectName,
 			},
 		},
 	}
@@ -2380,7 +2402,7 @@ func propertyGetAs[T any](l *log.DXLog, expectedType string, property map[string
 }
 
 // GetAsString gets a string property value
-func (pt *DXPropertyTable3) GetAsString(l *log.DXLog, propertyId string) (string, error) {
+func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (string, error) {
 	_, v, err := pt.ShouldSelectOne(l, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return "", err
@@ -2389,7 +2411,7 @@ func (pt *DXPropertyTable3) GetAsString(l *log.DXLog, propertyId string) (string
 }
 
 // SetAsString sets a string property value
-func (pt *DXPropertyTable3) SetAsString(l *log.DXLog, propertyId string, value string) error {
+func (pt *DXPropertyTable) SetAsString(l *log.DXLog, propertyId string, value string) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
@@ -2404,7 +2426,7 @@ func (pt *DXPropertyTable3) SetAsString(l *log.DXLog, propertyId string, value s
 }
 
 // GetAsInt gets an int property value
-func (pt *DXPropertyTable3) GetAsInt(l *log.DXLog, propertyId string) (int, error) {
+func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error) {
 	_, v, err := pt.ShouldSelectOne(l, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return 0, err
@@ -2417,7 +2439,7 @@ func (pt *DXPropertyTable3) GetAsInt(l *log.DXLog, propertyId string) (int, erro
 }
 
 // GetAsIntOrDefault gets an int property value, returns default if not found
-func (pt *DXPropertyTable3) GetAsIntOrDefault(l *log.DXLog, propertyId string, defaultValue int) (int, error) {
+func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, defaultValue int) (int, error) {
 	_, v, err := pt.SelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return 0, err
@@ -2437,7 +2459,7 @@ func (pt *DXPropertyTable3) GetAsIntOrDefault(l *log.DXLog, propertyId string, d
 }
 
 // SetAsInt sets an int property value
-func (pt *DXPropertyTable3) SetAsInt(l *log.DXLog, propertyId string, value int) error {
+func (pt *DXPropertyTable) SetAsInt(l *log.DXLog, propertyId string, value int) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
@@ -2452,7 +2474,7 @@ func (pt *DXPropertyTable3) SetAsInt(l *log.DXLog, propertyId string, value int)
 }
 
 // TxSetAsInt sets an int property value within a transaction
-func (pt *DXPropertyTable3) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) error {
+func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
@@ -2467,7 +2489,7 @@ func (pt *DXPropertyTable3) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId st
 }
 
 // GetAsInt64 gets an int64 property value
-func (pt *DXPropertyTable3) GetAsInt64(l *log.DXLog, propertyId string) (int64, error) {
+func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, error) {
 	_, v, err := pt.ShouldSelectOne(l, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return 0, err
@@ -2480,7 +2502,7 @@ func (pt *DXPropertyTable3) GetAsInt64(l *log.DXLog, propertyId string) (int64, 
 }
 
 // SetAsInt64 sets an int64 property value
-func (pt *DXPropertyTable3) SetAsInt64(l *log.DXLog, propertyId string, value int64) error {
+func (pt *DXPropertyTable) SetAsInt64(l *log.DXLog, propertyId string, value int64) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
@@ -2495,7 +2517,7 @@ func (pt *DXPropertyTable3) SetAsInt64(l *log.DXLog, propertyId string, value in
 }
 
 // GetAsJSON gets a JSON property value
-func (pt *DXPropertyTable3) GetAsJSON(l *log.DXLog, propertyId string) (map[string]any, error) {
+func (pt *DXPropertyTable) GetAsJSON(l *log.DXLog, propertyId string) (map[string]any, error) {
 	_, v, err := pt.ShouldSelectOne(l, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return nil, err
@@ -2504,7 +2526,7 @@ func (pt *DXPropertyTable3) GetAsJSON(l *log.DXLog, propertyId string) (map[stri
 }
 
 // SetAsJSON sets a JSON property value
-func (pt *DXPropertyTable3) SetAsJSON(l *log.DXLog, propertyId string, value map[string]any) error {
+func (pt *DXPropertyTable) SetAsJSON(l *log.DXLog, propertyId string, value map[string]any) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return errors.Wrap(err, "SetAsJSON.Marshal")
@@ -2519,7 +2541,7 @@ func (pt *DXPropertyTable3) SetAsJSON(l *log.DXLog, propertyId string, value map
 }
 
 // TxSetAsJSON sets a JSON property value within a transaction
-func (pt *DXPropertyTable3) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) error {
+func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return errors.Wrap(err, "TxSetAsJSON.Marshal")

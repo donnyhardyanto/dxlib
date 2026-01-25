@@ -47,6 +47,9 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 //   - returningFieldValues: Map of field names to their values after insert
 //   - err: Error if any occurred
 func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
+	defer func() {
+		LogDBInsert(tableName, setFieldValues, err)
+	}()
 	// Basic input validation
 	if db == nil {
 		return nil, nil, errors.New("database connection is nil")
@@ -64,11 +67,17 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
-	// Validate field names in setFieldValues
-	for fieldName := range setFieldValues {
+	// Validate field names in setFieldValues and convert values to DB-compatible types
+	convertedFieldValues := utils.JSON{}
+	for fieldName, fieldValue := range setFieldValues {
 		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid field name: %s", fieldName)
 		}
+		convertedValue, err := DbDriverConvertValueTypeToDBCompatible(driverName, fieldValue)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "failed to convert field value: %s", fieldName)
+		}
+		convertedFieldValues[fieldName] = convertedValue
 	}
 
 	// Validate returning field names
@@ -79,7 +88,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 	}
 
 	// Prepare field names and values for the INSERT statement
-	fieldNames, fieldValues := SQLPartInsertFieldNamesFieldValues(setFieldValues, driverName)
+	fieldNames, fieldValues := SQLPartInsertFieldNamesFieldValues(convertedFieldValues, driverName)
 
 	// Base INSERT statement
 	baseSQL := strings.Join([]string{
@@ -94,8 +103,8 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 	returningFieldValues = utils.JSON{}
 
 	// If no returning keys requested, simply execute the insert
-	if returningFieldNames == nil || len(returningFieldNames) == 0 {
-		result, err := Exec(db, baseSQL, setFieldValues)
+	if len(returningFieldNames) == 0 {
+		result, err := Exec(db, baseSQL, convertedFieldValues)
 		return result, returningFieldValues, err
 	}
 
@@ -104,7 +113,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 	case "postgres", "mariadb":
 		// Both PostgreSQL and MariaDB 10.5.0+ support RETURNING clause with the same syntax
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
-		_, rows, err := QueryRows(db, nil, sqlStatement, setFieldValues)
+		_, rows, err := QueryRows(db, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing insert with RETURNING clause")
 		}
@@ -132,7 +141,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 			fmt.Sprintf("(%s)", fieldValues),
 		}, " ")
 
-		_, rows, err := QueryRows(db, nil, sqlStatement, setFieldValues)
+		_, rows, err := QueryRows(db, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing insert with OUTPUT clause")
 		}
@@ -144,8 +153,8 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 	case "oracle":
 		// Oracle uses RETURNING INTO syntax
 		// Prepare named arguments for Oracle
-		namedArgs := make([]interface{}, 0, len(setFieldValues))
-		for name, value := range setFieldValues {
+		namedArgs := make([]interface{}, 0, len(convertedFieldValues))
+		for name, value := range convertedFieldValues {
 			// Skip SQL expressions
 			if _, ok := value.(SQLExpression); !ok {
 				namedArgs = append(namedArgs, sql.Named(strings.ToUpper(name), value))
@@ -199,7 +208,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 
 	case "mysql":
 		// MySQL doesn't support RETURNING, so we need to do a separate query
-		result, err := Exec(db, baseSQL, setFieldValues)
+		result, err := Exec(db, baseSQL, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing mysql insert")
 		}
@@ -280,6 +289,10 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 }
 
 func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
+	defer func() {
+		LogDBInsert(tableName, setFieldValues, err)
+	}()
+
 	// Basic input validation
 	if tx == nil {
 		return nil, nil, errors.New("database transaction connection is nil")
@@ -297,11 +310,17 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
 
-	// Validate field names in setFieldValues
-	for fieldName := range setFieldValues {
+	// Validate field names in setFieldValues and convert values to DB-compatible types
+	convertedFieldValues := utils.JSON{}
+	for fieldName, fieldValue := range setFieldValues {
 		if err := CheckIdentifier(dbType, fieldName); err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid field name: %s", fieldName)
 		}
+		convertedValue, err := DbDriverConvertValueTypeToDBCompatible(driverName, fieldValue)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "failed to convert field value: %s", fieldName)
+		}
+		convertedFieldValues[fieldName] = convertedValue
 	}
 
 	// Validate returning field names
@@ -312,7 +331,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 	}
 
 	// Prepare field names and values for the INSERT statement
-	fieldNames, fieldValues := SQLPartInsertFieldNamesFieldValues(setFieldValues, driverName)
+	fieldNames, fieldValues := SQLPartInsertFieldNamesFieldValues(convertedFieldValues, driverName)
 
 	// Base INSERT statement
 	baseSQL := strings.Join([]string{
@@ -327,8 +346,8 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 	returningFieldValues = utils.JSON{}
 
 	// If no returning keys requested, simply execute the insert
-	if returningFieldNames == nil || len(returningFieldNames) == 0 {
-		result, err := TxExec(tx, baseSQL, setFieldValues)
+	if len(returningFieldNames) == 0 {
+		result, err := TxExec(tx, baseSQL, convertedFieldValues)
 		return result, returningFieldValues, err
 	}
 
@@ -337,7 +356,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 	case "postgres", "mariadb":
 		// Both PostgreSQL and MariaDB 10.5.0+ support RETURNING clause with the same syntax
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, setFieldValues)
+		_, rows, err := TxQueryRows(tx, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing insert with RETURNING clause")
 		}
@@ -365,7 +384,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 			fmt.Sprintf("(%s)", fieldValues),
 		}, " ")
 
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, setFieldValues)
+		_, rows, err := TxQueryRows(tx, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing insert with OUTPUT clause")
 		}
@@ -377,8 +396,8 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 	case "oracle":
 		// Oracle uses RETURNING INTO syntax
 		// Prepare named arguments for Oracle
-		namedArgs := make([]interface{}, 0, len(setFieldValues))
-		for name, value := range setFieldValues {
+		namedArgs := make([]interface{}, 0, len(convertedFieldValues))
+		for name, value := range convertedFieldValues {
 			// Skip SQL expressions
 			if _, ok := value.(SQLExpression); !ok {
 				namedArgs = append(namedArgs, sql.Named(strings.ToUpper(name), value))
@@ -432,7 +451,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 
 	case "mysql":
 		// MySQL doesn't support RETURNING, so we need to do a separate query
-		result, err := TxExec(tx, baseSQL, setFieldValues)
+		result, err := TxExec(tx, baseSQL, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing mysql insert")
 		}
