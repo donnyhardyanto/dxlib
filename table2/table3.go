@@ -1,4 +1,4 @@
-package table3
+package table2
 
 import (
 	"database/sql"
