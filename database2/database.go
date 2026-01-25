@@ -5,8 +5,8 @@ import (
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/base"
-	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/donnyhardyanto/dxlib/errors"
+	mssql "github.com/microsoft/go-mssqldb"
 	goOra "github.com/sijms/go-ora/v2"
 
 	"fmt"
@@ -528,6 +528,11 @@ func (d *DXDatabase) ExecuteCreateScriptsFromEmbedded(contentProvider SQLContent
 }
 
 func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callback DXDatabaseTxCallback) (err error) {
+	err = d.EnsureConnection()
+	if err != nil {
+		return err
+	}
+
 	driverName := d.Connection.DriverName()
 	switch driverName {
 	case "oracle":
