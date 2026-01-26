@@ -695,13 +695,23 @@ func (t *DXRawTable) TxSelect(dtx *database.DXDatabaseTx, fieldNames []string, w
 // TxSelectOne returns a single row within a transaction
 func (t *DXRawTable) TxSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return dtx.SelectOne(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
+	// Use table name instead of view when FOR UPDATE is requested (views with outer joins don't support FOR UPDATE)
+	tableName := t.GetListViewName()
+	if forUpdatePart != nil && forUpdatePart != false && forUpdatePart != "" {
+		tableName = t.TableName()
+	}
+	return dtx.SelectOne(tableName, t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxShouldSelectOne returns a single row or error if not found within a transaction
 func (t *DXRawTable) TxShouldSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return dtx.ShouldSelectOne(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
+	// Use table name instead of view when FOR UPDATE is requested (views with outer joins don't support FOR UPDATE)
+	tableName := t.GetListViewName()
+	if forUpdatePart != nil && forUpdatePart != false && forUpdatePart != "" {
+		tableName = t.TableName()
+	}
+	return dtx.ShouldSelectOne(tableName, t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxGetById returns a row by ID within a transaction
@@ -712,6 +722,46 @@ func (t *DXRawTable) TxGetById(dtx *database.DXDatabaseTx, id int64) (*db.DXData
 // TxShouldGetById returns a row by ID or error if not found within a transaction
 func (t *DXRawTable) TxShouldGetById(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
+}
+
+// TxGetByUid returns a row by UID within a transaction
+func (t *DXRawTable) TxGetByUid(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
+}
+
+// TxShouldGetByUid returns a row by UID or error if not found within a transaction
+func (t *DXRawTable) TxShouldGetByUid(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
+}
+
+// TxGetByUtag returns a row by Utag within a transaction
+func (t *DXRawTable) TxGetByUtag(dtx *database.DXDatabaseTx, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
+}
+
+// TxShouldGetByUtag returns a row by Utag or error if not found within a transaction
+func (t *DXRawTable) TxShouldGetByUtag(dtx *database.DXDatabaseTx, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
+}
+
+// TxGetByNameId returns a row by NameId within a transaction
+func (t *DXRawTable) TxGetByNameId(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil, errors.New("FieldNameForRowNameId not configured")
+	}
+	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
 
 // ============================================================================

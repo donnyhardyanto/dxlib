@@ -20,7 +20,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 
 	rows, err := db.Queryx(query, arg...)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "DB_QUERY_ERROR sql=%s", query)
 	}
 	defer func() {
 		_ = rows.Close()
@@ -28,7 +28,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	rowsInfo = &DXDatabaseTableRowsInfo{}
 	rowsInfo.Columns, err = rows.Columns()
 	if err != nil {
-		return rowsInfo, r, err
+		return rowsInfo, r, errors.Wrap(err, "failed to get columns")
 	}
 	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
 	/*	if err != nil {
@@ -38,11 +38,11 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "failed to scan row")
 		}
 		rowJSON, err = DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "failed to deformat keys")
 		}
 		r = append(r, rowJSON)
 	}
@@ -60,7 +60,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMappin
 
 	rows, err := tx.Queryx(query, arg...)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "DB_TX_QUERY_ERROR sql=%s", query)
 	}
 	defer func() {
 		_ = rows.Close()
@@ -68,7 +68,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMappin
 	rowsInfo = &DXDatabaseTableRowsInfo{}
 	rowsInfo.Columns, err = rows.Columns()
 	if err != nil {
-		return rowsInfo, r, err
+		return rowsInfo, r, errors.Wrap(err, "failed to get columns")
 	}
 	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
 	/*	if err != nil {
@@ -78,11 +78,11 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMappin
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "failed to scan row")
 		}
 		rowJSON, err = DeformatKeys(rowJSON, tx.DriverName(), fieldTypeMapping)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "failed to deformat keys")
 		}
 		r = append(r, rowJSON)
 	}

@@ -250,6 +250,38 @@ func (t *DXRawTable) SelectOneAuto(
 	return rows[0], nil
 }
 
+// TxShouldSelectOneAuto selects one row or returns error if not found, using table's DecryptedColumnDefs
+func (t *DXRawTable) TxShouldSelectOneAuto(
+	dtx *database.DXDatabaseTx,
+	columns []string,
+	where utils.JSON,
+) (utils.JSON, error) {
+	row, err := t.TxSelectOneAuto(dtx, columns, where)
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
+// ShouldSelectOneAuto selects one row or returns error if not found, using table's DecryptedColumnDefs
+func (t *DXRawTable) ShouldSelectOneAuto(
+	l *log.DXLog,
+	columns []string,
+	where utils.JSON,
+) (utils.JSON, error) {
+	row, err := t.SelectOneAuto(l, columns, where)
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
 // TxSelectByIdAuto selects by ID using table's DecryptedColumnDefs
 func (t *DXRawTable) TxSelectByIdAuto(
 	dtx *database.DXDatabaseTx,
@@ -266,6 +298,23 @@ func (t *DXRawTable) SelectByIdAuto(
 	columns []string,
 ) (utils.JSON, error) {
 	return t.SelectOneAuto(l, columns, utils.JSON{t.FieldNameForRowId: id})
+}
+
+// TxGetByIdAuto returns a row by ID using table's DecryptedColumnDefs within a transaction
+func (t *DXRawTable) TxGetByIdAuto(dtx *database.DXDatabaseTx, id int64) (utils.JSON, error) {
+	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id})
+}
+
+// TxShouldGetByIdAuto returns a row by ID or error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXRawTable) TxShouldGetByIdAuto(dtx *database.DXDatabaseTx, id int64) (utils.JSON, error) {
+	row, err := t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
 }
 
 // GetByIdAuto returns a row by ID using table's DecryptedColumnDefs
@@ -327,6 +376,98 @@ func (t *DXRawTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (utils.JSON, e
 	}
 	if row == nil {
 		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s:uid=%s", t.ListViewNameId, uid)
+	}
+	return row, nil
+}
+
+// GetByUtagAuto returns a row by Utag using table's DecryptedColumnDefs
+func (t *DXRawTable) GetByUtagAuto(l *log.DXLog, utag string) (utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUtag: utag})
+}
+
+// ShouldGetByUtagAuto returns a row by Utag or error if not found, using table's DecryptedColumnDefs
+func (t *DXRawTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	row, err := t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUtag: utag})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s:utag=%s", t.ListViewNameId, utag)
+	}
+	return row, nil
+}
+
+// TxGetByUidAuto returns a row by UID using table's DecryptedColumnDefs within a transaction
+func (t *DXRawTable) TxGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid})
+}
+
+// TxShouldGetByUidAuto returns a row by UID or error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXRawTable) TxShouldGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, errors.New("FieldNameForRowUid not configured")
+	}
+	row, err := t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s:uid=%s", t.ListViewNameId, uid)
+	}
+	return row, nil
+}
+
+// TxGetByNameIdAuto returns a row by NameId using table's DecryptedColumnDefs within a transaction
+func (t *DXRawTable) TxGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil
+	}
+	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId})
+}
+
+// TxShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXRawTable) TxShouldGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil
+	}
+	row, err := t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
+// TxGetByUtagAuto returns a row by Utag using table's DecryptedColumnDefs within a transaction
+func (t *DXRawTable) TxGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag})
+}
+
+// TxShouldGetByUtagAuto returns a row by Utag or error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXRawTable) TxShouldGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	row, err := t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s:utag=%s", t.ListViewNameId, utag)
 	}
 	return row, nil
 }
@@ -455,6 +596,24 @@ func (t *DXTable) SelectOneAuto(
 	return t.DXRawTable.SelectOneAuto(l, columns, where)
 }
 
+// TxShouldSelectOneAuto selects one row or returns error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxShouldSelectOneAuto(
+	dtx *database.DXDatabaseTx,
+	columns []string,
+	where utils.JSON,
+) (utils.JSON, error) {
+	return t.DXRawTable.TxShouldSelectOneAuto(dtx, columns, where)
+}
+
+// ShouldSelectOneAuto selects one row or returns error if not found, using table's DecryptedColumnDefs
+func (t *DXTable) ShouldSelectOneAuto(
+	l *log.DXLog,
+	columns []string,
+	where utils.JSON,
+) (utils.JSON, error) {
+	return t.DXRawTable.ShouldSelectOneAuto(l, columns, where)
+}
+
 // TxSelectByIdAuto selects by ID using table's DecryptedColumnDefs
 func (t *DXTable) TxSelectByIdAuto(
 	dtx *database.DXDatabaseTx,
@@ -471,6 +630,16 @@ func (t *DXTable) SelectByIdAuto(
 	columns []string,
 ) (utils.JSON, error) {
 	return t.DXRawTable.SelectByIdAuto(l, id, columns)
+}
+
+// TxGetByIdAuto returns a row by ID using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxGetByIdAuto(dtx *database.DXDatabaseTx, id int64) (utils.JSON, error) {
+	return t.DXRawTable.TxGetByIdAuto(dtx, id)
+}
+
+// TxShouldGetByIdAuto returns a row by ID or error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxShouldGetByIdAuto(dtx *database.DXDatabaseTx, id int64) (utils.JSON, error) {
+	return t.DXRawTable.TxShouldGetByIdAuto(dtx, id)
 }
 
 // GetByIdAuto returns a row by ID using table's DecryptedColumnDefs
@@ -491,6 +660,23 @@ func (t *DXTable) GetByIdNotDeletedAuto(l *log.DXLog, id int64) (utils.JSON, err
 // ShouldGetByIdNotDeletedAuto returns a non-deleted row by ID or error if not found
 func (t *DXTable) ShouldGetByIdNotDeletedAuto(l *log.DXLog, id int64) (utils.JSON, error) {
 	row, err := t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowId: id})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
+// TxGetByIdNotDeletedAuto returns a non-deleted row by ID using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxGetByIdNotDeletedAuto(dtx *database.DXDatabaseTx, id int64) (utils.JSON, error) {
+	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id})
+}
+
+// TxShouldGetByIdNotDeletedAuto returns a non-deleted row by ID or error if not found within a transaction
+func (t *DXTable) TxShouldGetByIdNotDeletedAuto(dtx *database.DXDatabaseTx, id int64) (utils.JSON, error) {
+	row, err := t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id})
 	if err != nil {
 		return nil, err
 	}
@@ -543,6 +729,49 @@ func (t *DXTable) ShouldGetByUidNotDeletedAuto(l *log.DXLog, uid string) (utils.
 	return row, nil
 }
 
+// TxGetByUidAuto returns a row by UID using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (utils.JSON, error) {
+	return t.DXRawTable.TxGetByUidAuto(dtx, uid)
+}
+
+// TxShouldGetByUidAuto returns a row by UID or error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxShouldGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (utils.JSON, error) {
+	return t.DXRawTable.TxShouldGetByUidAuto(dtx, uid)
+}
+
+// TxGetByUidNotDeletedAuto returns a non-deleted row by UID using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxGetByUidNotDeletedAuto(dtx *database.DXDatabaseTx, uid string) (utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid})
+}
+
+// TxShouldGetByUidNotDeletedAuto returns a non-deleted row by UID or error if not found within a transaction
+func (t *DXTable) TxShouldGetByUidNotDeletedAuto(dtx *database.DXDatabaseTx, uid string) (utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, errors.New("FieldNameForRowUid not configured")
+	}
+	row, err := t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s:uid=%s", t.ListViewNameId, uid)
+	}
+	return row, nil
+}
+
+// TxGetByNameIdAuto returns a row by NameId using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (utils.JSON, error) {
+	return t.DXRawTable.TxGetByNameIdAuto(dtx, nameId)
+}
+
+// TxShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxShouldGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (utils.JSON, error) {
+	return t.DXRawTable.TxShouldGetByNameIdAuto(dtx, nameId)
+}
+
 // GetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's DecryptedColumnDefs
 func (t *DXTable) GetByNameIdNotDeletedAuto(l *log.DXLog, nameId string) (utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
@@ -564,6 +793,49 @@ func (t *DXTable) ShouldGetByNameIdNotDeletedAuto(l *log.DXLog, nameId string) (
 		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
 	}
 	return row, nil
+}
+
+// TxGetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxGetByNameIdNotDeletedAuto(dtx *database.DXDatabaseTx, nameId string) (utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil
+	}
+	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId})
+}
+
+// TxShouldGetByNameIdNotDeletedAuto returns a non-deleted row by NameId or error if not found within a transaction
+func (t *DXTable) TxShouldGetByNameIdNotDeletedAuto(dtx *database.DXDatabaseTx, nameId string) (utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil
+	}
+	row, err := t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
+// GetByUtagAuto returns a row by Utag using table's DecryptedColumnDefs
+func (t *DXTable) GetByUtagAuto(l *log.DXLog, utag string) (utils.JSON, error) {
+	return t.DXRawTable.GetByUtagAuto(l, utag)
+}
+
+// ShouldGetByUtagAuto returns a row by Utag or error if not found, using table's DecryptedColumnDefs
+func (t *DXTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (utils.JSON, error) {
+	return t.DXRawTable.ShouldGetByUtagAuto(l, utag)
+}
+
+// TxGetByUtagAuto returns a row by Utag using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (utils.JSON, error) {
+	return t.DXRawTable.TxGetByUtagAuto(dtx, utag)
+}
+
+// TxShouldGetByUtagAuto returns a row by Utag or error if not found, using table's DecryptedColumnDefs within a transaction
+func (t *DXTable) TxShouldGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (utils.JSON, error) {
+	return t.DXRawTable.TxShouldGetByUtagAuto(dtx, utag)
 }
 
 // ============================================================================
