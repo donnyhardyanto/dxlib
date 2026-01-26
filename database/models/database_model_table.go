@@ -22,6 +22,7 @@ const (
 	ModelDBKeySourceEnv
 	ModelDBKeySourceConfig
 	ModelDBKeySourceDbSessionCurrentSetting
+	ModelDBKeySourceSecureMemory
 )
 
 type ModelDBField struct {

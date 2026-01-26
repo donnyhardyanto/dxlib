@@ -8,6 +8,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/object_storage"
+	"github.com/donnyhardyanto/dxlib/secure_memory"
 	"github.com/donnyhardyanto/dxlib/table"
 	"github.com/donnyhardyanto/dxlib/vault"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -75,12 +76,21 @@ type DXApp struct {
 	OnStartStorageReady          DXAppEvent
 	OnStopping                   DXAppEvent
 	InitVault                    vault.DXVaultInterface
+	EncryptionVault              vault.DXVaultInterface
 }
 
 func (a *DXApp) Run() (err error) {
 
 	if a.InitVault != nil {
 		err = a.InitVault.Start()
+		if err != nil {
+			log.Log.Error(err.Error(), err)
+			return err
+		}
+	}
+
+	if a.EncryptionVault != nil {
+		err = a.EncryptionVault.Start()
 		if err != nil {
 			log.Log.Error(err.Error(), err)
 			return err
@@ -261,6 +271,8 @@ func (a *DXApp) Stop() (err error) {
 			return err
 		}
 	}
+	// Destroy all secure memory (keys, sensitive data)
+	secure_memory.Manager.DestroyAll()
 	log.Log.Info("Stopped")
 	return nil
 }
