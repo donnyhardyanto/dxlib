@@ -7,6 +7,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/database/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -42,104 +43,216 @@ type DecryptedColumn struct {
 // ============================================================================
 
 // TxSelectWithEncryption selects with decrypted columns within a transaction
-func (t *DXRawTable) TxSelectWithEncryption(
-	dtx *database.DXDatabaseTx,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-	where utils.JSON,
-	orderBy *string,
-	limit *int,
-) ([]utils.JSON, error) {
+func (t *DXRawTable) TxSelectWithEncryption(dtx *database.DXDatabaseTx, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	dbType := t.Database.DatabaseType
 
 	// Set session keys from secure memory
 	if err := setSessionKeysFromDecryptedColumns(dtx, decryptedColumns); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return executeEncryptedSelect(dtx, t.ListViewNameId, dbType, columns, decryptedColumns, where, orderBy, limit)
+	return executeEncryptedSelect(dtx, t.ListViewNameId, t.FieldTypeMapping, dbType, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
 // SelectWithEncryption selects with decrypted columns (creates transaction internally)
-func (t *DXRawTable) SelectWithEncryption(
-	l *log.DXLog,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-	where utils.JSON,
-	orderBy *string,
-	limit *int,
-) ([]utils.JSON, error) {
+func (t *DXRawTable) SelectWithEncryption(l *log.DXLog, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer dtx.Finish(l, err)
 
-	return t.TxSelectWithEncryption(dtx, columns, decryptedColumns, where, orderBy, limit)
+	return t.TxSelectWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
-// TxSelectOneWithEncryption selects one row with decrypted columns
-func (t *DXRawTable) TxSelectOneWithEncryption(
-	dtx *database.DXDatabaseTx,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-	where utils.JSON,
-) (utils.JSON, error) {
-	limit := 1
-	rows, err := t.TxSelectWithEncryption(dtx, columns, decryptedColumns, where, nil, &limit)
+// TxSelectOneWithEncryption selects one row with decrypted columns within a transaction
+func (t *DXRawTable) TxSelectOneWithEncryption(dtx *database.DXDatabaseTx, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	rowsInfo, rows, err := t.TxSelectWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, 1, forUpdatePart)
 	if err != nil {
-		return nil, err
+		return rowsInfo, nil, err
 	}
 	if len(rows) == 0 {
-		return nil, nil
+		return rowsInfo, nil, nil
 	}
-	return rows[0], nil
+	return rowsInfo, rows[0], nil
 }
 
 // SelectOneWithEncryption selects one row with decrypted columns
-func (t *DXRawTable) SelectOneWithEncryption(
-	l *log.DXLog,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-	where utils.JSON,
-) (utils.JSON, error) {
-	limit := 1
-	rows, err := t.SelectWithEncryption(l, columns, decryptedColumns, where, nil, &limit)
+func (t *DXRawTable) SelectOneWithEncryption(l *log.DXLog, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	rowsInfo, rows, err := t.SelectWithEncryption(l, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, 1, nil)
 	if err != nil {
-		return nil, err
+		return rowsInfo, nil, err
 	}
 	if len(rows) == 0 {
-		return nil, nil
+		return rowsInfo, nil, nil
 	}
-	return rows[0], nil
+	return rowsInfo, rows[0], nil
 }
 
-// TxSelectByIdWithEncryption selects by ID with decrypted columns
-func (t *DXRawTable) TxSelectByIdWithEncryption(
-	dtx *database.DXDatabaseTx,
-	id int64,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-) (utils.JSON, error) {
-	return t.TxSelectOneWithEncryption(dtx, columns, decryptedColumns, utils.JSON{t.FieldNameForRowId: id})
+// TxShouldSelectOneWithEncryption selects one row or returns error if not found within a transaction
+func (t *DXRawTable) TxShouldSelectOneWithEncryption(dtx *database.DXDatabaseTx, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	rowsInfo, row, err := t.TxSelectOneWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, forUpdatePart)
+	if err != nil {
+		return rowsInfo, nil, err
+	}
+	if row == nil {
+		return rowsInfo, nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return rowsInfo, row, nil
+}
+
+// ShouldSelectOneWithEncryption selects one row or returns error if not found
+func (t *DXRawTable) ShouldSelectOneWithEncryption(l *log.DXLog, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	rowsInfo, row, err := t.SelectOneWithEncryption(l, nil, decryptedColumns, where, joinSQLPart, orderBy)
+	if err != nil {
+		return rowsInfo, nil, err
+	}
+	if row == nil {
+		return rowsInfo, nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return rowsInfo, row, nil
+}
+
+// TxSelectByIdWithEncryption selects by ID with decrypted columns within a transaction
+func (t *DXRawTable) TxSelectByIdWithEncryption(dtx *database.DXDatabaseTx, id int64, fieldNames []string,
+	decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.TxSelectOneWithEncryption(dtx, fieldNames, decryptedColumns, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
 // SelectByIdWithEncryption selects by ID with decrypted columns
-func (t *DXRawTable) SelectByIdWithEncryption(
-	l *log.DXLog,
-	id int64,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-) (utils.JSON, error) {
-	return t.SelectOneWithEncryption(l, columns, decryptedColumns, utils.JSON{t.FieldNameForRowId: id})
+func (t *DXRawTable) SelectByIdWithEncryption(l *log.DXLog, id int64, fieldNames []string,
+	decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.SelectOneWithEncryption(l, fieldNames, decryptedColumns, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+}
+
+// GetByIdWithEncryption returns a row by ID with decrypted columns
+func (t *DXRawTable) GetByIdWithEncryption(l *log.DXLog, id int64, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.SelectOneWithEncryption(l, nil, decryptedColumns, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+}
+
+// ShouldGetByIdWithEncryption returns a row by ID or error if not found
+func (t *DXRawTable) ShouldGetByIdWithEncryption(l *log.DXLog, id int64, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldSelectOneWithEncryption(l, decryptedColumns, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+}
+
+// TxGetByIdWithEncryption returns a row by ID with decrypted columns within a transaction
+func (t *DXRawTable) TxGetByIdWithEncryption(dtx *database.DXDatabaseTx, id int64, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.TxSelectOneWithEncryption(dtx, nil, decryptedColumns, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
+}
+
+// TxShouldGetByIdWithEncryption returns a row by ID or error if not found within a transaction
+func (t *DXRawTable) TxShouldGetByIdWithEncryption(dtx *database.DXDatabaseTx, id int64, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.TxShouldSelectOneWithEncryption(dtx, nil, decryptedColumns, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
+}
+
+// GetByUidWithEncryption returns a row by UID with decrypted columns
+func (t *DXRawTable) GetByUidWithEncryption(l *log.DXLog, uid string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.SelectOneWithEncryption(l, nil, decryptedColumns, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+}
+
+// ShouldGetByUidWithEncryption returns a row by UID or error if not found
+func (t *DXRawTable) ShouldGetByUidWithEncryption(l *log.DXLog, uid string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.ShouldSelectOneWithEncryption(l, decryptedColumns, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+}
+
+// TxGetByUidWithEncryption returns a row by UID with decrypted columns within a transaction
+func (t *DXRawTable) TxGetByUidWithEncryption(dtx *database.DXDatabaseTx, uid string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.TxSelectOneWithEncryption(dtx, nil, decryptedColumns, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
+}
+
+// TxShouldGetByUidWithEncryption returns a row by UID or error if not found within a transaction
+func (t *DXRawTable) TxShouldGetByUidWithEncryption(dtx *database.DXDatabaseTx, uid string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.TxShouldSelectOneWithEncryption(dtx, nil, decryptedColumns, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
+}
+
+// GetByNameIdWithEncryption returns a row by NameId with decrypted columns
+func (t *DXRawTable) GetByNameIdWithEncryption(l *log.DXLog, nameId string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil, errors.New("FieldNameForRowNameId not configured")
+	}
+	return t.SelectOneWithEncryption(l, nil, decryptedColumns, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+}
+
+// ShouldGetByNameIdWithEncryption returns a row by NameId or error if not found
+func (t *DXRawTable) ShouldGetByNameIdWithEncryption(l *log.DXLog, nameId string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil, errors.New("FieldNameForRowNameId not configured")
+	}
+	return t.ShouldSelectOneWithEncryption(l, decryptedColumns, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+}
+
+// TxGetByNameIdWithEncryption returns a row by NameId with decrypted columns within a transaction
+func (t *DXRawTable) TxGetByNameIdWithEncryption(dtx *database.DXDatabaseTx, nameId string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil, errors.New("FieldNameForRowNameId not configured")
+	}
+	return t.TxSelectOneWithEncryption(dtx, nil, decryptedColumns, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
+}
+
+// TxShouldGetByNameIdWithEncryption returns a row by NameId or error if not found within a transaction
+func (t *DXRawTable) TxShouldGetByNameIdWithEncryption(dtx *database.DXDatabaseTx, nameId string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil, errors.New("FieldNameForRowNameId not configured")
+	}
+	return t.TxShouldSelectOneWithEncryption(dtx, nil, decryptedColumns, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
+}
+
+// GetByUtagWithEncryption returns a row by Utag with decrypted columns
+func (t *DXRawTable) GetByUtagWithEncryption(l *log.DXLog, utag string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	return t.SelectOneWithEncryption(l, nil, decryptedColumns, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+}
+
+// ShouldGetByUtagWithEncryption returns a row by Utag or error if not found
+func (t *DXRawTable) ShouldGetByUtagWithEncryption(l *log.DXLog, utag string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	return t.ShouldSelectOneWithEncryption(l, decryptedColumns, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+}
+
+// TxGetByUtagWithEncryption returns a row by Utag with decrypted columns within a transaction
+func (t *DXRawTable) TxGetByUtagWithEncryption(dtx *database.DXDatabaseTx, utag string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	return t.TxSelectOneWithEncryption(dtx, nil, decryptedColumns, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
+}
+
+// TxShouldGetByUtagWithEncryption returns a row by Utag or error if not found within a transaction
+func (t *DXRawTable) TxShouldGetByUtagWithEncryption(dtx *database.DXDatabaseTx, utag string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	if t.FieldNameForRowUtag == "" {
+		return nil, nil, errors.New("FieldNameForRowUtag not configured")
+	}
+	return t.TxShouldSelectOneWithEncryption(dtx, nil, decryptedColumns, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
 }
 
 // ============================================================================
@@ -228,67 +341,131 @@ func (t *DXRawTable) PagingWithEncryptionAndBuilder(
 // ============================================================================
 
 // TxSelectWithEncryption selects with decrypted columns within a transaction
-func (t *DXTable) TxSelectWithEncryption(
-	dtx *database.DXDatabaseTx,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-	where utils.JSON,
-	orderBy *string,
-	limit *int,
-) ([]utils.JSON, error) {
-	return t.DXRawTable.TxSelectWithEncryption(dtx, columns, decryptedColumns, where, orderBy, limit)
+func (t *DXTable) TxSelectWithEncryption(dtx *database.DXDatabaseTx, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
+	return t.DXRawTable.TxSelectWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
 // SelectWithEncryption selects with decrypted columns
-func (t *DXTable) SelectWithEncryption(
-	l *log.DXLog,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-	where utils.JSON,
-	orderBy *string,
-	limit *int,
-) ([]utils.JSON, error) {
-	return t.DXRawTable.SelectWithEncryption(l, columns, decryptedColumns, where, orderBy, limit)
+func (t *DXTable) SelectWithEncryption(l *log.DXLog, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
+	return t.DXRawTable.SelectWithEncryption(l, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
-// TxSelectOneWithEncryption selects one row with decrypted columns
-func (t *DXTable) TxSelectOneWithEncryption(
-	dtx *database.DXDatabaseTx,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-	where utils.JSON,
-) (utils.JSON, error) {
-	return t.DXRawTable.TxSelectOneWithEncryption(dtx, columns, decryptedColumns, where)
+// TxSelectOneWithEncryption selects one row with decrypted columns within a transaction
+func (t *DXTable) TxSelectOneWithEncryption(dtx *database.DXDatabaseTx, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxSelectOneWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, forUpdatePart)
 }
 
 // SelectOneWithEncryption selects one row with decrypted columns
-func (t *DXTable) SelectOneWithEncryption(
-	l *log.DXLog,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-	where utils.JSON,
-) (utils.JSON, error) {
-	return t.DXRawTable.SelectOneWithEncryption(l, columns, decryptedColumns, where)
+func (t *DXTable) SelectOneWithEncryption(l *log.DXLog, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.SelectOneWithEncryption(l, fieldNames, decryptedColumns, where, joinSQLPart, orderBy)
 }
 
-// TxSelectByIdWithEncryption selects by ID with decrypted columns
-func (t *DXTable) TxSelectByIdWithEncryption(
-	dtx *database.DXDatabaseTx,
-	id int64,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-) (utils.JSON, error) {
-	return t.DXRawTable.TxSelectByIdWithEncryption(dtx, id, columns, decryptedColumns)
+// TxShouldSelectOneWithEncryption selects one row or returns error if not found within a transaction
+func (t *DXTable) TxShouldSelectOneWithEncryption(dtx *database.DXDatabaseTx, fieldNames []string, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxShouldSelectOneWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, forUpdatePart)
+}
+
+// ShouldSelectOneWithEncryption selects one row or returns error if not found
+func (t *DXTable) ShouldSelectOneWithEncryption(l *log.DXLog, decryptedColumns []DecryptedColumn,
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.ShouldSelectOneWithEncryption(l, decryptedColumns, where, joinSQLPart, orderBy)
+}
+
+// TxSelectByIdWithEncryption selects by ID with decrypted columns within a transaction
+func (t *DXTable) TxSelectByIdWithEncryption(dtx *database.DXDatabaseTx, id int64, fieldNames []string,
+	decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxSelectByIdWithEncryption(dtx, id, fieldNames, decryptedColumns)
 }
 
 // SelectByIdWithEncryption selects by ID with decrypted columns
-func (t *DXTable) SelectByIdWithEncryption(
-	l *log.DXLog,
-	id int64,
-	columns []string,
-	decryptedColumns []DecryptedColumn,
-) (utils.JSON, error) {
-	return t.DXRawTable.SelectByIdWithEncryption(l, id, columns, decryptedColumns)
+func (t *DXTable) SelectByIdWithEncryption(l *log.DXLog, id int64, fieldNames []string,
+	decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.SelectByIdWithEncryption(l, id, fieldNames, decryptedColumns)
+}
+
+// GetByIdWithEncryption returns a row by ID with decrypted columns
+func (t *DXTable) GetByIdWithEncryption(l *log.DXLog, id int64, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.GetByIdWithEncryption(l, id, decryptedColumns)
+}
+
+// ShouldGetByIdWithEncryption returns a row by ID or error if not found
+func (t *DXTable) ShouldGetByIdWithEncryption(l *log.DXLog, id int64, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.ShouldGetByIdWithEncryption(l, id, decryptedColumns)
+}
+
+// TxGetByIdWithEncryption returns a row by ID with decrypted columns within a transaction
+func (t *DXTable) TxGetByIdWithEncryption(dtx *database.DXDatabaseTx, id int64, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxGetByIdWithEncryption(dtx, id, decryptedColumns)
+}
+
+// TxShouldGetByIdWithEncryption returns a row by ID or error if not found within a transaction
+func (t *DXTable) TxShouldGetByIdWithEncryption(dtx *database.DXDatabaseTx, id int64, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxShouldGetByIdWithEncryption(dtx, id, decryptedColumns)
+}
+
+// GetByUidWithEncryption returns a row by UID with decrypted columns
+func (t *DXTable) GetByUidWithEncryption(l *log.DXLog, uid string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.GetByUidWithEncryption(l, uid, decryptedColumns)
+}
+
+// ShouldGetByUidWithEncryption returns a row by UID or error if not found
+func (t *DXTable) ShouldGetByUidWithEncryption(l *log.DXLog, uid string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.ShouldGetByUidWithEncryption(l, uid, decryptedColumns)
+}
+
+// TxGetByUidWithEncryption returns a row by UID with decrypted columns within a transaction
+func (t *DXTable) TxGetByUidWithEncryption(dtx *database.DXDatabaseTx, uid string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxGetByUidWithEncryption(dtx, uid, decryptedColumns)
+}
+
+// TxShouldGetByUidWithEncryption returns a row by UID or error if not found within a transaction
+func (t *DXTable) TxShouldGetByUidWithEncryption(dtx *database.DXDatabaseTx, uid string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxShouldGetByUidWithEncryption(dtx, uid, decryptedColumns)
+}
+
+// GetByNameIdWithEncryption returns a row by NameId with decrypted columns
+func (t *DXTable) GetByNameIdWithEncryption(l *log.DXLog, nameId string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.GetByNameIdWithEncryption(l, nameId, decryptedColumns)
+}
+
+// ShouldGetByNameIdWithEncryption returns a row by NameId or error if not found
+func (t *DXTable) ShouldGetByNameIdWithEncryption(l *log.DXLog, nameId string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.ShouldGetByNameIdWithEncryption(l, nameId, decryptedColumns)
+}
+
+// TxGetByNameIdWithEncryption returns a row by NameId with decrypted columns within a transaction
+func (t *DXTable) TxGetByNameIdWithEncryption(dtx *database.DXDatabaseTx, nameId string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxGetByNameIdWithEncryption(dtx, nameId, decryptedColumns)
+}
+
+// TxShouldGetByNameIdWithEncryption returns a row by NameId or error if not found within a transaction
+func (t *DXTable) TxShouldGetByNameIdWithEncryption(dtx *database.DXDatabaseTx, nameId string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxShouldGetByNameIdWithEncryption(dtx, nameId, decryptedColumns)
+}
+
+// GetByUtagWithEncryption returns a row by Utag with decrypted columns
+func (t *DXTable) GetByUtagWithEncryption(l *log.DXLog, utag string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.GetByUtagWithEncryption(l, utag, decryptedColumns)
+}
+
+// ShouldGetByUtagWithEncryption returns a row by Utag or error if not found
+func (t *DXTable) ShouldGetByUtagWithEncryption(l *log.DXLog, utag string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.ShouldGetByUtagWithEncryption(l, utag, decryptedColumns)
+}
+
+// TxGetByUtagWithEncryption returns a row by Utag with decrypted columns within a transaction
+func (t *DXTable) TxGetByUtagWithEncryption(dtx *database.DXDatabaseTx, utag string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxGetByUtagWithEncryption(dtx, utag, decryptedColumns)
+}
+
+// TxShouldGetByUtagWithEncryption returns a row by Utag or error if not found within a transaction
+func (t *DXTable) TxShouldGetByUtagWithEncryption(dtx *database.DXDatabaseTx, utag string, decryptedColumns []DecryptedColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.TxShouldGetByUtagWithEncryption(dtx, utag, decryptedColumns)
 }
 
 // ============================================================================
@@ -898,9 +1075,13 @@ func decryptExpression(dbType base.DXDatabaseType, fieldName string, sessionKey 
 func buildSelectColumns(dbType base.DXDatabaseType, columns []string, decryptedColumns []DecryptedColumn) string {
 	var selectCols []string
 
-	// Add regular columns
-	for _, col := range columns {
-		selectCols = append(selectCols, col)
+	// Add regular columns (or * if empty)
+	if len(columns) == 0 {
+		selectCols = append(selectCols, "*")
+	} else {
+		for _, col := range columns {
+			selectCols = append(selectCols, col)
+		}
 	}
 
 	// Add decrypted columns
@@ -918,19 +1099,53 @@ func buildSelectColumns(dbType base.DXDatabaseType, columns []string, decryptedC
 	return strings.Join(selectCols, ", ")
 }
 
+// orderByToString converts DXDatabaseTableFieldsOrderBy to string
+func orderByToString(orderBy db.DXDatabaseTableFieldsOrderBy) string {
+	if orderBy == nil || len(orderBy) == 0 {
+		return ""
+	}
+	var parts []string
+	for field, direction := range orderBy {
+		parts = append(parts, fmt.Sprintf("%s %s", field, direction))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// limitToInt converts limit any to int
+func limitToInt(limit any) int {
+	if limit == nil {
+		return 0
+	}
+	switch v := limit.(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case int32:
+		return int(v)
+	case float64:
+		return int(v)
+	default:
+		return 0
+	}
+}
+
 // executeEncryptedSelect builds and executes SELECT with decrypted columns
 func executeEncryptedSelect(
 	dtx *database.DXDatabaseTx,
 	tableName string,
+	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	dbType base.DXDatabaseType,
-	columns []string,
+	fieldNames []string,
 	decryptedColumns []DecryptedColumn,
 	where utils.JSON,
-	orderBy *string,
-	limit *int,
-) ([]utils.JSON, error) {
+	joinSQLPart any,
+	orderBy db.DXDatabaseTableFieldsOrderBy,
+	limit any,
+	forUpdatePart any,
+) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 
-	selectCols := buildSelectColumns(dbType, columns, decryptedColumns)
+	selectCols := buildSelectColumns(dbType, fieldNames, decryptedColumns)
 
 	// Build WHERE clause
 	var whereClauses []string
@@ -946,30 +1161,58 @@ func executeEncryptedSelect(
 	// Build SQL
 	sqlStr := fmt.Sprintf("SELECT %s FROM %s", selectCols, tableName)
 
+	// Add JOIN if specified
+	if joinSQLPart != nil {
+		if joinStr, ok := joinSQLPart.(string); ok && joinStr != "" {
+			sqlStr += " " + joinStr
+		}
+	}
+
 	if len(whereClauses) > 0 {
 		sqlStr += " WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
-	if orderBy != nil && *orderBy != "" {
-		sqlStr += " ORDER BY " + *orderBy
+	orderByStr := orderByToString(orderBy)
+	if orderByStr != "" {
+		sqlStr += " ORDER BY " + orderByStr
 	}
 
-	if limit != nil && *limit > 0 {
-		sqlStr += fmt.Sprintf(" LIMIT %d", *limit)
+	limitInt := limitToInt(limit)
+	if limitInt > 0 {
+		sqlStr += fmt.Sprintf(" LIMIT %d", limitInt)
+	}
+
+	// Add FOR UPDATE if specified
+	if forUpdatePart != nil {
+		if forUpdateStr, ok := forUpdatePart.(string); ok && forUpdateStr != "" {
+			sqlStr += " " + forUpdateStr
+		} else if forUpdateBool, ok := forUpdatePart.(bool); ok && forUpdateBool {
+			sqlStr += " FOR UPDATE"
+		}
 	}
 
 	// Execute
 	rows, err := dtx.Tx.Queryx(sqlStr, args...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "ENCRYPTED_SELECT_ERROR")
+		return nil, nil, errors.Wrapf(err, "ENCRYPTED_SELECT_ERROR")
 	}
 	defer rows.Close()
+
+	// Get column info
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "ENCRYPTED_SELECT_COLUMNS_ERROR")
+	}
+
+	rowsInfo := &db.DXDatabaseTableRowsInfo{
+		Columns: columns,
+	}
 
 	var results []utils.JSON
 	for rows.Next() {
 		row := make(map[string]any)
 		if err := rows.MapScan(row); err != nil {
-			return nil, errors.Wrapf(err, "ENCRYPTED_SELECT_SCAN_ERROR")
+			return rowsInfo, nil, errors.Wrapf(err, "ENCRYPTED_SELECT_SCAN_ERROR")
 		}
 		// Convert []byte to string for decrypted text fields
 		for k, v := range row {
@@ -980,7 +1223,7 @@ func executeEncryptedSelect(
 		results = append(results, row)
 	}
 
-	return results, nil
+	return rowsInfo, results, nil
 }
 
 // executeEncryptedPaging builds and executes paging query with decrypted columns
