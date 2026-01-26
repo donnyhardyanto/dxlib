@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -13,6 +14,38 @@ import (
 // DXRawTable Auto Encryption Methods
 // Uses table's EncryptedColumnDefs and DecryptedColumnDefs
 // ============================================================================
+
+// TxSetDecryptionSessionKeys sets the PostgreSQL session keys needed for decryption within a transaction
+// Call this before executing raw queries on views that use pgp_sym_decrypt
+func (t *DXRawTable) TxSetDecryptionSessionKeys(dtx *database.DXDatabaseTx) error {
+	if len(t.DecryptedColumnDefs) == 0 {
+		log.Log.Debugf("TxSetDecryptionSessionKeys: no DecryptedColumnDefs for table %s", t.TableName())
+		return nil
+	}
+
+	log.Log.Debugf("TxSetDecryptionSessionKeys: setting keys for table %s with %d defs", t.TableName(), len(t.DecryptedColumnDefs))
+
+	// Collect unique session keys
+	sessionKeys := make(map[string]string)
+	for _, def := range t.DecryptedColumnDefs {
+		if def.SecureMemoryKey != "" && def.SessionKey != "" {
+			sessionKeys[def.SessionKey] = def.SecureMemoryKey
+			log.Log.Debugf("TxSetDecryptionSessionKeys: will set session key %s from memory key %s", def.SessionKey, def.SecureMemoryKey)
+		}
+	}
+
+	// Set each session key
+	for sessionKey, memoryKey := range sessionKeys {
+		log.Log.Debugf("TxSetDecryptionSessionKeys: setting session key %s from secure memory %s", sessionKey, memoryKey)
+		if err := dtx.TxSetSessionKeyFromSecureMemory(memoryKey, sessionKey); err != nil {
+			log.Log.Errorf(err, "TxSetDecryptionSessionKeys: failed to set session key %s from memory key %s", sessionKey, memoryKey)
+			return errors.Wrapf(err, "SET_DECRYPTION_SESSION_KEY_ERROR:%s", sessionKey)
+		}
+		log.Log.Debugf("TxSetDecryptionSessionKeys: successfully set session key %s", sessionKey)
+	}
+
+	return nil
+}
 
 // ============================================================================
 // Auto Insert Methods
@@ -235,6 +268,69 @@ func (t *DXRawTable) SelectByIdAuto(
 	return t.SelectOneAuto(l, columns, utils.JSON{t.FieldNameForRowId: id})
 }
 
+// GetByIdAuto returns a row by ID using table's DecryptedColumnDefs
+func (t *DXRawTable) GetByIdAuto(l *log.DXLog, id int64) (utils.JSON, error) {
+	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowId: id})
+}
+
+// ShouldGetByIdAuto returns a row by ID or error if not found, using table's DecryptedColumnDefs
+func (t *DXRawTable) ShouldGetByIdAuto(l *log.DXLog, id int64) (utils.JSON, error) {
+	row, err := t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowId: id})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
+// GetByNameIdAuto returns a row by NameId using table's DecryptedColumnDefs
+func (t *DXRawTable) GetByNameIdAuto(l *log.DXLog, nameId string) (utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil
+	}
+	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowNameId: nameId})
+}
+
+// ShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's DecryptedColumnDefs
+func (t *DXRawTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string) (utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil
+	}
+	row, err := t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowNameId: nameId})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
+// GetByUidAuto returns a row by UID using table's DecryptedColumnDefs
+func (t *DXRawTable) GetByUidAuto(l *log.DXLog, uid string) (utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUid: uid})
+}
+
+// ShouldGetByUidAuto returns a row by UID or error if not found, using table's DecryptedColumnDefs
+func (t *DXRawTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, errors.New("FieldNameForRowUid not configured")
+	}
+	row, err := t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUid: uid})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s:uid=%s", t.ListViewNameId, uid)
+	}
+	return row, nil
+}
+
 // ============================================================================
 // DXTable Auto Methods (with audit fields)
 // ============================================================================
@@ -375,4 +471,149 @@ func (t *DXTable) SelectByIdAuto(
 	columns []string,
 ) (utils.JSON, error) {
 	return t.DXRawTable.SelectByIdAuto(l, id, columns)
+}
+
+// GetByIdAuto returns a row by ID using table's DecryptedColumnDefs
+func (t *DXTable) GetByIdAuto(l *log.DXLog, id int64) (utils.JSON, error) {
+	return t.DXRawTable.GetByIdAuto(l, id)
+}
+
+// ShouldGetByIdAuto returns a row by ID or error if not found, using table's DecryptedColumnDefs
+func (t *DXTable) ShouldGetByIdAuto(l *log.DXLog, id int64) (utils.JSON, error) {
+	return t.DXRawTable.ShouldGetByIdAuto(l, id)
+}
+
+// GetByIdNotDeletedAuto returns a non-deleted row by ID using table's DecryptedColumnDefs
+func (t *DXTable) GetByIdNotDeletedAuto(l *log.DXLog, id int64) (utils.JSON, error) {
+	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowId: id})
+}
+
+// ShouldGetByIdNotDeletedAuto returns a non-deleted row by ID or error if not found
+func (t *DXTable) ShouldGetByIdNotDeletedAuto(l *log.DXLog, id int64) (utils.JSON, error) {
+	row, err := t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowId: id})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
+// GetByNameIdAuto returns a row by NameId using table's DecryptedColumnDefs
+func (t *DXTable) GetByNameIdAuto(l *log.DXLog, nameId string) (utils.JSON, error) {
+	return t.DXRawTable.GetByNameIdAuto(l, nameId)
+}
+
+// ShouldGetByNameIdAuto returns a row by NameId or error if not found
+func (t *DXTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string) (utils.JSON, error) {
+	return t.DXRawTable.ShouldGetByNameIdAuto(l, nameId)
+}
+
+// GetByUidAuto returns a row by UID using table's DecryptedColumnDefs
+func (t *DXTable) GetByUidAuto(l *log.DXLog, uid string) (utils.JSON, error) {
+	return t.DXRawTable.GetByUidAuto(l, uid)
+}
+
+// ShouldGetByUidAuto returns a row by UID or error if not found
+func (t *DXTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (utils.JSON, error) {
+	return t.DXRawTable.ShouldGetByUidAuto(l, uid)
+}
+
+// GetByUidNotDeletedAuto returns a non-deleted row by UID using table's DecryptedColumnDefs
+func (t *DXTable) GetByUidNotDeletedAuto(l *log.DXLog, uid string) (utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, errors.New("FieldNameForRowUid not configured")
+	}
+	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUid: uid})
+}
+
+// ShouldGetByUidNotDeletedAuto returns a non-deleted row by UID or error if not found
+func (t *DXTable) ShouldGetByUidNotDeletedAuto(l *log.DXLog, uid string) (utils.JSON, error) {
+	if t.FieldNameForRowUid == "" {
+		return nil, errors.New("FieldNameForRowUid not configured")
+	}
+	row, err := t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUid: uid})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s:uid=%s", t.ListViewNameId, uid)
+	}
+	return row, nil
+}
+
+// GetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's DecryptedColumnDefs
+func (t *DXTable) GetByNameIdNotDeletedAuto(l *log.DXLog, nameId string) (utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil
+	}
+	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowNameId: nameId})
+}
+
+// ShouldGetByNameIdNotDeletedAuto returns a non-deleted row by NameId or error if not found
+func (t *DXTable) ShouldGetByNameIdNotDeletedAuto(l *log.DXLog, nameId string) (utils.JSON, error) {
+	if t.FieldNameForRowNameId == "" {
+		return nil, nil
+	}
+	row, err := t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowNameId: nameId})
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.Errorf("ROW_SHOULD_EXIST_BUT_NOT_FOUND:%s", t.ListViewNameId)
+	}
+	return row, nil
+}
+
+// ============================================================================
+// DXRawTable Paging Auto Methods
+// ============================================================================
+
+// PagingAuto executes paging query using table's DecryptedColumnDefs
+// It sets up encryption session keys before executing the query
+func (t *DXRawTable) PagingAuto(
+	l *log.DXLog,
+	rowPerPage, pageIndex int64,
+	whereClause string,
+	whereArgs utils.JSON,
+	orderBy string,
+) (*PagingResult, error) {
+	if err := t.EnsureDatabase(); err != nil {
+		return nil, err
+	}
+
+	// If no decryption needed, use regular paging
+	if len(t.DecryptedColumnDefs) == 0 {
+		return t.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, whereArgs)
+	}
+
+	// Convert DecryptedColumnDefs to DecryptedColumn
+	decryptedColumns := make([]DecryptedColumn, len(t.DecryptedColumnDefs))
+	for i, def := range t.DecryptedColumnDefs {
+		decryptedColumns[i] = DecryptedColumn{
+			FieldName:       def.FieldName,
+			AliasName:       def.AliasName,
+			SecureMemoryKey: def.SecureMemoryKey,
+			SessionKey:      def.SessionKey,
+			ViewHasDecrypt:  def.ViewHasDecrypt,
+		}
+	}
+
+	return t.PagingWithEncryption(l, nil, decryptedColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
+}
+
+// ============================================================================
+// DXTable Paging Auto Methods
+// ============================================================================
+
+// PagingAuto executes paging query using table's DecryptedColumnDefs
+func (t *DXTable) PagingAuto(
+	l *log.DXLog,
+	rowPerPage, pageIndex int64,
+	whereClause string,
+	whereArgs utils.JSON,
+	orderBy string,
+) (*PagingResult, error) {
+	return t.DXRawTable.PagingAuto(l, rowPerPage, pageIndex, whereClause, whereArgs, orderBy)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/database/models"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/secure_memory"
 )
 
@@ -27,7 +28,15 @@ func (dtx *DXDatabaseTx) TxSetSessionKey(dbType base.DXDatabaseType, sourceType 
 	// Get the value based on source type
 	value, err := resolveKeyValue(sourceType, sourceValue)
 	if err != nil {
+		log.Log.Errorf(err, "TxSetSessionKey: failed to resolve value for session key %s from source %s (type=%d)", sessionKey, sourceValue, sourceType)
 		return errors.Wrapf(err, "TX_SET_SESSION_KEY_RESOLVE_VALUE_ERROR:%s", sessionKey)
+	}
+
+	// Log value status (not the actual value for security)
+	if value == "" {
+		log.Log.Warnf("TxSetSessionKey: resolved value is EMPTY for session key %s from source %s", sessionKey, sourceValue)
+	} else {
+		log.Log.Debugf("TxSetSessionKey: resolved value (len=%d) for session key %s from source %s", len(value), sessionKey, sourceValue)
 	}
 
 	// Validate session key
@@ -38,9 +47,11 @@ func (dtx *DXDatabaseTx) TxSetSessionKey(dbType base.DXDatabaseType, sourceType 
 	// Set the session config on the transaction
 	err = txSetSessionConfig(dtx, dbType, sessionKey, value)
 	if err != nil {
+		log.Log.Errorf(err, "TxSetSessionKey: failed to set session config %s", sessionKey)
 		return errors.Wrapf(err, "TX_SET_SESSION_KEY_SET_CONFIG_ERROR:%s", sessionKey)
 	}
 
+	log.Log.Debugf("TxSetSessionKey: successfully set session key %s", sessionKey)
 	return nil
 }
 

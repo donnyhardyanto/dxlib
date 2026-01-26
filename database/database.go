@@ -545,7 +545,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		}
 		err = callback(tx)
 		if err != nil {
-			log.Errorf(err, "TX_ERROR_IN_CALLBACK: (%v)", err.Error())
+			log.Errorf(err, "TX_ERROR_IN_CALLBACK: %+v", err)
 			errTx := tx.Rollback()
 			if errTx != nil {
 				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK(%v)", errTx.Error())

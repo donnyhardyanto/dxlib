@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/base"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
-	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 // FieldsOrderBy is a map that defines ordering directions for fields
@@ -271,6 +271,9 @@ func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableF
 	}
 
 	rowsInfo, r, err = QueryRows(db, fieldTypeMapping, s, wKV)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to execute SELECT query=%s value=%+v", s, wKV)
+	}
 	return rowsInfo, r, err
 }
 
@@ -559,8 +562,8 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpression string, whereAnd
 
 	// Execute the SELECT query with a COUNT expression
 	rowsInfo, rows, err := BaseSelect(db, effectiveTable, nil, []string{effectiveCountExpression},
-		whereAndFieldNameValues, joinSQLPart, nil, nil, nil, nil,
-		groupByFields, havingClause, withCTE)
+		whereAndFieldNameValues, joinSQLPart, groupByFields, nil, nil, nil,
+		nil, nil, withCTE)
 
 	if err != nil {
 		return 0, err

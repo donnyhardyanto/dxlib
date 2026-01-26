@@ -22,13 +22,13 @@ func (d *DXDatabase) Select(tableName string, fieldTypeMapping db.DXDatabaseTabl
 		if err == nil {
 			return rowsInfo, resultDataRows, nil
 		}
-		log.Log.Warnf("SELECT_ERROR:%s=%v", tableName, err.Error())
 		if !db.IsConnectionError(err) {
+			log.Log.Errorf(err, "SELECT_ERROR:%s=%+v", tableName, err)
 			return nil, nil, err
 		}
 		err = d.CheckConnectionAndReconnect()
 		if err != nil {
-			log.Log.Warnf("RECONNECT_ERROR:%s", err.Error())
+			log.Log.Warnf("RECONNECT_ERROR:%+v", err)
 		}
 	}
 	return nil, nil, err
@@ -73,13 +73,13 @@ func (d *DXDatabase) Count(tableName string, whereAndFieldNameValues utils.JSON,
 		if err == nil {
 			return count, nil
 		}
-		log.Log.Warnf("COUNT_ERROR:%s=%v", tableName, err.Error())
+		log.Log.Warnf("COUNT_ERROR:%s=%+v", tableName, err)
 		if !IsConnectionError(err) {
 			return 0, err
 		}
 		err = d.CheckConnectionAndReconnect()
 		if err != nil {
-			log.Log.Warnf("RECONNECT_ERROR:TRY_COUNT=%d,MSG=%s", tryCount, err.Error())
+			log.Log.Warnf("RECONNECT_ERROR:TRY_COUNT=%d,ERR=%+v", tryCount, err)
 		}
 	}
 	return 0, err
@@ -99,13 +99,13 @@ func (d *DXDatabase) SelectPaging(pageIndex int64, rowsPerPage int64, tableName 
 		if err == nil {
 			return 0, nil, nil, err
 		}
-		log.Log.Warnf("COUNT_ERROR:%s=%v", tableName, err.Error())
+		log.Log.Warnf("PAGING_ERROR:%s=%+v", tableName, err)
 		if !IsConnectionError(err) {
 			return 0, nil, nil, err
 		}
 		err = d.CheckConnectionAndReconnect()
 		if err != nil {
-			log.Log.Warnf("RECONNECT_ERROR:TRY_COUNT=%d,MSG=%s", tryCount, err.Error())
+			log.Log.Warnf("RECONNECT_ERROR:TRY_COUNT=%d,ERR=%+v", tryCount, err)
 		}
 	}
 	return totalRowCount, rowsInfo, resultDataRows, err

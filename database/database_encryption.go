@@ -514,12 +514,33 @@ func hashExpr(dbType base.DXDatabaseType, argIndex int, saltSessionKey string) s
 func buildSelectCols(dbType base.DXDatabaseType, columns []string, decryptedDefs []DecryptedColumnDef) string {
 	var selectCols []string
 
-	// Add regular columns
-	selectCols = append(selectCols, columns...)
+	// Add regular columns - use * if no specific columns requested
+	if len(columns) == 0 {
+		// Check if all decrypted columns come from view (ViewHasDecrypt=true)
+		// If so, * already includes them, so just return *
+		allFromView := true
+		for _, def := range decryptedDefs {
+			if !def.ViewHasDecrypt {
+				allFromView = false
+				break
+			}
+		}
+		if allFromView {
+			return "*"
+		}
+		// Some decrypted columns need explicit decryption expression
+		selectCols = append(selectCols, "*")
+	} else {
+		selectCols = append(selectCols, columns...)
+	}
 
-	// Add decrypted columns
+	// Add decrypted columns (only those not already in view)
 	for _, def := range decryptedDefs {
 		if def.ViewHasDecrypt {
+			// Skip if we're using *, as view already has this column
+			if len(columns) == 0 {
+				continue
+			}
 			selectCols = append(selectCols, def.AliasName)
 		} else {
 			expr := decryptExpr(dbType, def.FieldName, def.SessionKey)
