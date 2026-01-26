@@ -32,7 +32,8 @@ type DXDatabaseEventFunc func(dm *DXDatabase, err error)
 
 type DXDatabaseTx struct {
 	*sqlx.Tx
-	Log *log.DXLog
+	Database *DXDatabase
+	Log      *log.DXLog
 }
 type DXDatabaseTxCallback func(dtx *DXDatabaseTx) (err error)
 
@@ -101,8 +102,9 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 			return nil, err
 		}
 		dtx = &DXDatabaseTx{
-			Tx:  tx,
-			Log: &log.Log,
+			Tx:       tx,
+			Database: d,
+			Log:      &log.Log,
 		}
 		return dtx, nil
 	default:
@@ -116,8 +118,9 @@ func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel)
 		return nil, err
 	}
 	dtx = &DXDatabaseTx{
-		Tx:  tx,
-		Log: &log.Log,
+		Tx:       tx,
+		Database: d,
+		Log:      &log.Log,
 	}
 	return dtx, nil
 }
@@ -571,8 +574,9 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		return err
 	}
 	dtx := &DXDatabaseTx{
-		Tx:  tx,
-		Log: log,
+		Tx:       tx,
+		Database: d,
+		Log:      log,
 	}
 	err = callback(dtx)
 	if err != nil {

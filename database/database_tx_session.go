@@ -86,6 +86,17 @@ func parseOracleKey(key string) (namespace string, attribute string) {
 	return
 }
 
+// TxSetSessionKeyFromSecureMemory is a convenience method to set session key from secure memory
+// This simplifies the common case of loading encryption keys from secure memory into DB session
+// DatabaseType is obtained from dtx.Database.DatabaseType
+//
+// Parameters:
+//   - secureMemoryKey: the key name in secure memory (previously stored via secure_memory.Manager.StoreEnclave)
+//   - sessionKey: the database session config key name (e.g., "app.encryption_key")
+func (dtx *DXDatabaseTx) TxSetSessionKeyFromSecureMemory(secureMemoryKey string, sessionKey string) error {
+	return dtx.TxSetSessionKey(dtx.Database.DatabaseType, models.ModelDBKeySourceSecureMemory, secureMemoryKey, sessionKey)
+}
+
 // resolveKeyValue gets the actual value based on source type
 func resolveKeyValue(sourceType models.ModelDBKeySource, sourceValue string) (string, error) {
 	switch sourceType {

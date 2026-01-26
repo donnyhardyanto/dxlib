@@ -366,6 +366,10 @@ type DXRawTable struct {
 	ResponseEnvelopeObjectName string
 	FieldTypeMapping           db.DXDatabaseTableFieldTypeMapping
 	FieldMaxLengths            map[string]int // Maximum lengths for fields (for truncation)
+
+	// Encryption definitions for automatic encryption/decryption
+	EncryptedColumnDefs []database.EncryptedColumnDef // for INSERT/UPDATE
+	DecryptedColumnDefs []database.DecryptedColumnDef // for SELECT
 }
 
 // EnsureDatabase ensures database connection is initialized
@@ -2345,6 +2349,29 @@ func NewDXTable3Simple(databaseNameId, tableName, resultObjectName, listViewName
 			FieldNameForRowUid:         fieldNameForRowUid,
 			FieldNameForRowNameId:      fieldNameForRowNameId,
 			ResponseEnvelopeObjectName: responseEnvelopeObjectName,
+		},
+	}
+}
+
+// NewDXTable3WithEncryption creates a DXTable with encryption/decryption definitions
+func NewDXTable3WithEncryption(
+	databaseNameId, tableName, resultObjectName, listViewNameId,
+	fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string,
+	encryptedColumnDefs []database.EncryptedColumnDef,
+	decryptedColumnDefs []database.DecryptedColumnDef,
+) *DXTable {
+	return &DXTable{
+		DXRawTable: DXRawTable{
+			DatabaseNameId:             databaseNameId,
+			TableNameDirect:            tableName,
+			ResultObjectName:           resultObjectName,
+			ListViewNameId:             listViewNameId,
+			FieldNameForRowId:          fieldNameForRowId,
+			FieldNameForRowUid:         fieldNameForRowUid,
+			FieldNameForRowNameId:      fieldNameForRowNameId,
+			ResponseEnvelopeObjectName: responseEnvelopeObjectName,
+			EncryptedColumnDefs:        encryptedColumnDefs,
+			DecryptedColumnDefs:        decryptedColumnDefs,
 		},
 	}
 }
