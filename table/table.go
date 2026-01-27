@@ -368,8 +368,8 @@ type DXRawTable struct {
 	FieldMaxLengths            map[string]int // Maximum lengths for fields (for truncation)
 
 	// Encryption definitions for automatic encryption/decryption
-	EncryptedColumnDefs []database.EncryptedColumnDef // for INSERT/UPDATE
-	DecryptedColumnDefs []database.DecryptedColumnDef // for SELECT
+	EncryptionKeyDefs    []*database.EncryptionKeyDef   // session keys only (for views that already handle decryption)
+	EncryptionColumnDefs []database.EncryptionColumnDef // for INSERT/UPDATE/SELECT encryption/decryption
 }
 
 // EnsureDatabase ensures database connection is initialized
@@ -2158,15 +2158,15 @@ func (t *DXTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 // Table3 Manager - Registry for tables
 // ============================================================================
 
-// DXTable3Manager manages a collection of DXTable instances
-type DXTable3Manager struct {
+// DXTableManager manages a collection of DXTable instances
+type DXTableManager struct {
 	Tables                               map[string]*DXTable
 	RawTables                            map[string]*DXRawTable
 	StandardOperationResponsePossibility map[string]map[string]*api.DXAPIEndPointResponsePossibility
 }
 
 // ConnectAll connects all registered tables to their databases
-func (tm *DXTable3Manager) ConnectAll() error {
+func (tm *DXTableManager) ConnectAll() error {
 	for _, t := range tm.Tables {
 		err := t.EnsureDatabase()
 		if err != nil {
@@ -2183,7 +2183,7 @@ func (tm *DXTable3Manager) ConnectAll() error {
 }
 
 // Manager is the global table3 manager instance
-var Manager = DXTable3Manager{
+var Manager = DXTableManager{
 	Tables:    make(map[string]*DXTable),
 	RawTables: make(map[string]*DXRawTable),
 	StandardOperationResponsePossibility: map[string]map[string]*api.DXAPIEndPointResponsePossibility{
@@ -2324,27 +2324,27 @@ var Manager = DXTable3Manager{
 }
 
 // RegisterTable registers a DXTable with the manager
-func (m *DXTable3Manager) RegisterTable(name string, table *DXTable) {
+func (m *DXTableManager) RegisterTable(name string, table *DXTable) {
 	m.Tables[name] = table
 }
 
 // RegisterRawTable registers a DXRawTable with the manager
-func (m *DXTable3Manager) RegisterRawTable(name string, table *DXRawTable) {
+func (m *DXTableManager) RegisterRawTable(name string, table *DXRawTable) {
 	m.RawTables[name] = table
 }
 
 // GetTable returns a registered DXTable by name
-func (m *DXTable3Manager) GetTable(name string) *DXTable {
+func (m *DXTableManager) GetTable(name string) *DXTable {
 	return m.Tables[name]
 }
 
 // GetRawTable returns a registered DXRawTable by name
-func (m *DXTable3Manager) GetRawTable(name string) *DXRawTable {
+func (m *DXTableManager) GetRawTable(name string) *DXRawTable {
 	return m.RawTables[name]
 }
 
-// NewDXRawTable3 creates a new DXRawTable wrapping a models.ModelDBTable
-func NewDXRawTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXRawTable {
+// NewDXRawTable creates a new DXRawTable wrapping a models.ModelDBTable
+func NewDXRawTable(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:    databaseNameId,
 		DBTable:           dbTable,
@@ -2352,8 +2352,8 @@ func NewDXRawTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNa
 	}
 }
 
-// NewDXRawTable3WithView creates a new DXRawTable with a custom list view
-func NewDXRawTable3WithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXRawTable {
+// NewDXRawTableWithView creates a new DXRawTable with a custom list view
+func NewDXRawTableWithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:    databaseNameId,
 		DBTable:           dbTable,
@@ -2362,8 +2362,8 @@ func NewDXRawTable3WithView(databaseNameId string, dbTable *models.ModelDBTable,
 	}
 }
 
-// NewDXTable3 creates a new DXTable wrapping a models.ModelDBTable
-func NewDXTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXTable {
+// NewDXTable creates a new DXTable wrapping a models.ModelDBTable
+func NewDXTable(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:    databaseNameId,
@@ -2373,8 +2373,8 @@ func NewDXTable3(databaseNameId string, dbTable *models.ModelDBTable, fieldNameF
 	}
 }
 
-// NewDXTable3WithView creates a new DXTable with a custom list view
-func NewDXTable3WithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXTable {
+// NewDXTableWithView creates a new DXTable with a custom list view
+func NewDXTableWithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:    databaseNameId,
@@ -2389,8 +2389,8 @@ func NewDXTable3WithView(databaseNameId string, dbTable *models.ModelDBTable, fi
 // Simple Factory Functions - without models.ModelDBTable (for gradual migration)
 // ============================================================================
 
-// NewDXRawTable3Simple creates a DXRawTable with direct table name (no models.ModelDBTable needed)
-func NewDXRawTable3Simple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string) *DXRawTable {
+// NewDXRawTableSimple creates a DXRawTable with direct table name (no models.ModelDBTable needed)
+func NewDXRawTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:             databaseNameId,
 		TableNameDirect:            tableName,
@@ -2400,11 +2400,12 @@ func NewDXRawTable3Simple(databaseNameId, tableName, resultObjectName, listViewN
 		FieldNameForRowUid:         fieldNameForRowUid,
 		FieldNameForRowNameId:      fieldNameForRowNameId,
 		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
+		EncryptionKeyDefs:          encryptionKeyDefs,
 	}
 }
 
-// NewDXTable3Simple creates a DXTable with direct table name (no models.ModelDBTable needed)
-func NewDXTable3Simple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string) *DXTable {
+// NewDXTableSimple creates a DXTable with direct table name (no models.ModelDBTable needed)
+func NewDXTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:             databaseNameId,
@@ -2415,16 +2416,17 @@ func NewDXTable3Simple(databaseNameId, tableName, resultObjectName, listViewName
 			FieldNameForRowUid:         fieldNameForRowUid,
 			FieldNameForRowNameId:      fieldNameForRowNameId,
 			ResponseEnvelopeObjectName: responseEnvelopeObjectName,
+			EncryptionKeyDefs:          encryptionKeyDefs,
 		},
 	}
 }
 
-// NewDXTable3WithEncryption creates a DXTable with encryption/decryption definitions
-func NewDXTable3WithEncryption(
+// NewDXTableWithEncryption creates a DXTable with encryption/decryption definitions
+func NewDXTableWithEncryption(
 	databaseNameId, tableName, resultObjectName, listViewNameId,
 	fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string,
-	encryptedColumnDefs []database.EncryptedColumnDef,
-	decryptedColumnDefs []database.DecryptedColumnDef,
+	encryptionKeyDefs []*database.EncryptionKeyDef,
+	encryptionColumnDefs []database.EncryptionColumnDef,
 ) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
@@ -2436,8 +2438,8 @@ func NewDXTable3WithEncryption(
 			FieldNameForRowUid:         fieldNameForRowUid,
 			FieldNameForRowNameId:      fieldNameForRowNameId,
 			ResponseEnvelopeObjectName: responseEnvelopeObjectName,
-			EncryptedColumnDefs:        encryptedColumnDefs,
-			DecryptedColumnDefs:        decryptedColumnDefs,
+			EncryptionKeyDefs:          encryptionKeyDefs,
+			EncryptionColumnDefs:       encryptionColumnDefs,
 		},
 	}
 }
@@ -2451,8 +2453,8 @@ type DXPropertyTable struct {
 	DXTable
 }
 
-// NewDXPropertyTable3Simple creates a DXPropertyTable with direct table name
-func NewDXPropertyTable3Simple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string) *DXPropertyTable {
+// NewDXPropertyTableSimple creates a DXPropertyTable with direct table name
+func NewDXPropertyTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef) *DXPropertyTable {
 	return &DXPropertyTable{
 		DXTable: DXTable{
 			DXRawTable: DXRawTable{
@@ -2464,6 +2466,7 @@ func NewDXPropertyTable3Simple(databaseNameId, tableName, resultObjectName, list
 				FieldNameForRowUid:         fieldNameForRowUid,
 				FieldNameForRowNameId:      fieldNameForRowNameId,
 				ResponseEnvelopeObjectName: responseEnvelopeObjectName,
+				EncryptionKeyDefs:          encryptionKeyDefs,
 			},
 		},
 	}

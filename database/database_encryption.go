@@ -11,27 +11,28 @@ import (
 )
 
 // ============================================================================
-// Encryption/Decryption Column Definitions
+// Encryption Key / Column Definitions
 // ============================================================================
 
-// EncryptedColumnDef defines encryption config for INSERT/UPDATE
-type EncryptedColumnDef struct {
-	FieldName          string // DB column name (e.g., "fullname_encrypted")
-	DataFieldName      string // field name in data JSON (e.g., "fullname")
-	SecureMemoryKey    string // key name in secure memory
-	SessionKey         string // DB session key name (e.g., "app.encryption_key")
-	HashFieldName      string // optional: hash field for searchable hash
-	HashSaltMemoryKey  string // optional: secure memory key for hash salt
-	HashSaltSessionKey string // optional: DB session key for hash salt
-}
-
-// DecryptedColumnDef defines decryption config for SELECT
-type DecryptedColumnDef struct {
-	FieldName       string // DB column name (e.g., "fullname_encrypted") - ignored if ViewHasDecrypt
-	AliasName       string // output alias (e.g., "fullname")
+// EncryptionKeyDef defines a session key needed for encryption/decryption operations.
+// Use this when you only need the session key set (e.g., views that already handle decryption).
+type EncryptionKeyDef struct {
 	SecureMemoryKey string // key name in secure memory
 	SessionKey      string // DB session key name
-	ViewHasDecrypt  bool   // true = view already has pgp_sym_decrypt, just set session key
+}
+
+// EncryptionColumnDef defines encryption config for a single column.
+// Used for INSERT/UPDATE (encryption) and SELECT (decryption).
+// Each usage context reads only the fields it needs; unused fields are ignored.
+type EncryptionColumnDef struct {
+	FieldName          string            // DB column name (e.g., "fullname_encrypted")
+	DataFieldName      string            // field name in data JSON for INSERT/UPDATE (e.g., "fullname")
+	AliasName          string            // output alias for SELECT decryption (e.g., "fullname")
+	EncryptionKeyDef   *EncryptionKeyDef // encryption key definition (must not be nil when used)
+	HashFieldName      string            // optional: hash field for searchable hash
+	HashSaltMemoryKey  string            // optional: secure memory key for hash salt
+	HashSaltSessionKey string            // optional: DB session key for hash salt
+	ViewHasDecrypt     bool              // true = view already has pgp_sym_decrypt, just set session key
 }
 
 // ============================================================================
@@ -43,18 +44,18 @@ type DecryptedColumnDef struct {
 func (dtx *DXDatabaseTx) InsertWithEncryption(
 	tableName string,
 	data utils.JSON,
-	encryptedDefs []EncryptedColumnDef,
+	encryptionColumnDefs []EncryptionColumnDef,
 	returningFieldNames []string,
 ) (sql.Result, utils.JSON, error) {
 	dbType := dtx.Database.DatabaseType
 
 	// Set session keys
-	if err := dtx.setEncryptionSessionKeys(encryptedDefs); err != nil {
+	if err := dtx.setEncryptionSessionKeys(encryptionColumnDefs); err != nil {
 		return nil, nil, err
 	}
 
 	// Build INSERT
-	return dtx.executeEncryptedInsert(tableName, dbType, data, encryptedDefs, returningFieldNames)
+	return dtx.executeEncryptedInsert(tableName, dbType, data, encryptionColumnDefs, returningFieldNames)
 }
 
 // ============================================================================
@@ -65,19 +66,19 @@ func (dtx *DXDatabaseTx) InsertWithEncryption(
 func (dtx *DXDatabaseTx) UpdateWithEncryption(
 	tableName string,
 	data utils.JSON,
-	encryptedDefs []EncryptedColumnDef,
+	encryptionColumnDefs []EncryptionColumnDef,
 	where utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, []utils.JSON, error) {
 	dbType := dtx.Database.DatabaseType
 
 	// Set session keys
-	if err := dtx.setEncryptionSessionKeys(encryptedDefs); err != nil {
+	if err := dtx.setEncryptionSessionKeys(encryptionColumnDefs); err != nil {
 		return nil, nil, err
 	}
 
 	// Build UPDATE
-	return dtx.executeEncryptedUpdate(tableName, dbType, data, encryptedDefs, where, returningFieldNames)
+	return dtx.executeEncryptedUpdate(tableName, dbType, data, encryptionColumnDefs, where, returningFieldNames)
 }
 
 // ============================================================================
@@ -88,7 +89,7 @@ func (dtx *DXDatabaseTx) UpdateWithEncryption(
 func (dtx *DXDatabaseTx) SelectWithEncryption(
 	tableName string,
 	columns []string,
-	decryptedDefs []DecryptedColumnDef,
+	encryptionColumnDefs []EncryptionColumnDef,
 	where utils.JSON,
 	orderBy *string,
 	limit *int,
@@ -96,23 +97,23 @@ func (dtx *DXDatabaseTx) SelectWithEncryption(
 	dbType := dtx.Database.DatabaseType
 
 	// Set session keys
-	if err := dtx.setDecryptionSessionKeys(decryptedDefs); err != nil {
+	if err := dtx.setDecryptionSessionKeys(encryptionColumnDefs); err != nil {
 		return nil, err
 	}
 
 	// Build SELECT
-	return dtx.executeEncryptedSelect(tableName, dbType, columns, decryptedDefs, where, orderBy, limit)
+	return dtx.executeEncryptedSelect(tableName, dbType, columns, encryptionColumnDefs, where, orderBy, limit)
 }
 
 // SelectOneWithEncryption selects one row with decrypted columns
 func (dtx *DXDatabaseTx) SelectOneWithEncryption(
 	tableName string,
 	columns []string,
-	decryptedDefs []DecryptedColumnDef,
+	encryptionColumnDefs []EncryptionColumnDef,
 	where utils.JSON,
 ) (utils.JSON, error) {
 	limit := 1
-	rows, err := dtx.SelectWithEncryption(tableName, columns, decryptedDefs, where, nil, &limit)
+	rows, err := dtx.SelectWithEncryption(tableName, columns, encryptionColumnDefs, where, nil, &limit)
 	if err != nil {
 		return nil, err
 	}
@@ -126,12 +127,12 @@ func (dtx *DXDatabaseTx) SelectOneWithEncryption(
 // Internal: Session Key Setup
 // ============================================================================
 
-func (dtx *DXDatabaseTx) setEncryptionSessionKeys(encryptedDefs []EncryptedColumnDef) error {
+func (dtx *DXDatabaseTx) setEncryptionSessionKeys(encryptionColumnDefs []EncryptionColumnDef) error {
 	sessionKeys := make(map[string]string)
 
-	for _, def := range encryptedDefs {
-		if def.SecureMemoryKey != "" && def.SessionKey != "" {
-			sessionKeys[def.SessionKey] = def.SecureMemoryKey
+	for _, def := range encryptionColumnDefs {
+		if def.EncryptionKeyDef != nil && def.EncryptionKeyDef.SecureMemoryKey != "" && def.EncryptionKeyDef.SessionKey != "" {
+			sessionKeys[def.EncryptionKeyDef.SessionKey] = def.EncryptionKeyDef.SecureMemoryKey
 		}
 		if def.HashSaltMemoryKey != "" && def.HashSaltSessionKey != "" {
 			sessionKeys[def.HashSaltSessionKey] = def.HashSaltMemoryKey
@@ -147,12 +148,12 @@ func (dtx *DXDatabaseTx) setEncryptionSessionKeys(encryptedDefs []EncryptedColum
 	return nil
 }
 
-func (dtx *DXDatabaseTx) setDecryptionSessionKeys(decryptedDefs []DecryptedColumnDef) error {
+func (dtx *DXDatabaseTx) setDecryptionSessionKeys(encryptionColumnDefs []EncryptionColumnDef) error {
 	sessionKeys := make(map[string]string)
 
-	for _, def := range decryptedDefs {
-		if def.SecureMemoryKey != "" && def.SessionKey != "" {
-			sessionKeys[def.SessionKey] = def.SecureMemoryKey
+	for _, def := range encryptionColumnDefs {
+		if def.EncryptionKeyDef != nil && def.EncryptionKeyDef.SecureMemoryKey != "" && def.EncryptionKeyDef.SessionKey != "" {
+			sessionKeys[def.EncryptionKeyDef.SessionKey] = def.EncryptionKeyDef.SecureMemoryKey
 		}
 	}
 
@@ -173,7 +174,7 @@ func (dtx *DXDatabaseTx) executeEncryptedInsert(
 	tableName string,
 	dbType base.DXDatabaseType,
 	data utils.JSON,
-	encryptedDefs []EncryptedColumnDef,
+	encryptionColumnDefs []EncryptionColumnDef,
 	returningFieldNames []string,
 ) (sql.Result, utils.JSON, error) {
 
@@ -184,7 +185,7 @@ func (dtx *DXDatabaseTx) executeEncryptedInsert(
 
 	// Build map of encrypted data field names for exclusion
 	encryptedDataFields := make(map[string]bool)
-	for _, def := range encryptedDefs {
+	for _, def := range encryptionColumnDefs {
 		encryptedDataFields[def.DataFieldName] = true
 	}
 
@@ -200,7 +201,7 @@ func (dtx *DXDatabaseTx) executeEncryptedInsert(
 	}
 
 	// Add encrypted columns
-	for _, def := range encryptedDefs {
+	for _, def := range encryptionColumnDefs {
 		value, ok := data[def.DataFieldName]
 		if !ok {
 			continue // No value provided
@@ -208,7 +209,7 @@ func (dtx *DXDatabaseTx) executeEncryptedInsert(
 
 		// Encrypted field
 		columns = append(columns, def.FieldName)
-		placeholders = append(placeholders, encryptExpr(dbType, argIndex, def.SessionKey))
+		placeholders = append(placeholders, encryptExpr(dbType, argIndex, def.EncryptionKeyDef.SessionKey))
 		args = append(args, value)
 		argIndex++
 
@@ -258,7 +259,7 @@ func (dtx *DXDatabaseTx) executeEncryptedUpdate(
 	tableName string,
 	dbType base.DXDatabaseType,
 	data utils.JSON,
-	encryptedDefs []EncryptedColumnDef,
+	encryptionColumnDefs []EncryptionColumnDef,
 	where utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, []utils.JSON, error) {
@@ -269,7 +270,7 @@ func (dtx *DXDatabaseTx) executeEncryptedUpdate(
 
 	// Build map of encrypted data field names for exclusion
 	encryptedDataFields := make(map[string]bool)
-	for _, def := range encryptedDefs {
+	for _, def := range encryptionColumnDefs {
 		encryptedDataFields[def.DataFieldName] = true
 	}
 
@@ -284,14 +285,14 @@ func (dtx *DXDatabaseTx) executeEncryptedUpdate(
 	}
 
 	// Add encrypted columns to SET
-	for _, def := range encryptedDefs {
+	for _, def := range encryptionColumnDefs {
 		value, ok := data[def.DataFieldName]
 		if !ok {
 			continue
 		}
 
 		// Encrypted field
-		setClauses = append(setClauses, fmt.Sprintf("%s = %s", def.FieldName, encryptExpr(dbType, argIndex, def.SessionKey)))
+		setClauses = append(setClauses, fmt.Sprintf("%s = %s", def.FieldName, encryptExpr(dbType, argIndex, def.EncryptionKeyDef.SessionKey)))
 		args = append(args, value)
 		argIndex++
 
@@ -357,13 +358,13 @@ func (dtx *DXDatabaseTx) executeEncryptedSelect(
 	tableName string,
 	dbType base.DXDatabaseType,
 	columns []string,
-	decryptedDefs []DecryptedColumnDef,
+	encryptionColumnDefs []EncryptionColumnDef,
 	where utils.JSON,
 	orderBy *string,
 	limit *int,
 ) ([]utils.JSON, error) {
 
-	selectCols := buildSelectCols(dbType, columns, decryptedDefs)
+	selectCols := buildSelectCols(dbType, columns, encryptionColumnDefs)
 
 	// Build WHERE clause
 	var whereClauses []string
@@ -511,7 +512,7 @@ func hashExpr(dbType base.DXDatabaseType, argIndex int, saltSessionKey string) s
 	}
 }
 
-func buildSelectCols(dbType base.DXDatabaseType, columns []string, decryptedDefs []DecryptedColumnDef) string {
+func buildSelectCols(dbType base.DXDatabaseType, columns []string, encryptionColumnDefs []EncryptionColumnDef) string {
 	var selectCols []string
 
 	// Add regular columns - use * if no specific columns requested
@@ -519,7 +520,7 @@ func buildSelectCols(dbType base.DXDatabaseType, columns []string, decryptedDefs
 		// Check if all decrypted columns come from view (ViewHasDecrypt=true)
 		// If so, * already includes them, so just return *
 		allFromView := true
-		for _, def := range decryptedDefs {
+		for _, def := range encryptionColumnDefs {
 			if !def.ViewHasDecrypt {
 				allFromView = false
 				break
@@ -535,7 +536,7 @@ func buildSelectCols(dbType base.DXDatabaseType, columns []string, decryptedDefs
 	}
 
 	// Add decrypted columns (only those not already in view)
-	for _, def := range decryptedDefs {
+	for _, def := range encryptionColumnDefs {
 		if def.ViewHasDecrypt {
 			// Skip if we're using *, as view already has this column
 			if len(columns) == 0 {
@@ -543,7 +544,7 @@ func buildSelectCols(dbType base.DXDatabaseType, columns []string, decryptedDefs
 			}
 			selectCols = append(selectCols, def.AliasName)
 		} else {
-			expr := decryptExpr(dbType, def.FieldName, def.SessionKey)
+			expr := decryptExpr(dbType, def.FieldName, def.EncryptionKeyDef.SessionKey)
 			selectCols = append(selectCols, fmt.Sprintf("%s AS %s", expr, def.AliasName))
 		}
 	}

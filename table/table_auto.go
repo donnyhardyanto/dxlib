@@ -13,25 +13,59 @@ import (
 
 // ============================================================================
 // DXRawTable Auto Encryption Methods
-// Uses table's EncryptedColumnDefs and DecryptedColumnDefs
+// Uses table's EncryptionKeyDefs and EncryptionColumnDefs
 // ============================================================================
+
+// HasEncryptionConfig returns true if any encryption configuration is defined on this table
+func (t *DXRawTable) HasEncryptionConfig() bool {
+	return len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0
+}
+
+// TxSetAllEncryptionSessionKeys sets all session keys from EncryptionKeyDefs and EncryptionColumnDefs.
+// Deduplicates by sessionKey. Call this within a transaction before any operation
+// that needs encryption/decryption session keys.
+func (t *DXRawTable) TxSetAllEncryptionSessionKeys(dtx *database.DXDatabaseTx) error {
+	sessionKeys := make(map[string]string) // sessionKey -> secureMemoryKey
+
+	for _, def := range t.EncryptionKeyDefs {
+		if def.SecureMemoryKey != "" && def.SessionKey != "" {
+			sessionKeys[def.SessionKey] = def.SecureMemoryKey
+		}
+	}
+	for _, def := range t.EncryptionColumnDefs {
+		if def.EncryptionKeyDef != nil && def.EncryptionKeyDef.SecureMemoryKey != "" && def.EncryptionKeyDef.SessionKey != "" {
+			sessionKeys[def.EncryptionKeyDef.SessionKey] = def.EncryptionKeyDef.SecureMemoryKey
+		}
+		if def.HashSaltMemoryKey != "" && def.HashSaltSessionKey != "" {
+			sessionKeys[def.HashSaltSessionKey] = def.HashSaltMemoryKey
+		}
+	}
+
+	for sessionKey, memoryKey := range sessionKeys {
+		if err := dtx.TxSetSessionKeyFromSecureMemory(memoryKey, sessionKey); err != nil {
+			return errors.Wrapf(err, "SET_ENCRYPTION_SESSION_KEY_ERROR:%s", sessionKey)
+		}
+	}
+
+	return nil
+}
 
 // TxSetDecryptionSessionKeys sets the PostgreSQL session keys needed for decryption within a transaction
 // Call this before executing raw queries on views that use pgp_sym_decrypt
 func (t *DXRawTable) TxSetDecryptionSessionKeys(dtx *database.DXDatabaseTx) error {
-	if len(t.DecryptedColumnDefs) == 0 {
-		log.Log.Debugf("TxSetDecryptionSessionKeys: no DecryptedColumnDefs for table %s", t.TableName())
+	if len(t.EncryptionColumnDefs) == 0 {
+		log.Log.Debugf("TxSetDecryptionSessionKeys: no EncryptionColumnDefs for table %s", t.TableName())
 		return nil
 	}
 
-	log.Log.Debugf("TxSetDecryptionSessionKeys: setting keys for table %s with %d defs", t.TableName(), len(t.DecryptedColumnDefs))
+	log.Log.Debugf("TxSetDecryptionSessionKeys: setting keys for table %s with %d defs", t.TableName(), len(t.EncryptionColumnDefs))
 
 	// Collect unique session keys
 	sessionKeys := make(map[string]string)
-	for _, def := range t.DecryptedColumnDefs {
-		if def.SecureMemoryKey != "" && def.SessionKey != "" {
-			sessionKeys[def.SessionKey] = def.SecureMemoryKey
-			log.Log.Debugf("TxSetDecryptionSessionKeys: will set session key %s from memory key %s", def.SessionKey, def.SecureMemoryKey)
+	for _, def := range t.EncryptionColumnDefs {
+		if def.EncryptionKeyDef != nil && def.EncryptionKeyDef.SecureMemoryKey != "" && def.EncryptionKeyDef.SessionKey != "" {
+			sessionKeys[def.EncryptionKeyDef.SessionKey] = def.EncryptionKeyDef.SecureMemoryKey
+			log.Log.Debugf("TxSetDecryptionSessionKeys: will set session key %s from memory key %s", def.EncryptionKeyDef.SessionKey, def.EncryptionKeyDef.SecureMemoryKey)
 		}
 	}
 
@@ -48,41 +82,47 @@ func (t *DXRawTable) TxSetDecryptionSessionKeys(dtx *database.DXDatabaseTx) erro
 	return nil
 }
 
-// convertDecryptedColumnDefs converts database.DecryptedColumnDef to DecryptedColumn
-func (t *DXRawTable) convertDecryptedColumnDefs() []DecryptedColumn {
-	if len(t.DecryptedColumnDefs) == 0 {
+// convertEncryptionColumnDefsForSelect converts EncryptionColumnDef to EncryptionColumn for SELECT operations
+func (t *DXRawTable) convertEncryptionColumnDefsForSelect() []EncryptionColumn {
+	if len(t.EncryptionColumnDefs) == 0 {
 		return nil
 	}
-	result := make([]DecryptedColumn, len(t.DecryptedColumnDefs))
-	for i, def := range t.DecryptedColumnDefs {
-		result[i] = DecryptedColumn{
-			FieldName:       def.FieldName,
-			AliasName:       def.AliasName,
-			SecureMemoryKey: def.SecureMemoryKey,
-			SessionKey:      def.SessionKey,
-			ViewHasDecrypt:  def.ViewHasDecrypt,
+	result := make([]EncryptionColumn, len(t.EncryptionColumnDefs))
+	for i, def := range t.EncryptionColumnDefs {
+		result[i] = EncryptionColumn{
+			FieldName:          def.FieldName,
+			DataFieldName:      def.DataFieldName,
+			AliasName:          def.AliasName,
+			EncryptionKeyDef:   def.EncryptionKeyDef,
+			HashFieldName:      def.HashFieldName,
+			HashSaltMemoryKey:  def.HashSaltMemoryKey,
+			HashSaltSessionKey: def.HashSaltSessionKey,
+			ViewHasDecrypt:     def.ViewHasDecrypt,
 		}
 	}
 	return result
 }
 
-// convertEncryptedColumnDefs converts database.EncryptedColumnDef to EncryptedColumn with data values
-func (t *DXRawTable) convertEncryptedColumnDefs(data utils.JSON) []EncryptedColumn {
-	if len(t.EncryptedColumnDefs) == 0 {
+// convertEncryptionColumnDefsForWrite converts EncryptionColumnDef to EncryptionColumn for INSERT/UPDATE operations
+// Extracts values from data map and removes them so they are not double-inserted
+func (t *DXRawTable) convertEncryptionColumnDefsForWrite(data utils.JSON) []EncryptionColumn {
+	if len(t.EncryptionColumnDefs) == 0 {
 		return nil
 	}
-	var result []EncryptedColumn
-	for _, def := range t.EncryptedColumnDefs {
+	var result []EncryptionColumn
+	for _, def := range t.EncryptionColumnDefs {
 		// Get value from data using DataFieldName
 		if value, exists := data[def.DataFieldName]; exists {
-			result = append(result, EncryptedColumn{
+			result = append(result, EncryptionColumn{
 				FieldName:          def.FieldName,
+				DataFieldName:      def.DataFieldName,
+				AliasName:          def.AliasName,
 				Value:              value,
-				SecureMemoryKey:    def.SecureMemoryKey,
-				SessionKey:         def.SessionKey,
+				EncryptionKeyDef:   def.EncryptionKeyDef,
 				HashFieldName:      def.HashFieldName,
 				HashSaltMemoryKey:  def.HashSaltMemoryKey,
 				HashSaltSessionKey: def.HashSaltSessionKey,
+				ViewHasDecrypt:     def.ViewHasDecrypt,
 			})
 			// Remove the data field so it's not inserted twice
 			delete(data, def.DataFieldName)
@@ -95,22 +135,28 @@ func (t *DXRawTable) convertEncryptedColumnDefs(data utils.JSON) []EncryptedColu
 // Auto Insert Methods
 // ============================================================================
 
-// TxInsertAuto inserts using table's EncryptedColumnDefs
+// TxInsertAuto inserts using table's EncryptionColumnDefs and EncryptionKeyDefs
 // Data fields matching DataFieldName are auto-encrypted to FieldName
 func (t *DXRawTable) TxInsertAuto(
 	dtx *database.DXDatabaseTx,
 	data utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, utils.JSON, error) {
-	if len(t.EncryptedColumnDefs) == 0 {
-		// No encryption defined, use regular insert
-		return dtx.Insert(t.TableName(), data, returningFieldNames)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific encryption, use encrypted insert path
+		encryptionColumns :=t.convertEncryptionColumnDefsForWrite(data)
+		return t.TxInsertWithEncryption(dtx, data, encryptionColumns, returningFieldNames)
 	}
-	encryptedColumns := t.convertEncryptedColumnDefs(data)
-	return t.TxInsertWithEncryption(dtx, data, encryptedColumns, returningFieldNames)
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, set them then regular insert
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+	}
+	return dtx.Insert(t.TableName(), data, returningFieldNames)
 }
 
-// InsertAuto inserts using table's EncryptedColumnDefs (creates transaction)
+// InsertAuto inserts using table's EncryptionColumnDefs and EncryptionKeyDefs (creates transaction if needed)
 func (t *DXRawTable) InsertAuto(
 	l *log.DXLog,
 	data utils.JSON,
@@ -120,10 +166,12 @@ func (t *DXRawTable) InsertAuto(
 		return nil, nil, err
 	}
 
-	if len(t.EncryptedColumnDefs) == 0 {
+	if !t.HasEncryptionConfig() {
+		// No encryption at all, no transaction needed
 		return t.Database.Insert(t.TableName(), data, returningFieldNames)
 	}
 
+	// Encryption configured, need transaction
 	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
 	if err != nil {
 		return nil, nil, err
@@ -163,21 +211,28 @@ func (t *DXRawTable) InsertAutoReturningId(
 // Auto Update Methods
 // ============================================================================
 
-// TxUpdateAuto updates using table's EncryptedColumnDefs
+// TxUpdateAuto updates using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) TxUpdateAuto(
 	dtx *database.DXDatabaseTx,
 	data utils.JSON,
 	where utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, []utils.JSON, error) {
-	if len(t.EncryptedColumnDefs) == 0 {
-		return dtx.Update(t.TableName(), data, where, returningFieldNames)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific encryption, use encrypted update path
+		encryptionColumns :=t.convertEncryptionColumnDefsForWrite(data)
+		return t.TxUpdateWithEncryption(dtx, data, encryptionColumns, where, returningFieldNames)
 	}
-	encryptedColumns := t.convertEncryptedColumnDefs(data)
-	return t.TxUpdateWithEncryption(dtx, data, encryptedColumns, where, returningFieldNames)
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, set them then regular update
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+	}
+	return dtx.Update(t.TableName(), data, where, returningFieldNames)
 }
 
-// UpdateAuto updates using table's EncryptedColumnDefs (creates transaction)
+// UpdateAuto updates using table's EncryptionColumnDefs and EncryptionKeyDefs (creates transaction if needed)
 func (t *DXRawTable) UpdateAuto(
 	l *log.DXLog,
 	data utils.JSON,
@@ -188,10 +243,12 @@ func (t *DXRawTable) UpdateAuto(
 		return nil, nil, err
 	}
 
-	if len(t.EncryptedColumnDefs) == 0 {
+	if !t.HasEncryptionConfig() {
+		// No encryption at all, no transaction needed
 		return t.Database.Update(t.TableName(), data, where, returningFieldNames)
 	}
 
+	// Encryption configured, need transaction
 	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
 	if err != nil {
 		return nil, nil, err
@@ -201,7 +258,7 @@ func (t *DXRawTable) UpdateAuto(
 	return t.TxUpdateAuto(dtx, data, where, returningFieldNames)
 }
 
-// TxUpdateByIdAuto updates by ID using table's EncryptedColumnDefs
+// TxUpdateByIdAuto updates by ID using table's EncryptionColumnDefs
 func (t *DXRawTable) TxUpdateByIdAuto(
 	dtx *database.DXDatabaseTx,
 	id int64,
@@ -211,7 +268,7 @@ func (t *DXRawTable) TxUpdateByIdAuto(
 	return result, err
 }
 
-// UpdateByIdAuto updates by ID using table's EncryptedColumnDefs
+// UpdateByIdAuto updates by ID using table's EncryptionColumnDefs
 func (t *DXRawTable) UpdateByIdAuto(
 	l *log.DXLog,
 	id int64,
@@ -225,88 +282,159 @@ func (t *DXRawTable) UpdateByIdAuto(
 // Auto Select Methods
 // ============================================================================
 
-// TxSelectAuto selects using table's DecryptedColumnDefs
+// TxSelectAuto selects using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) TxSelectAuto(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	if len(t.DecryptedColumnDefs) == 0 {
-		// No decryption needed, use regular select
-		return t.TxSelect(dtx, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific decryption, use encrypted select path
+		encryptionColumns :=t.convertEncryptionColumnDefsForSelect()
+		return t.TxSelectWithEncryption(dtx, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 	}
-	decryptedColumns := t.convertDecryptedColumnDefs()
-	return t.TxSelectWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, set them then regular select
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+	}
+	return t.TxSelect(dtx, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
-// SelectAuto selects using table's DecryptedColumnDefs (creates transaction)
+// SelectAuto selects using table's EncryptionColumnDefs and EncryptionKeyDefs (creates transaction if needed)
 func (t *DXRawTable) SelectAuto(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	if len(t.DecryptedColumnDefs) == 0 {
-		return t.Select(l, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific decryption, use encrypted select path (creates transaction internally)
+		encryptionColumns :=t.convertEncryptionColumnDefsForSelect()
+		return t.SelectWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 	}
-	decryptedColumns := t.convertDecryptedColumnDefs()
-	return t.SelectWithEncryption(l, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, create transaction, set keys, then regular select
+		if err := t.EnsureDatabase(); err != nil {
+			return nil, nil, err
+		}
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer dtx.Finish(l, err)
+
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+		return t.TxSelect(dtx, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	}
+	return t.Select(l, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
-// TxSelectOneAuto selects one row using table's DecryptedColumnDefs
+// TxSelectOneAuto selects one row using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) TxSelectOneAuto(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	if len(t.DecryptedColumnDefs) == 0 {
-		return t.TxSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, forUpdatePart)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific decryption, use encrypted select path
+		encryptionColumns :=t.convertEncryptionColumnDefsForSelect()
+		return t.TxSelectOneWithEncryption(dtx, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, forUpdatePart)
 	}
-	decryptedColumns := t.convertDecryptedColumnDefs()
-	return t.TxSelectOneWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, forUpdatePart)
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, set them then regular select
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+	}
+	return t.TxSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, forUpdatePart)
 }
 
-// SelectOneAuto selects one row using table's DecryptedColumnDefs
+// SelectOneAuto selects one row using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) SelectOneAuto(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	if len(t.DecryptedColumnDefs) == 0 {
-		return t.SelectOne(l, fieldNames, where, joinSQLPart, orderBy)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific decryption, use encrypted select path
+		encryptionColumns :=t.convertEncryptionColumnDefsForSelect()
+		return t.SelectOneWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	}
-	decryptedColumns := t.convertDecryptedColumnDefs()
-	return t.SelectOneWithEncryption(l, fieldNames, decryptedColumns, where, joinSQLPart, orderBy)
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, create transaction, set keys, then regular select
+		if err := t.EnsureDatabase(); err != nil {
+			return nil, nil, err
+		}
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer dtx.Finish(l, err)
+
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+		return t.TxSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
+	}
+	return t.SelectOne(l, fieldNames, where, joinSQLPart, orderBy)
 }
 
-// TxShouldSelectOneAuto selects one row or returns error if not found, using table's DecryptedColumnDefs
+// TxShouldSelectOneAuto selects one row or returns error if not found, using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) TxShouldSelectOneAuto(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	if len(t.DecryptedColumnDefs) == 0 {
-		return t.TxShouldSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, forUpdatePart)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific decryption, use encrypted select path
+		encryptionColumns :=t.convertEncryptionColumnDefsForSelect()
+		return t.TxShouldSelectOneWithEncryption(dtx, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, forUpdatePart)
 	}
-	decryptedColumns := t.convertDecryptedColumnDefs()
-	return t.TxShouldSelectOneWithEncryption(dtx, fieldNames, decryptedColumns, where, joinSQLPart, orderBy, forUpdatePart)
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, set them then regular select
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+	}
+	return t.TxShouldSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, forUpdatePart)
 }
 
-// ShouldSelectOneAuto selects one row or returns error if not found, using table's DecryptedColumnDefs
+// ShouldSelectOneAuto selects one row or returns error if not found, using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) ShouldSelectOneAuto(l *log.DXLog, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	if len(t.DecryptedColumnDefs) == 0 {
-		return t.ShouldSelectOne(l, where, joinSQLPart, orderBy)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific decryption, use encrypted select path
+		encryptionColumns :=t.convertEncryptionColumnDefsForSelect()
+		return t.ShouldSelectOneWithEncryption(l, encryptionColumns, where, joinSQLPart, orderBy)
 	}
-	decryptedColumns := t.convertDecryptedColumnDefs()
-	return t.ShouldSelectOneWithEncryption(l, decryptedColumns, where, joinSQLPart, orderBy)
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, create transaction, set keys, then regular select
+		if err := t.EnsureDatabase(); err != nil {
+			return nil, nil, err
+		}
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer dtx.Finish(l, err)
+
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+		return t.TxShouldSelectOne(dtx, nil, where, joinSQLPart, orderBy, nil)
+	}
+	return t.ShouldSelectOne(l, where, joinSQLPart, orderBy)
 }
 
-// GetByIdAuto returns a row by ID using table's DecryptedColumnDefs
+// GetByIdAuto returns a row by ID using table's EncryptionColumnDefs
 func (t *DXRawTable) GetByIdAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
-// ShouldGetByIdAuto returns a row by ID or error if not found, using table's DecryptedColumnDefs
+// ShouldGetByIdAuto returns a row by ID or error if not found, using table's EncryptionColumnDefs
 func (t *DXRawTable) ShouldGetByIdAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
-// TxGetByIdAuto returns a row by ID using table's DecryptedColumnDefs within a transaction
+// TxGetByIdAuto returns a row by ID using table's EncryptionColumnDefs within a transaction
 func (t *DXRawTable) TxGetByIdAuto(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
-// TxShouldGetByIdAuto returns a row by ID or error if not found, using table's DecryptedColumnDefs within a transaction
+// TxShouldGetByIdAuto returns a row by ID or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXRawTable) TxShouldGetByIdAuto(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
-// GetByUidAuto returns a row by UID using table's DecryptedColumnDefs
+// GetByUidAuto returns a row by UID using table's EncryptionColumnDefs
 func (t *DXRawTable) GetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -314,7 +442,7 @@ func (t *DXRawTable) GetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTable
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
-// ShouldGetByUidAuto returns a row by UID or error if not found, using table's DecryptedColumnDefs
+// ShouldGetByUidAuto returns a row by UID or error if not found, using table's EncryptionColumnDefs
 func (t *DXRawTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -322,7 +450,7 @@ func (t *DXRawTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabas
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
-// TxGetByUidAuto returns a row by UID using table's DecryptedColumnDefs within a transaction
+// TxGetByUidAuto returns a row by UID using table's EncryptionColumnDefs within a transaction
 func (t *DXRawTable) TxGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -330,7 +458,7 @@ func (t *DXRawTable) TxGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (*db
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
 }
 
-// TxShouldGetByUidAuto returns a row by UID or error if not found, using table's DecryptedColumnDefs within a transaction
+// TxShouldGetByUidAuto returns a row by UID or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXRawTable) TxShouldGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -338,7 +466,7 @@ func (t *DXRawTable) TxShouldGetByUidAuto(dtx *database.DXDatabaseTx, uid string
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
 }
 
-// GetByUtagAuto returns a row by Utag using table's DecryptedColumnDefs
+// GetByUtagAuto returns a row by Utag using table's EncryptionColumnDefs
 func (t *DXRawTable) GetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
@@ -346,7 +474,7 @@ func (t *DXRawTable) GetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTab
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
-// ShouldGetByUtagAuto returns a row by Utag or error if not found, using table's DecryptedColumnDefs
+// ShouldGetByUtagAuto returns a row by Utag or error if not found, using table's EncryptionColumnDefs
 func (t *DXRawTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
@@ -354,7 +482,7 @@ func (t *DXRawTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatab
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
-// TxGetByUtagAuto returns a row by Utag using table's DecryptedColumnDefs within a transaction
+// TxGetByUtagAuto returns a row by Utag using table's EncryptionColumnDefs within a transaction
 func (t *DXRawTable) TxGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
@@ -362,7 +490,7 @@ func (t *DXRawTable) TxGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (*
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
 }
 
-// TxShouldGetByUtagAuto returns a row by Utag or error if not found, using table's DecryptedColumnDefs within a transaction
+// TxShouldGetByUtagAuto returns a row by Utag or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXRawTable) TxShouldGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
@@ -370,7 +498,7 @@ func (t *DXRawTable) TxShouldGetByUtagAuto(dtx *database.DXDatabaseTx, utag stri
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
 }
 
-// GetByNameIdAuto returns a row by NameId using table's DecryptedColumnDefs
+// GetByNameIdAuto returns a row by NameId using table's EncryptionColumnDefs
 func (t *DXRawTable) GetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -378,7 +506,7 @@ func (t *DXRawTable) GetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabas
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
-// ShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's DecryptedColumnDefs
+// ShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's EncryptionColumnDefs
 func (t *DXRawTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -386,7 +514,7 @@ func (t *DXRawTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXD
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
-// TxGetByNameIdAuto returns a row by NameId using table's DecryptedColumnDefs within a transaction
+// TxGetByNameIdAuto returns a row by NameId using table's EncryptionColumnDefs within a transaction
 func (t *DXRawTable) TxGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -394,7 +522,7 @@ func (t *DXRawTable) TxGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
 
-// TxShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's DecryptedColumnDefs within a transaction
+// TxShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXRawTable) TxShouldGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -406,7 +534,7 @@ func (t *DXRawTable) TxShouldGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId 
 // DXTable Auto Methods (with audit fields)
 // ============================================================================
 
-// TxInsertAuto inserts with audit fields using table's EncryptedColumnDefs
+// TxInsertAuto inserts with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) TxInsertAuto(
 	dtx *database.DXDatabaseTx,
 	data utils.JSON,
@@ -416,7 +544,7 @@ func (t *DXTable) TxInsertAuto(
 	return t.DXRawTable.TxInsertAuto(dtx, data, returningFieldNames)
 }
 
-// InsertAuto inserts with audit fields using table's EncryptedColumnDefs
+// InsertAuto inserts with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) InsertAuto(
 	l *log.DXLog,
 	data utils.JSON,
@@ -444,7 +572,7 @@ func (t *DXTable) InsertAutoReturningId(
 	return t.DXRawTable.InsertAutoReturningId(l, data)
 }
 
-// TxUpdateAuto updates with audit fields using table's EncryptedColumnDefs
+// TxUpdateAuto updates with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) TxUpdateAuto(
 	dtx *database.DXDatabaseTx,
 	data utils.JSON,
@@ -455,7 +583,7 @@ func (t *DXTable) TxUpdateAuto(
 	return t.DXRawTable.TxUpdateAuto(dtx, data, where, returningFieldNames)
 }
 
-// UpdateAuto updates with audit fields using table's EncryptedColumnDefs
+// UpdateAuto updates with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) UpdateAuto(
 	l *log.DXLog,
 	data utils.JSON,
@@ -486,63 +614,63 @@ func (t *DXTable) UpdateByIdAuto(
 	return t.DXRawTable.UpdateByIdAuto(l, id, data)
 }
 
-// TxSelectAuto selects using table's DecryptedColumnDefs
+// TxSelectAuto selects using table's EncryptionColumnDefs
 func (t *DXTable) TxSelectAuto(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	return t.DXRawTable.TxSelectAuto(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
-// SelectAuto selects using table's DecryptedColumnDefs
+// SelectAuto selects using table's EncryptionColumnDefs
 func (t *DXTable) SelectAuto(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	return t.DXRawTable.SelectAuto(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
-// TxSelectOneAuto selects one row using table's DecryptedColumnDefs
+// TxSelectOneAuto selects one row using table's EncryptionColumnDefs
 func (t *DXTable) TxSelectOneAuto(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.DXRawTable.TxSelectOneAuto(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, forUpdatePart)
 }
 
-// SelectOneAuto selects one row using table's DecryptedColumnDefs
+// SelectOneAuto selects one row using table's EncryptionColumnDefs
 func (t *DXTable) SelectOneAuto(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.DXRawTable.SelectOneAuto(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
 }
 
-// TxShouldSelectOneAuto selects one row or returns error if not found, using table's DecryptedColumnDefs
+// TxShouldSelectOneAuto selects one row or returns error if not found, using table's EncryptionColumnDefs
 func (t *DXTable) TxShouldSelectOneAuto(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.DXRawTable.TxShouldSelectOneAuto(dtx, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, forUpdatePart)
 }
 
-// ShouldSelectOneAuto selects one row or returns error if not found, using table's DecryptedColumnDefs
+// ShouldSelectOneAuto selects one row or returns error if not found, using table's EncryptionColumnDefs
 func (t *DXTable) ShouldSelectOneAuto(l *log.DXLog, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.DXRawTable.ShouldSelectOneAuto(l, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
 }
 
-// GetByIdAuto returns a row by ID using table's DecryptedColumnDefs
+// GetByIdAuto returns a row by ID using table's EncryptionColumnDefs
 func (t *DXTable) GetByIdAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
-// ShouldGetByIdAuto returns a row by ID or error if not found, using table's DecryptedColumnDefs
+// ShouldGetByIdAuto returns a row by ID or error if not found, using table's EncryptionColumnDefs
 func (t *DXTable) ShouldGetByIdAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
-// TxGetByIdAuto returns a row by ID using table's DecryptedColumnDefs within a transaction
+// TxGetByIdAuto returns a row by ID using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxGetByIdAuto(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
-// TxShouldGetByIdAuto returns a row by ID or error if not found, using table's DecryptedColumnDefs within a transaction
+// TxShouldGetByIdAuto returns a row by ID or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxShouldGetByIdAuto(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
-// GetByIdNotDeletedAuto returns a non-deleted row by ID using table's DecryptedColumnDefs
+// GetByIdNotDeletedAuto returns a non-deleted row by ID using table's EncryptionColumnDefs
 func (t *DXTable) GetByIdNotDeletedAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
@@ -552,7 +680,7 @@ func (t *DXTable) ShouldGetByIdNotDeletedAuto(l *log.DXLog, id int64) (*db.DXDat
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
-// TxGetByIdNotDeletedAuto returns a non-deleted row by ID using table's DecryptedColumnDefs within a transaction
+// TxGetByIdNotDeletedAuto returns a non-deleted row by ID using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxGetByIdNotDeletedAuto(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
@@ -562,7 +690,7 @@ func (t *DXTable) TxShouldGetByIdNotDeletedAuto(dtx *database.DXDatabaseTx, id i
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
-// GetByUidAuto returns a row by UID using table's DecryptedColumnDefs
+// GetByUidAuto returns a row by UID using table's EncryptionColumnDefs
 func (t *DXTable) GetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -570,7 +698,7 @@ func (t *DXTable) GetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRow
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
-// ShouldGetByUidAuto returns a row by UID or error if not found, using table's DecryptedColumnDefs
+// ShouldGetByUidAuto returns a row by UID or error if not found, using table's EncryptionColumnDefs
 func (t *DXTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -578,7 +706,7 @@ func (t *DXTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTa
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
-// TxGetByUidAuto returns a row by UID using table's DecryptedColumnDefs within a transaction
+// TxGetByUidAuto returns a row by UID using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -586,7 +714,7 @@ func (t *DXTable) TxGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (*db.DX
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
 }
 
-// TxShouldGetByUidAuto returns a row by UID or error if not found, using table's DecryptedColumnDefs within a transaction
+// TxShouldGetByUidAuto returns a row by UID or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxShouldGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -594,7 +722,7 @@ func (t *DXTable) TxShouldGetByUidAuto(dtx *database.DXDatabaseTx, uid string) (
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
 }
 
-// GetByUidNotDeletedAuto returns a non-deleted row by UID using table's DecryptedColumnDefs
+// GetByUidNotDeletedAuto returns a non-deleted row by UID using table's EncryptionColumnDefs
 func (t *DXTable) GetByUidNotDeletedAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -610,7 +738,7 @@ func (t *DXTable) ShouldGetByUidNotDeletedAuto(l *log.DXLog, uid string) (*db.DX
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
-// TxGetByUidNotDeletedAuto returns a non-deleted row by UID using table's DecryptedColumnDefs within a transaction
+// TxGetByUidNotDeletedAuto returns a non-deleted row by UID using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxGetByUidNotDeletedAuto(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
@@ -626,7 +754,7 @@ func (t *DXTable) TxShouldGetByUidNotDeletedAuto(dtx *database.DXDatabaseTx, uid
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
 }
 
-// GetByUtagAuto returns a row by Utag using table's DecryptedColumnDefs
+// GetByUtagAuto returns a row by Utag using table's EncryptionColumnDefs
 func (t *DXTable) GetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
@@ -634,7 +762,7 @@ func (t *DXTable) GetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableR
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
-// ShouldGetByUtagAuto returns a row by Utag or error if not found, using table's DecryptedColumnDefs
+// ShouldGetByUtagAuto returns a row by Utag or error if not found, using table's EncryptionColumnDefs
 func (t *DXTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
@@ -642,7 +770,7 @@ func (t *DXTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabase
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
-// TxGetByUtagAuto returns a row by Utag using table's DecryptedColumnDefs within a transaction
+// TxGetByUtagAuto returns a row by Utag using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
@@ -650,7 +778,7 @@ func (t *DXTable) TxGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (*db.
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
 }
 
-// TxShouldGetByUtagAuto returns a row by Utag or error if not found, using table's DecryptedColumnDefs within a transaction
+// TxShouldGetByUtagAuto returns a row by Utag or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxShouldGetByUtagAuto(dtx *database.DXDatabaseTx, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
@@ -658,7 +786,7 @@ func (t *DXTable) TxShouldGetByUtagAuto(dtx *database.DXDatabaseTx, utag string)
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
 }
 
-// GetByNameIdAuto returns a row by NameId using table's DecryptedColumnDefs
+// GetByNameIdAuto returns a row by NameId using table's EncryptionColumnDefs
 func (t *DXTable) GetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -666,7 +794,7 @@ func (t *DXTable) GetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTa
 	return t.SelectOneAuto(l, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
-// ShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's DecryptedColumnDefs
+// ShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's EncryptionColumnDefs
 func (t *DXTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -674,7 +802,7 @@ func (t *DXTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXData
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
-// TxGetByNameIdAuto returns a row by NameId using table's DecryptedColumnDefs within a transaction
+// TxGetByNameIdAuto returns a row by NameId using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -682,7 +810,7 @@ func (t *DXTable) TxGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (
 	return t.TxSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
 
-// TxShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's DecryptedColumnDefs within a transaction
+// TxShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxShouldGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -690,7 +818,7 @@ func (t *DXTable) TxShouldGetByNameIdAuto(dtx *database.DXDatabaseTx, nameId str
 	return t.TxShouldSelectOneAuto(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
 
-// GetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's DecryptedColumnDefs
+// GetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's EncryptionColumnDefs
 func (t *DXTable) GetByNameIdNotDeletedAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -706,7 +834,7 @@ func (t *DXTable) ShouldGetByNameIdNotDeletedAuto(l *log.DXLog, nameId string) (
 	return t.ShouldSelectOneAuto(l, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
-// TxGetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's DecryptedColumnDefs within a transaction
+// TxGetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxGetByNameIdNotDeletedAuto(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
@@ -726,8 +854,7 @@ func (t *DXTable) TxShouldGetByNameIdNotDeletedAuto(dtx *database.DXDatabaseTx, 
 // DXRawTable Paging Auto Methods
 // ============================================================================
 
-// PagingAuto executes paging query using table's DecryptedColumnDefs
-// It sets up encryption session keys before executing the query
+// PagingAuto executes paging query using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) PagingAuto(
 	l *log.DXLog,
 	rowPerPage, pageIndex int64,
@@ -739,22 +866,33 @@ func (t *DXRawTable) PagingAuto(
 		return nil, err
 	}
 
-	// If no decryption needed, use regular paging
-	if len(t.DecryptedColumnDefs) == 0 {
-		return t.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, whereArgs)
+	if len(t.EncryptionColumnDefs) > 0 {
+		// Has column-specific decryption, use encrypted paging path
+		encryptionColumns :=t.convertEncryptionColumnDefsForSelect()
+		return t.PagingWithEncryption(l, nil, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
 	}
+	if len(t.EncryptionKeyDefs) > 0 {
+		// Only session keys needed, create transaction, set keys, then paging within transaction
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return nil, err
+		}
+		defer dtx.Finish(l, err)
 
-	// Convert DecryptedColumnDefs to DecryptedColumn
-	decryptedColumns := t.convertDecryptedColumnDefs()
-
-	return t.PagingWithEncryption(l, nil, decryptedColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, err
+		}
+		return executeEncryptedPaging(dtx, t.ListViewNameId, t.Database.DatabaseType, nil, nil, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
+	}
+	// No encryption, use regular paging
+	return t.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, whereArgs)
 }
 
 // ============================================================================
 // DXTable Paging Auto Methods
 // ============================================================================
 
-// PagingAuto executes paging query using table's DecryptedColumnDefs
+// PagingAuto executes paging query using table's EncryptionColumnDefs
 func (t *DXTable) PagingAuto(
 	l *log.DXLog,
 	rowPerPage, pageIndex int64,
