@@ -50,33 +50,31 @@ func (t *DXRawTable) TxSetAllEncryptionSessionKeys(dtx *database.DXDatabaseTx) e
 	return nil
 }
 
-// TxSetDecryptionSessionKeys sets the PostgreSQL session keys needed for decryption within a transaction
-// Call this before executing raw queries on views that use pgp_sym_decrypt
+// TxSetDecryptionSessionKeys sets the PostgreSQL session keys needed for decryption within a transaction.
+// Collects keys from both EncryptionKeyDefs and EncryptionColumnDefs.
+// Call this before executing raw queries on views that use pgp_sym_decrypt.
 func (t *DXRawTable) TxSetDecryptionSessionKeys(dtx *database.DXDatabaseTx) error {
-	if len(t.EncryptionColumnDefs) == 0 {
-		log.Log.Debugf("TxSetDecryptionSessionKeys: no EncryptionColumnDefs for table %s", t.TableName())
+	if len(t.EncryptionKeyDefs) == 0 && len(t.EncryptionColumnDefs) == 0 {
 		return nil
 	}
 
-	log.Log.Debugf("TxSetDecryptionSessionKeys: setting keys for table %s with %d defs", t.TableName(), len(t.EncryptionColumnDefs))
-
-	// Collect unique session keys
+	// Collect unique session keys from both EncryptionKeyDefs and EncryptionColumnDefs
 	sessionKeys := make(map[string]string)
+	for _, def := range t.EncryptionKeyDefs {
+		if def.SecureMemoryKey != "" && def.SessionKey != "" {
+			sessionKeys[def.SessionKey] = def.SecureMemoryKey
+		}
+	}
 	for _, def := range t.EncryptionColumnDefs {
 		if def.EncryptionKeyDef != nil && def.EncryptionKeyDef.SecureMemoryKey != "" && def.EncryptionKeyDef.SessionKey != "" {
 			sessionKeys[def.EncryptionKeyDef.SessionKey] = def.EncryptionKeyDef.SecureMemoryKey
-			log.Log.Debugf("TxSetDecryptionSessionKeys: will set session key %s from memory key %s", def.EncryptionKeyDef.SessionKey, def.EncryptionKeyDef.SecureMemoryKey)
 		}
 	}
 
-	// Set each session key
 	for sessionKey, memoryKey := range sessionKeys {
-		log.Log.Debugf("TxSetDecryptionSessionKeys: setting session key %s from secure memory %s", sessionKey, memoryKey)
 		if err := dtx.TxSetSessionKeyFromSecureMemory(memoryKey, sessionKey); err != nil {
-			log.Log.Errorf(err, "TxSetDecryptionSessionKeys: failed to set session key %s from memory key %s", sessionKey, memoryKey)
 			return errors.Wrapf(err, "SET_DECRYPTION_SESSION_KEY_ERROR:%s", sessionKey)
 		}
-		log.Log.Debugf("TxSetDecryptionSessionKeys: successfully set session key %s", sessionKey)
 	}
 
 	return nil

@@ -554,7 +554,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		}
 		err = tx.Commit()
 		if err != nil {
-			log.Errorf(err, "TX_ERROR_IN_COMMITT: (%v)", err.Error())
+			log.Errorf(err, "TX_ERROR_IN_COMMIT: (%v)", err.Error())
 			errTx := tx.Rollback()
 			if errTx != nil {
 				log.Errorf(err, "ErrorInCommitRollback: (%v)", errTx.Error())
