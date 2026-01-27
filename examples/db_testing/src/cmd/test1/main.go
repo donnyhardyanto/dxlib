@@ -122,8 +122,8 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 
 	log.Log.Infof("Update result aId: %v", aId)
 
-	table1 := table.NewDXTable3Simple(db.NameId, "test1.test1_table", "test1.test1_table",
-		"id", "", "")
+	table1 := table.NewDXTable3Simple(db.NameId, "test1.test1_table", "test1.test1_table", "test1.test1_table",
+		"id", "", "", "data")
 
 	_, returningData2, err := table1.TxInsert(dtx, map[string]any{
 		"name":  "zfx",

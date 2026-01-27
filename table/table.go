@@ -1517,14 +1517,30 @@ func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 
 // DoCreate inserts a row and writes API response (suppresses errors)
 func (t *DXRawTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
-	newId, err := t.InsertReturningId(&aepr.Log, data)
+	returningFields := []string{t.FieldNameForRowId}
+	if t.FieldNameForRowUid != "" {
+		returningFields = append(returningFields, t.FieldNameForRowUid)
+	}
+
+	_, returningValues, err := t.Insert(&aepr.Log, data, returningFields)
 	if err != nil {
 		aepr.WriteResponseAsError(http.StatusConflict, err)
 		return 0, nil
 	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+
+	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+
+	response := utils.JSON{
 		t.FieldNameForRowId: newId,
-	}))
+	}
+
+	if t.FieldNameForRowUid != "" {
+		if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
+			response[t.FieldNameForRowUid] = uid
+		}
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, response))
 	return newId, nil
 }
 
