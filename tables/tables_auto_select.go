@@ -25,7 +25,7 @@ func (t *DXRawTable) SelectOneAuto(l *log.DXLog, fieldNames []string, where util
 // ShouldSelectOneAuto selects one row or returns error if not found, using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) ShouldSelectOneAuto(l *log.DXLog, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldSelectOne(l, where, joinSQLPart, orderBy)
+	return t.ShouldSelectOne(l, nil, where, joinSQLPart, orderBy)
 }
 
 // GetByIdAuto returns a row by ID using table's EncryptionColumnDefs
@@ -86,7 +86,7 @@ func (t *DXTable) SelectOneAuto(l *log.DXLog, fieldNames []string, where utils.J
 // ShouldSelectOneAuto selects one row or returns error if not found, using table's EncryptionColumnDefs
 func (t *DXTable) ShouldSelectOneAuto(l *log.DXLog, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldSelectOne(l, where, joinSQLPart, orderBy)
+	return t.ShouldSelectOne(l, nil, where, joinSQLPart, orderBy)
 }
 
 // GetByIdAuto returns a row by ID using table's EncryptionColumnDefs
@@ -142,7 +142,7 @@ func (t *DXTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabase
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
-	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+	return t.ShouldSelectOne(l, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
 // GetByNameIdAuto returns a row by NameId using table's EncryptionColumnDefs

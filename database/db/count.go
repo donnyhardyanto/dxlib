@@ -222,8 +222,8 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereA
 
 	// Execute the SELECT query with a COUNT expression
 	rowsInfo, rows, err := BaseTxSelect(tx, effectiveTable, nil, []string{effectiveCountExpression},
-		whereAndFieldNameValues, joinSQLPart, nil, nil, nil, nil,
-		groupByFields, havingClause, withCTE)
+		whereAndFieldNameValues, joinSQLPart, groupByFields, havingClause, nil, nil, nil, nil,
+		withCTE)
 
 	if err != nil {
 		return 0, err

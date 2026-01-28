@@ -62,7 +62,7 @@ func propertyGetAs[T any](l *log.DXLog, expectedType string, property map[string
 
 // GetAsString gets a string property value
 func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (string, error) {
-	_, v, err := pt.ShouldSelectOne(l, utils.JSON{"nameid": propertyId}, nil, nil)
+	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return "", err
 	}
@@ -86,7 +86,7 @@ func (pt *DXPropertyTable) SetAsString(l *log.DXLog, propertyId string, value st
 
 // GetAsInt gets an int property value
 func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error) {
-	_, v, err := pt.ShouldSelectOne(l, utils.JSON{"nameid": propertyId}, nil, nil)
+	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -149,7 +149,7 @@ func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId str
 
 // GetAsInt64 gets an int64 property value
 func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, error) {
-	_, v, err := pt.ShouldSelectOne(l, utils.JSON{"nameid": propertyId}, nil, nil)
+	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -177,7 +177,7 @@ func (pt *DXPropertyTable) SetAsInt64(l *log.DXLog, propertyId string, value int
 
 // GetAsJSON gets a JSON property value
 func (pt *DXPropertyTable) GetAsJSON(l *log.DXLog, propertyId string) (map[string]any, error) {
-	_, v, err := pt.ShouldSelectOne(l, utils.JSON{"nameid": propertyId}, nil, nil)
+	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return nil, err
 	}

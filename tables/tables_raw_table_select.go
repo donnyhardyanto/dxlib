@@ -61,14 +61,14 @@ func (t *DXRawTable) SelectOne(l *log.DXLog, fieldNames []string, where utils.JS
 }
 
 // ShouldSelectOne returns a single row or error if not found
-func (t *DXRawTable) ShouldSelectOne(l *log.DXLog, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) ShouldSelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 	if len(t.EncryptionColumnDefs) > 0 {
 		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
-		return t.ShouldSelectOneWithEncryption(l, encryptionColumns, where, joinSQLPart, orderBy)
+		return t.ShouldSelectOneWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
 		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
@@ -79,67 +79,99 @@ func (t *DXRawTable) ShouldSelectOne(l *log.DXLog, where utils.JSON, joinSQLPart
 		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
-		return t.TxShouldSelectOne(dtx, nil, where, joinSQLPart, orderBy, nil)
+		return t.TxShouldSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
 	}
-	return t.Database.ShouldSelectOne(t.GetListViewName(), t.FieldTypeMapping, nil, where, joinSQLPart, nil, nil, orderBy, nil, nil)
+	return t.Database.ShouldSelectOne(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
 
 // GetById returns a row by ID
-func (t *DXRawTable) GetById(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.SelectOne(l, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+func (t *DXRawTable) GetById(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // ShouldGetById returns a row by ID or error if not found
-func (t *DXRawTable) ShouldGetById(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+func (t *DXRawTable) ShouldGetById(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // GetByUid returns a row by UID
-func (t *DXRawTable) GetByUid(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByUid(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
-	return t.SelectOne(l, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
 // ShouldGetByUid returns a row by UID or error if not found
-func (t *DXRawTable) ShouldGetByUid(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByUid(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
-	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
 // GetByUtag returns a row by Utag
-func (t *DXRawTable) GetByUtag(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByUtag(l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
-	return t.SelectOne(l, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
 // ShouldGetByUtag returns a row by Utag or error if not found
-func (t *DXRawTable) ShouldGetByUtag(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByUtag(l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
-	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
 // GetByNameId returns a row by NameId
-func (t *DXRawTable) GetByNameId(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByNameId(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
-	return t.SelectOne(l, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
 // ShouldGetByNameId returns a row by NameId or error if not found
-func (t *DXRawTable) ShouldGetByNameId(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByNameId(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
-	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
 // Transaction Select Operations
@@ -173,61 +205,93 @@ func (t *DXRawTable) TxShouldSelectOne(dtx *database.DXDatabaseTx, fieldNames []
 }
 
 // TxGetById returns a row by ID within a transaction
-func (t *DXRawTable) TxGetById(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
+func (t *DXRawTable) TxGetById(dtx *database.DXDatabaseTx, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.TxSelectOne(dtx, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
 // TxShouldGetById returns a row by ID or error if not found within a transaction
-func (t *DXRawTable) TxShouldGetById(dtx *database.DXDatabaseTx, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
+func (t *DXRawTable) TxShouldGetById(dtx *database.DXDatabaseTx, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.TxShouldSelectOne(dtx, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
 // TxGetByUid returns a row by UID within a transaction
-func (t *DXRawTable) TxGetByUid(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxGetByUid(dtx *database.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
-	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.TxSelectOne(dtx, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
 }
 
 // TxShouldGetByUid returns a row by UID or error if not found within a transaction
-func (t *DXRawTable) TxShouldGetByUid(dtx *database.DXDatabaseTx, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxShouldGetByUid(dtx *database.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
-	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.TxShouldSelectOne(dtx, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
 }
 
 // TxGetByUtag returns a row by Utag within a transaction
-func (t *DXRawTable) TxGetByUtag(dtx *database.DXDatabaseTx, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxGetByUtag(dtx *database.DXDatabaseTx, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
-	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.TxSelectOne(dtx, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
 }
 
 // TxShouldGetByUtag returns a row by Utag or error if not found within a transaction
-func (t *DXRawTable) TxShouldGetByUtag(dtx *database.DXDatabaseTx, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxShouldGetByUtag(dtx *database.DXDatabaseTx, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
-	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.TxShouldSelectOne(dtx, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil, nil)
 }
 
 // TxGetByNameId returns a row by NameId within a transaction
-func (t *DXRawTable) TxGetByNameId(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxGetByNameId(dtx *database.DXDatabaseTx, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
-	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.TxSelectOne(dtx, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
 
 // TxShouldGetByNameId returns a row by NameId within a transaction or error if not found
-func (t *DXRawTable) TxShouldGetByNameId(dtx *database.DXDatabaseTx, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxShouldGetByNameId(dtx *database.DXDatabaseTx, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
-	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.TxShouldSelectOne(dtx, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
 
 // Count Operations

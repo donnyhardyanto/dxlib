@@ -45,9 +45,9 @@ func (t *DXRawTable) SelectOneWithEncryption(l *log.DXLog, fieldNames []string, 
 }
 
 // ShouldSelectOneWithEncryption selects one row or returns error if not found
-func (t *DXRawTable) ShouldSelectOneWithEncryption(l *log.DXLog, encryptionColumns []EncryptionColumn,
+func (t *DXRawTable) ShouldSelectOneWithEncryption(l *log.DXLog, fieldNames []string, encryptionColumns []EncryptionColumn,
 	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	rowsInfo, row, err := t.SelectOneWithEncryption(l, nil, encryptionColumns, where, joinSQLPart, orderBy)
+	rowsInfo, row, err := t.SelectOneWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -70,7 +70,7 @@ func (t *DXRawTable) GetByIdWithEncryption(l *log.DXLog, id int64, encryptionCol
 
 // ShouldGetByIdWithEncryption returns a row by ID or error if not found
 func (t *DXRawTable) ShouldGetByIdWithEncryption(l *log.DXLog, id int64, encryptionColumns []EncryptionColumn) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldSelectOneWithEncryption(l, encryptionColumns, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+	return t.ShouldSelectOneWithEncryption(l, nil, encryptionColumns, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // GetByUidWithEncryption returns a row by UID with decrypted columns
@@ -86,7 +86,7 @@ func (t *DXRawTable) ShouldGetByUidWithEncryption(l *log.DXLog, uid string, encr
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
-	return t.ShouldSelectOneWithEncryption(l, encryptionColumns, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+	return t.ShouldSelectOneWithEncryption(l, nil, encryptionColumns, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
 // GetByNameIdWithEncryption returns a row by NameId with decrypted columns
@@ -102,7 +102,7 @@ func (t *DXRawTable) ShouldGetByNameIdWithEncryption(l *log.DXLog, nameId string
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
-	return t.ShouldSelectOneWithEncryption(l, encryptionColumns, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+	return t.ShouldSelectOneWithEncryption(l, nil, encryptionColumns, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
 // GetByUtagWithEncryption returns a row by Utag with decrypted columns
@@ -118,7 +118,7 @@ func (t *DXRawTable) ShouldGetByUtagWithEncryption(l *log.DXLog, utag string, en
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
-	return t.ShouldSelectOneWithEncryption(l, encryptionColumns, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+	return t.ShouldSelectOneWithEncryption(l, nil, encryptionColumns, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
 // DXRawTable Encrypted Paging Methods
@@ -176,9 +176,9 @@ func (t *DXTable) SelectOneWithEncryption(l *log.DXLog, fieldNames []string, enc
 }
 
 // ShouldSelectOneWithEncryption selects one row or returns error if not found
-func (t *DXTable) ShouldSelectOneWithEncryption(l *log.DXLog, encryptionColumns []EncryptionColumn,
+func (t *DXTable) ShouldSelectOneWithEncryption(l *log.DXLog, fieldNames []string, encryptionColumns []EncryptionColumn,
 	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable.ShouldSelectOneWithEncryption(l, encryptionColumns, where, joinSQLPart, orderBy)
+	return t.DXRawTable.ShouldSelectOneWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 }
 
 // SelectByIdWithEncryption selects by ID with decrypted columns
@@ -525,6 +525,15 @@ func executeEncryptedPaging(
 		}
 	}(rows)
 
+	// Get column info from result set
+	columnNames, err := rows.Columns()
+	if err != nil {
+		return nil, errors.Wrapf(err, "ENCRYPTED_PAGING_COLUMNS_ERROR")
+	}
+	rowsInfo := &db.DXDatabaseTableRowsInfo{
+		Columns: columnNames,
+	}
+
 	var results []utils.JSON
 	for rows.Next() {
 		row := make(map[string]any)
@@ -541,6 +550,7 @@ func executeEncryptedPaging(
 	}
 
 	return &PagingResult{
+		RowsInfo:   rowsInfo,
 		Rows:       results,
 		TotalRows:  totalRows,
 		TotalPages: totalPages,
