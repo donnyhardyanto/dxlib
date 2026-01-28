@@ -72,6 +72,12 @@ type DXDatabase struct {
 	OnCannotConnect              DXDatabaseEventFunc
 	CreateScriptFiles            []string
 	ConcurrencySemaphore         chan struct{} // Adjust number based on your DB max_connections
+
+	// Pool configuration
+	PoolMaxOpenConns           int // Maximum open connections (0 = unlimited)
+	PoolMaxIdleConns           int // Maximum idle connections
+	PoolConnMaxLifetimeMinutes int // Maximum connection lifetime in minutes
+	PoolConnMaxIdleTimeMinutes int // Maximum idle time in minutes before close
 }
 
 func (d *DXDatabase) EnsureConnection() (err error) {
@@ -323,6 +329,28 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 		d.CreateScriptFiles, _ = databaseConfiguration["create_script_files"].([]string)
 		d.ConnectionOptions, _ = databaseConfiguration["connection_options"].(string)
 
+		// Pool configuration with defaults
+		if v, ok := databaseConfiguration["pool_max_open_conns"].(int); ok {
+			d.PoolMaxOpenConns = v
+		} else {
+			d.PoolMaxOpenConns = 25 // Default: 25 max connections
+		}
+		if v, ok := databaseConfiguration["pool_max_idle_conns"].(int); ok {
+			d.PoolMaxIdleConns = v
+		} else {
+			d.PoolMaxIdleConns = 10 // Default: 10 idle connections
+		}
+		if v, ok := databaseConfiguration["pool_conn_max_lifetime_minutes"].(int); ok {
+			d.PoolConnMaxLifetimeMinutes = v
+		} else {
+			d.PoolConnMaxLifetimeMinutes = 60 // Default: 60 minutes (1 hour)
+		}
+		if v, ok := databaseConfiguration["pool_conn_max_idle_time_minutes"].(int); ok {
+			d.PoolConnMaxIdleTimeMinutes = v
+		} else {
+			d.PoolConnMaxIdleTimeMinutes = 30 // Default: 30 minutes
+		}
+
 		d.NonSensitiveConnectionString = d.GetNonSensitiveConnectionString()
 		d.ConnectionString, err = d.GetConnectionString()
 		if err != nil {
@@ -364,6 +392,23 @@ func (d *DXDatabase) Connect() (err error) {
 			}
 		}
 		d.Connection = connection
+
+		// Apply pool configuration
+		if d.PoolMaxOpenConns > 0 {
+			connection.SetMaxOpenConns(d.PoolMaxOpenConns)
+		}
+		if d.PoolMaxIdleConns > 0 {
+			connection.SetMaxIdleConns(d.PoolMaxIdleConns)
+		}
+		if d.PoolConnMaxLifetimeMinutes > 0 {
+			connection.SetConnMaxLifetime(time.Duration(d.PoolConnMaxLifetimeMinutes) * time.Minute)
+		}
+		if d.PoolConnMaxIdleTimeMinutes > 0 {
+			connection.SetConnMaxIdleTime(time.Duration(d.PoolConnMaxIdleTimeMinutes) * time.Minute)
+		}
+		log.Log.Infof("Pool config for %s: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%dm, MaxIdleTime=%dm",
+			d.NameId, d.PoolMaxOpenConns, d.PoolMaxIdleConns, d.PoolConnMaxLifetimeMinutes, d.PoolConnMaxIdleTimeMinutes)
+
 		err = connection.Ping()
 		if err != nil {
 			if d.OnCannotConnect != nil {
