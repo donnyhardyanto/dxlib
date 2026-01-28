@@ -13,9 +13,7 @@ import (
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
-// ============================================================================
 // DXRawTable Encrypted Insert Methods
-// ============================================================================
 
 // TxInsertWithEncryption inserts with encrypted columns within a transaction
 // Automatically sets session keys from secure memory before insert
@@ -90,9 +88,7 @@ func (t *DXRawTable) InsertWithEncryptionReturningId(
 	return newId, nil
 }
 
-// ============================================================================
 // DXTable Encrypted Insert Methods (with audit fields)
-// ============================================================================
 
 // TxInsertWithEncryption inserts with encrypted columns and audit fields
 func (t *DXTable) TxInsertWithEncryption(
@@ -136,9 +132,7 @@ func (t *DXTable) InsertWithEncryptionReturningId(
 	return t.DXRawTable.InsertWithEncryptionReturningId(l, data, encryptionColumns)
 }
 
-// ============================================================================
 // Internal Insert Helper Function
-// ============================================================================
 
 // executeEncryptedInsert builds and executes INSERT with encrypted columns
 func executeEncryptedInsert(

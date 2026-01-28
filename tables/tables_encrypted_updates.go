@@ -14,9 +14,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// ============================================================================
 // DXRawTable Encrypted Update Methods
-// ============================================================================
 
 // TxUpdateWithEncryption updates with encrypted columns within a transaction
 // Automatically sets session keys from secure memory before update
@@ -86,9 +84,7 @@ func (t *DXRawTable) UpdateByIdWithEncryption(
 	return result, err
 }
 
-// ============================================================================
 // DXTable Encrypted Update Methods (with audit fields)
-// ============================================================================
 
 // TxUpdateWithEncryption updates with encrypted columns and audit fields
 func (t *DXTable) TxUpdateWithEncryption(
@@ -136,9 +132,7 @@ func (t *DXTable) UpdateByIdWithEncryption(
 	return t.DXRawTable.UpdateByIdWithEncryption(l, id, data, encryptionColumns)
 }
 
-// ============================================================================
 // Internal Update Helper Function
-// ============================================================================
 
 // executeEncryptedUpdate builds and executes UPDATE with encrypted columns
 func executeEncryptedUpdate(

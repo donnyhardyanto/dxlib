@@ -16,18 +16,14 @@ import (
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
-// ============================================================================
 // DXTable - Table wrapper with soft-delete and audit fields
-// ============================================================================
 
 // DXTable extends DXRawTable with soft-delete and audit fields
 type DXTable struct {
 	DXRawTable
 }
 
-// ============================================================================
 // Audit ModelDBField Helpers
-// ============================================================================
 
 // SetInsertAuditFields sets created_at, created_by_user_id, etc. for insert
 func (t *DXTable) SetInsertAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
@@ -65,9 +61,7 @@ func (t *DXTable) SetUpdateAuditFields(aepr *api.DXAPIEndPointRequest, data util
 	}
 }
 
-// ============================================================================
 // Insert Operations (with audit fields)
-// ============================================================================
 
 // Insert inserts with audit fields
 func (t *DXTable) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
@@ -87,9 +81,7 @@ func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int
 	return t.DXRawTable.DoInsert(aepr, data)
 }
 
-// ============================================================================
 // Update Operations (with audit fields)
-// ============================================================================
 
 // Update updates with audit fields
 func (t *DXTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
@@ -151,9 +143,7 @@ func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.
 	return nil
 }
 
-// ============================================================================
 // Soft Delete Operations
-// ============================================================================
 
 // SoftDelete marks rows as deleted
 func (t *DXTable) SoftDelete(l *log.DXLog, where utils.JSON) (sql.Result, error) {
@@ -209,9 +199,7 @@ func (t *DXTable) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 	return nil
 }
 
-// ============================================================================
 // Select Operations (with is_deleted = false filter)
-// ============================================================================
 
 // addNotDeletedFilter adds is_deleted=false to where condition
 func (t *DXTable) addNotDeletedFilter(where utils.JSON) utils.JSON {
@@ -282,9 +270,7 @@ func (t *DXTable) ShouldGetByNameIdNotDeleted(l *log.DXLog, nameId string) (*db.
 	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
-// ============================================================================
 // Transaction Select Operations (with is_deleted = false filter)
-// ============================================================================
 
 // TxSelect returns non-deleted rows within a transaction
 func (t *DXTable) TxSelect(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
@@ -314,18 +300,14 @@ func (t *DXTable) TxShouldGetByIdNotDeleted(dtx *database.DXDatabaseTx, id int64
 	return t.TxShouldSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
-// ============================================================================
 // Count Operations (with is_deleted = false filter)
-// ============================================================================
 
 // Count returns total non-deleted row count
 func (t *DXTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
 	return t.DXRawTable.Count(l, t.addNotDeletedFilter(where), joinSQLPart)
 }
 
-// ============================================================================
 // Paging Operations (with is_deleted = false filter)
-// ============================================================================
 
 // NewQueryBuilder creates a QueryBuilder with NotDeleted filter pre-applied
 func (t *DXTable) NewQueryBuilder() *QueryBuilder {
@@ -401,9 +383,7 @@ func (t *DXTable) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest, ro
 	return nil
 }
 
-// ============================================================================
 // Upsert Operations (with audit fields)
-// ============================================================================
 
 // Upsert inserts or updates with audit fields
 func (t *DXTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
@@ -455,9 +435,7 @@ func (t *DXTable) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where ut
 	return result, 0, err
 }
 
-// ============================================================================
 // DXTable - Additional API Helper Methods (with soft-delete)
-// ============================================================================
 
 // SelectAll returns all non-deleted rows from the table
 func (t *DXTable) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {

@@ -15,9 +15,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-// ============================================================================
 // QueryBuilder - Fluent API for building WHERE clauses
-// ============================================================================
 
 // QueryBuilder builds SQL WHERE clauses with fluent API
 type QueryBuilder struct {
@@ -187,9 +185,7 @@ func (qb *QueryBuilder) buildInClause(field string, values any) string {
 	}
 }
 
-// ============================================================================
 // SQL Utility Functions
-// ============================================================================
 
 // SQLBuildWhereInClauseStrings builds a WHERE IN clause for string values
 func SQLBuildWhereInClauseStrings(fieldName string, values []string) string {
@@ -223,9 +219,7 @@ func SQLBuildWhereInClauseInt64(fieldName string, values []int64) string {
 	return fieldName + " IN (" + strings.Join(valueStrings, ",") + ")"
 }
 
-// ============================================================================
 // PagingResult - Standardized paging response
-// ============================================================================
 
 // PagingResult contains paging query results
 type PagingResult struct {
@@ -249,9 +243,7 @@ func (pr *PagingResult) ToResponseJSON() utils.JSON {
 	}
 }
 
-// ============================================================================
 // Standalone Paging Functions - using database2.DXDatabase
-// ============================================================================
 
 // NamedQueryPaging executes a paging query using database.DXDatabase
 func NamedQueryPaging(
@@ -341,9 +333,7 @@ func DoNamedQueryPagingResponseWithBuilder(
 	return DoNamedQueryPagingResponse(aepr, dxDb3, fieldTypeMapping, tableName, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
-// ============================================================================
 // Table3 Manager - Registry for tables
-// ============================================================================
 
 // DXTableManager manages a collection of DXTable instances
 type DXTableManager struct {
@@ -530,9 +520,7 @@ func (m *DXTableManager) GetRawTable(name string) *DXRawTable {
 	return m.RawTables[name]
 }
 
-// ============================================================================
 // Factory Functions
-// ============================================================================
 
 // NewDXRawTable creates a new DXRawTable wrapping a models.ModelDBTable
 func NewDXRawTable(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXRawTable {
@@ -576,9 +564,7 @@ func NewDXTableWithView(databaseNameId string, dbTable *models.ModelDBTable, fie
 	}
 }
 
-// ============================================================================
 // Simple Factory Functions - without models.ModelDBTable (for gradual migration)
-// ============================================================================
 
 // NewDXRawTableSimple creates a DXRawTable with direct table name (no models.ModelDBTable needed)
 func NewDXRawTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef) *DXRawTable {

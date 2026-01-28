@@ -9,9 +9,7 @@ import (
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
-// ============================================================================
 // DXRawTable Auto Insert Methods
-// ============================================================================
 
 // TxInsertAuto inserts using table's EncryptionColumnDefs and EncryptionKeyDefs
 // Data fields matching DataFieldName are auto-encrypted to FieldName
@@ -85,9 +83,7 @@ func (t *DXRawTable) InsertAutoReturningId(
 	return newId, nil
 }
 
-// ============================================================================
 // DXTable Auto Insert Methods (with audit fields)
-// ============================================================================
 
 // TxInsertAuto inserts with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) TxInsertAuto(

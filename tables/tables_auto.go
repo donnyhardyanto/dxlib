@@ -6,10 +6,8 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-// ============================================================================
 // DXRawTable Auto Encryption Methods
 // Uses table's EncryptionKeyDefs and EncryptionColumnDefs
-// ============================================================================
 
 // HasEncryptionConfig returns true if any encryption configuration is defined on this table
 func (t *DXRawTable) HasEncryptionConfig() bool {

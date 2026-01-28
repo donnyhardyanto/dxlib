@@ -9,9 +9,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-// ============================================================================
 // DXPropertyTable - Property Table for key-value storage with typed values
-// ============================================================================
 
 // DXPropertyTable is a table specialized for storing typed property values
 type DXPropertyTable struct {

@@ -9,9 +9,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/errors"
 )
 
-// ============================================================================
 // Encryption Column Definition
-// ============================================================================
 
 // EncryptionColumn defines encryption config for a single column with its value.
 // Used for INSERT/UPDATE (encryption) and SELECT (decryption).
@@ -27,9 +25,7 @@ type EncryptionColumn struct {
 	ViewHasDecrypt     bool                       // true = view already has pgp_sym_decrypt, just set session key and select AliasName
 }
 
-// ============================================================================
 // Internal Shared Helper Functions
-// ============================================================================
 
 // setSessionKeysForEncryption sets all unique session keys from secure memory
 func setSessionKeysForEncryption(dtx *database.DXDatabaseTx, encryptionColumns []EncryptionColumn) error {

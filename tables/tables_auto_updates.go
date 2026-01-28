@@ -8,9 +8,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-// ============================================================================
 // DXRawTable Auto Update Methods
-// ============================================================================
 
 // TxUpdateAuto updates using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) TxUpdateAuto(
@@ -79,9 +77,7 @@ func (t *DXRawTable) UpdateByIdAuto(
 	return result, err
 }
 
-// ============================================================================
 // DXTable Auto Update Methods (with audit fields)
-// ============================================================================
 
 // TxUpdateAuto updates with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) TxUpdateAuto(

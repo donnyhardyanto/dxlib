@@ -19,9 +19,7 @@ import (
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
-// ============================================================================
 // DXRawTable - Basic table wrapper without soft-delete
-// ============================================================================
 
 // DXRawTable wraps database3 with connection management and basic CRUD
 type DXRawTable struct {
@@ -71,9 +69,7 @@ func (t *DXRawTable) TableName() string {
 	return t.TableNameDirect
 }
 
-// ============================================================================
 // Insert Operations
-// ============================================================================
 
 // Insert inserts a new row and returns result
 func (t *DXRawTable) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
@@ -142,9 +138,7 @@ func (t *DXRawTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (
 	return newId, nil
 }
 
-// ============================================================================
 // Update Operations
-// ============================================================================
 
 // Update updates rows matching where condition
 func (t *DXRawTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
@@ -217,9 +211,7 @@ func (t *DXRawTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data uti
 	return nil
 }
 
-// ============================================================================
 // Delete Operations (Hard Delete)
-// ============================================================================
 
 // Delete performs hard delete of rows matching where condition
 func (t *DXRawTable) Delete(l *log.DXLog, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
@@ -265,9 +257,7 @@ func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 	return nil
 }
 
-// ============================================================================
 // Select Operations
-// ============================================================================
 
 // Select returns multiple rows matching where condition
 func (t *DXRawTable) Select(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
@@ -354,9 +344,7 @@ func (t *DXRawTable) ShouldGetByNameId(l *log.DXLog, nameId string) (*db.DXDatab
 	return t.ShouldSelectOne(l, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
-// ============================================================================
 // Transaction Select Operations
-// ============================================================================
 
 // TxSelect returns multiple rows within a transaction
 func (t *DXRawTable) TxSelect(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
@@ -436,9 +424,7 @@ func (t *DXRawTable) TxGetByNameId(dtx *database.DXDatabaseTx, nameId string) (*
 	return t.TxSelectOne(dtx, nil, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
 
-// ============================================================================
 // Count Operations
-// ============================================================================
 
 // Count returns total row count
 func (t *DXRawTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
@@ -448,9 +434,7 @@ func (t *DXRawTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int
 	return t.Database.Count(t.GetListViewName(), where, joinSQLPart)
 }
 
-// ============================================================================
 // Upsert Operations
-// ============================================================================
 
 // Upsert inserts or updates a row based on where condition
 func (t *DXRawTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
@@ -498,9 +482,7 @@ func (t *DXRawTable) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where
 	return result, 0, err
 }
 
-// ============================================================================
 // Paging Operations
-// ============================================================================
 
 // GetListViewName returns the view name for list queries (falls back to table name)
 func (t *DXRawTable) GetListViewName() string {
@@ -584,9 +566,7 @@ func (t *DXRawTable) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest,
 	return t.DoPagingResponse(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
-// ============================================================================
 // DXRawTable - Additional API Helper Methods
-// ============================================================================
 
 // SelectAll returns all rows from the table
 func (t *DXRawTable) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
