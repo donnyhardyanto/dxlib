@@ -1,7 +1,7 @@
 package db
 
 var (
-	// Oracle specific keywords
+	// Oracle-specific keywords
 	oracleKeywords = map[string]bool{
 		// Oracle specific reserved keywords (that aren't in the common list)
 		"ACCESS": true, "ACCOUNT": true, "ACTIVATE": true, "ADMIN": true,

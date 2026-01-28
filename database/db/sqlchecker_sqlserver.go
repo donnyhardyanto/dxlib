@@ -1,7 +1,7 @@
 package db
 
 var (
-	// SQL Server specific keywords
+	// SQL Server-specific keywords
 	sqlServerKeywords = map[string]bool{
 		// SQL Server specific reserved keywords (that aren't in the common list)
 		"ABSOLUTE": true, "ACTION": true, "ADMIN": true, "AFTER": true,
@@ -501,7 +501,7 @@ var (
 		"SETTINGS":                         true,
 		"SHOWPLAN":                         true,
 		"SHOWPLAN_ALL":                     true,
-		"SHOWPLAN_TEXT":                     true,
+		"SHOWPLAN_TEXT":                    true,
 		"SHOWPLAN_XML":                     true,
 		"SHRINKLOG":                        true,
 		"SHUTDOWN":                         true,

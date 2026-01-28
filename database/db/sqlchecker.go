@@ -115,7 +115,7 @@ var (
 	}
 )
 
-// isReservedKeyword checks if an identifier is a reserved keyword in the specific dialect
+// there isReservedKeyword checks if an identifier is a reserved keyword in the specific dialect
 func isReservedKeyword(dialect base.DXDatabaseType, word string) bool {
 	// Convert to uppercase for case-insensitive comparison
 	upperWord := strings.ToUpper(word)
@@ -209,7 +209,7 @@ func CheckIdentifier(dialect base.DXDatabaseType, identifier string) error {
 		quoteChar := QuoteCharacters[dialect].Start[quoteType]
 		if strings.Count(content, string(quoteChar)) > 0 {
 			// In SQL, quotes within quoted identifiers must be doubled
-			// e.g., "column""name" is valid and represents: column"name
+			// e.g., "column" "name" is valid and represents: column"name
 			// Verify this pattern
 			if !strings.Contains(content, string(quoteChar)+string(quoteChar)) {
 				return errors.Errorf("invalid quote character in identifier without proper escaping")
@@ -575,7 +575,7 @@ func ValidateAndSanitizeOrderBy(orderBy string) (string, error) {
 			return "", errors.Errorf("invalid field name: %s", field)
 		}
 
-		// Validate direction if provided
+		// Validate a direction if provided
 		direction := "ASC" // default direction
 		if len(components) == 2 {
 			dir := strings.ToUpper(components[1])
@@ -595,7 +595,7 @@ func ValidateAndSanitizeOrderBy(orderBy string) (string, error) {
 	return strings.Join(sanitizedParts, ", "), nil
 }
 
-// Example usage in handler
+// ValidateAndSanitizeOrderByExampleUsage Example usage in handler
 func ValidateAndSanitizeOrderByExampleUsage() {
 	// Valid examples
 	examples := []string{
