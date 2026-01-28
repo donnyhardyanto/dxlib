@@ -93,7 +93,7 @@ func (t *DXTable) TxSoftDeleteById(dtx *database.DXDatabaseTx, id int64) (sql.Re
 
 // DoSoftDelete is an API helper for soft delete
 func (t *DXTable) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
-	_, row, err := t.ShouldGetByIdNotDeleted(&aepr.Log, id)
+	_, row, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -130,12 +130,12 @@ func (t *DXTable) NewQueryBuilder() *QueryBuilder {
 	return qb
 }
 
-// NewQueryBuilderRaw creates a QueryBuilder without NotDeleted filter (for special cases)
+// NewQueryBuilderRaw creates a QueryBuilder without a NotDeleted filter (for special cases)
 func (t *DXTable) NewQueryBuilderRaw() *QueryBuilder {
 	return NewQueryBuilder(t.GetDbType())
 }
 
-// addNotDeletedToWhere adds is_deleted filter to existing WHERE clause
+// addNotDeletedToWhere adds is_deleted filter to the existing WHERE clause
 func (t *DXTable) addNotDeletedToWhere(whereClause string) string {
 	var notDeletedClause string
 	switch t.GetDbType() {
@@ -151,7 +151,7 @@ func (t *DXTable) addNotDeletedToWhere(whereClause string) string {
 	return fmt.Sprintf("(%s) AND %s", whereClause, notDeletedClause)
 }
 
-// Paging executes a paging query with automatic is_deleted filter
+// Paging executes a paging query with an automatic is_deleted filter
 func (t *DXTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
 	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, t.addNotDeletedToWhere(whereClause), orderBy, args)
 }
@@ -167,7 +167,7 @@ func (t *DXTable) PagingIncludeDeleted(l *log.DXLog, rowPerPage, pageIndex int64
 	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
-// DoPaging is an API helper with automatic is_deleted filter
+// DoPaging is an API helper with an automatic is_deleted filter
 func (t *DXTable) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
 	return t.Paging(&aepr.Log, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
@@ -287,7 +287,7 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	result, err := t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
+	result, err := t.PagingAuto(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterKeyValues, filterOrderBy)
 	if err != nil {
 		return err
 	}
@@ -314,9 +314,9 @@ func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWher
 
 	var result *PagingResult
 	if isDeletedIncluded {
-		result, err = t.PagingIncludeDeleted(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
+		result, err = t.DXRawTable.PagingAuto(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterKeyValues, filterOrderBy)
 	} else {
-		result, err = t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
+		result, err = t.PagingAuto(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterKeyValues, filterOrderBy)
 	}
 	if err != nil {
 		return err
@@ -350,7 +350,7 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.ShouldGetByIdNotDeleted(&aepr.Log, id)
+	_, row, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -367,7 +367,7 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 	return nil
 }
 
-// RequestPagingListAll handles paging list all API requests (no filter, all records)
+// RequestPagingListAll handles a paging list all API requests (no filter, all records)
 func (t *DXTable) RequestPagingListAll(aepr *api.DXAPIEndPointRequest) error {
 	return t.DoRequestPagingList(aepr, "", "", nil, nil)
 }
@@ -411,7 +411,7 @@ func (t *DXTable) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.ShouldGetByUidNotDeleted(&aepr.Log, uid)
+	_, row, err := t.ShouldGetByUidNotDeletedAuto(&aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -431,7 +431,7 @@ func (t *DXTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.ShouldGetByUidNotDeleted(&aepr.Log, uid)
+	_, row, err := t.ShouldGetByUidNotDeletedAuto(&aepr.Log, uid)
 	if err != nil {
 		return err
 	}

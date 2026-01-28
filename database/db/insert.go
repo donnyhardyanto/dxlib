@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
-	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 // SQLPartInsertFieldNamesFieldValues generates the field names and values parts for an SQL INSERT statement
@@ -220,7 +220,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 		// Get the last insert ID and check if it's valid
 		if lastInsertId <= 0 {
 			// Some tables might not have auto-increment IDs, so this isn't always an error
-			// Just return empty map if that's what the user wants
+			// Just return an empty map if that's what the user wants
 			return result, returningFieldValues, nil
 		}
 
@@ -463,11 +463,11 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 		// Get the last insert ID and check if it's valid
 		if lastInsertId <= 0 {
 			// Some tables might not have auto-increment IDs, so this isn't always an error
-			// Just return empty map if that's what the user wants
+			// Just return an empty map if that's what the user wants
 			return result, returningFieldValues, nil
 		}
 
-		// Use first common ID field name
+		// Use the first common I D field name
 		idFieldNames := []string{"id", "ID", "Id"}
 		idField := ""
 

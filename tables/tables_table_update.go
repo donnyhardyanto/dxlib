@@ -39,7 +39,7 @@ func (t *DXTable) TxUpdateById(dtx *database.DXDatabaseTx, id int64, data utils.
 
 // DoUpdate is an API helper with audit fields
 func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
-	_, row, err := t.ShouldGetByIdNotDeleted(&aepr.Log, id)
+	_, row, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.
 	}
 
 	// Re-fetch and return updated row
-	_, updatedRow, err := t.ShouldGetByIdNotDeleted(&aepr.Log, id)
+	_, updatedRow, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.ShouldGetByUidNotDeleted(&aepr.Log, uid)
+	_, row, err := t.ShouldGetByUidNotDeletedAuto(&aepr.Log, uid)
 	if err != nil {
 		return err
 	}

@@ -185,9 +185,12 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 	case time.Time:
 		// Ensure consistent time formatting across databases
 		switch driverName {
+		case "postgres", "postgresql":
+			// pgx is strict about types: time.Time cannot be encoded into varchar columns.
+			// Convert to string so it works for both timestamp and varchar columns.
+			return v.(time.Time).Format("2006-01-02 15:04:05.999999Z07:00"), nil
 		case "oracle":
 			// Oracle has specific datetime handling requirements
-			// For Oracle, convert to a format it understands well
 			return v.(time.Time).Format("2006-01-02 15:04:05"), nil
 		default:
 			// All the other major databases support standard time format

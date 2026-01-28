@@ -147,7 +147,7 @@ func (t *DXTable) RequestRead(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByIdNotDeleted(&aepr.Log, id)
+	_, row, err := t.GetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (t *DXTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByUidNotDeleted(&aepr.Log, uid)
+	_, row, err := t.GetByUidNotDeletedAuto(&aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (t *DXTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByNameIdNotDeleted(&aepr.Log, nameId)
+	_, row, err := t.GetByNameIdNotDeletedAuto(&aepr.Log, nameId)
 	if err != nil {
 		return err
 	}
