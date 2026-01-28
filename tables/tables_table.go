@@ -287,7 +287,7 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	result, err := t.PagingAuto(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterKeyValues, filterOrderBy)
+	result, err := t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
 	if err != nil {
 		return err
 	}
@@ -314,9 +314,9 @@ func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWher
 
 	var result *PagingResult
 	if isDeletedIncluded {
-		result, err = t.DXRawTable.PagingAuto(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterKeyValues, filterOrderBy)
+		result, err = t.PagingIncludeDeleted(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
 	} else {
-		result, err = t.PagingAuto(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterKeyValues, filterOrderBy)
+		result, err = t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
 	}
 	if err != nil {
 		return err

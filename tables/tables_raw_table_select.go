@@ -18,6 +18,21 @@ func (t *DXRawTable) Select(l *log.DXLog, fieldNames []string, where utils.JSON,
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
+	if len(t.EncryptionColumnDefs) > 0 {
+		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
+		return t.SelectWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	}
+	if len(t.EncryptionKeyDefs) > 0 {
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer dtx.Finish(l, err)
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+		return t.TxSelect(dtx, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	}
 	return t.Database.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
 
@@ -27,6 +42,21 @@ func (t *DXRawTable) SelectOne(l *log.DXLog, fieldNames []string, where utils.JS
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
+	if len(t.EncryptionColumnDefs) > 0 {
+		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
+		return t.SelectOneWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
+	}
+	if len(t.EncryptionKeyDefs) > 0 {
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer dtx.Finish(l, err)
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+		return t.TxSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
+	}
 	return t.Database.SelectOne(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
 
@@ -35,6 +65,21 @@ func (t *DXRawTable) ShouldSelectOne(l *log.DXLog, where utils.JSON, joinSQLPart
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
+	}
+	if len(t.EncryptionColumnDefs) > 0 {
+		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
+		return t.ShouldSelectOneWithEncryption(l, encryptionColumns, where, joinSQLPart, orderBy)
+	}
+	if len(t.EncryptionKeyDefs) > 0 {
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer dtx.Finish(l, err)
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, nil, err
+		}
+		return t.TxShouldSelectOne(dtx, nil, where, joinSQLPart, orderBy, nil)
 	}
 	return t.Database.ShouldSelectOne(t.GetListViewName(), t.FieldTypeMapping, nil, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
@@ -191,6 +236,17 @@ func (t *DXRawTable) TxShouldGetByNameId(dtx *database.DXDatabaseTx, nameId stri
 func (t *DXRawTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return 0, err
+	}
+	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return 0, err
+		}
+		defer dtx.Finish(l, err)
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return 0, err
+		}
+		return dtx.Count(t.GetListViewName(), where, joinSQLPart, nil, nil)
 	}
 	return t.Database.Count(t.GetListViewName(), where, joinSQLPart)
 }

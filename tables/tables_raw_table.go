@@ -200,6 +200,22 @@ func (t *DXRawTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClau
 		return nil, err
 	}
 
+	if len(t.EncryptionColumnDefs) > 0 {
+		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
+		return t.PagingWithEncryption(l, nil, encryptionColumns, whereClause, args, orderBy, rowPerPage, pageIndex)
+	}
+	if len(t.EncryptionKeyDefs) > 0 {
+		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		if err != nil {
+			return nil, err
+		}
+		defer dtx.Finish(l, err)
+		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+			return nil, err
+		}
+		return executeEncryptedPaging(dtx, t.ListViewNameId, t.Database.DatabaseType, nil, nil, whereClause, args, orderBy, rowPerPage, pageIndex)
+	}
+
 	rowsInfo, list, totalRows, totalPages, _, err := db.NamedQueryPaging(
 		t.Database.Connection,
 		t.FieldTypeMapping,
