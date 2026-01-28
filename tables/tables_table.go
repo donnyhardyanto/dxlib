@@ -296,7 +296,9 @@ func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
 	return nil
 }
 
-// DoRequestPagingList handles paging with optional result processing (with is_deleted filter)
+// DoRequestPagingList handles paging with optional result processing.
+// If the request contains an "is_deleted" parameter set to true, deleted records are included.
+// Otherwise, only non-deleted records are returned (is_deleted=false filter applied).
 func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) error {
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
 	if err != nil {
@@ -308,7 +310,14 @@ func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWher
 		return err
 	}
 
-	result, err := t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
+	_, isDeletedIncluded, _ := aepr.GetParameterValueAsBool("is_deleted", false)
+
+	var result *PagingResult
+	if isDeletedIncluded {
+		result, err = t.PagingIncludeDeleted(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
+	} else {
+		result, err = t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
+	}
 	if err != nil {
 		return err
 	}

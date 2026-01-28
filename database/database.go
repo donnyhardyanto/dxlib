@@ -18,8 +18,8 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/database/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/sijms/go-ora/v2"
 
@@ -27,6 +27,10 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
+
+func init() {
+	sql.Register("postgres", stdlib.GetDefaultDriver())
+}
 
 type DXDatabaseEventFunc func(dm *DXDatabase, err error)
 

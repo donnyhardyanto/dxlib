@@ -11,7 +11,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/shopspring/decimal"
 	go_ora "github.com/sijms/go-ora/v2/network"
@@ -119,7 +119,10 @@ func DbDriverFormatOrderByFieldName(driverName string, fieldName string, directi
 func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, error) {
 	switch v.(type) {
 	case bool:
-		// Convert booleans to integers for all databases
+		// PostgreSQL has native boolean support; pgx requires actual bool values
+		if driverName == "postgres" || driverName == "postgresql" {
+			return v, nil
+		}
 		// Oracle, SQL Server, MySQL, MariaDB all work with 0/1 for boolean values
 		if v.(bool) {
 			return 1, nil
@@ -450,8 +453,8 @@ func IsConnectionError(err error) bool {
 	case *go_ora.OracleError: // Oracle
 		return oracleConnectionErrors[e.ErrCode]
 
-	case *pq.Error: // PostgreSQL
-		return e.Code.Class() == pgConnectionErrorClass
+	case *pgconn.PgError: // PostgreSQL
+		return strings.HasPrefix(e.Code, pgConnectionErrorClass)
 
 	case *mysql.MySQLError: // MariaDB/MySQL
 		return mariadbConnectionErrors[e.Number]

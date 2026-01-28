@@ -9,7 +9,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/go-sql-driver/mysql"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgconn"
 	mssql "github.com/microsoft/go-mssqldb"
 )
 
@@ -73,8 +73,8 @@ func GetDriverSpecificErrorMessage(err error) string {
 	cause := errors.Cause(err)
 
 	// PostgreSQL
-	if pqErr, ok := cause.(*pq.Error); ok {
-		return fmt.Sprintf("[PostgreSQL: %s] %s", pqErr.Code, pqErr.Message)
+	if pgErr, ok := cause.(*pgconn.PgError); ok {
+		return fmt.Sprintf("[PostgreSQL: %s] %s", pgErr.Code, pgErr.Message)
 	}
 
 	// MySQL/MariaDB
@@ -154,8 +154,8 @@ func IsDuplicateKeyError(err error) bool {
 	// Type-specific checks
 
 	// PostgreSQL
-	if pqErr, ok := errors.Cause(err).(*pq.Error); ok {
-		return pqErr.Code == "23505" // Unique violation
+	if pgErr, ok := errors.Cause(err).(*pgconn.PgError); ok {
+		return pgErr.Code == "23505" // Unique violation
 	}
 
 	// MySQL/MariaDB
@@ -237,9 +237,9 @@ func IsConnectionError(err error) bool {
 	// Type-specific checks
 
 	// PostgreSQL
-	if pqErr, ok := errors.Cause(err).(*pq.Error); ok {
+	if pgErr, ok := errors.Cause(err).(*pgconn.PgError); ok {
 		// Class 08 - Connection Exception
-		return strings.HasPrefix(string(pqErr.Code), "08")
+		return strings.HasPrefix(pgErr.Code, "08")
 	}
 
 	// MySQL/MariaDB connection errors
