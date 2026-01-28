@@ -9,7 +9,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/object_storage"
 	"github.com/donnyhardyanto/dxlib/secure_memory"
-	"github.com/donnyhardyanto/dxlib/table"
+	"github.com/donnyhardyanto/dxlib/tables"
 	"github.com/donnyhardyanto/dxlib/vault"
 	"github.com/newrelic/go-agent/v3/newrelic"
 
@@ -173,7 +173,7 @@ func (a *DXApp) start() (err error) {
 		if err != nil {
 			return err
 		}
-		err = table.Manager.ConnectAll()
+		err = tables.Manager.ConnectAll()
 		if err != nil {
 			return err
 		}

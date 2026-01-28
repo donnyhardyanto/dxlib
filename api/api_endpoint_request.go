@@ -175,11 +175,8 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 			msg = fmt.Sprintf(msg, data...)
 		}
 	}
-	err = aepr.Log.WarnAndCreateError(msg)
-	if err != nil {
-		// suppress
-	}
-	_ = aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, msg)
+	_ = aepr.Log.ErrorAndCreateErrorf(msg)
+	_ = aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, msg)
 	return err
 }
 
@@ -196,7 +193,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 		requestDump = "DUMP REQUEST FAIL"
 	}
 	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
-	_ = aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, err.Error())
+	_ = aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, err.Error())
 	return
 }
 
@@ -219,7 +216,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, re
 	}
 	err = errors.New(msg)
 	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
-	_ = aepr.WriteResponseAsErrorMessageNotLoggedAsError(statusCode, responseMessage, msg)
+	_ = aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, msg)
 
 	return err
 }
@@ -245,7 +242,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend
 	aepr.WriteResponseAsJSON(statusCode, nil, s)
 }
 
-func (aepr *DXAPIEndPointRequest) WriteResponseAsErrorMessageNotLoggedAsError(statusCode int, errorMsg string, reasonMsg string) error {
+func (aepr *DXAPIEndPointRequest) WriteResponseAsErrorMessageNotLogged(statusCode int, errorMsg string, reasonMsg string) error {
 	if aepr.ResponseHeaderSent {
 		return nil
 	}

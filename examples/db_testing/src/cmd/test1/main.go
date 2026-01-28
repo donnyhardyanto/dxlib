@@ -8,7 +8,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/database"
 	"github.com/donnyhardyanto/dxlib/database/utils"
 	"github.com/donnyhardyanto/dxlib/log"
-	"github.com/donnyhardyanto/dxlib/table"
+	"github.com/donnyhardyanto/dxlib/tables"
 	utilsOs "github.com/donnyhardyanto/dxlib/utils/os"
 )
 
@@ -122,7 +122,7 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 
 	log.Log.Infof("Update result aId: %v", aId)
 
-	table1 := table.NewDXTableSimple(db.NameId, "test1.test1_table", "test1.test1_table", "test1.test1_table",
+	table1 := tables.NewDXTableSimple(db.NameId, "test1.test1_table", "test1.test1_table", "test1.test1_table",
 		"id", "", "", "data", nil)
 
 	_, returningData2, err := table1.TxInsert(dtx, map[string]any{
