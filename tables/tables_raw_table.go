@@ -40,6 +40,8 @@ type DXRawTable struct {
 	// Encryption definitions for automatic encryption/decryption
 	EncryptionKeyDefs    []*database.EncryptionKeyDef   // session keys only (for views that already handle decryption)
 	EncryptionColumnDefs []database.EncryptionColumnDef // for INSERT/UPDATE/SELECT encryption/decryption
+
+	ValidationUniqueFieldNameGroups [][]string
 }
 
 // EnsureDatabase ensures database connection is initialized

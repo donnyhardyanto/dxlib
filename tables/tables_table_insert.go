@@ -53,3 +53,116 @@ func (t *DXTable) RequestCreate(aepr *api.DXAPIEndPointRequest) error {
 	_, err := t.DoCreate(aepr, data)
 	return err
 }
+
+// DoCreateReturnUid inserts a row with audit fields and writes API response with uid (not id)
+func (t *DXTable) DoCreateReturnUid(aepr *api.DXAPIEndPointRequest, data utils.JSON) (string, error) {
+	t.SetInsertAuditFields(aepr, data)
+	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowUid})
+	if err != nil {
+		return "", err
+	}
+	newUid := ""
+	if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
+		newUid = uid
+	}
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.FieldNameForRowUid: newUid,
+	}))
+	return newUid, nil
+}
+
+// RequestCreateReturnUid handles create API requests and returns uid in response
+func (t *DXTable) RequestCreateReturnUid(aepr *api.DXAPIEndPointRequest) error {
+	data := utils.JSON{}
+	for k, v := range aepr.ParameterValues {
+		data[k] = v.Value
+	}
+	_, err := t.DoCreateReturnUid(aepr, data)
+	return err
+}
+
+// DoCreateReturnUidWithValidation inserts with unique field validation, audit fields, and returns uid
+func (t *DXTable) DoCreateReturnUidWithValidation(aepr *api.DXAPIEndPointRequest, data utils.JSON) (string, error) {
+	t.SetInsertAuditFields(aepr, data)
+
+	err := t.EnsureDatabase()
+	if err != nil {
+		return "", err
+	}
+
+	newUid := ""
+	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *database.DXDatabaseTx) error {
+		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
+		if err != nil {
+			return err
+		}
+		_, returningValues, err := t.DXRawTable.TxInsert(dtx, data, []string{t.FieldNameForRowUid})
+		if err != nil {
+			return err
+		}
+		if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
+			newUid = uid
+		}
+		return nil
+	})
+	if txErr != nil {
+		return "", txErr
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.FieldNameForRowUid: newUid,
+	}))
+	return newUid, nil
+}
+
+// RequestCreateReturnUidWithValidation handles create API requests with unique field validation
+func (t *DXTable) RequestCreateReturnUidWithValidation(aepr *api.DXAPIEndPointRequest) error {
+	data := utils.JSON{}
+	for k, v := range aepr.ParameterValues {
+		data[k] = v.Value
+	}
+	_, err := t.DoCreateReturnUidWithValidation(aepr, data)
+	return err
+}
+
+// DoCreateWithValidation inserts with unique field validation, audit fields, and returns id
+func (t *DXTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
+	t.SetInsertAuditFields(aepr, data)
+
+	err := t.EnsureDatabase()
+	if err != nil {
+		return 0, err
+	}
+
+	var newId int64
+	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *database.DXDatabaseTx) error {
+		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
+		if err != nil {
+			return err
+		}
+		_, returningValues, err := t.DXRawTable.TxInsert(dtx, data, []string{t.FieldNameForRowId})
+		if err != nil {
+			return err
+		}
+		newId, _ = utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+		return nil
+	})
+	if txErr != nil {
+		return 0, txErr
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.FieldNameForRowId: newId,
+	}))
+	return newId, nil
+}
+
+// RequestCreateWithValidation handles create API requests with unique field validation (returns id)
+func (t *DXTable) RequestCreateWithValidation(aepr *api.DXAPIEndPointRequest) error {
+	data := utils.JSON{}
+	for k, v := range aepr.ParameterValues {
+		data[k] = v.Value
+	}
+	_, err := t.DoCreateWithValidation(aepr, data)
+	return err
+}

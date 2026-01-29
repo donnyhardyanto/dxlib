@@ -523,43 +523,51 @@ func (m *DXTableManager) GetRawTable(name string) *DXRawTable {
 // Factory Functions
 
 // NewDXRawTable creates a new DXRawTable wrapping a models.ModelDBTable
-func NewDXRawTable(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXRawTable {
+func NewDXRawTable(
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string) *DXRawTable {
 	return &DXRawTable{
-		DatabaseNameId:    databaseNameId,
-		DBTable:           dbTable,
-		FieldNameForRowId: fieldNameForRowId,
+		DatabaseNameId:                  databaseNameId,
+		DBTable:                         dbTable,
+		FieldNameForRowId:               fieldNameForRowId,
+		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 	}
 }
 
 // NewDXRawTableWithView creates a new DXRawTable with a custom list view
-func NewDXRawTableWithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXRawTable {
+func NewDXRawTableWithView(
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string) *DXRawTable {
 	return &DXRawTable{
-		DatabaseNameId:    databaseNameId,
-		DBTable:           dbTable,
-		FieldNameForRowId: fieldNameForRowId,
-		ListViewNameId:    listViewNameId,
+		DatabaseNameId:                  databaseNameId,
+		DBTable:                         dbTable,
+		FieldNameForRowId:               fieldNameForRowId,
+		ListViewNameId:                  listViewNameId,
+		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 	}
 }
 
 // NewDXTable creates a new DXTable wrapping a models.ModelDBTable
-func NewDXTable(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string) *DXTable {
+func NewDXTable(
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
-			DatabaseNameId:    databaseNameId,
-			DBTable:           dbTable,
-			FieldNameForRowId: fieldNameForRowId,
+			DatabaseNameId:                  databaseNameId,
+			DBTable:                         dbTable,
+			FieldNameForRowId:               fieldNameForRowId,
+			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		},
 	}
 }
 
 // NewDXTableWithView creates a new DXTable with a custom list view
-func NewDXTableWithView(databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string) *DXTable {
+func NewDXTableWithView(
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
-			DatabaseNameId:    databaseNameId,
-			DBTable:           dbTable,
-			FieldNameForRowId: fieldNameForRowId,
-			ListViewNameId:    listViewNameId,
+			DatabaseNameId:                  databaseNameId,
+			DBTable:                         dbTable,
+			FieldNameForRowId:               fieldNameForRowId,
+			ListViewNameId:                  listViewNameId,
+			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		},
 	}
 }
@@ -567,33 +575,39 @@ func NewDXTableWithView(databaseNameId string, dbTable *models.ModelDBTable, fie
 // Simple Factory Functions - without models.ModelDBTable (for gradual migration)
 
 // NewDXRawTableSimple creates a DXRawTable with direct table name (no models.ModelDBTable needed)
-func NewDXRawTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef) *DXRawTable {
+func NewDXRawTableSimple(
+	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
+	responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string) *DXRawTable {
 	return &DXRawTable{
-		DatabaseNameId:             databaseNameId,
-		TableNameDirect:            tableName,
-		ResultObjectName:           resultObjectName,
-		ListViewNameId:             listViewNameId,
-		FieldNameForRowId:          fieldNameForRowId,
-		FieldNameForRowUid:         fieldNameForRowUid,
-		FieldNameForRowNameId:      fieldNameForRowNameId,
-		ResponseEnvelopeObjectName: responseEnvelopeObjectName,
-		EncryptionKeyDefs:          encryptionKeyDefs,
+		DatabaseNameId:                  databaseNameId,
+		TableNameDirect:                 tableName,
+		ResultObjectName:                resultObjectName,
+		ListViewNameId:                  listViewNameId,
+		FieldNameForRowId:               fieldNameForRowId,
+		FieldNameForRowUid:              fieldNameForRowUid,
+		FieldNameForRowNameId:           fieldNameForRowNameId,
+		ResponseEnvelopeObjectName:      responseEnvelopeObjectName,
+		EncryptionKeyDefs:               encryptionKeyDefs,
+		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 	}
 }
 
 // NewDXTableSimple creates a DXTable with direct table name (no models.ModelDBTable needed)
-func NewDXTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef) *DXTable {
+func NewDXTableSimple(
+	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
+	responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
-			DatabaseNameId:             databaseNameId,
-			TableNameDirect:            tableName,
-			ResultObjectName:           resultObjectName,
-			ListViewNameId:             listViewNameId,
-			FieldNameForRowId:          fieldNameForRowId,
-			FieldNameForRowUid:         fieldNameForRowUid,
-			FieldNameForRowNameId:      fieldNameForRowNameId,
-			ResponseEnvelopeObjectName: responseEnvelopeObjectName,
-			EncryptionKeyDefs:          encryptionKeyDefs,
+			DatabaseNameId:                  databaseNameId,
+			TableNameDirect:                 tableName,
+			ResultObjectName:                resultObjectName,
+			ListViewNameId:                  listViewNameId,
+			FieldNameForRowId:               fieldNameForRowId,
+			FieldNameForRowUid:              fieldNameForRowUid,
+			FieldNameForRowNameId:           fieldNameForRowNameId,
+			ResponseEnvelopeObjectName:      responseEnvelopeObjectName,
+			EncryptionKeyDefs:               encryptionKeyDefs,
+			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		},
 	}
 }
@@ -603,20 +617,20 @@ func NewDXTableWithEncryption(
 	databaseNameId, tableName, resultObjectName, listViewNameId,
 	fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string,
 	encryptionKeyDefs []*database.EncryptionKeyDef,
-	encryptionColumnDefs []database.EncryptionColumnDef,
-) *DXTable {
+	encryptionColumnDefs []database.EncryptionColumnDef, validationUniqueFieldNameGroups [][]string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
-			DatabaseNameId:             databaseNameId,
-			TableNameDirect:            tableName,
-			ResultObjectName:           resultObjectName,
-			ListViewNameId:             listViewNameId,
-			FieldNameForRowId:          fieldNameForRowId,
-			FieldNameForRowUid:         fieldNameForRowUid,
-			FieldNameForRowNameId:      fieldNameForRowNameId,
-			ResponseEnvelopeObjectName: responseEnvelopeObjectName,
-			EncryptionKeyDefs:          encryptionKeyDefs,
-			EncryptionColumnDefs:       encryptionColumnDefs,
+			DatabaseNameId:                  databaseNameId,
+			TableNameDirect:                 tableName,
+			ResultObjectName:                resultObjectName,
+			ListViewNameId:                  listViewNameId,
+			FieldNameForRowId:               fieldNameForRowId,
+			FieldNameForRowUid:              fieldNameForRowUid,
+			FieldNameForRowNameId:           fieldNameForRowNameId,
+			ResponseEnvelopeObjectName:      responseEnvelopeObjectName,
+			EncryptionKeyDefs:               encryptionKeyDefs,
+			EncryptionColumnDefs:            encryptionColumnDefs,
+			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		},
 	}
 }

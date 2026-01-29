@@ -124,3 +124,108 @@ func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
 
 	return t.DoEdit(aepr, id, data)
 }
+
+// DoUpdateWithValidation updates with unique field validation, merging current row data with new data for validation
+func (t *DXTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
+	_, row, err := t.DirectShouldGetById(&aepr.Log, id)
+	if err != nil {
+		return err
+	}
+	if isDeleted, ok := row["is_deleted"].(bool); ok && isDeleted {
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
+	}
+
+	for k, v := range data {
+		if v == nil {
+			delete(data, k)
+		}
+	}
+
+	t.SetUpdateAuditFields(aepr, data)
+
+	err = t.EnsureDatabase()
+	if err != nil {
+		return err
+	}
+
+	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *database.DXDatabaseTx) error {
+		// Merge current row with new data for validation
+		mergedData := utils.JSON{}
+		for k, v := range row {
+			mergedData[k] = v
+		}
+		for k, v := range data {
+			mergedData[k] = v
+		}
+
+		err := t.TxCheckValidationUniqueFieldNameGroupsForUpdate(dtx, id, mergedData)
+		if err != nil {
+			return err
+		}
+
+		_, err = t.DXRawTable.TxUpdateById(dtx, id, data)
+		return err
+	})
+	if txErr != nil {
+		return txErr
+	}
+
+	// Re-fetch and return updated row
+	_, updatedRow, err := t.DirectShouldGetById(&aepr.Log, id)
+	if err != nil {
+		return err
+	}
+
+	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.ResultObjectName: updatedRow,
+	})
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, responseData)
+	return nil
+}
+
+// RequestEditWithValidation handles edit by ID API requests with unique field validation
+func (t *DXTable) RequestEditWithValidation(aepr *api.DXAPIEndPointRequest) error {
+	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
+	if err != nil {
+		return err
+	}
+
+	_, newKeyValues, err := aepr.GetParameterValueAsJSON("new")
+	if err != nil {
+		return err
+	}
+
+	for k, v := range newKeyValues {
+		if v == nil {
+			delete(newKeyValues, k)
+		}
+	}
+
+	return t.DoUpdateWithValidation(aepr, id, newKeyValues)
+}
+
+// RequestEditByUidWithValidation handles edit by UID API requests with unique field validation
+func (t *DXTable) RequestEditByUidWithValidation(aepr *api.DXAPIEndPointRequest) error {
+	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
+	if err != nil {
+		return err
+	}
+
+	// Use Direct to just get the id
+	_, row, err := t.DirectShouldGetByUid(&aepr.Log, uid)
+	if err != nil {
+		return err
+	}
+
+	id, ok := row[t.FieldNameForRowId].(int64)
+	if !ok {
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "CANNOT_GET_ID_FROM_ROW")
+	}
+
+	_, data, err := aepr.GetParameterValueAsJSON("new")
+	if err != nil {
+		return err
+	}
+
+	return t.DoUpdateWithValidation(aepr, id, data)
+}

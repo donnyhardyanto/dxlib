@@ -4,9 +4,11 @@ import (
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/database/db"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
+	"gopkg.in/errgo.v2/fmt/errors"
 )
 
 // DXRawTable Auto Insert Methods
@@ -32,6 +34,67 @@ func (t *DXRawTable) TxInsertAuto(
 	return dtx.Insert(t.TableName(), data, returningFieldNames)
 }
 
+func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForInsert(dtx *database.DXDatabaseTx, data utils.JSON) (err error) {
+	for _, v := range t.ValidationUniqueFieldNameGroups {
+		k := utils.JSON{}
+		for _, f := range v {
+			val, ok := data[f] // Use local variables for the 'comma-ok' check
+			if !ok {
+				return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_INSERT:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELD=%s", t.TableName(), f)
+			}
+			k[f] = val
+		}
+
+		// Ensure c and err are properly captured
+		c, err := db.TxCount(dtx.Tx, t.TableName(), "", k, nil, nil, nil, "")
+		if err != nil {
+			return err
+		}
+
+		if c > 0 {
+			// It's more helpful to show the actual data 'k' than just the field names 'v'
+			return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_INSERT:UNIQUE_FIELD_VIOLATION:TABLE=%s,DATA=%v", t.TableName(), k)
+		}
+	}
+	return nil
+}
+
+func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForUpdate(dtx *database.DXDatabaseTx, id any, data utils.JSON) (err error) {
+	for _, v := range t.ValidationUniqueFieldNameGroups {
+		k := utils.JSON{}
+		for _, f := range v {
+			val, ok := data[f]
+			if !ok {
+				return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELDNAME=%s", t.TableName(), f)
+			}
+			k[f] = val
+		}
+
+		_, d, err := db.TxSelect(dtx.Tx, t.TableName(), nil, []string{t.FieldNameForRowId}, k, nil, nil, nil, nil, nil, nil, nil)
+		if err != nil {
+			return err
+		}
+
+		if len(d) > 1 {
+			return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:UNIQUE_FIELD_VIOLATION:TABLE=%s,FIELDNAMEGROUP=%v", t.TableName(), k)
+		}
+
+		if len(d) == 1 {
+			row := d[0]
+			dbId, ok := row[t.FieldNameForRowId]
+			if !ok {
+				return errors.Newf("SHOULD_NOT_HAPPEN:FIELDNAMEFORROWID_NOT_FOUND:TABLE=%s,FIELDNAMEGROUP=%v", t.TableName(), k)
+			}
+
+			// Use the smart ValueMatch helper
+			if !utils.IsValuesMatch(dbId, id) {
+				return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:UNIQUE_FIELD_VIOLATION:TABLE=%s,FIELDNAMEGROUP=%v", t.TableName(), k)
+			}
+		}
+	}
+	return nil
+}
+
 // InsertAuto inserts using table's EncryptionColumnDefs and EncryptionKeyDefs (creates transaction if needed)
 func (t *DXRawTable) InsertAuto(
 	l *log.DXLog,
@@ -53,6 +116,11 @@ func (t *DXRawTable) InsertAuto(
 		return nil, nil, err
 	}
 	defer dtx.Finish(l, err)
+
+	err = t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	return t.TxInsertAuto(dtx, data, returningFieldNames)
 }

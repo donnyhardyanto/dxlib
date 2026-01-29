@@ -18,8 +18,8 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/log"
 )
 
 // JSON is a type alias for map[string]any, representing a JSON object.
@@ -1032,4 +1032,37 @@ func ConvertToInt64(value interface{}) (int64, error) {
 	default:
 		return 0, errors.Errorf("unexpected count value type: %T", value)
 	}
+}
+
+func IsValuesMatch(a, b any) bool {
+	// 1. If types are identical, direct comparison is safest
+	if a == b {
+		return true
+	}
+
+	// 2. Handle Numeric Cross-Comparison (int vs float)
+	// We convert both to float64 to see if the numeric value is the same
+	fa, okA := ConvertToFloat(a)
+	fb, okB := ConvertToFloat(b)
+	if okA && okB {
+		return fa == fb
+	}
+
+	// 3. If they aren't both numbers and aren't identical, they don't match
+	// This ensures "1" (string) != 1 (int)
+	return false
+}
+
+func ConvertToFloat(v any) (float64, bool) {
+	switch t := v.(type) {
+	case int:
+		return float64(t), true
+	case int64:
+		return float64(t), true
+	case float64:
+		return t, true
+	case float32:
+		return float64(t), true
+	}
+	return 0, false
 }
