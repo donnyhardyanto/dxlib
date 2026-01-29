@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/donnyhardyanto/dxlib/database"
-	"github.com/donnyhardyanto/dxlib/database/db"
+	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -22,7 +22,7 @@ func (t *DXRawTable) SelectWithEncryption(l *log.DXLog, fieldNames []string, enc
 		return nil, nil, err
 	}
 
-	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +138,7 @@ func (t *DXRawTable) PagingWithEncryption(
 		return nil, err
 	}
 
-	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (t *DXTable) PagingWithEncryptionAndBuilder(
 // Internal Select Helper Functions
 
 // setSessionKeysForDecryption sets all unique session keys from secure memory for SELECT
-func setSessionKeysForDecryption(dtx *database.DXDatabaseTx, encryptionColumns []EncryptionColumn) error {
+func setSessionKeysForDecryption(dtx *databases.DXDatabaseTx, encryptionColumns []EncryptionColumn) error {
 	sessionKeys := make(map[string]string) // sessionKey -> secureMemoryKey
 
 	for _, col := range encryptionColumns {
@@ -277,7 +277,7 @@ func setSessionKeysForDecryption(dtx *database.DXDatabaseTx, encryptionColumns [
 	return nil
 }
 
-// decryptExpression returns database-specific decryption SQL expression
+// decryptExpression returns databases-specific decryption SQL expression
 func decryptExpression(dbType base.DXDatabaseType, fieldName string, sessionKey string) string {
 	keyExpr := sessionKeyExpression(dbType, sessionKey)
 
@@ -356,7 +356,7 @@ func limitToInt(limit any) int {
 
 // executeEncryptedSelect builds and executes SELECT with decrypted columns
 func executeEncryptedSelect(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	tableName string,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	dbType base.DXDatabaseType,
@@ -463,7 +463,7 @@ func executeEncryptedSelect(
 
 // executeEncryptedPaging builds and executes paging query with decrypted columns
 func executeEncryptedPaging(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	tableName string,
 	dbType base.DXDatabaseType,
 	columns []string,

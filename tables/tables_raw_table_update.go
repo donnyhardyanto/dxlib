@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -20,7 +20,7 @@ func (t *DXRawTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, ret
 }
 
 // TxUpdate updates within a transaction
-func (t *DXRawTable) TxUpdate(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) TxUpdate(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	return dtx.Update(t.TableName(), data, where, returningFieldNames)
 }
 
@@ -31,7 +31,7 @@ func (t *DXRawTable) UpdateSimple(data utils.JSON, where utils.JSON) (sql.Result
 }
 
 // TxUpdateSimple is a simplified transaction update (backward compatible)
-func (t *DXRawTable) TxUpdateSimple(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, error) {
+func (t *DXRawTable) TxUpdateSimple(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxUpdate(dtx, data, where, nil)
 	return result, err
 }
@@ -43,7 +43,7 @@ func (t *DXRawTable) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Re
 }
 
 // TxUpdateById updates a single row by ID within a transaction
-func (t *DXRawTable) TxUpdateById(dtx *database.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXRawTable) TxUpdateById(dtx *databases.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxUpdate(dtx, data, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
@@ -130,7 +130,7 @@ func (t *DXRawTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id i
 		return err
 	}
 
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *database.DXDatabaseTx) error {
+	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		// Merge current row with new data for validation
 		mergedData := utils.JSON{}
 		for k, v := range row {

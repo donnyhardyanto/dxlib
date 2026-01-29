@@ -55,6 +55,7 @@ type DXAPIEndPointParameter struct {
 	IsMustExist bool
 	IsNullable  bool
 	Children    []DXAPIEndPointParameter
+	Enum        []any
 }
 
 func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {

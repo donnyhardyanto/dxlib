@@ -8,7 +8,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -72,7 +72,7 @@ func (t *DXTable) SoftDelete(l *log.DXLog, where utils.JSON) (sql.Result, error)
 }
 
 // TxSoftDelete marks rows as deleted within a transaction
-func (t *DXTable) TxSoftDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
+func (t *DXTable) TxSoftDelete(dtx *databases.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	data := utils.JSON{
 		"is_deleted": true,
 	}
@@ -87,7 +87,7 @@ func (t *DXTable) SoftDeleteById(l *log.DXLog, id int64) (sql.Result, error) {
 }
 
 // TxSoftDeleteById marks a row as deleted by ID within a transaction
-func (t *DXTable) TxSoftDeleteById(dtx *database.DXDatabaseTx, id int64) (sql.Result, error) {
+func (t *DXTable) TxSoftDeleteById(dtx *databases.DXDatabaseTx, id int64) (sql.Result, error) {
 	return t.TxSoftDelete(dtx, utils.JSON{t.FieldNameForRowId: id})
 }
 
@@ -116,7 +116,7 @@ func (t *DXTable) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 }
 
 // TxHardDelete deletes rows within a transaction (bypasses soft-delete)
-func (t *DXTable) TxHardDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
+func (t *DXTable) TxHardDelete(dtx *databases.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.DXRawTable.TxDelete(dtx, where, nil)
 	return result, err
 }
@@ -227,7 +227,7 @@ func (t *DXTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.R
 }
 
 // TxUpsert inserts or updates within a transaction with audit fields
-func (t *DXTable) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	_, existing, err := t.DXRawTable.TxSelectOne(dtx, nil, where, nil, nil, nil)
 	if err != nil {
 		return nil, 0, err

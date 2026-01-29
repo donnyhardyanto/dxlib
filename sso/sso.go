@@ -5,13 +5,13 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/redis"
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 var OrganizationManager DXOrganizationsManager
@@ -62,7 +62,7 @@ type DXOrganization struct {
 	RedisNameId                           string
 	AccessTokenTimeoutDurationSec         int64
 	Applications                          utils.JSON
-	Database                              *database.DXDatabase
+	Database                              *databases.DXDatabase
 	Redis                                 *redis.DXRedis
 }
 
@@ -127,7 +127,7 @@ func (o *DXOrganization) ApplyData(d utils.JSON) (err error) {
 	}
 
 	o.Applications = d["applications"].(utils.JSON)
-	o.Database = database.Manager.Databases[o.DatabaseNameId]
+	o.Database = databases.Manager.Databases[o.DatabaseNameId]
 	o.Redis = redis.Manager.Redises[o.RedisNameId]
 	o.AccessTokenTimeoutDurationSec, err = json2.GetInt64(d, "access_token_timeout_duration_sec")
 	if err != nil {

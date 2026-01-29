@@ -5,8 +5,8 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/app"
 	"github.com/donnyhardyanto/dxlib/configuration"
-	"github.com/donnyhardyanto/dxlib/database"
-	"github.com/donnyhardyanto/dxlib/database/utils"
+	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/utils"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/tables"
 	utilsOs "github.com/donnyhardyanto/dxlib/utils/os"
@@ -100,8 +100,8 @@ func doOnDefineConfiguration() (err error) {
 
 }
 
-func testTableFunction(db *database.DXDatabase) (err error) {
-	var dtx *database.DXDatabaseTx
+func testTableFunction(db *databases.DXDatabase) (err error) {
+	var dtx *databases.DXDatabaseTx
 	dtx, err = db.TransactionBegin(sql.LevelReadCommitted)
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func testTableFunction(db *database.DXDatabase) (err error) {
 	log.Log.Infof("Update result aId: %v", aId)
 
 	table1 := tables.NewDXTableSimple(db.NameId, "test1.test1_table", "test1.test1_table", "test1.test1_table",
-		"id", "", "", "data", nil, nil)
+		"id", "", "", "data", nil, nil, nil)
 
 	_, returningData2, err := table1.TxInsert(dtx, map[string]any{
 		"name":  "zfx",
@@ -161,14 +161,14 @@ func doOnAfterConfigurationStartAll() (err error) {
 
 	/*
 	   Example to execute stored procedure
-	   var dbP1 *database.DXDatabase
+	   var dbP1 *databases.DXDatabase
 
-	   	dbP1 := database.Manager.Databases["p1"]
+	   	dbP1 := databases.Manager.Databases["p1"]
 	   	defer dbP1.Disconnect()
 
 	   	err = dbP1.Connect()
 	   	if err != nil {
-	   		log.Log.Errorf("Failed to connect to database %s: %s", dbP1.DatabaseName, err.Error())
+	   		log.Log.Errorf("Failed to connect to databases %s: %s", dbP1.DatabaseName, err.Error())
 	   		return err
 	   	}
 	   	_, err = dbP1.Execute("EXEC inv.CreateTransaction @stagTransactionId=1", nil)
@@ -176,12 +176,12 @@ func doOnAfterConfigurationStartAll() (err error) {
 	   		return err
 	   	}*/
 
-	dbP1 := database.Manager.Databases["p1"]
-	dbSystem := database.Manager.Databases["postgresql-system"]
+	dbP1 := databases.Manager.Databases["p1"]
+	dbSystem := databases.Manager.Databases["postgresql-system"]
 
 	err = dbP1.Connect()
 	if err != nil {
-		log.Log.Errorf(err, "Failed to connect to database %s: %s", dbP1.DatabaseName, err.Error())
+		log.Log.Errorf(err, "Failed to connect to databases %s: %s", dbP1.DatabaseName, err.Error())
 		return err
 	}
 
@@ -191,14 +191,14 @@ func doOnAfterConfigurationStartAll() (err error) {
 	_, err = dbP1.ExecuteCreateScripts()
 
 	if err != nil {
-		log.Log.Errorf(err, "Failed to connect/execute to database %s: %s", dbP1.DatabaseName, err.Error())
+		log.Log.Errorf(err, "Failed to connect/execute to databases %s: %s", dbP1.DatabaseName, err.Error())
 	}
 
 	err = testTableFunction(dbP1)
 	if err != nil {
 		return err
 	}
-	/*var dtx1 *database.DXDatabaseTx
+	/*var dtx1 *databases.DXDatabaseTx
 	dtx1, err = dbP1.TransactionBegin(sql.LevelReadCommitted)
 	if err != nil {
 		return err
@@ -231,12 +231,12 @@ func doOnAfterConfigurationStartAll() (err error) {
 		log.Log.Infof("Update result: %v", r)
 	}*/
 
-	dbP2 := database.Manager.Databases["p2"]
-	dbP2System := database.Manager.Databases["sqlserver-system"]
+	dbP2 := databases.Manager.Databases["p2"]
+	dbP2System := databases.Manager.Databases["sqlserver-system"]
 
 	err = dbP2.Connect()
 	if err != nil {
-		log.Log.Errorf(err, "Failed to connect to database %s: %s", dbP2.DatabaseName, err.Error())
+		log.Log.Errorf(err, "Failed to connect to databases %s: %s", dbP2.DatabaseName, err.Error())
 		return err
 	}
 
@@ -245,7 +245,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 
 	_, err = dbP2.ExecuteCreateScripts()
 	if err != nil {
-		log.Log.Errorf(err, "Failed to connect/execute to database %s: %s", dbP2.DatabaseName, err.Error())
+		log.Log.Errorf(err, "Failed to connect/execute to databases %s: %s", dbP2.DatabaseName, err.Error())
 	}
 
 	err = testTableFunction(dbP2)
@@ -253,7 +253,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 		return err
 	}
 	/*
-		var dtx2 *database.DXDatabaseTx
+		var dtx2 *databases.DXDatabaseTx
 		dtx2, err = dbP2.TransactionBegin(sql.LevelReadCommitted)
 		if err != nil {
 			return err
@@ -286,13 +286,13 @@ func doOnAfterConfigurationStartAll() (err error) {
 			log.Log.Infof("Update result: %v", r)
 		}*/
 
-	dbP3 := database.Manager.Databases["p3"]
+	dbP3 := databases.Manager.Databases["p3"]
 
-	dbP3System := database.Manager.Databases["oracle-system"]
+	dbP3System := databases.Manager.Databases["oracle-system"]
 
 	err = dbP3.Connect()
 	if err != nil {
-		log.Log.Errorf(err, "Failed to connect to database %s: %s", dbP2.DatabaseName, err.Error())
+		log.Log.Errorf(err, "Failed to connect to databases %s: %s", dbP2.DatabaseName, err.Error())
 		return err
 	}
 
@@ -302,7 +302,7 @@ func doOnAfterConfigurationStartAll() (err error) {
 	_, err = dbP3.ExecuteCreateScripts()
 
 	if err != nil {
-		log.Log.Errorf(err, "Failed to connect/execute to database %s: %s", dbP3.DatabaseName, err.Error())
+		log.Log.Errorf(err, "Failed to connect/execute to databases %s: %s", dbP3.DatabaseName, err.Error())
 	}
 
 	log.Log.Warn("Executing wipe... DONE")

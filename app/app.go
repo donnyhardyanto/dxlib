@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/donnyhardyanto/dxlib"
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/object_storage"
 	"github.com/donnyhardyanto/dxlib/secure_memory"
@@ -134,7 +134,7 @@ func (a *DXApp) loadConfiguration() (err error) {
 	}
 	_, a.IsStorageExist = configuration.Manager.Configurations["storage"]
 	if a.IsStorageExist {
-		err = database.Manager.LoadFromConfiguration("storage")
+		err = databases.Manager.LoadFromConfiguration("storage")
 		if err != nil {
 			return err
 		}
@@ -169,7 +169,7 @@ func (a *DXApp) start() (err error) {
 		}
 	}
 	if a.IsStorageExist {
-		err = database.Manager.ConnectAllAtStart()
+		err = databases.Manager.ConnectAllAtStart()
 		if err != nil {
 			return err
 		}
@@ -260,7 +260,7 @@ func (a *DXApp) Stop() (err error) {
 		}
 	}
 	if a.IsStorageExist {
-		err = database.Manager.DisconnectAll()
+		err = databases.Manager.DisconnectAll()
 		if err != nil {
 			return err
 		}

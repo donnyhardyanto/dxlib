@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -20,7 +20,7 @@ func (t *DXRawTable) Insert(l *log.DXLog, data utils.JSON, returningFieldNames [
 }
 
 // TxInsert inserts within a transaction
-func (t *DXRawTable) TxInsert(dtx *database.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXRawTable) TxInsert(dtx *databases.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	return dtx.Insert(t.TableName(), data, returningFieldNames)
 }
 
@@ -35,7 +35,7 @@ func (t *DXRawTable) InsertReturningId(l *log.DXLog, data utils.JSON) (int64, er
 }
 
 // TxInsertReturningId is a simplified TxInsert that returns just the new ID (backward compatible)
-func (t *DXRawTable) TxInsertReturningId(dtx *database.DXDatabaseTx, data utils.JSON) (int64, error) {
+func (t *DXRawTable) TxInsertReturningId(dtx *databases.DXDatabaseTx, data utils.JSON) (int64, error) {
 	_, returningValues, err := t.TxInsert(dtx, data, []string{t.FieldNameForRowId})
 	if err != nil {
 		return 0, err
@@ -131,7 +131,7 @@ func (t *DXRawTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data
 
 	var newId int64
 	var response utils.JSON
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *database.DXDatabaseTx) error {
+	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
 		if err != nil {
 			return err

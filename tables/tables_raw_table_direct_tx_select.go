@@ -1,8 +1,8 @@
 package tables
 
 import (
-	"github.com/donnyhardyanto/dxlib/database"
-	"github.com/donnyhardyanto/dxlib/database/db"
+	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -12,25 +12,25 @@ import (
 // Use these when the caller only needs non-encrypted columns inside a transaction.
 
 // TxDirectSelect returns multiple rows from the base table within a transaction
-func (t *DXRawTable) TxDirectSelect(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) TxDirectSelect(dtx *databases.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	return dtx.Select(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
 
 // TxDirectSelectOne returns a single row from the base table within a transaction
-func (t *DXRawTable) TxDirectSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) TxDirectSelectOne(dtx *databases.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return dtx.SelectOne(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxDirectShouldSelectOne returns a single row from the base table or error if not found within a transaction
-func (t *DXRawTable) TxDirectShouldSelectOne(dtx *database.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) TxDirectShouldSelectOne(dtx *databases.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return dtx.ShouldSelectOne(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxDirectGetById returns a row by ID from the base table within a transaction
-func (t *DXRawTable) TxDirectGetById(dtx *database.DXDatabaseTx, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxDirectGetById(dtx *databases.DXDatabaseTx, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
 		fn = fieldNames
@@ -39,7 +39,7 @@ func (t *DXRawTable) TxDirectGetById(dtx *database.DXDatabaseTx, id int64, field
 }
 
 // TxDirectShouldGetById returns a row by ID from the base table or error if not found within a transaction
-func (t *DXRawTable) TxDirectShouldGetById(dtx *database.DXDatabaseTx, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxDirectShouldGetById(dtx *databases.DXDatabaseTx, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
 		fn = fieldNames
@@ -48,7 +48,7 @@ func (t *DXRawTable) TxDirectShouldGetById(dtx *database.DXDatabaseTx, id int64,
 }
 
 // TxDirectGetByUid returns a row by UID from the base table within a transaction
-func (t *DXRawTable) TxDirectGetByUid(dtx *database.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxDirectGetByUid(dtx *databases.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -60,7 +60,7 @@ func (t *DXRawTable) TxDirectGetByUid(dtx *database.DXDatabaseTx, uid string, fi
 }
 
 // TxDirectShouldGetByUid returns a row by UID from the base table or error if not found within a transaction
-func (t *DXRawTable) TxDirectShouldGetByUid(dtx *database.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxDirectShouldGetByUid(dtx *databases.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -72,7 +72,7 @@ func (t *DXRawTable) TxDirectShouldGetByUid(dtx *database.DXDatabaseTx, uid stri
 }
 
 // TxDirectGetByNameId returns a row by NameId from the base table within a transaction
-func (t *DXRawTable) TxDirectGetByNameId(dtx *database.DXDatabaseTx, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxDirectGetByNameId(dtx *databases.DXDatabaseTx, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -84,7 +84,7 @@ func (t *DXRawTable) TxDirectGetByNameId(dtx *database.DXDatabaseTx, nameId stri
 }
 
 // TxDirectShouldGetByNameId returns a row by NameId from the base table or error if not found within a transaction
-func (t *DXRawTable) TxDirectShouldGetByNameId(dtx *database.DXDatabaseTx, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) TxDirectShouldGetByNameId(dtx *databases.DXDatabaseTx, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}

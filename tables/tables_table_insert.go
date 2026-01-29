@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -20,7 +20,7 @@ func (t *DXTable) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []st
 }
 
 // TxInsert inserts within a transaction with audit fields
-func (t *DXTable) TxInsert(dtx *database.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXTable) TxInsert(dtx *databases.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	t.SetInsertAuditFields(nil, data)
 	return t.DXRawTable.TxInsert(dtx, data, returningFieldNames)
 }
@@ -91,7 +91,7 @@ func (t *DXTable) DoCreateReturnUidWithValidation(aepr *api.DXAPIEndPointRequest
 	}
 
 	newUid := ""
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *database.DXDatabaseTx) error {
+	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
 		if err != nil {
 			return err
@@ -135,7 +135,7 @@ func (t *DXTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data ut
 	}
 
 	var newId int64
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *database.DXDatabaseTx) error {
+	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
 		if err != nil {
 			return err

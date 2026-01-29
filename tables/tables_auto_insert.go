@@ -3,8 +3,8 @@ package tables
 import (
 	"database/sql"
 
-	"github.com/donnyhardyanto/dxlib/database"
-	"github.com/donnyhardyanto/dxlib/database/db"
+	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -16,7 +16,7 @@ import (
 // TxInsertAuto inserts using table's EncryptionColumnDefs and EncryptionKeyDefs
 // Data fields matching DataFieldName are auto-encrypted to FieldName
 func (t *DXRawTable) TxInsertAuto(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, utils.JSON, error) {
@@ -34,7 +34,7 @@ func (t *DXRawTable) TxInsertAuto(
 	return dtx.Insert(t.TableName(), data, returningFieldNames)
 }
 
-func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForInsert(dtx *database.DXDatabaseTx, data utils.JSON) (err error) {
+func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForInsert(dtx *databases.DXDatabaseTx, data utils.JSON) (err error) {
 	for _, v := range t.ValidationUniqueFieldNameGroups {
 		k := utils.JSON{}
 		for _, f := range v {
@@ -59,7 +59,7 @@ func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForInsert(dtx *databa
 	return nil
 }
 
-func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForUpdate(dtx *database.DXDatabaseTx, id any, data utils.JSON) (err error) {
+func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForUpdate(dtx *databases.DXDatabaseTx, id any, data utils.JSON) (err error) {
 	for _, v := range t.ValidationUniqueFieldNameGroups {
 		k := utils.JSON{}
 		for _, f := range v {
@@ -111,7 +111,7 @@ func (t *DXRawTable) InsertAuto(
 	}
 
 	// Encryption configured, need transaction
-	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -127,7 +127,7 @@ func (t *DXRawTable) InsertAuto(
 
 // TxInsertAutoReturningId inserts and returns the new ID
 func (t *DXRawTable) TxInsertAutoReturningId(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 ) (int64, error) {
 	_, returningValues, err := t.TxInsertAuto(dtx, data, []string{t.FieldNameForRowId})
@@ -155,7 +155,7 @@ func (t *DXRawTable) InsertAutoReturningId(
 
 // TxInsertAuto inserts with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) TxInsertAuto(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, utils.JSON, error) {
@@ -175,7 +175,7 @@ func (t *DXTable) InsertAuto(
 
 // TxInsertAutoReturningId inserts with audit fields and returns the new ID
 func (t *DXTable) TxInsertAutoReturningId(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 ) (int64, error) {
 	t.SetInsertAuditFields(nil, data)

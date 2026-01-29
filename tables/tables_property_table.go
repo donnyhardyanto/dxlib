@@ -3,7 +3,7 @@ package tables
 import (
 	"encoding/json"
 
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -17,7 +17,7 @@ type DXPropertyTable struct {
 }
 
 // NewDXPropertyTableSimple creates a DXPropertyTable with direct table name
-func NewDXPropertyTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef) *DXPropertyTable {
+func NewDXPropertyTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef) *DXPropertyTable {
 	return &DXPropertyTable{
 		DXTable: DXTable{
 			DXRawTable: DXRawTable{
@@ -133,7 +133,7 @@ func (pt *DXPropertyTable) SetAsInt(l *log.DXLog, propertyId string, value int) 
 }
 
 // TxSetAsInt sets an int property value within a transaction
-func (pt *DXPropertyTable) TxSetAsInt(dtx *database.DXDatabaseTx, propertyId string, value int) error {
+func (pt *DXPropertyTable) TxSetAsInt(dtx *databases.DXDatabaseTx, propertyId string, value int) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
@@ -200,7 +200,7 @@ func (pt *DXPropertyTable) SetAsJSON(l *log.DXLog, propertyId string, value map[
 }
 
 // TxSetAsJSON sets a JSON property value within a transaction
-func (pt *DXPropertyTable) TxSetAsJSON(dtx *database.DXDatabaseTx, propertyId string, value map[string]any) error {
+func (pt *DXPropertyTable) TxSetAsJSON(dtx *databases.DXDatabaseTx, propertyId string, value map[string]any) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return errors.Wrap(err, "TxSetAsJSON.Marshal")

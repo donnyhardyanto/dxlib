@@ -1,7 +1,7 @@
 package tables
 
 import (
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -17,7 +17,7 @@ func (t *DXRawTable) HasEncryptionConfig() bool {
 // TxSetAllEncryptionSessionKeys sets all session keys from EncryptionKeyDefs and EncryptionColumnDefs.
 // Deduplicates by sessionKey. Call this within a transaction before any operation
 // that needs encryption/decryption session keys.
-func (t *DXRawTable) TxSetAllEncryptionSessionKeys(dtx *database.DXDatabaseTx) error {
+func (t *DXRawTable) TxSetAllEncryptionSessionKeys(dtx *databases.DXDatabaseTx) error {
 	sessionKeys := make(map[string]string) // sessionKey -> secureMemoryKey
 
 	for _, def := range t.EncryptionKeyDefs {
@@ -46,7 +46,7 @@ func (t *DXRawTable) TxSetAllEncryptionSessionKeys(dtx *database.DXDatabaseTx) e
 // TxSetDecryptionSessionKeys sets the PostgreSQL session keys needed for decryption within a transaction.
 // Collects keys from both EncryptionKeyDefs and EncryptionColumnDefs.
 // Call this before executing raw queries on views that use pgp_sym_decrypt.
-func (t *DXRawTable) TxSetDecryptionSessionKeys(dtx *database.DXDatabaseTx) error {
+func (t *DXRawTable) TxSetDecryptionSessionKeys(dtx *databases.DXDatabaseTx) error {
 	if len(t.EncryptionKeyDefs) == 0 && len(t.EncryptionColumnDefs) == 0 {
 		return nil
 	}

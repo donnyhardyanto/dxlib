@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -20,7 +20,7 @@ func (t *DXTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, return
 }
 
 // TxUpdate updates within a transaction with audit fields
-func (t *DXTable) TxUpdate(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXTable) TxUpdate(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	t.SetUpdateAuditFields(nil, data)
 	return t.DXRawTable.TxUpdate(dtx, data, where, returningFieldNames)
 }
@@ -32,7 +32,7 @@ func (t *DXTable) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Resul
 }
 
 // TxUpdateById updates within a transaction with audit fields
-func (t *DXTable) TxUpdateById(dtx *database.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXTable) TxUpdateById(dtx *databases.DXDatabaseTx, id int64, data utils.JSON) (sql.Result, error) {
 	t.SetUpdateAuditFields(nil, data)
 	return t.DXRawTable.TxUpdateById(dtx, id, data)
 }
@@ -148,7 +148,7 @@ func (t *DXTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int6
 		return err
 	}
 
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *database.DXDatabaseTx) error {
+	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		// Merge current row with new data for validation
 		mergedData := utils.JSON{}
 		for k, v := range row {

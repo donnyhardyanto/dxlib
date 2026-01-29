@@ -9,10 +9,10 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/donnyhardyanto/dxlib/database"
-	"github.com/donnyhardyanto/dxlib/database/db"
-	"github.com/donnyhardyanto/dxlib/database/export"
-	"github.com/donnyhardyanto/dxlib/database/models"
+	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
+	"github.com/donnyhardyanto/dxlib/databases/export"
+	"github.com/donnyhardyanto/dxlib/databases/models"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -24,7 +24,7 @@ import (
 // DXRawTable wraps database3 with connection management and basic CRUD
 type DXRawTable struct {
 	DatabaseNameId             string
-	Database                   *database.DXDatabase
+	Database                   *databases.DXDatabase
 	DBTable                    *models.ModelDBTable
 	TableNameDirect            string // Used when DBTable is nil
 	FieldNameForRowId          string
@@ -38,24 +38,26 @@ type DXRawTable struct {
 	FieldMaxLengths            map[string]int // Maximum lengths for fields (for truncation)
 
 	// Encryption definitions for automatic encryption/decryption
-	EncryptionKeyDefs    []*database.EncryptionKeyDef   // session keys only (for views that already handle decryption)
-	EncryptionColumnDefs []database.EncryptionColumnDef // for INSERT/UPDATE/SELECT encryption/decryption
+	EncryptionKeyDefs    []*databases.EncryptionKeyDef   // session keys only (for views that already handle decryption)
+	EncryptionColumnDefs []databases.EncryptionColumnDef // for INSERT/UPDATE/SELECT encryption/decryption
 
 	ValidationUniqueFieldNameGroups [][]string
+	SearchTextFieldNames            []string
+	OrderByFieldNames               []string
 }
 
-// EnsureDatabase ensures database connection is initialized
+// EnsureDatabase ensures databases connection is initialized
 func (t *DXRawTable) EnsureDatabase() error {
 	if t.Database == nil {
-		t.Database = database.Manager.GetOrCreate(t.DatabaseNameId)
+		t.Database = databases.Manager.GetOrCreate(t.DatabaseNameId)
 		if t.Database == nil {
-			return errors.Errorf("database not found: %s", t.DatabaseNameId)
+			return errors.Errorf("databases not found: %s", t.DatabaseNameId)
 		}
 	}
 	return t.Database.EnsureConnection()
 }
 
-// GetDbType returns the database type
+// GetDbType returns the databases type
 func (t *DXRawTable) GetDbType() base.DXDatabaseType {
 	if t.Database == nil {
 		return base.DXDatabaseTypePostgreSQL
@@ -82,7 +84,7 @@ func (t *DXRawTable) Delete(l *log.DXLog, where utils.JSON, returningFieldNames 
 }
 
 // TxDelete deletes within a transaction
-func (t *DXRawTable) TxDelete(dtx *database.DXDatabaseTx, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) TxDelete(dtx *databases.DXDatabaseTx, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	return dtx.TxDelete(t.TableName(), where, returningFieldNames)
 }
 
@@ -93,7 +95,7 @@ func (t *DXRawTable) DeleteById(l *log.DXLog, id int64) (sql.Result, error) {
 }
 
 // TxDeleteById deletes a single row by ID within a transaction
-func (t *DXRawTable) TxDeleteById(dtx *database.DXDatabaseTx, id int64) (sql.Result, error) {
+func (t *DXRawTable) TxDeleteById(dtx *databases.DXDatabaseTx, id int64) (sql.Result, error) {
 	result, _, err := t.TxDelete(dtx, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
@@ -118,7 +120,7 @@ func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 }
 
 // TxHardDelete deletes rows within a transaction (hard delete)
-func (t *DXRawTable) TxHardDelete(dtx *database.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
+func (t *DXRawTable) TxHardDelete(dtx *databases.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.TxDelete(dtx, where, nil)
 	return result, err
 }
@@ -161,7 +163,7 @@ func (t *DXRawTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sq
 }
 
 // TxUpsert inserts or updates within a transaction
-func (t *DXRawTable) TxUpsert(dtx *database.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXRawTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	_, existing, err := t.TxSelectOne(dtx, nil, where, nil, nil, nil)
 	if err != nil {
 		return nil, 0, err
@@ -191,7 +193,7 @@ func (t *DXRawTable) GetListViewName() string {
 	return t.TableName()
 }
 
-// NewQueryBuilder creates a QueryBuilder with the table's database type
+// NewQueryBuilder creates a QueryBuilder with the table's databases type
 func (t *DXRawTable) NewQueryBuilder() *QueryBuilder {
 	return NewQueryBuilder(t.GetDbType())
 }
@@ -207,7 +209,7 @@ func (t *DXRawTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClau
 		return t.PagingWithEncryption(l, nil, encryptionColumns, whereClause, args, orderBy, rowPerPage, pageIndex)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+		dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
 		if err != nil {
 			return nil, err
 		}
@@ -318,6 +320,70 @@ func (t *DXRawTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
 	}
 
 	result, err := t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
+	if err != nil {
+		return err
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, result.ToResponseJSON())
+	return nil
+}
+
+func BuildOrderByString(orderByArray []any) string {
+	if len(orderByArray) == 0 {
+		return ""
+	}
+	var parts []string
+	for _, item := range orderByArray {
+		entry, ok := item.(utils.JSON)
+		if !ok {
+			continue
+		}
+		fieldName, _ := entry["field_name"].(string)
+		direction, _ := entry["direction"].(string)
+		nullOrder, _ := entry["null_order"].(string)
+		if fieldName != "" && direction != "" {
+			part := fieldName + " " + direction
+			if nullOrder != "" {
+				part += " nulls " + nullOrder
+			}
+			parts = append(parts, part)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) error {
+	_, searchText, err := aepr.GetParameterValueAsString("search_text")
+	if err != nil {
+		return err
+	}
+
+	_, orderByArray, err := aepr.GetParameterValueAsArrayOfAny("order_by")
+	if err != nil {
+		return err
+	}
+	orderByStr := BuildOrderByString(orderByArray)
+
+	if err := t.EnsureDatabase(); err != nil {
+		return err
+	}
+
+	qb := NewQueryBuilder(t.Database.DatabaseType)
+	if searchText != "" {
+		qb.SearchLike(searchText, t.SearchTextFieldNames...)
+	}
+
+	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
+	if err != nil {
+		return err
+	}
+
+	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
+	if err != nil {
+		return err
+	}
+
+	result, err := t.PagingWithBuilder(&aepr.Log, rowPerPage, pageIndex, qb, orderByStr)
 	if err != nil {
 		return err
 	}

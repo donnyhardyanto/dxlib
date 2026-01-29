@@ -7,9 +7,9 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/donnyhardyanto/dxlib/database"
-	"github.com/donnyhardyanto/dxlib/database/db"
-	"github.com/donnyhardyanto/dxlib/database/models"
+	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
+	"github.com/donnyhardyanto/dxlib/databases/models"
 	"github.com/donnyhardyanto/dxlib/errors"
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -116,7 +116,7 @@ func (qb *QueryBuilder) InStrings(field string, values []string) *QueryBuilder {
 	return qb
 }
 
-// NotDeleted adds is_deleted = false condition (database-aware)
+// NotDeleted adds is_deleted = false condition (databases-aware)
 func (qb *QueryBuilder) NotDeleted() *QueryBuilder {
 	switch qb.dbType {
 	case base.DXDatabaseTypeSQLServer:
@@ -245,9 +245,9 @@ func (pr *PagingResult) ToResponseJSON() utils.JSON {
 
 // Standalone Paging Functions - using database2.DXDatabase
 
-// NamedQueryPaging executes a paging query using database.DXDatabase
+// NamedQueryPaging executes a paging query using databases.DXDatabase
 func NamedQueryPaging(
-	dxDb3 *database.DXDatabase,
+	dxDb3 *databases.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
@@ -289,7 +289,7 @@ func NamedQueryPaging(
 
 // NamedQueryPagingWithBuilder executes a paging query using QueryBuilder and database3
 func NamedQueryPagingWithBuilder(
-	dxDb3 *database.DXDatabase,
+	dxDb3 *databases.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
@@ -303,7 +303,7 @@ func NamedQueryPagingWithBuilder(
 // DoNamedQueryPagingResponse executes paging and writes standard JSON response
 func DoNamedQueryPagingResponse(
 	aepr *api.DXAPIEndPointRequest,
-	dxDb3 *database.DXDatabase,
+	dxDb3 *databases.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
@@ -322,7 +322,7 @@ func DoNamedQueryPagingResponse(
 // DoNamedQueryPagingResponseWithBuilder executes paging with QueryBuilder and writes response
 func DoNamedQueryPagingResponseWithBuilder(
 	aepr *api.DXAPIEndPointRequest,
-	dxDb3 *database.DXDatabase,
+	dxDb3 *databases.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
@@ -524,43 +524,46 @@ func (m *DXTableManager) GetRawTable(name string) *DXRawTable {
 
 // NewDXRawTable creates a new DXRawTable wrapping a models.ModelDBTable
 func NewDXRawTable(
-	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string) *DXRawTable {
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:                  databaseNameId,
 		DBTable:                         dbTable,
 		FieldNameForRowId:               fieldNameForRowId,
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+		SearchTextFieldNames:            searchTextFieldNames,
 	}
 }
 
 // NewDXRawTableWithView creates a new DXRawTable with a custom list view
 func NewDXRawTableWithView(
-	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string) *DXRawTable {
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:                  databaseNameId,
 		DBTable:                         dbTable,
 		FieldNameForRowId:               fieldNameForRowId,
 		ListViewNameId:                  listViewNameId,
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+		SearchTextFieldNames:            searchTextFieldNames,
 	}
 }
 
 // NewDXTable creates a new DXTable wrapping a models.ModelDBTable
 func NewDXTable(
-	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string) *DXTable {
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
 			DBTable:                         dbTable,
 			FieldNameForRowId:               fieldNameForRowId,
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+			SearchTextFieldNames:            searchTextFieldNames,
 		},
 	}
 }
 
 // NewDXTableWithView creates a new DXTable with a custom list view
 func NewDXTableWithView(
-	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string) *DXTable {
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
@@ -568,6 +571,7 @@ func NewDXTableWithView(
 			FieldNameForRowId:               fieldNameForRowId,
 			ListViewNameId:                  listViewNameId,
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+			SearchTextFieldNames:            searchTextFieldNames,
 		},
 	}
 }
@@ -577,7 +581,7 @@ func NewDXTableWithView(
 // NewDXRawTableSimple creates a DXRawTable with direct table name (no models.ModelDBTable needed)
 func NewDXRawTableSimple(
 	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
-	responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string) *DXRawTable {
+	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:                  databaseNameId,
 		TableNameDirect:                 tableName,
@@ -589,13 +593,14 @@ func NewDXRawTableSimple(
 		ResponseEnvelopeObjectName:      responseEnvelopeObjectName,
 		EncryptionKeyDefs:               encryptionKeyDefs,
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+		SearchTextFieldNames:            searchTextFieldNames,
 	}
 }
 
 // NewDXTableSimple creates a DXTable with direct table name (no models.ModelDBTable needed)
 func NewDXTableSimple(
 	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
-	responseEnvelopeObjectName string, encryptionKeyDefs []*database.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string) *DXTable {
+	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
@@ -608,6 +613,7 @@ func NewDXTableSimple(
 			ResponseEnvelopeObjectName:      responseEnvelopeObjectName,
 			EncryptionKeyDefs:               encryptionKeyDefs,
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+			SearchTextFieldNames:            searchTextFieldNames,
 		},
 	}
 }
@@ -616,8 +622,8 @@ func NewDXTableSimple(
 func NewDXTableWithEncryption(
 	databaseNameId, tableName, resultObjectName, listViewNameId,
 	fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string,
-	encryptionKeyDefs []*database.EncryptionKeyDef,
-	encryptionColumnDefs []database.EncryptionColumnDef, validationUniqueFieldNameGroups [][]string) *DXTable {
+	encryptionKeyDefs []*databases.EncryptionKeyDef,
+	encryptionColumnDefs []databases.EncryptionColumnDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
@@ -631,6 +637,7 @@ func NewDXTableWithEncryption(
 			EncryptionKeyDefs:               encryptionKeyDefs,
 			EncryptionColumnDefs:            encryptionColumnDefs,
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+			SearchTextFieldNames:            searchTextFieldNames,
 		},
 	}
 }

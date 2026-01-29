@@ -460,7 +460,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		aeprpv.Value = s
 		return nil
 	case dxlibTypes.APIParameterTypeArrayJSONTemplate:
-		var s []utils.JSON
+		var s []any
 		for _, v := range aeprpv.ArrayChildren {
 			err = v.Validate()
 			if err != nil {
@@ -578,6 +578,18 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 	err = aeprpv.resolveValue(nameIdPath)
 	if err != nil {
 		return err
+	}
+	if len(aeprpv.Metadata.Enum) > 0 {
+		found := false
+		for _, enumVal := range aeprpv.Metadata.Enum {
+			if fmt.Sprintf("%v", aeprpv.Value) == fmt.Sprintf("%v", enumVal) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_ENUM_VALUE:%s=%v, allowed=%v", nameIdPath, aeprpv.Value, aeprpv.Metadata.Enum)
+		}
 	}
 	return nil
 }

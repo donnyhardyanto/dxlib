@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/donnyhardyanto/dxlib/database"
-	"github.com/donnyhardyanto/dxlib/database/db"
+	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -19,7 +19,7 @@ import (
 // TxUpdateWithEncryption updates with encrypted columns within a transaction
 // Automatically sets session keys from secure memory before update
 func (t *DXRawTable) TxUpdateWithEncryption(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 	where utils.JSON,
@@ -53,7 +53,7 @@ func (t *DXRawTable) UpdateWithEncryption(
 		return nil, nil, err
 	}
 
-	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -64,7 +64,7 @@ func (t *DXRawTable) UpdateWithEncryption(
 
 // TxUpdateByIdWithEncryption updates by ID with encrypted columns
 func (t *DXRawTable) TxUpdateByIdWithEncryption(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	id int64,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
@@ -88,7 +88,7 @@ func (t *DXRawTable) UpdateByIdWithEncryption(
 
 // TxUpdateWithEncryption updates with encrypted columns and audit fields
 func (t *DXTable) TxUpdateWithEncryption(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 	where utils.JSON,
@@ -112,7 +112,7 @@ func (t *DXTable) UpdateWithEncryption(
 
 // TxUpdateByIdWithEncryption updates by ID with encrypted columns and audit fields
 func (t *DXTable) TxUpdateByIdWithEncryption(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	id int64,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
@@ -136,7 +136,7 @@ func (t *DXTable) UpdateByIdWithEncryption(
 
 // executeEncryptedUpdate builds and executes UPDATE with encrypted columns
 func executeEncryptedUpdate(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	tableName string,
 	dbType base.DXDatabaseType,
 	data utils.JSON,

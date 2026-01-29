@@ -3,7 +3,7 @@ package tables
 import (
 	"database/sql"
 
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -12,7 +12,7 @@ import (
 
 // TxUpdateAuto updates using table's EncryptionColumnDefs and EncryptionKeyDefs
 func (t *DXRawTable) TxUpdateAuto(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	where utils.JSON,
 	returningFieldNames []string,
@@ -48,7 +48,7 @@ func (t *DXRawTable) UpdateAuto(
 	}
 
 	// Encryption configured, need transaction
-	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,7 +59,7 @@ func (t *DXRawTable) UpdateAuto(
 
 // TxUpdateByIdAuto updates by ID using table's EncryptionColumnDefs
 func (t *DXRawTable) TxUpdateByIdAuto(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	id int64,
 	data utils.JSON,
 ) (sql.Result, error) {
@@ -81,7 +81,7 @@ func (t *DXRawTable) UpdateByIdAuto(
 
 // TxUpdateAuto updates with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) TxUpdateAuto(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	where utils.JSON,
 	returningFieldNames []string,
@@ -103,7 +103,7 @@ func (t *DXTable) UpdateAuto(
 
 // TxUpdateByIdAuto updates by ID with audit fields
 func (t *DXTable) TxUpdateByIdAuto(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	id int64,
 	data utils.JSON,
 ) (sql.Result, error) {

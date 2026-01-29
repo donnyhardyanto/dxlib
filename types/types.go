@@ -95,7 +95,7 @@ type DataType struct {
 	DefaultValueByDatabaseType map[base.DXDatabaseType]string // Database-specific default values for this type
 }
 
-// UID Default Expressions for each database type
+// UID Default Expressions for each databases type
 // Format: hex(timestamp_microseconds) + uuid
 
 // UIDDefaultExprPostgreSQL is the PostgreSQL UID default expression

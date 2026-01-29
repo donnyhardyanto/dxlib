@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/donnyhardyanto/dxlib/database"
+	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -18,7 +18,7 @@ import (
 // TxInsertWithEncryption inserts with encrypted columns within a transaction
 // Automatically sets session keys from secure memory before insert
 func (t *DXRawTable) TxInsertWithEncryption(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 	returningFieldNames []string,
@@ -50,7 +50,7 @@ func (t *DXRawTable) InsertWithEncryption(
 		return nil, nil, err
 	}
 
-	dtx, err := t.Database.TransactionBegin(database.LevelReadCommitted)
+	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -62,7 +62,7 @@ func (t *DXRawTable) InsertWithEncryption(
 
 // TxInsertWithEncryptionReturningId is a simplified version returning just the new ID
 func (t *DXRawTable) TxInsertWithEncryptionReturningId(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 ) (int64, error) {
@@ -92,7 +92,7 @@ func (t *DXRawTable) InsertWithEncryptionReturningId(
 
 // TxInsertWithEncryption inserts with encrypted columns and audit fields
 func (t *DXTable) TxInsertWithEncryption(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 	returningFieldNames []string,
@@ -114,7 +114,7 @@ func (t *DXTable) InsertWithEncryption(
 
 // TxInsertWithEncryptionReturningId is a simplified version with audit fields
 func (t *DXTable) TxInsertWithEncryptionReturningId(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 ) (int64, error) {
@@ -136,7 +136,7 @@ func (t *DXTable) InsertWithEncryptionReturningId(
 
 // executeEncryptedInsert builds and executes INSERT with encrypted columns
 func executeEncryptedInsert(
-	dtx *database.DXDatabaseTx,
+	dtx *databases.DXDatabaseTx,
 	tableName string,
 	dbType base.DXDatabaseType,
 	data utils.JSON,
