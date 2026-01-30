@@ -339,7 +339,11 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 			// Log using existing dxlib error mechanism
 			panicErr := errors.Errorf("PANIC_RECOVERED: %v", rec)
-			aepr.Log.Errorf(panicErr, "PANIC_RECOVERED: %v\nStack Trace:\n%s", rec, stackTrace)
+			requestDump, err2 := aepr.RequestDumpAsString()
+			if err2 != nil {
+				requestDump = fmt.Sprintf("REQUEST_DUMP_ERROR: %v", err2)
+			}
+			aepr.Log.Errorf(panicErr, "PANIC_RECOVERED: %v\nStack Trace:\n%s\nRaw Request:\n%s", rec, stackTrace, requestDump)
 
 			// Send HTTP 500 response if not already sent
 			if !aepr.ResponseHeaderSent {
@@ -499,7 +503,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if err2 != nil {
 				aepr.Log.Warnf("REQUEST_DUMP_ERROR:%+v", err2)
 			} else {
-				aepr.Log.Infof("ONEXECUTE_ERROR_REQUEST_DUMP:\n%s", string(requestDump))
+				aepr.Log.Errorf(err, "ONEXECUTE_ERROR:%+v\nRaw Request:\n%s", err, string(requestDump))
 			}
 
 			if !aepr.ResponseHeaderSent {
