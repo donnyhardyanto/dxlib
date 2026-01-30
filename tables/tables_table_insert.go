@@ -34,12 +34,17 @@ func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int
 // DoCreate inserts a row with audit fields and writes API response
 func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
-	newId, err := t.DXRawTable.InsertReturningId(&aepr.Log, data)
+	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 	if err != nil {
 		return 0, err
 	}
+	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+	newUid := ""
+	if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
+		newUid = uid
+	}
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
-		t.FieldNameForRowId: newId,
+		t.FieldNameForRowUid: newUid,
 	}))
 	return newId, nil
 }
@@ -125,7 +130,7 @@ func (t *DXTable) RequestCreateReturnUidWithValidation(aepr *api.DXAPIEndPointRe
 	return err
 }
 
-// DoCreateWithValidation inserts with unique field validation, audit fields, and returns id
+// DoCreateWithValidation inserts with unique field validation, audit fields, and returns uid
 func (t *DXTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
 
@@ -135,16 +140,20 @@ func (t *DXTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data ut
 	}
 
 	var newId int64
+	var newUid string
 	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
 		if err != nil {
 			return err
 		}
-		_, returningValues, err := t.DXRawTable.TxInsert(dtx, data, []string{t.FieldNameForRowId})
+		_, returningValues, err := t.DXRawTable.TxInsert(dtx, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 		if err != nil {
 			return err
 		}
 		newId, _ = utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+		if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
+			newUid = uid
+		}
 		return nil
 	})
 	if txErr != nil {
@@ -152,7 +161,7 @@ func (t *DXTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data ut
 	}
 
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
-		t.FieldNameForRowId: newId,
+		t.FieldNameForRowUid: newUid,
 	}))
 	return newId, nil
 }

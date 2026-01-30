@@ -629,11 +629,11 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 	case EndPointTypeHTTPEndToEndEncryptionV2, EndPointTypeHTTPDownloadStreamV2:
 		preKeyIndex, err := utils.GetStringFromKV(bodyAsJSON, "i")
 		if err != nil {
-			return err
+			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "INVALID_REQUEST_FORMAT", "INVALID_REQUEST_FORMAT:%v", err)
 		}
 		dataAsHexString, err := utils.GetStringFromKV(bodyAsJSON, "d")
 		if err != nil {
-			return err
+			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "INVALID_REQUEST_FORMAT", "INVALID_REQUEST_FORMAT:%v", err)
 		}
 
 		if OnE2EEPrekeyUnPack == nil {

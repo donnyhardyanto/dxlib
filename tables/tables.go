@@ -369,7 +369,7 @@ var Manager = DXTableManager{
 				StatusCode:  200,
 				Description: "Success - 200",
 				DataTemplate: []*api.DXAPIEndPointParameter{
-					{NameId: "id", Type: dxlibTypes.APIParameterTypeInt64, Description: "", IsMustExist: true},
+					{NameId: "uid", Type: dxlibTypes.APIParameterTypeString, Description: "", IsMustExist: true},
 				},
 			},
 			"invalid_request": &api.DXAPIEndPointResponsePossibility{

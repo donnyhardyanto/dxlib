@@ -856,7 +856,7 @@ func GetVFromKV[T any](kv map[string]any, key string) (r T, err error) {
 	v, ok := kv[key]
 	if !ok {
 		// Error Code: KEY_IS_NOT_EXIST
-		return r, fmt.Errorf("KEY_IS_NOT_EXIST:%s", key)
+		return r, errors.Errorf("KEY_IS_NOT_EXIST:%s", key)
 	}
 
 	// 2. Type Assertion
@@ -864,7 +864,7 @@ func GetVFromKV[T any](kv map[string]any, key string) (r T, err error) {
 	if !ok {
 		// Error Code: KEY_VALUE_IS_NOT_TYPE_T_BUT_X
 		// %s: Key, %T: Expected Type (from r), %T: Actual Type (from v)
-		return r, fmt.Errorf("KEY_VALUE_IS_NOT_TYPE_T_BUT_X:%s:%T:%T", key, r, v)
+		return r, errors.Errorf("KEY_VALUE_IS_NOT_TYPE_T_BUT_X:%s:%T:%T", key, r, v)
 	}
 
 	return vAsT, nil
@@ -885,7 +885,7 @@ func GetStringFromMapStringString(kv map[string]string, key string) (r string, e
 	v, ok := kv[key]
 	if !ok {
 		// Error Code: KEY_IS_NOT_EXIST
-		return r, fmt.Errorf("GetStringFromMapStringString:KEY_IS_NOT_EXIST:%s", key)
+		return r, errors.Errorf("GetStringFromMapStringString:KEY_IS_NOT_EXIST:%s", key)
 	}
 
 	return v, nil

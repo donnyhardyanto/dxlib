@@ -62,9 +62,7 @@ func (t *DXRawTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (
 
 	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
 
-	response := utils.JSON{
-		t.FieldNameForRowId: newId,
-	}
+	response := utils.JSON{}
 
 	if t.FieldNameForRowUid != "" {
 		if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
@@ -93,9 +91,7 @@ func (t *DXRawTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (
 
 	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
 
-	response := utils.JSON{
-		t.FieldNameForRowId: newId,
-	}
+	response := utils.JSON{}
 
 	if t.FieldNameForRowUid != "" {
 		if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
@@ -141,7 +137,7 @@ func (t *DXRawTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data
 			return err
 		}
 		newId, _ = utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
-		response = utils.JSON{t.FieldNameForRowId: newId}
+		response = utils.JSON{}
 		if t.FieldNameForRowUid != "" {
 			if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
 				response[t.FieldNameForRowUid] = uid
