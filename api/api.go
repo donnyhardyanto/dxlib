@@ -483,12 +483,28 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		err = p.OnExecute(aepr)
 
 		if err != nil {
-			// TRACE: execute_end (error)
-			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, http.StatusBadRequest, err.Error())
-
 			if aepr.ResponseHeaderSent {
+				// TRACE: execute_end (error, response already sent by handler)
+				LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, aepr.ResponseStatusCode, err.Error())
 				return
 			}
+
+			// Check for domain validation errors (e.g., unique field violation)
+			// These are expected validation failures, not server errors.
+			var domainErr DXAPIDomainError
+			if errors.As(err, &domainErr) {
+				// TRACE: execute_end (domain validation)
+				LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, domainErr.DomainErrorHTTPStatusCode(), domainErr.DomainErrorCode())
+				// Log as warning (not error) -- this is expected validation, not a bug
+				aepr.Log.Warnf("DOMAIN_VALIDATION:%s:%s", domainErr.DomainErrorCode(), domainErr.DomainErrorLogDetails())
+				// Send sanitized response (no DB structure exposed)
+				aepr.WriteResponseAsJSON(domainErr.DomainErrorHTTPStatusCode(), nil, domainErr.DomainErrorResponseBody())
+				err = nil // clear error so deferred funcs don't treat as error
+				return
+			}
+
+			// TRACE: execute_end (error)
+			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, http.StatusBadRequest, err.Error())
 
 			// Log request dump for debugging (before encryption)
 			requestDump, err2 := aepr.RequestDump()

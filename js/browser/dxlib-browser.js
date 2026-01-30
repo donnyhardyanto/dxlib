@@ -3,11 +3,28 @@ const dxlib = {};
 (function (dxlib) {
     'use strict';
 
-    function assertResponse(response) {
+    async function assertResponse(response, asserted = true) {
         let statusCode = response.status;
         if (statusCode !== 200) {
-            alert(`${response.url}: Status code is ${statusCode.toString()}`);
-            throw new Error("Execution halted");
+            let responseBody = {};
+            try {
+                const clonedResponse = response.clone();
+                responseBody = await clonedResponse.json();
+            } catch (e) {
+                // Response body is not JSON, ignore
+            }
+            console.error('=== API Error Response ===');
+            console.error('URL:', response.url);
+            console.error('Status Code:', statusCode);
+            if (responseBody.reason) console.error('Reason:', responseBody.reason);
+            if (responseBody.reason_message) console.error('Reason Message:', responseBody.reason_message);
+            if (responseBody.values) console.error('Values:', JSON.stringify(responseBody.values));
+            console.error('Full Response Body:', JSON.stringify(responseBody, null, 2));
+            console.error('=========================');
+
+            if (asserted) {
+                throw new Error(`API_ERROR:${statusCode}:${responseBody.reason || 'UNKNOWN'}`);
+            }
         }
     }
 
@@ -51,7 +68,7 @@ const dxlib = {};
             body: bodyAsString,
         });
         if (asserted) {
-            assertResponse(response);
+            await assertResponse(response, asserted);
         }
         return response;
     }
@@ -74,7 +91,7 @@ const dxlib = {};
             body: bodyAsString,
         });
         if (asserted) {
-            assertResponse(response);
+            await assertResponse(response, asserted);
         }
         return response;
     }
@@ -98,7 +115,7 @@ const dxlib = {};
             headers: headers,
         });
         if (asserted) {
-            assertResponse(response);
+            await assertResponse(response, asserted);
         }
         return response;
     }

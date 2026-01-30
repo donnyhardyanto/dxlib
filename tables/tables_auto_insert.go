@@ -3,13 +3,26 @@ package tables
 import (
 	"database/sql"
 
+	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/databases/db"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
-	"gopkg.in/errgo.v2/fmt/errors"
 )
+
+func newUniqueFieldViolationError(tableName string, data utils.JSON) *api.ErrUniqueFieldViolation {
+	fields := make([]string, 0, len(data))
+	for fieldName := range data {
+		fields = append(fields, fieldName)
+	}
+	return &api.ErrUniqueFieldViolation{
+		TableName: tableName,
+		Fields:    fields,
+		Values:    data,
+	}
+}
 
 // DXRawTable Auto Insert Methods
 
@@ -40,7 +53,7 @@ func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForInsert(dtx *databa
 		for _, f := range v {
 			val, ok := data[f] // Use local variables for the 'comma-ok' check
 			if !ok {
-				return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_INSERT:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELD=%s", t.TableName(), f)
+				return errors.Errorf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_INSERT:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELD=%s", t.TableName(), f)
 			}
 			k[f] = val
 		}
@@ -52,8 +65,7 @@ func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForInsert(dtx *databa
 		}
 
 		if c > 0 {
-			// It's more helpful to show the actual data 'k' than just the field names 'v'
-			return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_INSERT:UNIQUE_FIELD_VIOLATION:TABLE=%s,DATA=%v", t.TableName(), k)
+			return newUniqueFieldViolationError(t.TableName(), k)
 		}
 	}
 	return nil
@@ -65,7 +77,7 @@ func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForUpdate(dtx *databa
 		for _, f := range v {
 			val, ok := data[f]
 			if !ok {
-				return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELDNAME=%s", t.TableName(), f)
+				return errors.Errorf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELDNAME=%s", t.TableName(), f)
 			}
 			k[f] = val
 		}
@@ -76,19 +88,19 @@ func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForUpdate(dtx *databa
 		}
 
 		if len(d) > 1 {
-			return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:UNIQUE_FIELD_VIOLATION:TABLE=%s,FIELDNAMEGROUP=%v", t.TableName(), k)
+			return newUniqueFieldViolationError(t.TableName(), k)
 		}
 
 		if len(d) == 1 {
 			row := d[0]
 			dbId, ok := row[t.FieldNameForRowId]
 			if !ok {
-				return errors.Newf("SHOULD_NOT_HAPPEN:FIELDNAMEFORROWID_NOT_FOUND:TABLE=%s,FIELDNAMEGROUP=%v", t.TableName(), k)
+				return errors.Errorf("SHOULD_NOT_HAPPEN:FIELDNAMEFORROWID_NOT_FOUND:TABLE=%s,FIELDNAMEGROUP=%v", t.TableName(), k)
 			}
 
 			// Use the smart ValueMatch helper
 			if !utils.IsValuesMatch(dbId, id) {
-				return errors.Newf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:UNIQUE_FIELD_VIOLATION:TABLE=%s,FIELDNAMEGROUP=%v", t.TableName(), k)
+				return newUniqueFieldViolationError(t.TableName(), k)
 			}
 		}
 	}
