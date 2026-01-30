@@ -343,23 +343,11 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 			// Send HTTP 500 response if not already sent
 			if !aepr.ResponseHeaderSent {
-				var responseBody utils.JSON
-				if dxlib.IsDebug {
-					// Include debug info in debug mode
-					responseBody = utils.JSON{
-						"status":        "Internal Server Error",
-						"status_code":   http.StatusInternalServerError,
-						"reason":        "PANIC_RECOVERED",
-						"panic_message": panicMsg,
-						"stack_trace":   stackTrace,
-					}
-				} else {
-					// Generic error in production
-					responseBody = utils.JSON{
-						"status":      "Internal Server Error",
-						"status_code": http.StatusInternalServerError,
-						"reason":      "INTERNAL_SERVER_ERROR",
-					}
+				responseBody := utils.JSON{
+					"status":         "Internal Server Error",
+					"status_code":    http.StatusInternalServerError,
+					"reason":         "INTERNAL_SERVER_ERROR",
+					"reason_message": "Internal Server Error",
 				}
 				aepr.ResponseStatusCode = http.StatusInternalServerError
 				aepr.WriteResponseAsJSON(http.StatusInternalServerError, nil, responseBody)

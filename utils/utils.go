@@ -544,6 +544,27 @@ func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// ConvertToArrayOfMapStringAnyFromAny converts a value of any type to []map[string]any.
+// Handles both []map[string]any (direct) and []interface{} (from JSON unmarshal) cases.
+func ConvertToArrayOfMapStringAnyFromAny(v any) ([]map[string]any, error) {
+	switch val := v.(type) {
+	case []map[string]any:
+		return val, nil
+	case []any:
+		result := make([]map[string]any, len(val))
+		for i, item := range val {
+			m, ok := item.(map[string]any)
+			if !ok {
+				return nil, errors.Errorf("ELEMENT_AT_INDEX_%d_IS_NOT_MAP_STRING_ANY:%T", i, item)
+			}
+			result[i] = m
+		}
+		return result, nil
+	default:
+		return nil, errors.Errorf("TYPE_IS_NOT_CONVERTABLE_TO_ARRAY_OF_MAP_STRING_ANY:%T", v)
+	}
+}
+
 // JSONToMapStringString converts a JSON object to a map[string]string.
 func JSONToMapStringString(kv JSON) (r map[string]string) {
 	r = map[string]string{}
