@@ -520,7 +520,8 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", err.Error())
 			}
 			if (rpv.Metadata.IsMustExist) && (rpv.RawValue == nil) && (!rpv.Metadata.IsNullable) {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+				s := fmt.Sprintf("MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, s, s)
 			}
 			if rpv.RawValue != nil {
 				err = rpv.Validate()
@@ -542,7 +543,8 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", err.Error())
 			}
 			if (rpv.Metadata.IsMustExist) && (rpv.RawValue == nil) && (!rpv.Metadata.IsNullable) {
-				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+				s := fmt.Sprintf("MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, s, s)
 			}
 			if rpv.RawValue != nil {
 				err = rpv.Validate()
@@ -560,7 +562,8 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 				variablePath := v.NameId
 				if v.IsMustExist {
 					if !ok {
-						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+						s := fmt.Sprintf("MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, s, s)
 					}
 				}
 				if rpv.RawValue != nil {
@@ -698,7 +701,8 @@ func (aepr *DXAPIEndPointRequest) processEndPointRequestParameterValues(bodyAsJS
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", err.Error())
 		}
 		if (rpv.Metadata.IsMustExist) && (rpv.RawValue == nil) && (!rpv.Metadata.IsNullable) {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+			s := fmt.Sprintf("MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, s, s)
 		}
 		if rpv.RawValue != nil {
 			err = rpv.Validate()
