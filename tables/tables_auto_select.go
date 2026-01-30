@@ -29,43 +29,43 @@ func (t *DXRawTable) ShouldSelectOneAuto(l *log.DXLog, where utils.JSON, joinSQL
 }
 
 // GetByIdAuto returns a row by ID using table's EncryptionColumnDefs
-func (t *DXRawTable) GetByIdAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetById(l, id)
+func (t *DXRawTable) GetByIdAuto(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetById(l, id, fieldNames...)
 }
 
 // ShouldGetByIdAuto returns a row by ID or error if not found, using table's EncryptionColumnDefs
-func (t *DXRawTable) ShouldGetByIdAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetById(l, id)
+func (t *DXRawTable) ShouldGetByIdAuto(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetById(l, id, fieldNames...)
 }
 
 // GetByUidAuto returns a row by UID using table's EncryptionColumnDefs
-func (t *DXRawTable) GetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByUid(l, uid)
+func (t *DXRawTable) GetByUidAuto(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByUid(l, uid, fieldNames...)
 }
 
 // ShouldGetByUidAuto returns a row by UID or error if not found, using table's EncryptionColumnDefs
-func (t *DXRawTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByUid(l, uid)
+func (t *DXRawTable) ShouldGetByUidAuto(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByUid(l, uid, fieldNames...)
 }
 
 // GetByUtagAuto returns a row by Utag using table's EncryptionColumnDefs
-func (t *DXRawTable) GetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByUtag(l, utag)
+func (t *DXRawTable) GetByUtagAuto(l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByUtag(l, utag, fieldNames...)
 }
 
 // ShouldGetByUtagAuto returns a row by Utag or error if not found, using table's EncryptionColumnDefs
-func (t *DXRawTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByUtag(l, utag)
+func (t *DXRawTable) ShouldGetByUtagAuto(l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByUtag(l, utag, fieldNames...)
 }
 
 // GetByNameIdAuto returns a row by NameId using table's EncryptionColumnDefs
-func (t *DXRawTable) GetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByNameId(l, nameId)
+func (t *DXRawTable) GetByNameIdAuto(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByNameId(l, nameId, fieldNames...)
 }
 
 // ShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's EncryptionColumnDefs
-func (t *DXRawTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByNameId(l, nameId)
+func (t *DXRawTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByNameId(l, nameId, fieldNames...)
 }
 
 // DXTable Auto Select Methods (with audit fields)
@@ -90,79 +90,87 @@ func (t *DXTable) ShouldSelectOneAuto(l *log.DXLog, where utils.JSON, joinSQLPar
 }
 
 // GetByIdAuto returns a row by ID using table's EncryptionColumnDefs
-func (t *DXTable) GetByIdAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByIdNotDeleted(l, id)
+func (t *DXTable) GetByIdAuto(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByIdNotDeleted(l, id, fieldNames...)
 }
 
 // ShouldGetByIdAuto returns a row by ID or error if not found, using table's EncryptionColumnDefs
-func (t *DXTable) ShouldGetByIdAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByIdNotDeleted(l, id)
+func (t *DXTable) ShouldGetByIdAuto(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByIdNotDeleted(l, id, fieldNames...)
 }
 
 // GetByIdNotDeletedAuto returns a non-deleted row by ID using table's EncryptionColumnDefs
-func (t *DXTable) GetByIdNotDeletedAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByIdNotDeleted(l, id)
+func (t *DXTable) GetByIdNotDeletedAuto(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByIdNotDeleted(l, id, fieldNames...)
 }
 
 // ShouldGetByIdNotDeletedAuto returns a non-deleted row by ID or error if not found
-func (t *DXTable) ShouldGetByIdNotDeletedAuto(l *log.DXLog, id int64) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByIdNotDeleted(l, id)
+func (t *DXTable) ShouldGetByIdNotDeletedAuto(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByIdNotDeleted(l, id, fieldNames...)
 }
 
 // GetByUidAuto returns a row by UID using table's EncryptionColumnDefs
-func (t *DXTable) GetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByUidNotDeleted(l, uid)
+func (t *DXTable) GetByUidAuto(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByUidNotDeleted(l, uid, fieldNames...)
 }
 
 // ShouldGetByUidAuto returns a row by UID or error if not found, using table's EncryptionColumnDefs
-func (t *DXTable) ShouldGetByUidAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByUidNotDeleted(l, uid)
+func (t *DXTable) ShouldGetByUidAuto(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByUidNotDeleted(l, uid, fieldNames...)
 }
 
 // GetByUidNotDeletedAuto returns a non-deleted row by UID using table's EncryptionColumnDefs
-func (t *DXTable) GetByUidNotDeletedAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByUidNotDeleted(l, uid)
+func (t *DXTable) GetByUidNotDeletedAuto(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByUidNotDeleted(l, uid, fieldNames...)
 }
 
 // ShouldGetByUidNotDeletedAuto returns a non-deleted row by UID or error if not found
-func (t *DXTable) ShouldGetByUidNotDeletedAuto(l *log.DXLog, uid string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByUidNotDeleted(l, uid)
+func (t *DXTable) ShouldGetByUidNotDeletedAuto(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByUidNotDeleted(l, uid, fieldNames...)
 }
 
 // GetByUtagAuto returns a row by Utag using table's EncryptionColumnDefs
-func (t *DXTable) GetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) GetByUtagAuto(l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
-	return t.SelectOne(l, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
 // ShouldGetByUtagAuto returns a row by Utag or error if not found, using table's EncryptionColumnDefs
-func (t *DXTable) ShouldGetByUtagAuto(l *log.DXLog, utag string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) ShouldGetByUtagAuto(l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
-	return t.ShouldSelectOne(l, nil, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
 // GetByNameIdAuto returns a row by NameId using table's EncryptionColumnDefs
-func (t *DXTable) GetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByNameIdNotDeleted(l, nameId)
+func (t *DXTable) GetByNameIdAuto(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByNameIdNotDeleted(l, nameId, fieldNames...)
 }
 
 // ShouldGetByNameIdAuto returns a row by NameId or error if not found, using table's EncryptionColumnDefs
-func (t *DXTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByNameIdNotDeleted(l, nameId)
+func (t *DXTable) ShouldGetByNameIdAuto(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByNameIdNotDeleted(l, nameId, fieldNames...)
 }
 
 // GetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's EncryptionColumnDefs
-func (t *DXTable) GetByNameIdNotDeletedAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.GetByNameIdNotDeleted(l, nameId)
+func (t *DXTable) GetByNameIdNotDeletedAuto(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.GetByNameIdNotDeleted(l, nameId, fieldNames...)
 }
 
 // ShouldGetByNameIdNotDeletedAuto returns a non-deleted row by NameId or error if not found
-func (t *DXTable) ShouldGetByNameIdNotDeletedAuto(l *log.DXLog, nameId string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.ShouldGetByNameIdNotDeleted(l, nameId)
+func (t *DXTable) ShouldGetByNameIdNotDeletedAuto(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.ShouldGetByNameIdNotDeleted(l, nameId, fieldNames...)
 }
 
 // DXRawTable Paging Auto Methods
