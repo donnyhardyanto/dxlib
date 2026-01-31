@@ -108,7 +108,7 @@ Future<void> login() async {
   final dataBlockEnvelopeAsHexString = await packLVPayload(index, edA0PrivateKeyAsBytes, sharedKey1AsBytes, [lvUserLogin, lvPassword]);
 
   final loginResponse = await http.post(
-    Uri.parse('$APISystemProtocol$APISystemAddress/self/k6-test'),
+    Uri.parse('$APISystemProtocol$APISystemAddress/self/login'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({
       'i': index,
