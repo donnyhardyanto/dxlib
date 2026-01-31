@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 //var MAX_SIZE uint32 = 2147483647

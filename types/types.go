@@ -1,17 +1,11 @@
 package types
 
-type TypeDef struct {
-	APIParameterType string
-	JSONType         string
-	GoType           string
-	DbTypePostgreSQL string
-	DbTypeSqlserver  string
-	DbTypeMysql      string
-	DbTypeOracle     string
-}
+import (
+	"fmt"
+	"strings"
 
-type TModel struct {
-}
+	"github.com/donnyhardyanto/dxlib/base"
+)
 
 type APIParameterType string
 
@@ -28,22 +22,26 @@ const (
 type GoType string
 
 const (
-	GoTypeString              GoType = "string"
-	GoTypeStringPointer       GoType = "*string"
-	GoTypeInt64               GoType = "int64"
-	GoTypeInt64Pointer        GoType = "*int64"
-	GoTypeFloat32             GoType = "float32"
-	GoTypeFloat64             GoType = "float64"
-	GoTypeBool                GoType = "bool"
-	GoTypeTime                GoType = "time.Time"
-	GoTypeMapStringInterface  GoType = "map[string]interface{}"
-	GoTypeSliceInterface      GoType = "[]interface{}"
-	GoTypeSliceString         GoType = "[]string"
-	GoTypeSliceInt64          GoType = "[]int64"
+	GoTypeString                  GoType = "string"
+	GoTypeStringPointer           GoType = "*string"
+	GoTypeInt64                   GoType = "int64"
+	GoTypeInt64Pointer            GoType = "*int64"
+	GoTypeFloat32                 GoType = "float32"
+	GoTypeFloat64                 GoType = "float64"
+	GoTypeBool                    GoType = "bool"
+	GoTypeTime                    GoType = "time.Time"
+	GoTypeMapStringInterface      GoType = "map[string]interface{}"
+	GoTypeSliceInterface          GoType = "[]interface{}"
+	GoTypeSliceString             GoType = "[]string"
+	GoTypeSliceInt64              GoType = "[]int64"
+	GoTypeSliceByte               GoType = "[]byte"
 	GoTypeSliceMapStringInterface GoType = "[]map[string]interface{}"
 )
 
 const (
+	APIParameterTypeEncryptedBlob APIParameterType = "encrypted-blob"
+	APIParameterTypeBlob          APIParameterType = "blob"
+
 	// String types
 	APIParameterTypeString             APIParameterType = "string"
 	APIParameterTypeProtectedString    APIParameterType = "protected-string"
@@ -71,7 +69,7 @@ const (
 	APIParameterTypeFloat64ZP APIParameterType = "float64zp"
 
 	// Boolean type
-	APIParameterTypeBool APIParameterType = "bool"
+	APIParameterTypeBoolean APIParameterType = "bool"
 
 	// Date/Time types
 	APIParameterTypeISO8601 APIParameterType = "iso8601"
@@ -89,385 +87,475 @@ const (
 	APIParameterTypeArrayJSONTemplate APIParameterType = "array-json-template"
 )
 
+type DataType struct {
+	APIParameterType           APIParameterType
+	JSONType                   JSONType
+	GoType                     GoType
+	TypeByDatabaseType         map[base.DXDatabaseType]string // Database-specific SQL types
+	DefaultValueByDatabaseType map[base.DXDatabaseType]string // Database-specific default values for this type
+}
+
+// UID Default Expressions for each databases type
+// Format: hex(timestamp_microseconds) + uuid
+
+// UIDDefaultExprPostgreSQL is the PostgreSQL UID default expression
+const UIDDefaultExprPostgreSQL = "CONCAT(to_hex((extract(epoch from now()) * 1000000)::bigint), gen_random_uuid()::text)"
+
+// UIDDefaultExprSQLServer is the SQL Server UID default expression
+const UIDDefaultExprSQLServer = "CONCAT(CONVERT(VARCHAR(50), CAST(DATEDIFF_BIG(MICROSECOND, '1970-01-01', SYSUTCDATETIME()) AS VARBINARY(8)), 2), LOWER(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', '')))"
+
+// UIDDefaultExprOracle is the Oracle UID default expression
+const UIDDefaultExprOracle = "LOWER(TO_CHAR(ROUND((CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS DATE) - TO_DATE('1970-01-01','YYYY-MM-DD')) * 86400000000), 'XXXXXXXXXXXXXXXX')) || LOWER(RAWTOHEX(SYS_GUID()))"
+
+// UIDDefaultExprMariaDB is the MariaDB/MySQL UID default expression
+const UIDDefaultExprMariaDB = "CONCAT(HEX(FLOOR(UNIX_TIMESTAMP(NOW(6)) * 1000000)), REPLACE(UUID(), '-', ''))"
+
 var (
-	TypeDefString = TypeDef{
-		APIParameterType: string(APIParameterTypeString),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeString),
-		DbTypePostgreSQL: "VARCHAR(1024)",
-		DbTypeSqlserver:  "VARCHAR(1024)",
-		DbTypeMysql:      "VARCHAR(1024)",
-		DbTypeOracle:     "VARCHAR(1024)",
+	DataTypeEncryptedBlob = DataType{
+		APIParameterType:   APIParameterTypeEncryptedBlob,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeSliceByte,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BYTEA", base.DXDatabaseTypeSQLServer: "VARBINARY(MAX)", base.DXDatabaseTypeMariaDB: "LONGBLOB", base.DXDatabaseTypeOracle: "BLOB"},
+	}
+	DataTypeBlob = DataType{
+		APIParameterType:   APIParameterTypeBlob,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeSliceByte,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BYTEA", base.DXDatabaseTypeSQLServer: "VARBINARY(MAX)", base.DXDatabaseTypeMariaDB: "LONGBLOB", base.DXDatabaseTypeOracle: "BLOB"},
 	}
 
-	TypeDefProtectedString = TypeDef{
-		APIParameterType: string(APIParameterTypeProtectedString),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeString),
-		DbTypePostgreSQL: "VARCHAR(1024)",
-		DbTypeSqlserver:  "VARCHAR(1024)",
-		DbTypeMysql:      "VARCHAR(1024)",
-		DbTypeOracle:     "VARCHAR(1024)",
+	DataTypeUID = DataType{
+		APIParameterType:           APIParameterTypeString,
+		JSONType:                   JSONTypeString,
+		GoType:                     GoTypeString,
+		TypeByDatabaseType:         map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR2(1024)"},
+		DefaultValueByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: UIDDefaultExprPostgreSQL, base.DXDatabaseTypeSQLServer: UIDDefaultExprSQLServer, base.DXDatabaseTypeOracle: UIDDefaultExprOracle, base.DXDatabaseTypeMariaDB: UIDDefaultExprMariaDB},
 	}
 
-	TypeDefProtectedSQLString = TypeDef{
-		APIParameterType: string(APIParameterTypeProtectedSQLString),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeString),
-		DbTypePostgreSQL: "VARCHAR(1024)",
-		DbTypeSqlserver:  "VARCHAR(1024)",
-		DbTypeMysql:      "VARCHAR(1024)",
-		DbTypeOracle:     "VARCHAR(1024)",
+	DataTypeString = DataType{
+		APIParameterType:   APIParameterTypeString,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR(1024)"},
 	}
 
-	TypeDefNullableString = TypeDef{
-		APIParameterType: string(APIParameterTypeNullableString),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeStringPointer),
-		DbTypePostgreSQL: "VARCHAR(1024)",
-		DbTypeSqlserver:  "VARCHAR(1024)",
-		DbTypeMysql:      "VARCHAR(1024)",
-		DbTypeOracle:     "VARCHAR(1024)",
+	DataTypeProtectedString = DataType{
+		APIParameterType:   APIParameterTypeProtectedString,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR(1024)"},
 	}
 
-	TypeDefNonEmptyString = TypeDef{
-		APIParameterType: string(APIParameterTypeNonEmptyString),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeString),
-		DbTypePostgreSQL: "VARCHAR(1024)",
-		DbTypeSqlserver:  "VARCHAR(1024)",
-		DbTypeMysql:      "VARCHAR(1024)",
-		DbTypeOracle:     "VARCHAR(1024)",
+	DataTypeProtectedSQLString = DataType{
+		APIParameterType:   APIParameterTypeProtectedSQLString,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR(1024)"},
 	}
 
-	TypeDefEmail = TypeDef{
-		APIParameterType: string(APIParameterTypeEmail),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeString),
-		DbTypePostgreSQL: "VARCHAR(255)",
-		DbTypeSqlserver:  "VARCHAR(255)",
-		DbTypeMysql:      "VARCHAR(255)",
-		DbTypeOracle:     "VARCHAR(255)",
+	DataTypeNullableString = DataType{
+		APIParameterType:   APIParameterTypeNullableString,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeStringPointer,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR(1024)"},
 	}
 
-	TypeDefPhoneNumber = TypeDef{
-		APIParameterType: string(APIParameterTypePhoneNumber),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeString),
-		DbTypePostgreSQL: "VARCHAR(50)",
-		DbTypeSqlserver:  "VARCHAR(50)",
-		DbTypeMysql:      "VARCHAR(50)",
-		DbTypeOracle:     "VARCHAR(50)",
+	DataTypeNonEmptyString = DataType{
+		APIParameterType:   APIParameterTypeNonEmptyString,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR(1024)"},
 	}
 
-	TypeDefNPWP = TypeDef{
-		APIParameterType: string(APIParameterTypeNPWP),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeString),
-		DbTypePostgreSQL: "VARCHAR(50)",
-		DbTypeSqlserver:  "VARCHAR(50)",
-		DbTypeMysql:      "VARCHAR(50)",
-		DbTypeOracle:     "VARCHAR(50)",
+	DataTypeEmail = DataType{
+		APIParameterType:   APIParameterTypeEmail,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(255)", base.DXDatabaseTypeSQLServer: "VARCHAR(255)", base.DXDatabaseTypeMariaDB: "VARCHAR(255)", base.DXDatabaseTypeOracle: "VARCHAR(255)"},
 	}
 
-	// Integer types
-	TypeDefInt64 = TypeDef{
-		APIParameterType: string(APIParameterTypeInt64),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeInt64),
-		DbTypePostgreSQL: "BIGINT",
-		DbTypeSqlserver:  "BIGINT",
-		DbTypeMysql:      "BIGINT",
-		DbTypeOracle:     "NUMBER(19)",
+	DataTypePhoneNumber = DataType{
+		APIParameterType:   APIParameterTypePhoneNumber,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(50)", base.DXDatabaseTypeSQLServer: "VARCHAR(50)", base.DXDatabaseTypeMariaDB: "VARCHAR(50)", base.DXDatabaseTypeOracle: "VARCHAR(50)"},
 	}
 
-	TypeDefInt64P = TypeDef{
-		APIParameterType: string(APIParameterTypeInt64P),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeInt64),
-		DbTypePostgreSQL: "BIGINT",
-		DbTypeSqlserver:  "BIGINT",
-		DbTypeMysql:      "BIGINT",
-		DbTypeOracle:     "NUMBER(19)",
+	DataTypeNPWP = DataType{
+		APIParameterType:   APIParameterTypeNPWP,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(50)", base.DXDatabaseTypeSQLServer: "VARCHAR(50)", base.DXDatabaseTypeMariaDB: "VARCHAR(50)", base.DXDatabaseTypeOracle: "VARCHAR(50)"},
 	}
 
-	TypeDefInt64ZP = TypeDef{
-		APIParameterType: string(APIParameterTypeInt64ZP),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeInt64),
-		DbTypePostgreSQL: "BIGINT",
-		DbTypeSqlserver:  "BIGINT",
-		DbTypeMysql:      "BIGINT",
-		DbTypeOracle:     "NUMBER(19)",
+	DataTypeInt64 = DataType{
+		APIParameterType:   APIParameterTypeInt64,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeInt64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BIGINT", base.DXDatabaseTypeSQLServer: "BIGINT", base.DXDatabaseTypeMariaDB: "BIGINT", base.DXDatabaseTypeOracle: "NUMBER(19)"},
 	}
 
-	TypeDefNullableInt64 = TypeDef{
-		APIParameterType: string(APIParameterTypeNullableInt64),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeInt64Pointer),
-		DbTypePostgreSQL: "BIGINT",
-		DbTypeSqlserver:  "BIGINT",
-		DbTypeMysql:      "BIGINT",
-		DbTypeOracle:     "NUMBER(19)",
+	DataTypeInt64P = DataType{
+		APIParameterType:   APIParameterTypeInt64P,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeInt64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BIGINT", base.DXDatabaseTypeSQLServer: "BIGINT", base.DXDatabaseTypeMariaDB: "BIGINT", base.DXDatabaseTypeOracle: "NUMBER(19)"},
 	}
 
-	// Float32 types
-	TypeDefFloat32 = TypeDef{
-		APIParameterType: string(APIParameterTypeFloat32),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeFloat32),
-		DbTypePostgreSQL: "REAL",
-		DbTypeSqlserver:  "REAL",
-		DbTypeMysql:      "FLOAT",
-		DbTypeOracle:     "BINARY_FLOAT",
+	DataTypeInt64ZP = DataType{
+		APIParameterType:   APIParameterTypeInt64ZP,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeInt64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BIGINT", base.DXDatabaseTypeSQLServer: "BIGINT", base.DXDatabaseTypeMariaDB: "BIGINT", base.DXDatabaseTypeOracle: "NUMBER(19)"},
 	}
 
-	TypeDefFloat32P = TypeDef{
-		APIParameterType: string(APIParameterTypeFloat32P),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeFloat32),
-		DbTypePostgreSQL: "REAL",
-		DbTypeSqlserver:  "REAL",
-		DbTypeMysql:      "FLOAT",
-		DbTypeOracle:     "BINARY_FLOAT",
+	DataTypeNullableInt64 = DataType{
+		APIParameterType:   APIParameterTypeNullableInt64,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeInt64Pointer,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BIGINT", base.DXDatabaseTypeSQLServer: "BIGINT", base.DXDatabaseTypeMariaDB: "BIGINT", base.DXDatabaseTypeOracle: "NUMBER(19)"},
 	}
 
-	TypeDefFloat32ZP = TypeDef{
-		APIParameterType: string(APIParameterTypeFloat32ZP),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeFloat32),
-		DbTypePostgreSQL: "REAL",
-		DbTypeSqlserver:  "REAL",
-		DbTypeMysql:      "FLOAT",
-		DbTypeOracle:     "BINARY_FLOAT",
+	DataTypeFloat32 = DataType{
+		APIParameterType:   APIParameterTypeFloat32,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeFloat32,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "REAL", base.DXDatabaseTypeSQLServer: "REAL", base.DXDatabaseTypeMariaDB: "FLOAT", base.DXDatabaseTypeOracle: "BINARY_FLOAT"},
 	}
 
-	// Float64 types
-	TypeDefFloat64 = TypeDef{
-		APIParameterType: string(APIParameterTypeFloat64),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeFloat64),
-		DbTypePostgreSQL: "DOUBLE PRECISION",
-		DbTypeSqlserver:  "FLOAT",
-		DbTypeMysql:      "DOUBLE",
-		DbTypeOracle:     "BINARY_DOUBLE",
+	DataTypeFloat32P = DataType{
+		APIParameterType:   APIParameterTypeFloat32P,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeFloat32,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "REAL", base.DXDatabaseTypeSQLServer: "REAL", base.DXDatabaseTypeMariaDB: "FLOAT", base.DXDatabaseTypeOracle: "BINARY_FLOAT"},
 	}
 
-	TypeDefFloat64P = TypeDef{
-		APIParameterType: string(APIParameterTypeFloat64P),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeFloat64),
-		DbTypePostgreSQL: "DOUBLE PRECISION",
-		DbTypeSqlserver:  "FLOAT",
-		DbTypeMysql:      "DOUBLE",
-		DbTypeOracle:     "BINARY_DOUBLE",
+	DataTypeFloat32ZP = DataType{
+		APIParameterType:   APIParameterTypeFloat32ZP,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeFloat32,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "REAL", base.DXDatabaseTypeSQLServer: "REAL", base.DXDatabaseTypeMariaDB: "FLOAT", base.DXDatabaseTypeOracle: "BINARY_FLOAT"},
 	}
 
-	TypeDefFloat64ZP = TypeDef{
-		APIParameterType: string(APIParameterTypeFloat64ZP),
-		JSONType:         string(JSONTypeNumber),
-		GoType:           string(GoTypeFloat64),
-		DbTypePostgreSQL: "DOUBLE PRECISION",
-		DbTypeSqlserver:  "FLOAT",
-		DbTypeMysql:      "DOUBLE",
-		DbTypeOracle:     "BINARY_DOUBLE",
+	DataTypeFloat64 = DataType{
+		APIParameterType:   APIParameterTypeFloat64,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeFloat64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "DOUBLE PRECISION", base.DXDatabaseTypeSQLServer: "FLOAT", base.DXDatabaseTypeMariaDB: "DOUBLE", base.DXDatabaseTypeOracle: "BINARY_DOUBLE"},
 	}
 
-	// Boolean type
-	TypeDefBool = TypeDef{
-		APIParameterType: string(APIParameterTypeBool),
-		JSONType:         string(JSONTypeBoolean),
-		GoType:           string(GoTypeBool),
-		DbTypePostgreSQL: "BOOLEAN",
-		DbTypeSqlserver:  "BIT",
-		DbTypeMysql:      "BOOLEAN",
-		DbTypeOracle:     "NUMBER(1)",
+	DataTypeFloat64P = DataType{
+		APIParameterType:   APIParameterTypeFloat64P,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeFloat64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "DOUBLE PRECISION", base.DXDatabaseTypeSQLServer: "FLOAT", base.DXDatabaseTypeMariaDB: "DOUBLE", base.DXDatabaseTypeOracle: "BINARY_DOUBLE"},
 	}
 
-	// Date/Time types
-	TypeDefISO8601 = TypeDef{
-		APIParameterType: string(APIParameterTypeISO8601),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeTime),
-		DbTypePostgreSQL: "TIMESTAMP WITH TIME ZONE",
-		DbTypeSqlserver:  "DATETIMEOFFSET",
-		DbTypeMysql:      "DATETIME",
-		DbTypeOracle:     "TIMESTAMP WITH TIME ZONE",
+	DataTypeFloat64ZP = DataType{
+		APIParameterType:   APIParameterTypeFloat64ZP,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeFloat64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "DOUBLE PRECISION", base.DXDatabaseTypeSQLServer: "FLOAT", base.DXDatabaseTypeMariaDB: "DOUBLE", base.DXDatabaseTypeOracle: "BINARY_DOUBLE"},
 	}
 
-	TypeDefDate = TypeDef{
-		APIParameterType: string(APIParameterTypeDate),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeTime),
-		DbTypePostgreSQL: "DATE",
-		DbTypeSqlserver:  "DATE",
-		DbTypeMysql:      "DATE",
-		DbTypeOracle:     "DATE",
+	DataTypeBool = DataType{
+		APIParameterType:   APIParameterTypeBoolean,
+		JSONType:           JSONTypeBoolean,
+		GoType:             GoTypeBool,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BOOLEAN", base.DXDatabaseTypeSQLServer: "BIT", base.DXDatabaseTypeMariaDB: "BOOLEAN", base.DXDatabaseTypeOracle: "NUMBER(1)"},
 	}
 
-	TypeDefTime = TypeDef{
-		APIParameterType: string(APIParameterTypeTime),
-		JSONType:         string(JSONTypeString),
-		GoType:           string(GoTypeTime),
-		DbTypePostgreSQL: "TIME",
-		DbTypeSqlserver:  "TIME",
-		DbTypeMysql:      "TIME",
-		DbTypeOracle:     "DATE",
+	DataTypeISO8601 = DataType{
+		APIParameterType:   APIParameterTypeISO8601,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeTime,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "TIMESTAMP WITH TIME ZONE", base.DXDatabaseTypeSQLServer: "DATETIMEOFFSET", base.DXDatabaseTypeMariaDB: "DATETIME", base.DXDatabaseTypeOracle: "TIMESTAMP WITH TIME ZONE"},
 	}
 
-	// JSON types
-	TypeDefJSON = TypeDef{
-		APIParameterType: string(APIParameterTypeJSON),
-		JSONType:         string(JSONTypeObject),
-		GoType:           string(GoTypeMapStringInterface),
-		DbTypePostgreSQL: "JSONB",
-		DbTypeSqlserver:  "NVARCHAR(MAX)",
-		DbTypeMysql:      "JSON",
-		DbTypeOracle:     "CLOB",
+	DataTypeDate = DataType{
+		APIParameterType:   APIParameterTypeDate,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeTime,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "DATE", base.DXDatabaseTypeSQLServer: "DATE", base.DXDatabaseTypeMariaDB: "DATE", base.DXDatabaseTypeOracle: "DATE"},
 	}
 
-	TypeDefJSONPassthrough = TypeDef{
-		APIParameterType: string(APIParameterTypeJSONPassthrough),
-		JSONType:         string(JSONTypeObject),
-		GoType:           string(GoTypeMapStringInterface),
-		DbTypePostgreSQL: "JSONB",
-		DbTypeSqlserver:  "NVARCHAR(MAX)",
-		DbTypeMysql:      "JSON",
-		DbTypeOracle:     "CLOB",
+	DataTypeTime = DataType{
+		APIParameterType:   APIParameterTypeTime,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeTime,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "TIME", base.DXDatabaseTypeSQLServer: "TIME", base.DXDatabaseTypeMariaDB: "TIME", base.DXDatabaseTypeOracle: "DATE"},
 	}
 
-	// Array types
-	TypeDefArray = TypeDef{
-		APIParameterType: string(APIParameterTypeArray),
-		JSONType:         string(JSONTypeArray),
-		GoType:           string(GoTypeSliceInterface),
-		DbTypePostgreSQL: "JSONB",
-		DbTypeSqlserver:  "NVARCHAR(MAX)",
-		DbTypeMysql:      "JSON",
-		DbTypeOracle:     "CLOB",
+	DataTypeJSON = DataType{
+		APIParameterType:   APIParameterTypeJSON,
+		JSONType:           JSONTypeObject,
+		GoType:             GoTypeMapStringInterface,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "JSONB", base.DXDatabaseTypeSQLServer: "NVARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "JSON", base.DXDatabaseTypeOracle: "CLOB"},
 	}
 
-	TypeDefArrayString = TypeDef{
-		APIParameterType: string(APIParameterTypeArrayString),
-		JSONType:         string(JSONTypeArray),
-		GoType:           string(GoTypeSliceString),
-		DbTypePostgreSQL: "TEXT[]",
-		DbTypeSqlserver:  "NVARCHAR(MAX)",
-		DbTypeMysql:      "JSON",
-		DbTypeOracle:     "CLOB",
+	DataTypeJSONPassthrough = DataType{
+		APIParameterType:   APIParameterTypeJSONPassthrough,
+		JSONType:           JSONTypeObject,
+		GoType:             GoTypeMapStringInterface,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "JSONB", base.DXDatabaseTypeSQLServer: "NVARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "JSON", base.DXDatabaseTypeOracle: "CLOB"},
 	}
 
-	TypeDefArrayInt64 = TypeDef{
-		APIParameterType: string(APIParameterTypeArrayInt64),
-		JSONType:         string(JSONTypeArray),
-		GoType:           string(GoTypeSliceInt64),
-		DbTypePostgreSQL: "BIGINT[]",
-		DbTypeSqlserver:  "NVARCHAR(MAX)",
-		DbTypeMysql:      "JSON",
-		DbTypeOracle:     "CLOB",
+	DataTypeArray = DataType{
+		APIParameterType:   APIParameterTypeArray,
+		JSONType:           JSONTypeArray,
+		GoType:             GoTypeSliceInterface,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "JSONB", base.DXDatabaseTypeSQLServer: "NVARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "JSON", base.DXDatabaseTypeOracle: "CLOB"},
 	}
 
-	TypeDefArrayJSONTemplate = TypeDef{
-		APIParameterType: string(APIParameterTypeArrayJSONTemplate),
-		JSONType:         string(JSONTypeArray),
-		GoType:           string(GoTypeSliceMapStringInterface),
-		DbTypePostgreSQL: "JSONB",
-		DbTypeSqlserver:  "NVARCHAR(MAX)",
-		DbTypeMysql:      "JSON",
-		DbTypeOracle:     "CLOB",
+	DataTypeArrayString = DataType{
+		APIParameterType:   APIParameterTypeArrayString,
+		JSONType:           JSONTypeArray,
+		GoType:             GoTypeSliceString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "TEXT[]", base.DXDatabaseTypeSQLServer: "NVARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "JSON", base.DXDatabaseTypeOracle: "CLOB"},
+	}
+
+	DataTypeArrayInt64 = DataType{
+		APIParameterType:   APIParameterTypeArrayInt64,
+		JSONType:           JSONTypeArray,
+		GoType:             GoTypeSliceInt64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BIGINT[]", base.DXDatabaseTypeSQLServer: "NVARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "JSON", base.DXDatabaseTypeOracle: "CLOB"},
+	}
+
+	DataTypeArrayJSONTemplate = DataType{
+		APIParameterType:   APIParameterTypeArrayJSONTemplate,
+		JSONType:           JSONTypeArray,
+		GoType:             GoTypeSliceMapStringInterface,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "JSONB", base.DXDatabaseTypeSQLServer: "NVARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "JSON", base.DXDatabaseTypeOracle: "CLOB"},
+	}
+
+	DataTypeSerial = DataType{
+		APIParameterType:   "serial",
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeInt64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "SERIAL", base.DXDatabaseTypeSQLServer: "INT IDENTITY(1,1)", base.DXDatabaseTypeMariaDB: "INT AUTO_INCREMENT", base.DXDatabaseTypeOracle: "NUMBER GENERATED BY DEFAULT AS IDENTITY"},
+	}
+
+	DataTypeInt = DataType{
+		APIParameterType:   "int",
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeInt64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "INT", base.DXDatabaseTypeSQLServer: "INT", base.DXDatabaseTypeMariaDB: "INT", base.DXDatabaseTypeOracle: "NUMBER(10)"},
+	}
+
+	DataTypeString1 = DataType{
+		APIParameterType:   "string1",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1)", base.DXDatabaseTypeSQLServer: "VARCHAR(1)", base.DXDatabaseTypeMariaDB: "VARCHAR(1)", base.DXDatabaseTypeOracle: "VARCHAR2(1)"},
+	}
+
+	DataTypeString5 = DataType{
+		APIParameterType:   "string5",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(5)", base.DXDatabaseTypeSQLServer: "VARCHAR(5)", base.DXDatabaseTypeMariaDB: "VARCHAR(5)", base.DXDatabaseTypeOracle: "VARCHAR2(5)"},
+	}
+
+	DataTypeString10 = DataType{
+		APIParameterType:   "string10",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(10)", base.DXDatabaseTypeSQLServer: "VARCHAR(10)", base.DXDatabaseTypeMariaDB: "VARCHAR(10)", base.DXDatabaseTypeOracle: "VARCHAR2(10)"},
+	}
+
+	DataTypeString20 = DataType{
+		APIParameterType:   "string20",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(20)", base.DXDatabaseTypeSQLServer: "VARCHAR(20)", base.DXDatabaseTypeMariaDB: "VARCHAR(20)", base.DXDatabaseTypeOracle: "VARCHAR2(20)"},
+	}
+
+	DataTypeString30 = DataType{
+		APIParameterType:   "string30",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(30)", base.DXDatabaseTypeSQLServer: "VARCHAR(30)", base.DXDatabaseTypeMariaDB: "VARCHAR(30)", base.DXDatabaseTypeOracle: "VARCHAR2(30)"},
+	}
+
+	DataTypeString50 = DataType{
+		APIParameterType:   "string50",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(50)", base.DXDatabaseTypeSQLServer: "VARCHAR(50)", base.DXDatabaseTypeMariaDB: "VARCHAR(50)", base.DXDatabaseTypeOracle: "VARCHAR2(50)"},
+	}
+
+	DataTypeString100 = DataType{
+		APIParameterType:   "string100",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(100)", base.DXDatabaseTypeSQLServer: "VARCHAR(100)", base.DXDatabaseTypeMariaDB: "VARCHAR(100)", base.DXDatabaseTypeOracle: "VARCHAR2(100)"},
+	}
+
+	DataTypeString255 = DataType{
+		APIParameterType:   "string255",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(255)", base.DXDatabaseTypeSQLServer: "VARCHAR(255)", base.DXDatabaseTypeMariaDB: "VARCHAR(255)", base.DXDatabaseTypeOracle: "VARCHAR2(255)"},
+	}
+
+	DataTypeString256 = DataType{
+		APIParameterType:   "string256",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(256)", base.DXDatabaseTypeSQLServer: "VARCHAR(256)", base.DXDatabaseTypeMariaDB: "VARCHAR(256)", base.DXDatabaseTypeOracle: "VARCHAR2(256)"},
+	}
+
+	DataTypeString500 = DataType{
+		APIParameterType:   "string500",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(500)", base.DXDatabaseTypeSQLServer: "VARCHAR(500)", base.DXDatabaseTypeMariaDB: "VARCHAR(500)", base.DXDatabaseTypeOracle: "VARCHAR2(500)"},
+	}
+
+	DataTypeString1024 = DataType{
+		APIParameterType:   "string1024",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR2(1024)"},
+	}
+
+	DataTypeString2048 = DataType{
+		APIParameterType:   "string2048",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(2048)", base.DXDatabaseTypeSQLServer: "VARCHAR(2048)", base.DXDatabaseTypeMariaDB: "VARCHAR(2048)", base.DXDatabaseTypeOracle: "VARCHAR2(2048)"},
+	}
+
+	DataTypeString8096 = DataType{
+		APIParameterType:   "string8096",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(8096)", base.DXDatabaseTypeSQLServer: "VARCHAR(8096)", base.DXDatabaseTypeMariaDB: "TEXT", base.DXDatabaseTypeOracle: "CLOB"},
+	}
+
+	DataTypeString32768 = DataType{
+		APIParameterType:   "string32768",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(32768)", base.DXDatabaseTypeSQLServer: "VARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "TEXT", base.DXDatabaseTypeOracle: "CLOB"},
+	}
+
+	DataTypeDecimal = DataType{
+		APIParameterType:   "decimal",
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "NUMERIC(30,4)", base.DXDatabaseTypeSQLServer: "DECIMAL(30,4)", base.DXDatabaseTypeMariaDB: "DECIMAL(30,4)", base.DXDatabaseTypeOracle: "NUMBER(30,4)"},
+	}
+
+	DataTypeGeometryPoint = DataType{
+		APIParameterType:   "geometry_point",
+		JSONType:           JSONTypeObject,
+		GoType:             GoTypeMapStringInterface,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "geometry(Point, 4326)", base.DXDatabaseTypeSQLServer: "GEOGRAPHY", base.DXDatabaseTypeMariaDB: "POINT SRID 4326", base.DXDatabaseTypeOracle: "SDO_GEOMETRY"},
 	}
 )
 
 var (
-	TypeDefs = []TypeDef{
+	DataTypes = []DataType{
 		// String types
-		TypeDefString,
-		TypeDefProtectedString,
-		TypeDefProtectedSQLString,
-		TypeDefNullableString,
-		TypeDefNonEmptyString,
-		TypeDefEmail,
-		TypeDefPhoneNumber,
-		TypeDefNPWP,
+		DataTypeString,
+		DataTypeProtectedString,
+		DataTypeProtectedSQLString,
+		DataTypeNullableString,
+		DataTypeNonEmptyString,
+		DataTypeEmail,
+		DataTypePhoneNumber,
+		DataTypeNPWP,
 
 		// Integer types
-		TypeDefInt64,
-		TypeDefInt64P,
-		TypeDefInt64ZP,
-		TypeDefNullableInt64,
+		DataTypeInt64,
+		DataTypeInt64P,
+		DataTypeInt64ZP,
+		DataTypeNullableInt64,
 
 		// Float32 types
-		TypeDefFloat32,
-		TypeDefFloat32P,
-		TypeDefFloat32ZP,
+		DataTypeFloat32,
+		DataTypeFloat32P,
+		DataTypeFloat32ZP,
 
 		// Float64 types
-		TypeDefFloat64,
-		TypeDefFloat64P,
-		TypeDefFloat64ZP,
+		DataTypeFloat64,
+		DataTypeFloat64P,
+		DataTypeFloat64ZP,
 
 		// Boolean type
-		TypeDefBool,
+		DataTypeBool,
 
 		// Date/Time types
-		TypeDefISO8601,
-		TypeDefDate,
-		TypeDefTime,
+		DataTypeISO8601,
+		DataTypeDate,
+		DataTypeTime,
 
 		// JSON types
-		TypeDefJSON,
-		TypeDefJSONPassthrough,
+		DataTypeJSON,
+		DataTypeJSONPassthrough,
 
 		// Array types
-		TypeDefArray,
-		TypeDefArrayString,
-		TypeDefArrayInt64,
-		TypeDefArrayJSONTemplate,
+		DataTypeArray,
+		DataTypeArrayString,
+		DataTypeArrayInt64,
+		DataTypeArrayJSONTemplate,
 	}
 
-	Types = map[APIParameterType]TypeDef{
+	Types = map[APIParameterType]DataType{
 		// String types
-		APIParameterTypeString:             TypeDefString,
-		APIParameterTypeProtectedString:    TypeDefProtectedString,
-		APIParameterTypeProtectedSQLString: TypeDefProtectedSQLString,
-		APIParameterTypeNullableString:     TypeDefNullableString,
-		APIParameterTypeNonEmptyString:     TypeDefNonEmptyString,
-		APIParameterTypeEmail:              TypeDefEmail,
-		APIParameterTypePhoneNumber:        TypeDefPhoneNumber,
-		APIParameterTypeNPWP:               TypeDefNPWP,
+		APIParameterTypeString:             DataTypeString,
+		APIParameterTypeProtectedString:    DataTypeProtectedString,
+		APIParameterTypeProtectedSQLString: DataTypeProtectedSQLString,
+		APIParameterTypeNullableString:     DataTypeNullableString,
+		APIParameterTypeNonEmptyString:     DataTypeNonEmptyString,
+		APIParameterTypeEmail:              DataTypeEmail,
+		APIParameterTypePhoneNumber:        DataTypePhoneNumber,
+		APIParameterTypeNPWP:               DataTypeNPWP,
 
 		// Integer types
-		APIParameterTypeInt64:         TypeDefInt64,
-		APIParameterTypeInt64P:        TypeDefInt64P,
-		APIParameterTypeInt64ZP:       TypeDefInt64ZP,
-		APIParameterTypeNullableInt64: TypeDefNullableInt64,
+		APIParameterTypeInt64:         DataTypeInt64,
+		APIParameterTypeInt64P:        DataTypeInt64P,
+		APIParameterTypeInt64ZP:       DataTypeInt64ZP,
+		APIParameterTypeNullableInt64: DataTypeNullableInt64,
 
 		// Float32 types
-		APIParameterTypeFloat32:   TypeDefFloat32,
-		APIParameterTypeFloat32P:  TypeDefFloat32P,
-		APIParameterTypeFloat32ZP: TypeDefFloat32ZP,
+		APIParameterTypeFloat32:   DataTypeFloat32,
+		APIParameterTypeFloat32P:  DataTypeFloat32P,
+		APIParameterTypeFloat32ZP: DataTypeFloat32ZP,
 
 		// Float64 types
-		APIParameterTypeFloat64:   TypeDefFloat64,
-		APIParameterTypeFloat64P:  TypeDefFloat64P,
-		APIParameterTypeFloat64ZP: TypeDefFloat64ZP,
+		APIParameterTypeFloat64:   DataTypeFloat64,
+		APIParameterTypeFloat64P:  DataTypeFloat64P,
+		APIParameterTypeFloat64ZP: DataTypeFloat64ZP,
 
 		// Boolean type
-		APIParameterTypeBool: TypeDefBool,
+		APIParameterTypeBoolean: DataTypeBool,
 
 		// Date/Time types
-		APIParameterTypeISO8601: TypeDefISO8601,
-		APIParameterTypeDate:    TypeDefDate,
-		APIParameterTypeTime:    TypeDefTime,
+		APIParameterTypeISO8601: DataTypeISO8601,
+		APIParameterTypeDate:    DataTypeDate,
+		APIParameterTypeTime:    DataTypeTime,
 
 		// JSON types
-		APIParameterTypeJSON:            TypeDefJSON,
-		APIParameterTypeJSONPassthrough: TypeDefJSONPassthrough,
+		APIParameterTypeJSON:            DataTypeJSON,
+		APIParameterTypeJSONPassthrough: DataTypeJSONPassthrough,
 
 		// Array types
-		APIParameterTypeArray:             TypeDefArray,
-		APIParameterTypeArrayString:       TypeDefArrayString,
-		APIParameterTypeArrayInt64:        TypeDefArrayInt64,
-		APIParameterTypeArrayJSONTemplate: TypeDefArrayJSONTemplate,
+		APIParameterTypeArray:             DataTypeArray,
+		APIParameterTypeArrayString:       DataTypeArrayString,
+		APIParameterTypeArrayInt64:        DataTypeArrayInt64,
+		APIParameterTypeArrayJSONTemplate: DataTypeArrayJSONTemplate,
 	}
 )
+
+func GetDataTypeFromString(s string) (*DataType, error) {
+	s = strings.Trim(s, " ")
+	s = strings.ToLower(s)
+	for _, t := range Types {
+		if string(t.APIParameterType) == s {
+			return &t, nil
+		}
+	}
+	return nil, fmt.Errorf("unknown type: %s", s)
+}

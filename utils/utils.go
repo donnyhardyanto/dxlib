@@ -18,8 +18,8 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
-	"github.com/pkg/errors"
 )
 
 // JSON is a type alias for map[string]any, representing a JSON object.
@@ -544,6 +544,27 @@ func ConvertToMapStringInterfaceFromAny(v any) (r any, err error) {
 	return r, nil
 }
 
+// ConvertToArrayOfMapStringAnyFromAny converts a value of any type to []map[string]any.
+// Handles both []map[string]any (direct) and []interface{} (from JSON unmarshal) cases.
+func ConvertToArrayOfMapStringAnyFromAny(v any) ([]map[string]any, error) {
+	switch val := v.(type) {
+	case []map[string]any:
+		return val, nil
+	case []any:
+		result := make([]map[string]any, len(val))
+		for i, item := range val {
+			m, ok := item.(map[string]any)
+			if !ok {
+				return nil, errors.Errorf("ELEMENT_AT_INDEX_%d_IS_NOT_MAP_STRING_ANY:%T", i, item)
+			}
+			result[i] = m
+		}
+		return result, nil
+	default:
+		return nil, errors.Errorf("TYPE_IS_NOT_CONVERTABLE_TO_ARRAY_OF_MAP_STRING_ANY:%T", v)
+	}
+}
+
 // JSONToMapStringString converts a JSON object to a map[string]string.
 func JSONToMapStringString(kv JSON) (r map[string]string) {
 	r = map[string]string{}
@@ -835,7 +856,7 @@ func GetVFromKV[T any](kv map[string]any, key string) (r T, err error) {
 	v, ok := kv[key]
 	if !ok {
 		// Error Code: KEY_IS_NOT_EXIST
-		return r, fmt.Errorf("KEY_IS_NOT_EXIST:%s", key)
+		return r, errors.Errorf("KEY_IS_NOT_EXIST:%s", key)
 	}
 
 	// 2. Type Assertion
@@ -843,7 +864,7 @@ func GetVFromKV[T any](kv map[string]any, key string) (r T, err error) {
 	if !ok {
 		// Error Code: KEY_VALUE_IS_NOT_TYPE_T_BUT_X
 		// %s: Key, %T: Expected Type (from r), %T: Actual Type (from v)
-		return r, fmt.Errorf("KEY_VALUE_IS_NOT_TYPE_T_BUT_X:%s:%T:%T", key, r, v)
+		return r, errors.Errorf("KEY_VALUE_IS_NOT_TYPE_T_BUT_X:%s:%T:%T", key, r, v)
 	}
 
 	return vAsT, nil
@@ -864,7 +885,7 @@ func GetStringFromMapStringString(kv map[string]string, key string) (r string, e
 	v, ok := kv[key]
 	if !ok {
 		// Error Code: KEY_IS_NOT_EXIST
-		return r, fmt.Errorf("GetStringFromMapStringString:KEY_IS_NOT_EXIST:%s", key)
+		return r, errors.Errorf("GetStringFromMapStringString:KEY_IS_NOT_EXIST:%s", key)
 	}
 
 	return v, nil
@@ -1032,4 +1053,37 @@ func ConvertToInt64(value interface{}) (int64, error) {
 	default:
 		return 0, errors.Errorf("unexpected count value type: %T", value)
 	}
+}
+
+func IsValuesMatch(a, b any) bool {
+	// 1. If types are identical, direct comparison is safest
+	if a == b {
+		return true
+	}
+
+	// 2. Handle Numeric Cross-Comparison (int vs float)
+	// We convert both to float64 to see if the numeric value is the same
+	fa, okA := ConvertToFloat(a)
+	fb, okB := ConvertToFloat(b)
+	if okA && okB {
+		return fa == fb
+	}
+
+	// 3. If they aren't both numbers and aren't identical, they don't match
+	// This ensures "1" (string) != 1 (int)
+	return false
+}
+
+func ConvertToFloat(v any) (float64, bool) {
+	switch t := v.(type) {
+	case int:
+		return float64(t), true
+	case int64:
+		return float64(t), true
+	case float64:
+		return t, true
+	case float32:
+		return float64(t), true
+	}
+	return 0, false
 }

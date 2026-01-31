@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"regexp"
 	"strconv"
 	"strings"

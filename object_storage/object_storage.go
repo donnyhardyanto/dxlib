@@ -12,11 +12,11 @@ import (
 	"github.com/donnyhardyanto/dxlib/api"
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/core"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/pkg/errors"
 )
 
 type DXObjectStorageType int64
@@ -122,7 +122,7 @@ func (osm *DXObjectStorageManager) ConnectAllAtStart() (err error) {
 		for _, v := range osm.ObjectStorages {
 			err := v.ApplyFromConfiguration()
 			if err != nil {
-				err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
+				err = log.Log.ErrorAndCreateErrorf("Cannot configure to databases %s to connect", v.NameId)
 				return err
 			}
 			if v.IsConnectAtStart {
@@ -142,7 +142,7 @@ func (osm *DXObjectStorageManager) ConnectAll() (err error) {
 	for _, v := range osm.ObjectStorages {
 		err := v.ApplyFromConfiguration()
 		if err != nil {
-			err = log.Log.ErrorAndCreateErrorf("Cannot configure to database %s to connect", v.NameId)
+			err = log.Log.ErrorAndCreateErrorf("Cannot configure to databases %s to connect", v.NameId)
 			return err
 		}
 		err = v.Connect()

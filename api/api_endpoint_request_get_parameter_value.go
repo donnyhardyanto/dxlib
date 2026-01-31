@@ -1,16 +1,18 @@
 package api
 
 import (
-	"github.com/donnyhardyanto/dxlib/utils"
 	"net/http"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 func (aepr *DXAPIEndPointRequest) GetParameterValueEntry(k string) (val *DXAPIEndPointRequestParameterValue, err error) {
 	var ok bool
 	if val, ok = aepr.ParameterValues[k]; !ok {
-		err = aepr.Log.ErrorAndCreateErrorf("REQUEST_FIELD_NOT_FOUND_IN_REQUEST:%s", k)
+		err = errors.Errorf("REQUEST_FIELD_NOT_FOUND_IN_REQUEST:%s", k)
 		return nil, err
 	}
 	return val, nil

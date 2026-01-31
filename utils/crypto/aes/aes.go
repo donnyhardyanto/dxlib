@@ -5,7 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"io"
 )
 

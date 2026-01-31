@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"io"
+	"log/slog"
 	"net/http"
+
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 type HTTPHeader = map[string]string
@@ -86,7 +87,7 @@ func HTTPClientReadAll(method string, url string, headers map[string]string, bod
 	defer func() {
 		err2 := resp.Body.Close()
 		if err2 != nil {
-			log.Println(err2)
+			slog.Warn("failed to close response body", slog.Any("error", err2))
 		}
 	}()
 

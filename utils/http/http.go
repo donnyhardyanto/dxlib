@@ -5,10 +5,15 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 
 	"github.com/donnyhardyanto/dxlib/utils"
 )
+
+type ContentType string
+
+const ContentTypeTextPlain ContentType = "text/plain"
+const ContentTypeTextHTML ContentType = "text/html"
 
 type RequestContentType int
 
@@ -26,7 +31,7 @@ func (t RequestContentType) String() string {
 	case RequestContentTypeApplicationJSON:
 		return "application/json"
 	case RequestContentTypeApplicationXWwwFormUrlEncoded:
-		return "application/x-www-form-urlencoded"
+		return "application/x-public-form-urlencoded"
 	case RequestContentTypeMultiPartFormData:
 		return "multipart/form-data"
 	case RequestContentTypeTextPlain:

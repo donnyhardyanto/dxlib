@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"runtime/debug"
 
 	"github.com/donnyhardyanto/dxlib"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"github.com/pkg/errors"
 
 	"net"
 	"net/http"
@@ -15,6 +17,7 @@ import (
 	_ "time/tzdata"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
 	dxlibConfiguration "github.com/donnyhardyanto/dxlib/configuration"
@@ -32,6 +35,42 @@ const (
 )
 
 var UseResponseDataObject = true
+
+// LogExecutionTrace logs execution trace information for Grafana monitoring
+// phase: route_start, preprocess_start, preprocess_end, middleware_start, middleware_end, execute_start, execute_end, response_write, route_end
+func LogExecutionTrace(ctx context.Context, phase string, requestId string, endpoint string, method string, startTime time.Time, statusCode int, errMsg string) {
+	LogExecutionTraceWithStack(ctx, phase, requestId, endpoint, method, startTime, statusCode, errMsg, "")
+}
+
+// LogExecutionTraceWithStack logs execution trace information with optional stack trace for Grafana monitoring
+func LogExecutionTraceWithStack(ctx context.Context, phase string, requestId string, endpoint string, method string, startTime time.Time, statusCode int, errMsg string, stackTrace string) {
+	spanCtx := trace.SpanFromContext(ctx).SpanContext()
+	traceId := spanCtx.TraceID().String()
+	spanId := spanCtx.SpanID().String()
+
+	durationMs := float64(time.Since(startTime).Microseconds()) / 1000.0
+
+	attrs := []any{
+		slog.String("trace_id", traceId),
+		slog.String("span_id", spanId),
+		slog.String("request_id", requestId),
+		slog.String("phase", phase),
+		slog.String("endpoint", endpoint),
+		slog.String("method", method),
+		slog.Float64("duration_ms", durationMs),
+		slog.Int("status_code", statusCode),
+	}
+
+	if errMsg != "" {
+		attrs = append(attrs, slog.String("error", errMsg))
+	}
+
+	if stackTrace != "" {
+		attrs = append(attrs, slog.String("stack_trace", stackTrace))
+	}
+
+	slog.Info("EXECUTION_TRACE", attrs...)
+}
 
 type DXAPIAuditLogEntry struct {
 	StartTime    time.Time `json:"start_time,omitempty"`
@@ -247,12 +286,22 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	return &ae
 }
 
+// dbContextCarrier is a local interface for extracting DB operation context
+// from errors without importing databases/db (avoids circular imports).
+// Go structural typing means any error implementing these methods matches.
+type dbContextCarrier interface {
+	DBOperation() string
+	DBTableName() string
+	DBMaskedDataString() string
+}
+
 func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEndPoint) {
 	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "routeHandler|"+p.Uri)
 	defer span.End()
 
 	var aepr *DXAPIEndPointRequest
 	var err error
+	routeStartTime := time.Now()
 
 	defer func() {
 		if err != nil {
@@ -284,7 +333,55 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	}()
 
 	aepr = p.NewEndPointRequest(requestContext, w, r)
+
+	// Panic recovery - prevents HTTP connection reset on panic
 	defer func() {
+		if rec := recover(); rec != nil {
+			// Get stack trace
+			stackTrace := string(debug.Stack())
+
+			// Format panic message
+			panicMsg := fmt.Sprintf("%v", rec)
+
+			// Log to EXECUTION_TRACE with stack trace
+			LogExecutionTraceWithStack(requestContext, "panic_recovered", aepr.Id, p.Uri, r.Method, routeStartTime, http.StatusInternalServerError, panicMsg, stackTrace)
+
+			// Log using existing dxlib error mechanism
+			panicErr := errors.Errorf("PANIC_RECOVERED: %v", rec)
+			requestDump, err2 := aepr.RequestDumpAsString()
+			if err2 != nil {
+				requestDump = fmt.Sprintf("REQUEST_DUMP_ERROR: %v", err2)
+			}
+			aepr.Log.Errorf(panicErr, "PANIC_RECOVERED: %v\nStack Trace:\n%s\nRaw Request:\n%s", rec, stackTrace, requestDump)
+
+			// Send HTTP 500 response if not already sent
+			if !aepr.ResponseHeaderSent {
+				responseBody := utils.JSON{
+					"status":         "Internal Server Error",
+					"status_code":    http.StatusInternalServerError,
+					"reason":         "INTERNAL_SERVER_ERROR",
+					"reason_message": "Internal Server Error",
+				}
+				aepr.ResponseStatusCode = http.StatusInternalServerError
+				aepr.WriteResponseAsJSON(http.StatusInternalServerError, nil, responseBody)
+			}
+
+			// Set error for other defer functions
+			err = panicErr
+		}
+	}()
+
+	// TRACE: route_start
+	LogExecutionTrace(requestContext, "route_start", aepr.Id, p.Uri, r.Method, routeStartTime, 0, "")
+
+	defer func() {
+		// TRACE: route_end
+		errMsg := ""
+		if err != nil {
+			errMsg = err.Error()
+		}
+		LogExecutionTrace(requestContext, "route_end", aepr.Id, p.Uri, r.Method, routeStartTime, aepr.ResponseStatusCode, errMsg)
+
 		if (err != nil) && (dxlib.IsDebug) && (p.RequestContentType == utilsHttp.RequestContentTypeApplicationJSON) {
 			if aepr.RequestBodyAsBytes != nil {
 				aepr.Log.Infof("%d %s Request: %s", aepr.ResponseStatusCode, r.URL.Path, string(aepr.RequestBodyAsBytes))
@@ -294,45 +391,72 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		}
 	}()
 
+	// TRACE: preprocess_start
+	preprocessStartTime := time.Now()
+	LogExecutionTrace(requestContext, "preprocess_start", aepr.Id, p.Uri, r.Method, preprocessStartTime, 0, "")
+
 	err = aepr.PreProcessRequest()
+
+	// TRACE: preprocess_end
+	if err != nil {
+		LogExecutionTrace(requestContext, "preprocess_end", aepr.Id, p.Uri, r.Method, preprocessStartTime, http.StatusBadRequest, err.Error())
+	} else {
+		LogExecutionTrace(requestContext, "preprocess_end", aepr.Id, p.Uri, r.Method, preprocessStartTime, 0, "")
+	}
+
 	if err != nil {
 		if aepr.ResponseHeaderSent {
 			return
 		}
-		aepr.WriteResponseAsError(http.StatusBadRequest, err)
+		// Log full error + request dump server-side
 		requestDump, err2 := aepr.RequestDumpAsString()
 		if err2 != nil {
-			aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR")
-			return
+			requestDump = "REQUEST_DUMP_ERROR"
 		}
-		aepr.Log.Errorf(err, "ONPREPROCESSREQUEST_ERROR\nRaw Request:\n%s\n", requestDump)
+		aepr.Log.Errorf(err, "PREPROCESS_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
+		// Send sanitized response — preprocess errors are client errors, include message without stack
+		aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "PREPROCESS_ERROR", fmt.Sprintf("%v", err))
 		return
 	}
 
 	aepr.Log.Debugf("Middleware Start: %s", aepr.EndPoint.Uri)
 
+	// TRACE: middleware_start
+	middlewareStartTime := time.Now()
+	LogExecutionTrace(requestContext, "middleware_start", aepr.Id, p.Uri, r.Method, middlewareStartTime, 0, "")
+
 	if aepr.EffectiveRequestHeader == nil {
 		aepr.EffectiveRequestHeader = utilsHttp.HeaderToMapStringString(aepr.Request.Header)
 	}
-	for _, middleware := range p.Middlewares {
+	for i, middleware := range p.Middlewares {
+		middlewareItemStartTime := time.Now()
+		LogExecutionTrace(requestContext, fmt.Sprintf("middleware_%d_start", i), aepr.Id, p.Uri, r.Method, middlewareItemStartTime, 0, "")
 
 		err = middleware(aepr)
+
 		if err != nil {
+			LogExecutionTrace(requestContext, fmt.Sprintf("middleware_%d_end", i), aepr.Id, p.Uri, r.Method, middlewareItemStartTime, http.StatusBadRequest, err.Error())
+			LogExecutionTrace(requestContext, "middleware_end", aepr.Id, p.Uri, r.Method, middlewareStartTime, http.StatusBadRequest, err.Error())
+
 			if aepr.ResponseHeaderSent {
 				return
 			}
-			err3 := errors.Wrap(err, fmt.Sprintf("MIDDLEWARE_ERROR:\n%+v", err))
-			aepr.WriteResponseAsError(http.StatusBadRequest, err3)
-			requestDump, err2 := aepr.RequestDump()
+			// Log full error + request dump server-side
+			requestDump, err2 := aepr.RequestDumpAsString()
 			if err2 != nil {
-				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%+v", err2)
-				return
+				requestDump = "REQUEST_DUMP_ERROR"
 			}
-			aepr.Log.Errorf(err3, "ONMIDDLEWARE_ERROR:%+v\nRaw Request :\n%v\n", err3, string(requestDump))
+			aepr.Log.Errorf(err, "MIDDLEWARE_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
+			// Send sanitized response — middleware errors (auth) may need detail but no stack
+			aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "MIDDLEWARE_ERROR", fmt.Sprintf("%v", err))
 			return
 		}
 
+		LogExecutionTrace(requestContext, fmt.Sprintf("middleware_%d_end", i), aepr.Id, p.Uri, r.Method, middlewareItemStartTime, 0, "")
 	}
+
+	// TRACE: middleware_end
+	LogExecutionTrace(requestContext, "middleware_end", aepr.Id, p.Uri, r.Method, middlewareStartTime, 0, "")
 
 	aepr.Log.Debugf("Middleware Done: %s", aepr.EndPoint.Uri)
 
@@ -354,26 +478,56 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	}
 
 	if p.OnExecute != nil {
+		// TRACE: execute_start
+		executeStartTime := time.Now()
+		LogExecutionTrace(requestContext, "execute_start", aepr.Id, p.Uri, r.Method, executeStartTime, 0, "")
+
 		err = p.OnExecute(aepr)
+
 		if err != nil {
 			if aepr.ResponseHeaderSent {
+				// TRACE: execute_end (error, response already sent by handler)
+				LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, aepr.ResponseStatusCode, err.Error())
 				return
 			}
-			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:\n%+v\n", err)
 
-			requestDump, err2 := aepr.RequestDump()
+			// Check for domain validation errors (e.g., unique field violation)
+			// These are expected validation failures, not server errors.
+			var domainErr DXAPIDomainError
+			if errors.As(err, &domainErr) {
+				// TRACE: execute_end (domain validation)
+				LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, domainErr.DomainErrorHTTPStatusCode(), domainErr.DomainErrorCode())
+				// Log as warning (not error) -- this is expected validation, not a bug
+				aepr.Log.Warnf("DOMAIN_VALIDATION:%s:%s", domainErr.DomainErrorCode(), domainErr.DomainErrorLogDetails())
+				// Send a sanitized response (no DB structure exposed)
+				aepr.WriteResponseAsJSON(domainErr.DomainErrorHTTPStatusCode(), nil, domainErr.DomainErrorResponseBody())
+				err = nil // clear error so deferred functions don't treat as error
+				return
+			}
+				// TRACE: execute_end (error)
+			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, http.StatusInternalServerError, err.Error())
+
+			// Log full error + request dump server-side (single consolidated entry)
+			requestDump, err2 := aepr.RequestDumpAsString()
 			if err2 != nil {
-				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%+v", err2)
-				return
+				requestDump = "REQUEST_DUMP_ERROR"
 			}
-			aepr.Log.Errorf(err, "ONEXECUTE_ERROR:%+v\nRaw Request :\n%+v\n", err, string(requestDump))
-
+			// Extract DB operation context if available
+			dbContextStr := ""
+			var dbCtx dbContextCarrier
+			if errors.As(err, &dbCtx) {
+				dbContextStr = fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
+			}
+			aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s", err, dbContextStr, requestDump)
+			// Send sanitized response — execute errors are server errors, NO implementation details
 			if !aepr.ResponseHeaderSent {
-				s := fmt.Sprintf("ONEXECUTE_ERROR:%+v", err)
-				_ = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, s, s)
-				return
+				aepr.WriteResponseAsErrorMessageNotLogged(http.StatusInternalServerError, "EXECUTE_ERROR", "EXECUTE_ERROR")
 			}
+			return
 		} else {
+			// TRACE: execute_end (success)
+			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, aepr.ResponseStatusCode, "")
+
 			if !aepr.ResponseHeaderSent {
 				aepr.WriteResponseAsString(http.StatusOK, nil, "")
 			}

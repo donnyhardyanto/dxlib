@@ -2,7 +2,7 @@ package state_diagram
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"time"
 	_ "time/tzdata"
 )

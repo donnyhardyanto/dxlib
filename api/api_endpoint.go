@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/log"
+	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 )
 
@@ -49,11 +50,12 @@ type DXAPIEndPointParameter struct {
 	Owner       *DXAPIEndPoint
 	Parent      *DXAPIEndPointParameter
 	NameId      string
-	Type        string
+	Type        dxlibTypes.APIParameterType
 	Description string
 	IsMustExist bool
 	IsNullable  bool
 	Children    []DXAPIEndPointParameter
+	Enum        []any
 }
 
 func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
@@ -208,14 +210,12 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 	return s, nil
 }
 
-func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId, aType, description string, isMustExist bool) *DXAPIEndPointParameter {
+func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId string, aType dxlibTypes.APIParameterType, description string, isMustExist bool) *DXAPIEndPointParameter {
 	nameId = strings.TrimSpace(nameId)
-	aType = strings.TrimSpace(aType)
 	description = strings.TrimSpace(description)
-
 	p := DXAPIEndPointParameter{Owner: aep, NameId: nameId, Type: aType, Description: description, IsMustExist: isMustExist}
 	switch aType {
-	case "nullable-int64":
+	case dxlibTypes.APIParameterTypeNullableInt64:
 		p.IsNullable = true
 	case "nullable-string":
 		p.IsNullable = true
