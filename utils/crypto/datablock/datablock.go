@@ -8,10 +8,10 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/donnyhardyanto/dxlib/utils/crypto/aes"
-	"github.com/donnyhardyanto/dxlib/utils/lv"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/utils/crypto/aes"
+	"github.com/donnyhardyanto/dxlib/utils/crypto/rand"
+	"github.com/donnyhardyanto/dxlib/utils/lv"
 )
 
 var PayloadUnpackTTL = 5 * time.Minute
@@ -73,7 +73,7 @@ func (db *DataBlock) SetTimeNow() error {
 }
 
 func (db *DataBlock) GenerateNonce() (err error) {
-	err = db.Nonce.SetValue(utils.RandomData(32))
+	err = db.Nonce.SetValue(rand.RandomData(32))
 	if err != nil {
 		return errors.Wrap(err, "ERROR_IN_DATA_BLOCK_GENERATE_NONCE")
 	}

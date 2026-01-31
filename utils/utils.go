@@ -3,7 +3,6 @@ package utils
 import (
 	"bufio"
 	"bytes"
-	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -285,17 +284,6 @@ func TsIsInSlice[T comparable](v []T, aSlice []T) bool {
 		}
 	}
 	return true
-}
-
-// RandomData generates a slice of random bytes of a given length.
-func RandomData(l int) (r []byte) {
-	r = make([]byte, l)
-	_, err := rand.Read(r)
-	if err != nil {
-		fmt.Println("RandomData: rand.read error:", err.Error())
-		return
-	}
-	return r
 }
 
 // TimeSubToString returns the string representation of the duration between two time.Time objects.

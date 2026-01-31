@@ -10,6 +10,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/redis"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/donnyhardyanto/dxlib/utils/crypto/rand"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -139,7 +140,7 @@ func (o *DXOrganization) ApplyData(d utils.JSON) (err error) {
 
 func GenerateAccessToken(hmacSecret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"data1": utils.RandomData(256),
+		"data1": rand.RandomData(256),
 		"nbf":   time.Now().Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(hmacSecret))
@@ -148,7 +149,7 @@ func GenerateAccessToken(hmacSecret string) (string, error) {
 
 func GenerateAPIKey(hmacSecret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"data1": utils.RandomData(256),
+		"data1": rand.RandomData(256),
 		"nbf":   time.Now().Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(hmacSecret))

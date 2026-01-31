@@ -3,6 +3,7 @@ package rand
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"math/big"
 )
 
@@ -51,4 +52,15 @@ func RandomString(n int, charset ...string) string {
 		b[i] = letters[Int(len(letters))]
 	}
 	return string(b)
+}
+
+// RandomData generates a slice of random bytes of a given length.
+func RandomData(l int) (r []byte) {
+	r = make([]byte, l)
+	_, err := rand.Read(r)
+	if err != nil {
+		fmt.Println("RandomData: rand.read error:", err.Error())
+		return
+	}
+	return r
 }
