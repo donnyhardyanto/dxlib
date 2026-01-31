@@ -31,7 +31,7 @@ func (t RequestContentType) String() string {
 	case RequestContentTypeApplicationJSON:
 		return "application/json"
 	case RequestContentTypeApplicationXWwwFormUrlEncoded:
-		return "application/x-www-form-urlencoded"
+		return "application/x-public-form-urlencoded"
 	case RequestContentTypeMultiPartFormData:
 		return "multipart/form-data"
 	case RequestContentTypeTextPlain:
