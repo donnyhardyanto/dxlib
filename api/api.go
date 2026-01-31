@@ -354,13 +354,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			}
 			aepr.Log.Errorf(panicErr, "PANIC_RECOVERED: %v\nStack Trace:\n%s\nRaw Request:\n%s", rec, stackTrace, requestDump)
 
-			// Send HTTP 500 response if not already sent
+			// Send HTTP 500 response with error_log reference
 			if !aepr.ResponseHeaderSent {
+				reasonMessage := fmt.Sprintf("ERROR_LOG=%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
 				responseBody := utils.JSON{
 					"status":         "Internal Server Error",
 					"status_code":    http.StatusInternalServerError,
 					"reason":         "INTERNAL_SERVER_ERROR",
-					"reason_message": "Internal Server Error",
+					"reason_message": reasonMessage,
 				}
 				aepr.ResponseStatusCode = http.StatusInternalServerError
 				aepr.WriteResponseAsJSON(http.StatusInternalServerError, nil, responseBody)
@@ -414,8 +415,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			requestDump = "REQUEST_DUMP_ERROR"
 		}
 		aepr.Log.Errorf(err, "PREPROCESS_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
-		// Send sanitized response — preprocess errors are client errors, include message without stack
-		aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "PREPROCESS_ERROR", fmt.Sprintf("%v", err))
+		// Send sanitized response with error_log reference for correlation
+		reasonMessage := fmt.Sprintf("ERROR_LOG=%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
+		aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "PREPROCESS_ERROR", reasonMessage)
 		return
 	}
 
@@ -447,8 +449,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				requestDump = "REQUEST_DUMP_ERROR"
 			}
 			aepr.Log.Errorf(err, "MIDDLEWARE_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
-			// Send sanitized response — middleware errors (auth) may need detail but no stack
-			aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "MIDDLEWARE_ERROR", fmt.Sprintf("%v", err))
+			// Send sanitized response with error_log reference for correlation
+			reasonMessage := fmt.Sprintf("ERROR_LOG=%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
+			aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "MIDDLEWARE_ERROR", reasonMessage)
 			return
 		}
 
@@ -519,9 +522,10 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				dbContextStr = fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
 			}
 			aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s", err, dbContextStr, requestDump)
-			// Send sanitized response — execute errors are server errors, NO implementation details
+			// Send sanitized response with error_log reference for correlation
 			if !aepr.ResponseHeaderSent {
-				aepr.WriteResponseAsErrorMessageNotLogged(http.StatusInternalServerError, "EXECUTE_ERROR", "EXECUTE_ERROR")
+				reasonMessage := fmt.Sprintf("ERROR_LOG=%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
+				aepr.WriteResponseAsErrorMessageNotLogged(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", reasonMessage)
 			}
 			return
 		} else {

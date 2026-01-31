@@ -41,12 +41,14 @@ const (
 )
 
 type DXLog struct {
-	Context context.Context
-	Prefix  string
+	Context         context.Context
+	Prefix          string
+	LastErrorLogId  int64
+	LastErrorLogUid string
 }
 
 var Format DXLogFormat
-var OnError func(errPrev error, severity DXLogLevel, location string, text string, stack string) (err error)
+var OnError func(l *DXLog, errPrev error, severity DXLogLevel, location string, text string, stack string) (err error)
 
 // Custom slog levels for TRACE, FATAL, and PANIC
 const (
@@ -110,7 +112,7 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 	}
 
 	if OnError != nil {
-		err2 := OnError(err, severity, location, text, stack)
+		err2 := OnError(l, err, severity, location, text, stack)
 		if err2 != nil {
 			slog.Warn("ERROR_ON_ERROR_HANDLER", slog.Any("error", err2))
 		}
