@@ -6,6 +6,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 )
@@ -30,7 +31,11 @@ import (
 //   - MySQL: Not supported for DELETE err if requested)
 func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	defer func() {
-		LogDBDelete(tableName, whereAndFieldNameValues, err)
+		if err != nil {
+			err = NewDBOperationErrorWithWhere("DELETE", tableName, whereAndFieldNameValues, err)
+		} else {
+			log.Log.Debugf("DB_DELETE table=%s where=%s", tableName, formatJSONForLog(whereAndFieldNameValues))
+		}
 	}()
 	// Basic input validation
 	if db == nil {
@@ -222,7 +227,11 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 // TxDelete executes an SQL DELETE statement within a transaction with support for returning values
 func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	defer func() {
-		LogDBDelete(tableName, whereAndFieldNameValues, err)
+		if err != nil {
+			err = NewDBOperationErrorWithWhere("DELETE", tableName, whereAndFieldNameValues, err)
+		} else {
+			log.Log.Debugf("DB_DELETE table=%s where=%s", tableName, formatJSONForLog(whereAndFieldNameValues))
+		}
 	}()
 
 	// Basic input validation

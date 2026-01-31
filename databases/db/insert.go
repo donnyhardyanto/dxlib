@@ -7,6 +7,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 )
@@ -48,7 +49,11 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 //   - err: Error if any occurred
 func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
 	defer func() {
-		LogDBInsert(tableName, setFieldValues, err)
+		if err != nil {
+			err = NewDBOperationError("INSERT", tableName, setFieldValues, err)
+		} else {
+			log.Log.Debugf("DB_INSERT table=%s data=%s", tableName, formatJSONForLog(setFieldValues))
+		}
 	}()
 	// Basic input validation
 	if db == nil {
@@ -290,7 +295,11 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 
 func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
 	defer func() {
-		LogDBInsert(tableName, setFieldValues, err)
+		if err != nil {
+			err = NewDBOperationError("INSERT", tableName, setFieldValues, err)
+		} else {
+			log.Log.Debugf("DB_INSERT table=%s data=%s", tableName, formatJSONForLog(setFieldValues))
+		}
 	}()
 
 	// Basic input validation

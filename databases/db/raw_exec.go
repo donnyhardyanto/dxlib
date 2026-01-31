@@ -19,7 +19,6 @@ func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error
 
 	result, err = db.Exec(query, arg...)
 	if err != nil {
-		log.Log.Errorf(err, "DB_RAW_EXEC_ERROR sql=%s", query)
 		return nil, errors.Wrapf(err, "DB_EXEC_ERROR sql=%s", query)
 	}
 
@@ -36,7 +35,6 @@ func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err err
 
 	result, err = tx.Exec(query, arg...)
 	if err != nil {
-		log.Log.Errorf(err, "DB_RAW_TX_EXEC_ERROR sql=%s", query)
 		return nil, errors.Wrapf(err, "DB_TX_EXEC_ERROR sql=%s", query)
 	}
 

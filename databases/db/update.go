@@ -6,6 +6,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 )
@@ -63,7 +64,11 @@ func SQLPartUpdateSetFieldValues(setFieldValues utils.JSON, driverName string) (
 //   - MySQL: Separate SELECT query after UPDATE (with limitations)
 func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	defer func() {
-		LogDBUpdate(tableName, setFieldNameValues, whereAndFieldNameValues, err)
+		if err != nil {
+			err = NewDBOperationErrorWithWhereAndSet("UPDATE", tableName, setFieldNameValues, whereAndFieldNameValues, err)
+		} else {
+			log.Log.Debugf("DB_UPDATE table=%s set=%s where=%s", tableName, formatJSONForLog(setFieldNameValues), formatJSONForLog(whereAndFieldNameValues))
+		}
 	}()
 	// Basic input validation
 	if db == nil {
@@ -305,7 +310,11 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 
 func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	defer func() {
-		LogDBUpdate(tableName, setFieldValues, whereAndFieldNameValues, err)
+		if err != nil {
+			err = NewDBOperationErrorWithWhereAndSet("UPDATE", tableName, setFieldValues, whereAndFieldNameValues, err)
+		} else {
+			log.Log.Debugf("DB_UPDATE table=%s set=%s where=%s", tableName, formatJSONForLog(setFieldValues), formatJSONForLog(whereAndFieldNameValues))
+		}
 	}()
 
 	// Basic input validation

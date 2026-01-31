@@ -286,6 +286,15 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	return &ae
 }
 
+// dbContextCarrier is a local interface for extracting DB operation context
+// from errors without importing databases/db (avoids circular imports).
+// Go structural typing means any error implementing these methods matches.
+type dbContextCarrier interface {
+	DBOperation() string
+	DBTableName() string
+	DBMaskedDataString() string
+}
+
 func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEndPoint) {
 	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "routeHandler|"+p.Uri)
 	defer span.End()
@@ -399,13 +408,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		if aepr.ResponseHeaderSent {
 			return
 		}
-		aepr.WriteResponseAsError(http.StatusBadRequest, err)
+		// Log full error + request dump server-side
 		requestDump, err2 := aepr.RequestDumpAsString()
 		if err2 != nil {
-			aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR")
-			return
+			requestDump = "REQUEST_DUMP_ERROR"
 		}
-		aepr.Log.Errorf(err, "ONPREPROCESSREQUEST_ERROR\nRaw Request:\n%s\n", requestDump)
+		aepr.Log.Errorf(err, "PREPROCESS_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
+		// Send sanitized response — preprocess errors are client errors, include message without stack
+		aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "PREPROCESS_ERROR", fmt.Sprintf("%v", err))
 		return
 	}
 
@@ -431,14 +441,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if aepr.ResponseHeaderSent {
 				return
 			}
-			err3 := errors.Wrap(err, fmt.Sprintf("MIDDLEWARE_ERROR:\n%+v", err))
-			aepr.WriteResponseAsError(http.StatusBadRequest, err3)
-			requestDump, err2 := aepr.RequestDump()
+			// Log full error + request dump server-side
+			requestDump, err2 := aepr.RequestDumpAsString()
 			if err2 != nil {
-				aepr.Log.Errorf(err2, "REQUEST_DUMP_ERROR:%+v", err2)
-				return
+				requestDump = "REQUEST_DUMP_ERROR"
 			}
-			aepr.Log.Errorf(err3, "ONMIDDLEWARE_ERROR:%+v\nRaw Request :\n%v\n", err3, string(requestDump))
+			aepr.Log.Errorf(err, "MIDDLEWARE_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
+			// Send sanitized response — middleware errors (auth) may need detail but no stack
+			aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "MIDDLEWARE_ERROR", fmt.Sprintf("%v", err))
 			return
 		}
 
@@ -489,28 +499,31 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, domainErr.DomainErrorHTTPStatusCode(), domainErr.DomainErrorCode())
 				// Log as warning (not error) -- this is expected validation, not a bug
 				aepr.Log.Warnf("DOMAIN_VALIDATION:%s:%s", domainErr.DomainErrorCode(), domainErr.DomainErrorLogDetails())
-				// Send sanitized response (no DB structure exposed)
+				// Send a sanitized response (no DB structure exposed)
 				aepr.WriteResponseAsJSON(domainErr.DomainErrorHTTPStatusCode(), nil, domainErr.DomainErrorResponseBody())
-				err = nil // clear error so deferred funcs don't treat as error
+				err = nil // clear error so deferred functions don't treat as error
 				return
 			}
+				// TRACE: execute_end (error)
+			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, http.StatusInternalServerError, err.Error())
 
-			// TRACE: execute_end (error)
-			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, http.StatusBadRequest, err.Error())
-
-			// Log request dump for debugging (before encryption)
-			requestDump, err2 := aepr.RequestDump()
+			// Log full error + request dump server-side (single consolidated entry)
+			requestDump, err2 := aepr.RequestDumpAsString()
 			if err2 != nil {
-				aepr.Log.Warnf("REQUEST_DUMP_ERROR:%+v", err2)
-			} else {
-				aepr.Log.Errorf(err, "ONEXECUTE_ERROR:%+v\nRaw Request:\n%s", err, string(requestDump))
+				requestDump = "REQUEST_DUMP_ERROR"
 			}
-
+			// Extract DB operation context if available
+			dbContextStr := ""
+			var dbCtx dbContextCarrier
+			if errors.As(err, &dbCtx) {
+				dbContextStr = fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
+			}
+			aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s", err, dbContextStr, requestDump)
+			// Send sanitized response — execute errors are server errors, NO implementation details
 			if !aepr.ResponseHeaderSent {
-				s := fmt.Sprintf("ONEXECUTE_ERROR:%+v", err)
-				_ = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, s, s)
-				return
+				aepr.WriteResponseAsErrorMessageNotLogged(http.StatusInternalServerError, "EXECUTE_ERROR", "EXECUTE_ERROR")
 			}
+			return
 		} else {
 			// TRACE: execute_end (success)
 			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, aepr.ResponseStatusCode, "")

@@ -160,3 +160,52 @@ func LogDBDelete(tableName string, whereData utils.JSON, err error) {
 		log.Log.Debugf("DB_DELETE table=%s where=%s", tableName, whereStr)
 	}
 }
+
+// DBOperationError wraps a DB error with operation context for consolidated logging.
+// The routeHandler extracts this context to produce a single log entry with all details.
+type DBOperationError struct {
+	Operation  string // "INSERT", "UPDATE", "DELETE"
+	TableName  string
+	MaskedData string // pre-formatted, sensitive-masked string
+	Cause      error
+}
+
+func (e *DBOperationError) Error() string {
+	return fmt.Sprintf("DB_%s_ERROR table=%s data=%s: %v", e.Operation, e.TableName, e.MaskedData, e.Cause)
+}
+
+func (e *DBOperationError) Unwrap() error {
+	return e.Cause
+}
+
+// Methods for structural interface matching at routeHandler (no import needed)
+func (e *DBOperationError) DBOperation() string        { return e.Operation }
+func (e *DBOperationError) DBTableName() string         { return e.TableName }
+func (e *DBOperationError) DBMaskedDataString() string  { return e.MaskedData }
+
+func NewDBOperationError(operation, tableName string, data utils.JSON, cause error) *DBOperationError {
+	return &DBOperationError{
+		Operation:  operation,
+		TableName:  tableName,
+		MaskedData: formatJSONForLog(data),
+		Cause:      cause,
+	}
+}
+
+func NewDBOperationErrorWithWhereAndSet(operation, tableName string, setData, whereData utils.JSON, cause error) *DBOperationError {
+	return &DBOperationError{
+		Operation:  operation,
+		TableName:  tableName,
+		MaskedData: fmt.Sprintf("set=%s where=%s", formatJSONForLog(setData), formatJSONForLog(whereData)),
+		Cause:      cause,
+	}
+}
+
+func NewDBOperationErrorWithWhere(operation, tableName string, whereData utils.JSON, cause error) *DBOperationError {
+	return &DBOperationError{
+		Operation:  operation,
+		TableName:  tableName,
+		MaskedData: fmt.Sprintf("where=%s", formatJSONForLog(whereData)),
+		Cause:      cause,
+	}
+}
