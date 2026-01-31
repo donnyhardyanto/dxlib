@@ -349,12 +349,12 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 		if v, ok := databaseConfiguration["pool_max_open_conns"].(int); ok {
 			d.PoolMaxOpenConns = v
 		} else {
-			d.PoolMaxOpenConns = 25 // Default: 25 max connections
+			d.PoolMaxOpenConns = 5 // Default: 5 max connections
 		}
 		if v, ok := databaseConfiguration["pool_max_idle_conns"].(int); ok {
 			d.PoolMaxIdleConns = v
 		} else {
-			d.PoolMaxIdleConns = 10 // Default: 10 idle connections
+			d.PoolMaxIdleConns = 3 // Default: 3 idle connections
 		}
 		if v, ok := databaseConfiguration["pool_conn_max_lifetime_minutes"].(int); ok {
 			d.PoolConnMaxLifetimeMinutes = v
