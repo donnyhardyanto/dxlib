@@ -18,6 +18,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/databases/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/microsoft/go-mssqldb"
@@ -81,6 +82,7 @@ type DXDatabase struct {
 	MustConnected                bool
 	Connected                    bool
 	Connection                   *sqlx.DB
+	PgxPool                      *pgxpool.Pool
 	ConnectionString             string
 	NonSensitiveConnectionString string
 	OnCannotConnect              DXDatabaseEventFunc
@@ -396,32 +398,88 @@ func (d *DXDatabase) CheckIsErrorBecauseDbNotExist(err error) bool {
 func (d *DXDatabase) Connect() (err error) {
 	if !d.Connected {
 		log.Log.Infof("Connecting to databases %s/%s... start", d.NameId, d.NonSensitiveConnectionString)
-		connection, err := sqlx.Open(d.DatabaseType.Driver(), d.ConnectionString)
-		if err != nil {
-			if d.MustConnected {
-				log.Log.Fatalf("Invalid parameters to open databases %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
-				return nil
-			} else {
-				return errors.Wrapf(err, "Invalid parameters to open databases %s/%s", d.NameId, d.NonSensitiveConnectionString)
-			}
-		}
-		d.Connection = connection
 
-		// Apply pool configuration
-		if d.PoolMaxOpenConns > 0 {
-			connection.SetMaxOpenConns(d.PoolMaxOpenConns)
+		isPostgreSQL := (d.DatabaseType == base.DXDatabaseTypePostgreSQL ||
+			d.DatabaseType == base.DXDatabaseTypePostgresSQLV2)
+
+		var connection *sqlx.DB
+
+		if isPostgreSQL {
+			// PostgreSQL: Use pgxpool for connection management
+			log.Log.Infof("Using pgxpool for PostgreSQL database %s", d.NameId)
+
+			poolConfig, err := pgxpool.ParseConfig(d.ConnectionString)
+			if err != nil {
+				if d.MustConnected {
+					log.Log.Fatalf("Invalid connection string for databases %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
+					return nil
+				} else {
+					return errors.Wrapf(err, "Invalid connection string for databases %s/%s", d.NameId, d.NonSensitiveConnectionString)
+				}
+			}
+
+			// Map existing pool configuration to pgxpool settings
+			if d.PoolMaxOpenConns > 0 {
+				poolConfig.MaxConns = int32(d.PoolMaxOpenConns)
+			}
+			if d.PoolMaxIdleConns > 0 {
+				poolConfig.MinConns = int32(d.PoolMaxIdleConns)
+			}
+			if d.PoolConnMaxLifetimeMinutes > 0 {
+				poolConfig.MaxConnLifetime = time.Duration(d.PoolConnMaxLifetimeMinutes) * time.Minute
+			}
+			if d.PoolConnMaxIdleTimeMinutes > 0 {
+				poolConfig.MaxConnIdleTime = time.Duration(d.PoolConnMaxIdleTimeMinutes) * time.Minute
+			}
+			poolConfig.HealthCheckPeriod = 1 * time.Minute
+
+			log.Log.Infof("pgxpool config for %s: MaxConns=%d, MinConns=%d, MaxLifetime=%dm, MaxIdleTime=%dm",
+				d.NameId, poolConfig.MaxConns, poolConfig.MinConns, d.PoolConnMaxLifetimeMinutes, d.PoolConnMaxIdleTimeMinutes)
+
+			pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+			if err != nil {
+				if d.MustConnected {
+					log.Log.Fatalf("Cannot create pgxpool for databases %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
+					return nil
+				} else {
+					return errors.Wrapf(err, "Cannot create pgxpool for databases %s/%s", d.NameId, d.NonSensitiveConnectionString)
+				}
+			}
+			d.PgxPool = pool
+
+			// Derive *sql.DB from pgxpool, then wrap with sqlx
+			sqlDB := stdlib.OpenDBFromPool(pool)
+			connection = sqlx.NewDb(sqlDB, "postgres")
+		} else {
+			// Non-PostgreSQL: Use traditional sqlx.Open approach
+			connection, err = sqlx.Open(d.DatabaseType.Driver(), d.ConnectionString)
+			if err != nil {
+				if d.MustConnected {
+					log.Log.Fatalf("Invalid parameters to open databases %s/%s (%s)", d.NameId, d.NonSensitiveConnectionString, err.Error())
+					return nil
+				} else {
+					return errors.Wrapf(err, "Invalid parameters to open databases %s/%s", d.NameId, d.NonSensitiveConnectionString)
+				}
+			}
+
+			// Apply pool configuration via database/sql methods (non-PostgreSQL only)
+			if d.PoolMaxOpenConns > 0 {
+				connection.SetMaxOpenConns(d.PoolMaxOpenConns)
+			}
+			if d.PoolMaxIdleConns > 0 {
+				connection.SetMaxIdleConns(d.PoolMaxIdleConns)
+			}
+			if d.PoolConnMaxLifetimeMinutes > 0 {
+				connection.SetConnMaxLifetime(time.Duration(d.PoolConnMaxLifetimeMinutes) * time.Minute)
+			}
+			if d.PoolConnMaxIdleTimeMinutes > 0 {
+				connection.SetConnMaxIdleTime(time.Duration(d.PoolConnMaxIdleTimeMinutes) * time.Minute)
+			}
+			log.Log.Infof("Pool config for %s: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%dm, MaxIdleTime=%dm",
+				d.NameId, d.PoolMaxOpenConns, d.PoolMaxIdleConns, d.PoolConnMaxLifetimeMinutes, d.PoolConnMaxIdleTimeMinutes)
 		}
-		if d.PoolMaxIdleConns > 0 {
-			connection.SetMaxIdleConns(d.PoolMaxIdleConns)
-		}
-		if d.PoolConnMaxLifetimeMinutes > 0 {
-			connection.SetConnMaxLifetime(time.Duration(d.PoolConnMaxLifetimeMinutes) * time.Minute)
-		}
-		if d.PoolConnMaxIdleTimeMinutes > 0 {
-			connection.SetConnMaxIdleTime(time.Duration(d.PoolConnMaxIdleTimeMinutes) * time.Minute)
-		}
-		log.Log.Infof("Pool config for %s: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%dm, MaxIdleTime=%dm",
-			d.NameId, d.PoolMaxOpenConns, d.PoolMaxIdleConns, d.PoolConnMaxLifetimeMinutes, d.PoolConnMaxIdleTimeMinutes)
+
+		d.Connection = connection
 
 		err = connection.Ping()
 		if err != nil {
@@ -449,6 +507,14 @@ func (d *DXDatabase) Disconnect() (err error) {
 			return errors.Wrapf(err, "Disconnecting to databases %s/%s error", d.NameId, d.NonSensitiveConnectionString)
 		}
 		d.Connection = nil
+
+		// Close pgxpool if PostgreSQL
+		if d.PgxPool != nil {
+			d.PgxPool.Close()
+			log.Log.Infof("Closed pgxpool for databases %s", d.NameId)
+			d.PgxPool = nil
+		}
+
 		d.Connected = false
 		log.Log.Infof("Disconnecting to databases %s/%s... done DISCONNECTED", d.NameId, d.NonSensitiveConnectionString)
 	}
