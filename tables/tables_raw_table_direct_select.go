@@ -48,6 +48,19 @@ func (t *DXRawTable) DirectGetById(l *log.DXLog, id int64, fieldNames ...string)
 }
 
 // DirectShouldGetById returns a row by ID from the base table or error if not found
+func (t *DXRawTable) GetUidById(l *log.DXLog, id int64) (string, error) {
+	_, row, err := t.DirectShouldSelectOne(l, []string{"uid"}, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+	if err != nil {
+		return "", err
+	}
+	uid, err := utils.GetStringFromKV(row, "uid")
+	if err != nil {
+		return "", err
+	}
+	return uid, nil
+}
+
+// DirectShouldGetById returns a row by ID from the base table or error if not found
 func (t *DXRawTable) DirectShouldGetById(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
