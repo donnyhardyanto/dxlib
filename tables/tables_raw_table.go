@@ -387,6 +387,69 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 	}
 	orderByStr := BuildOrderByString(orderByArray)
 
+	isIncludeDeletedExist, isIncludeDeleted, err := aepr.GetParameterValueAsBool("is_include_deleted")
+	if err != nil {
+		return err
+	}
+
+	if err := t.EnsureDatabase(); err != nil {
+		return err
+	}
+
+	qb := NewQueryBuilder(t.Database.DatabaseType, t)
+	if searchText != "" {
+		qb.SearchLike(searchText, t.SearchTextFieldNames...)
+	}
+	if isFilterKeyValuesExist && filterKeyValues != nil {
+		for k, v := range filterKeyValues {
+			qb.Eq(k, v)
+		}
+	}
+
+	if isIncludeDeletedExist {
+		if isIncludeDeleted {
+			if qb.IsFieldExist("is_deleted") {
+				qb.Eq("is_deleted", false)
+			}
+		}
+	}
+
+	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
+	if err != nil {
+		return err
+	}
+
+	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
+	if err != nil {
+		return err
+	}
+
+	result, err := t.PagingWithBuilder(&aepr.Log, rowPerPage, pageIndex, qb, orderByStr)
+	if err != nil {
+		return err
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, result.ToResponseJSON())
+	return nil
+}
+
+func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest) error {
+	_, searchText, err := aepr.GetParameterValueAsString("search_text")
+	if err != nil {
+		return err
+	}
+
+	isFilterKeyValuesExist, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	if err != nil {
+		return err
+	}
+
+	_, orderByArray, err := aepr.GetParameterValueAsArrayOfAny("order_by")
+	if err != nil {
+		return err
+	}
+	orderByStr := BuildOrderByString(orderByArray)
+
 	if err := t.EnsureDatabase(); err != nil {
 		return err
 	}
@@ -411,12 +474,58 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 		return err
 	}
 
-	result, err := t.PagingWithBuilder(&aepr.Log, rowPerPage, pageIndex, qb, orderByStr)
+	_, format, err := aepr.GetParameterValueAsString("format")
 	if err != nil {
 		return err
 	}
 
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, result.ToResponseJSON())
+	pagingResult, err := t.PagingWithBuilder(&aepr.Log, rowPerPage, pageIndex, qb, orderByStr)
+	if err != nil {
+		return err
+	}
+
+	// Set export options
+	opts := export.ExportOptions{
+		Format:     export.ExportFormat(format),
+		SheetName:  "Sheet1",
+		DateFormat: "2006-01-02 15:04:05",
+	}
+
+	// Get file as stream
+	data, contentType, err := export.ExportToStream(pagingResult.RowsInfo, pagingResult.Rows, opts)
+	if err != nil {
+		return err
+	}
+
+	// Override contentType based on format
+	switch format {
+	case DXTableExportFormatXLS:
+		contentType = "application/vnd.ms-excel"
+	case DXTableExportFormatXLSX:
+		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	case DXTableExportFormatCSV:
+		contentType = "application/octet-stream"
+	}
+
+	// Set response headers
+	filename := fmt.Sprintf("export_%s_%s.%s", t.GetFullTableName(), time.Now().Format("20060102_150405"), format)
+
+	rw := *aepr.GetResponseWriter()
+	rw.Header().Set("Content-Type", contentType)
+	rw.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+	rw.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	rw.Header().Set("X-Content-Type-Options", "nosniff")
+
+	rw.WriteHeader(http.StatusOK)
+	aepr.ResponseStatusCode = http.StatusOK
+
+	if _, err = rw.Write(data); err != nil {
+		return err
+	}
+
+	aepr.ResponseHeaderSent = true
+	aepr.ResponseBodySent = true
+
 	return nil
 }
 

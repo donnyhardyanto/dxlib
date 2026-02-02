@@ -16,6 +16,14 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
+type DXTableExportFormat = string
+
+const (
+	DXTableExportFormatXLS  DXTableExportFormat = "xls"
+	DXTableExportFormatCSV  DXTableExportFormat = "csv"
+	DXTableExportFormatXLSX DXTableExportFormat = "xlsx"
+)
+
 // QueryBuilder - Fluent API for building WHERE clauses
 
 // QueryBuilder builds SQL WHERE clauses with fluent API
