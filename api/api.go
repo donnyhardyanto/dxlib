@@ -258,7 +258,7 @@ func GetIPAddress(r *http.Request) string {
 
 func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType DXAPIEndPointType,
 	contentType utilsHttp.RequestContentType, parameters []DXAPIEndPointParameter, onExecute DXAPIEndPointExecuteFunc,
-	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities map[string]*DXAPIEndPointResponsePossibility, middlewares []DXAPIEndPointExecuteFunc,
+	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities *DXAPIEndPointResponsePossibilities, middlewares []DXAPIEndPointExecuteFunc,
 	privileges []string, requestMaxContentLength int64, rateLimitGroupNameId string) *DXAPIEndPoint {
 
 	t := a.FindEndPointByURI(uri)
@@ -507,7 +507,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				err = nil // clear error so deferred functions don't treat as error
 				return
 			}
-				// TRACE: execute_end (error)
+			// TRACE: execute_end (error)
 			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, http.StatusInternalServerError, err.Error())
 
 			// Log full error + request dump server-side (single consolidated entry)

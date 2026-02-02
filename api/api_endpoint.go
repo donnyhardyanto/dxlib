@@ -93,6 +93,7 @@ type DXAPIEndPointResponsePossibility struct {
 
 type DXAPIEndPointExecuteFunc func(aepr *DXAPIEndPointRequest) (err error)
 
+type DXAPIEndPointResponsePossibilities map[string]DXAPIEndPointResponsePossibility
 type DXAPIEndPoint struct {
 	Owner                   *DXAPI
 	Title                   string
@@ -104,7 +105,7 @@ type DXAPIEndPoint struct {
 	Parameters              []DXAPIEndPointParameter
 	OnExecute               DXAPIEndPointExecuteFunc
 	OnWSLoop                DXAPIEndPointExecuteFunc
-	ResponsePossibilities   map[string]*DXAPIEndPointResponsePossibility
+	ResponsePossibilities   *DXAPIEndPointResponsePossibilities
 	Middlewares             []DXAPIEndPointExecuteFunc
 	Privileges              []string
 	RequestMaxContentLength int64
@@ -126,21 +127,21 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 			s += p.PrintSpec(4)
 		}
 		s += "####  Response Possibilities:\n"
-		keys := make([]string, 0, len(aep.ResponsePossibilities))
+		keys := make([]string, 0, len(*aep.ResponsePossibilities))
 
 		// Add the keys to the slice
-		for k := range aep.ResponsePossibilities {
+		for k := range *aep.ResponsePossibilities {
 			keys = append(keys, k)
 		}
 
 		// Sort the keys based on StatusCode
 		sort.Slice(keys, func(i, j int) bool {
-			return aep.ResponsePossibilities[keys[i]].StatusCode < aep.ResponsePossibilities[keys[j]].StatusCode
+			return (*aep.ResponsePossibilities)[keys[i]].StatusCode < (*aep.ResponsePossibilities)[keys[j]].StatusCode
 		})
 
 		// Now you can range over the keys slice and use it to access the map
 		for _, k := range keys {
-			v := aep.ResponsePossibilities[k]
+			v := (*aep.ResponsePossibilities)[k]
 			s += fmt.Sprintf("    %s\n", k)
 			s += fmt.Sprintf("      Status Code: %d\n", v.StatusCode)
 			s += fmt.Sprintf("      Description: %s\n", v.Description)
@@ -188,7 +189,7 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 			collection["item"].([]map[string]any)[0]["request"].(map[string]any)["body"].(map[string]any)["raw"] = rawBody
 		}
 
-		for _, resp := range aep.ResponsePossibilities {
+		for _, resp := range *aep.ResponsePossibilities {
 			collection["item"].([]map[string]any)[0]["response"] = append(collection["item"].([]map[string]any)[0]["response"].([]map[string]any), map[string]any{
 				"name":   resp.Description,
 				"status": http.StatusText(resp.StatusCode),
