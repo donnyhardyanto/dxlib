@@ -22,3 +22,13 @@ func ReplaceTagWithValue(originalString string, prefixTag string, kv map[string]
 		return match
 	})
 }
+
+func SnakeCaseToTitleCase(s string) string {
+	words := strings.Split(s, "_")
+	for i, word := range words {
+		if len(word) > 0 {
+			words[i] = strings.ToUpper(word[:1]) + word[1:]
+		}
+	}
+	return strings.Join(words, " ")
+}
