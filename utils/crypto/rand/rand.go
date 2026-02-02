@@ -59,8 +59,7 @@ func RandomData(l int) (r []byte) {
 	r = make([]byte, l)
 	_, err := rand.Read(r)
 	if err != nil {
-		fmt.Println("RandomData: rand.read error:", err.Error())
-		return
+		panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
 	}
 	return r
 }
