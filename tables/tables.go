@@ -205,23 +205,29 @@ func (qb *QueryBuilder) OrAnyLocationCode(locationCode string, fieldNames ...str
 }
 
 // Build returns the WHERE clause string and Args
-func (qb *QueryBuilder) Build() (string, utils.JSON) {
-	if len(qb.Conditions) == 0 {
-		return "", qb.Args
+func (qb *QueryBuilder) Build() (string, utils.JSON, error) {
+	if qb.Error != nil {
+		return "", nil, qb.Error
 	}
-	return strings.Join(qb.Conditions, " AND "), qb.Args
+	if len(qb.Conditions) == 0 {
+		return "", qb.Args, nil
+	}
+	return strings.Join(qb.Conditions, " AND "), qb.Args, nil
 }
 
 // BuildWithPrefix returns WHERE clause with prefix for combining with existing Conditions
-func (qb *QueryBuilder) BuildWithPrefix(existingWhere string) (string, utils.JSON) {
-	where, args := qb.Build()
+func (qb *QueryBuilder) BuildWithPrefix(existingWhere string) (string, utils.JSON, error) {
+	where, args, err := qb.Build()
+	if err != nil {
+		return "", nil, err
+	}
 	if existingWhere != "" && where != "" {
-		return fmt.Sprintf("(%s) AND %s", existingWhere, where), args
+		return fmt.Sprintf("(%s) AND %s", existingWhere, where), args, nil
 	}
 	if existingWhere != "" {
-		return existingWhere, args
+		return existingWhere, args, nil
 	}
-	return where, args
+	return where, args, nil
 }
 
 func (qb *QueryBuilder) buildInClause(fieldName string, values any) string {
@@ -360,7 +366,10 @@ func NamedQueryPagingWithBuilder(
 	qb *QueryBuilder,
 	orderBy string,
 ) (*PagingResult, error) {
-	whereClause, args := qb.Build()
+	whereClause, args, err := qb.Build()
+	if err != nil {
+		return nil, err
+	}
 	return NamedQueryPaging(dxDb3, fieldTypeMapping, tableName, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
@@ -393,7 +402,10 @@ func DoNamedQueryPagingResponseWithBuilder(
 	qb *QueryBuilder,
 	orderBy string,
 ) error {
-	whereClause, args := qb.Build()
+	whereClause, args, err := qb.Build()
+	if err != nil {
+		return err
+	}
 	return DoNamedQueryPagingResponse(aepr, dxDb3, fieldTypeMapping, tableName, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 

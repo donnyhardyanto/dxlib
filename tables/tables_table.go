@@ -158,7 +158,10 @@ func (t *DXTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause,
 
 // PagingWithBuilder executes a paging query using a QueryBuilder (assumes NotDeleted already added)
 func (t *DXTable) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
-	whereClause, args := qb.Build()
+	whereClause, args, err := qb.Build()
+	if err != nil {
+		return nil, err
+	}
 	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 

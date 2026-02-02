@@ -175,7 +175,10 @@ func (t *DXRawTable) TxPagingWithEncryptionAndBuilder(
 	rowPerPage int64,
 	pageIndex int64,
 ) (*PagingResult, error) {
-	whereClause, whereArgs := qb.Build()
+	whereClause, whereArgs, err := qb.Build()
+	if err != nil {
+		return nil, err
+	}
 	return t.TxPagingWithEncryption(dtx, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
 }
 

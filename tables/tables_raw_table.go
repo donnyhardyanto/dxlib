@@ -256,7 +256,10 @@ func (t *DXRawTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClau
 
 // PagingWithBuilder executes a paging query using a QueryBuilder
 func (t *DXRawTable) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
-	whereClause, args := qb.Build()
+	whereClause, args, err := qb.Build()
+	if err != nil {
+		return nil, err
+	}
 	return t.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
@@ -272,7 +275,10 @@ func (t *DXRawTable) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIn
 
 // DoPagingWithBuilder is an API helper using QueryBuilder
 func (t *DXRawTable) DoPagingWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
-	whereClause, args := qb.Build()
+	whereClause, args, err := qb.Build()
+	if err != nil {
+		return nil, err
+	}
 	return t.DoPaging(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
@@ -288,7 +294,10 @@ func (t *DXRawTable) DoPagingResponse(aepr *api.DXAPIEndPointRequest, rowPerPage
 
 // DoPagingResponseWithBuilder executes paging with QueryBuilder and writes response
 func (t *DXRawTable) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) error {
-	whereClause, args := qb.Build()
+	whereClause, args, err := qb.Build()
+	if err != nil {
+		return err
+	}
 	return t.DoPagingResponse(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
