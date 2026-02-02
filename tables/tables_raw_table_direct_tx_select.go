@@ -14,19 +14,19 @@ import (
 // TxDirectSelect returns multiple rows from the base table within a transaction
 func (t *DXRawTable) TxDirectSelect(dtx *databases.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return dtx.Select(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
+	return dtx.Select(t.GetFullTableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
 
 // TxDirectSelectOne returns a single row from the base table within a transaction
 func (t *DXRawTable) TxDirectSelectOne(dtx *databases.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return dtx.SelectOne(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
+	return dtx.SelectOne(t.GetFullTableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxDirectShouldSelectOne returns a single row from the base table or error if not found within a transaction
 func (t *DXRawTable) TxDirectShouldSelectOne(dtx *databases.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return dtx.ShouldSelectOne(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
+	return dtx.ShouldSelectOne(t.GetFullTableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxDirectGetById returns a row by ID from the base table within a transaction

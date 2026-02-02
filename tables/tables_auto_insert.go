@@ -44,7 +44,7 @@ func (t *DXRawTable) TxInsertAuto(
 			return nil, nil, err
 		}
 	}
-	return dtx.Insert(t.TableName(), data, returningFieldNames)
+	return dtx.Insert(t.GetFullTableName(), data, returningFieldNames)
 }
 
 func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForInsert(dtx *databases.DXDatabaseTx, data utils.JSON) (err error) {
@@ -53,19 +53,19 @@ func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForInsert(dtx *databa
 		for _, f := range v {
 			val, ok := data[f] // Use local variables for the 'comma-ok' check
 			if !ok {
-				return errors.Errorf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_INSERT:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELD=%s", t.TableName(), f)
+				return errors.Errorf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_INSERT:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELD=%s", t.GetFullTableName(), f)
 			}
 			k[f] = val
 		}
 
 		// Ensure c and err are properly captured
-		c, err := db.TxCount(dtx.Tx, t.TableName(), "", k, nil, nil, nil, "")
+		c, err := db.TxCount(dtx.Tx, t.GetFullTableName(), "", k, nil, nil, nil, "")
 		if err != nil {
 			return err
 		}
 
 		if c > 0 {
-			return newUniqueFieldViolationError(t.TableName(), k)
+			return newUniqueFieldViolationError(t.GetFullTableName(), k)
 		}
 	}
 	return nil
@@ -77,30 +77,30 @@ func (t *DXRawTable) TxCheckValidationUniqueFieldNameGroupsForUpdate(dtx *databa
 		for _, f := range v {
 			val, ok := data[f]
 			if !ok {
-				return errors.Errorf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELDNAME=%s", t.TableName(), f)
+				return errors.Errorf("CHECK_VALIDATION_UNIQUE_FIELD_NAME_GROUPS_FOR_UPDATE:MISSING_REQUIRED_FIELD_IN:TABLE=%s,FIELDNAME=%s", t.GetFullTableName(), f)
 			}
 			k[f] = val
 		}
 
-		_, d, err := db.TxSelect(dtx.Tx, t.TableName(), nil, []string{t.FieldNameForRowId}, k, nil, nil, nil, nil, nil, nil, nil)
+		_, d, err := db.TxSelect(dtx.Tx, t.GetFullTableName(), nil, []string{t.FieldNameForRowId}, k, nil, nil, nil, nil, nil, nil, nil)
 		if err != nil {
 			return err
 		}
 
 		if len(d) > 1 {
-			return newUniqueFieldViolationError(t.TableName(), k)
+			return newUniqueFieldViolationError(t.GetFullTableName(), k)
 		}
 
 		if len(d) == 1 {
 			row := d[0]
 			dbId, ok := row[t.FieldNameForRowId]
 			if !ok {
-				return errors.Errorf("SHOULD_NOT_HAPPEN:FIELDNAMEFORROWID_NOT_FOUND:TABLE=%s,FIELDNAMEGROUP=%v", t.TableName(), k)
+				return errors.Errorf("SHOULD_NOT_HAPPEN:FIELDNAMEFORROWID_NOT_FOUND:TABLE=%s,FIELDNAMEGROUP=%v", t.GetFullTableName(), k)
 			}
 
 			// Use the smart ValueMatch helper
 			if !utils.IsValuesMatch(dbId, id) {
-				return newUniqueFieldViolationError(t.TableName(), k)
+				return newUniqueFieldViolationError(t.GetFullTableName(), k)
 			}
 		}
 	}
@@ -119,7 +119,7 @@ func (t *DXRawTable) InsertAuto(
 
 	if !t.HasEncryptionConfig() {
 		// No encryption at all, no transaction needed
-		return t.Database.Insert(t.TableName(), data, returningFieldNames)
+		return t.Database.Insert(t.GetFullTableName(), data, returningFieldNames)
 	}
 
 	// Encryption configured, need transaction

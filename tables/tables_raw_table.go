@@ -21,6 +21,11 @@ import (
 
 // DXRawTable - Basic table wrapper without soft-delete
 
+type DXRawTableInterface interface {
+	GetSearchTextFieldNames() []string
+	GetFullTableName() string
+}
+
 // DXRawTable wraps database3 with connection management and basic CRUD
 type DXRawTable struct {
 	DatabaseNameId             string
@@ -65,12 +70,16 @@ func (t *DXRawTable) GetDbType() base.DXDatabaseType {
 	return t.Database.DatabaseType
 }
 
-// TableName returns the full table name from DBTable or TableNameDirect
-func (t *DXRawTable) TableName() string {
+// GetFullTableName returns the full table name from DBTable or TableNameDirect
+func (t *DXRawTable) GetFullTableName() string {
 	if t.DBTable != nil {
 		return t.DBTable.FullTableName()
 	}
 	return t.TableNameDirect
+}
+
+func (t *DXRawTable) GetSearchTextFieldNames() []string {
+	return t.SearchTextFieldNames
 }
 
 // Delete Operations (Hard Delete)
@@ -80,12 +89,12 @@ func (t *DXRawTable) Delete(l *log.DXLog, where utils.JSON, returningFieldNames 
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-	return t.Database.Delete(t.TableName(), where, returningFieldNames)
+	return t.Database.Delete(t.GetFullTableName(), where, returningFieldNames)
 }
 
 // TxDelete deletes within a transaction
 func (t *DXRawTable) TxDelete(dtx *databases.DXDatabaseTx, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
-	return dtx.TxDelete(t.TableName(), where, returningFieldNames)
+	return dtx.TxDelete(t.GetFullTableName(), where, returningFieldNames)
 }
 
 // DeleteById deletes a single row by ID
@@ -150,7 +159,7 @@ func (t *DXRawTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sq
 
 	if existing == nil {
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := t.Database.Insert(t.TableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := t.Database.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -158,7 +167,7 @@ func (t *DXRawTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sq
 		return nil, newId, nil
 	}
 
-	result, _, err := t.Database.Update(t.TableName(), data, where, nil)
+	result, _, err := t.Database.Update(t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -171,7 +180,7 @@ func (t *DXRawTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, wher
 
 	if existing == nil {
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := dtx.Insert(t.TableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := dtx.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -179,7 +188,7 @@ func (t *DXRawTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, wher
 		return nil, newId, nil
 	}
 
-	result, _, err := dtx.Update(t.TableName(), data, where, nil)
+	result, _, err := dtx.Update(t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -190,12 +199,12 @@ func (t *DXRawTable) GetListViewName() string {
 	if t.ListViewNameId != "" {
 		return t.ListViewNameId
 	}
-	return t.TableName()
+	return t.GetFullTableName()
 }
 
 // NewQueryBuilder creates a QueryBuilder with the table's databases type
 func (t *DXRawTable) NewQueryBuilder() *QueryBuilder {
-	return NewQueryBuilder(t.GetDbType())
+	return NewQueryBuilder(t.GetDbType(), t)
 }
 
 // Paging executes a paging query with WHERE clause and ORDER BY
@@ -255,7 +264,7 @@ func (t *DXRawTable) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64
 func (t *DXRawTable) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
 	result, err := t.Paging(&aepr.Log, rowPerPage, pageIndex, whereClause, orderBy, args)
 	if err != nil {
-		aepr.Log.Errorf(err, "Error at paging table %s (%s)", t.TableName(), err.Error())
+		aepr.Log.Errorf(err, "Error at paging table %s (%s)", t.GetFullTableName(), err.Error())
 		return nil, err
 	}
 	return result, nil
@@ -358,6 +367,11 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 		return err
 	}
 
+	isFilterKeyValuesExist, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	if err != nil {
+		return err
+	}
+
 	_, orderByArray, err := aepr.GetParameterValueAsArrayOfAny("order_by")
 	if err != nil {
 		return err
@@ -368,9 +382,14 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 		return err
 	}
 
-	qb := NewQueryBuilder(t.Database.DatabaseType)
+	qb := NewQueryBuilder(t.Database.DatabaseType, t)
 	if searchText != "" {
 		qb.SearchLike(searchText, t.SearchTextFieldNames...)
+	}
+	if isFilterKeyValuesExist && filterKeyValues != nil {
+		for k, v := range filterKeyValues {
+			qb.Eq(k, v)
+		}
 	}
 
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
@@ -486,7 +505,7 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) error {
 	}
 
 	// Set response headers
-	filename := fmt.Sprintf("export_%s_%s.%s", t.TableName(), time.Now().Format("20060102_150405"), format)
+	filename := fmt.Sprintf("export_%s_%s.%s", t.GetFullTableName(), time.Now().Format("20060102_150405"), format)
 
 	rw := *aepr.GetResponseWriter()
 	rw.Header().Set("Content-Type", contentType)

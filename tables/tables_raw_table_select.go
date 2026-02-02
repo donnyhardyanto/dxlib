@@ -188,7 +188,7 @@ func (t *DXRawTable) TxSelectOne(dtx *databases.DXDatabaseTx, fieldNames []strin
 	// Use table name instead of view when FOR UPDATE is requested (views with outer joins don't support FOR UPDATE)
 	tableName := t.GetListViewName()
 	if forUpdatePart != nil && forUpdatePart != false && forUpdatePart != "" {
-		tableName = t.TableName()
+		tableName = t.GetFullTableName()
 	}
 	return dtx.SelectOne(tableName, t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
@@ -199,7 +199,7 @@ func (t *DXRawTable) TxShouldSelectOne(dtx *databases.DXDatabaseTx, fieldNames [
 	// Use table name instead of view when FOR UPDATE is requested (views with outer joins don't support FOR UPDATE)
 	tableName := t.GetListViewName()
 	if forUpdatePart != nil && forUpdatePart != false && forUpdatePart != "" {
-		tableName = t.TableName()
+		tableName = t.GetFullTableName()
 	}
 	return dtx.ShouldSelectOne(tableName, t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }

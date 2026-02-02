@@ -16,12 +16,12 @@ func (t *DXRawTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, ret
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-	return t.Database.Update(t.TableName(), data, where, returningFieldNames)
+	return t.Database.Update(t.GetFullTableName(), data, where, returningFieldNames)
 }
 
 // TxUpdate updates within a transaction
 func (t *DXRawTable) TxUpdate(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
-	return dtx.Update(t.TableName(), data, where, returningFieldNames)
+	return dtx.Update(t.GetFullTableName(), data, where, returningFieldNames)
 }
 
 // UpdateSimple is a simplified update that just takes data and where (backward compatible)

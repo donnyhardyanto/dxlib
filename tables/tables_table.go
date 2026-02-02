@@ -125,14 +125,14 @@ func (t *DXTable) TxHardDelete(dtx *databases.DXDatabaseTx, where utils.JSON) (s
 
 // NewQueryBuilder creates a QueryBuilder with NotDeleted filter pre-applied
 func (t *DXTable) NewQueryBuilder() *QueryBuilder {
-	qb := NewQueryBuilder(t.GetDbType())
+	qb := NewQueryBuilder(t.GetDbType(), t)
 	qb.NotDeleted()
 	return qb
 }
 
 // NewQueryBuilderRaw creates a QueryBuilder without a NotDeleted filter (for special cases)
 func (t *DXTable) NewQueryBuilderRaw() *QueryBuilder {
-	return NewQueryBuilder(t.GetDbType())
+	return NewQueryBuilder(t.GetDbType(), t)
 }
 
 // addNotDeletedToWhere adds is_deleted filter to the existing WHERE clause
@@ -213,7 +213,7 @@ func (t *DXTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.R
 	if existing == nil {
 		t.SetInsertAuditFields(nil, data)
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := t.Database.Insert(t.TableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := t.Database.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -222,7 +222,7 @@ func (t *DXTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.R
 	}
 
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := t.Database.Update(t.TableName(), data, where, nil)
+	result, _, err := t.Database.Update(t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -236,7 +236,7 @@ func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where u
 	if existing == nil {
 		t.SetInsertAuditFields(nil, data)
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := dtx.Insert(t.TableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := dtx.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -245,7 +245,7 @@ func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where u
 	}
 
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := dtx.Update(t.TableName(), data, where, nil)
+	result, _, err := dtx.Update(t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 

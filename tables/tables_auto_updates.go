@@ -28,7 +28,7 @@ func (t *DXRawTable) TxUpdateAuto(
 			return nil, nil, err
 		}
 	}
-	return dtx.Update(t.TableName(), data, where, returningFieldNames)
+	return dtx.Update(t.GetFullTableName(), data, where, returningFieldNames)
 }
 
 // UpdateAuto updates using table's EncryptionColumnDefs and EncryptionKeyDefs (creates transaction if needed)
@@ -44,7 +44,7 @@ func (t *DXRawTable) UpdateAuto(
 
 	if !t.HasEncryptionConfig() {
 		// No encryption at all, no transaction needed
-		return t.Database.Update(t.TableName(), data, where, returningFieldNames)
+		return t.Database.Update(t.GetFullTableName(), data, where, returningFieldNames)
 	}
 
 	// Encryption configured, need transaction

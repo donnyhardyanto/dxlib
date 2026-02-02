@@ -3,6 +3,7 @@ package tables
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/api"
@@ -19,136 +20,199 @@ import (
 
 // QueryBuilder builds SQL WHERE clauses with fluent API
 type QueryBuilder struct {
-	conditions []string
-	args       utils.JSON
-	dbType     base.DXDatabaseType
+	Conditions     []string
+	Args           utils.JSON
+	DbType         base.DXDatabaseType
+	TableInterface DXRawTableInterface
+	Error          error
 }
 
 // NewQueryBuilder creates a new QueryBuilder
-func NewQueryBuilder(dbType base.DXDatabaseType) *QueryBuilder {
+func NewQueryBuilder(dbType base.DXDatabaseType, tableInterface DXRawTableInterface) *QueryBuilder {
 	return &QueryBuilder{
-		conditions: []string{},
-		args:       utils.JSON{},
-		dbType:     dbType,
+		Conditions:     []string{},
+		Args:           utils.JSON{},
+		DbType:         dbType,
+		TableInterface: tableInterface,
 	}
 }
 
 // And adds a raw condition with AND
 func (qb *QueryBuilder) And(condition string) *QueryBuilder {
 	if condition != "" {
-		qb.conditions = append(qb.conditions, condition)
+		qb.Conditions = append(qb.Conditions, condition)
+	}
+	return qb
+}
+
+func (qb *QueryBuilder) IsFieldExist(fieldName string) bool {
+	if qb.TableInterface == nil {
+		return false
+	}
+	searchFieldNames := qb.TableInterface.GetSearchTextFieldNames()
+	if !slices.Contains(searchFieldNames, fieldName) {
+		return false
+	}
+	return true
+}
+
+func (qb *QueryBuilder) CheckFieldExist(fieldName string) *QueryBuilder {
+	if qb.TableInterface == nil {
+		qb.Error = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:TABLE_NOT_SET:%s", fieldName))
+		return qb
+	}
+	searchFieldNames := qb.TableInterface.GetSearchTextFieldNames()
+	if !slices.Contains(searchFieldNames, fieldName) {
+		qb.Error = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:INVALID_FIELD_NAME_IN_TABLE:%s:", qb.TableInterface.GetFullTableName(), fieldName))
+		return qb
 	}
 	return qb
 }
 
 // Eq adds field = value condition
-func (qb *QueryBuilder) Eq(field string, value any) *QueryBuilder {
-	qb.conditions = append(qb.conditions, fmt.Sprintf("%s = :%s", field, field))
-	qb.args[field] = value
+func (qb *QueryBuilder) Eq(fieldName string, value any) *QueryBuilder {
+	qb.CheckFieldExist(fieldName)
+	if qb.Error != nil {
+		return qb
+	}
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s = :%s", fieldName, fieldName))
+	qb.Args[fieldName] = value
 	return qb
 }
 
 // Ne adds field != value condition
-func (qb *QueryBuilder) Ne(field string, value any) *QueryBuilder {
-	qb.conditions = append(qb.conditions, fmt.Sprintf("%s != :%s", field, field))
-	qb.args[field] = value
+func (qb *QueryBuilder) Ne(fieldName string, value any) *QueryBuilder {
+	qb.CheckFieldExist(fieldName)
+	if qb.Error != nil {
+		return qb
+	}
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s != :%s", fieldName, fieldName))
+	qb.Args[fieldName] = value
 	return qb
 }
 
 // Like adds field LIKE value condition (case-sensitive)
-func (qb *QueryBuilder) Like(field string, value string) *QueryBuilder {
-	qb.conditions = append(qb.conditions, fmt.Sprintf("%s LIKE :%s", field, field))
-	qb.args[field] = "%" + value + "%"
+func (qb *QueryBuilder) Like(fieldName string, value string) *QueryBuilder {
+	qb.CheckFieldExist(fieldName)
+	if qb.Error != nil {
+		return qb
+	}
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s LIKE :%s", fieldName, fieldName))
+	qb.Args[fieldName] = "%" + value + "%"
 	return qb
 }
 
 // ILike adds field ILIKE value condition (case-insensitive, PostgreSQL)
-func (qb *QueryBuilder) ILike(field string, value string) *QueryBuilder {
-	qb.conditions = append(qb.conditions, fmt.Sprintf("%s ILIKE :%s", field, field))
-	qb.args[field] = "%" + value + "%"
+func (qb *QueryBuilder) ILike(fieldName string, value string) *QueryBuilder {
+	qb.CheckFieldExist(fieldName)
+	if qb.Error != nil {
+		return qb
+	}
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s ILIKE :%s", fieldName, fieldName))
+	qb.Args[fieldName] = "%" + value + "%"
 	return qb
 }
 
 // SearchLike adds OR condition for multiple fields with ILIKE
-func (qb *QueryBuilder) SearchLike(value string, fields ...string) *QueryBuilder {
-	if value == "" || len(fields) == 0 {
+func (qb *QueryBuilder) SearchLike(value string, fieldNames ...string) *QueryBuilder {
+	if value == "" || len(fieldNames) == 0 {
 		return qb
 	}
 	var parts []string
-	for i, field := range fields {
+	for i, fieldName := range fieldNames {
+		qb.CheckFieldExist(fieldName)
+		if qb.Error != nil {
+			return qb
+		}
 		argName := fmt.Sprintf("search_%d", i)
-		parts = append(parts, fmt.Sprintf("%s ILIKE :%s", field, argName))
-		qb.args[argName] = "%" + value + "%"
+		parts = append(parts, fmt.Sprintf("%s ILIKE :%s", fieldName, argName))
+		qb.Args[argName] = "%" + value + "%"
 	}
-	qb.conditions = append(qb.conditions, "("+strings.Join(parts, " OR ")+")")
+	qb.Conditions = append(qb.Conditions, "("+strings.Join(parts, " OR ")+")")
 	return qb
 }
 
 // In adds field IN (values) condition
-func (qb *QueryBuilder) In(field string, values any) *QueryBuilder {
-	qb.conditions = append(qb.conditions, qb.buildInClause(field, values))
+func (qb *QueryBuilder) In(fieldName string, values any) *QueryBuilder {
+	qb.CheckFieldExist(fieldName)
+	if qb.Error != nil {
+		return qb
+	}
+	qb.Conditions = append(qb.Conditions, qb.buildInClause(fieldName, values))
 	return qb
 }
 
 // InInt64 adds field IN (values) for int64 slice
-func (qb *QueryBuilder) InInt64(field string, values []int64) *QueryBuilder {
+func (qb *QueryBuilder) InInt64(fieldName string, values []int64) *QueryBuilder {
 	if len(values) == 0 {
+		return qb
+	}
+	qb.CheckFieldExist(fieldName)
+	if qb.Error != nil {
 		return qb
 	}
 	var strVals []string
 	for _, v := range values {
 		strVals = append(strVals, fmt.Sprintf("%d", v))
 	}
-	qb.conditions = append(qb.conditions, fmt.Sprintf("%s IN (%s)", field, strings.Join(strVals, ", ")))
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s IN (%s)", fieldName, strings.Join(strVals, ", ")))
 	return qb
 }
 
 // InStrings adds field IN (values) for string slice
-func (qb *QueryBuilder) InStrings(field string, values []string) *QueryBuilder {
+func (qb *QueryBuilder) InStrings(fieldName string, values []string) *QueryBuilder {
 	if len(values) == 0 {
+		return qb
+	}
+	qb.CheckFieldExist(fieldName)
+	if qb.Error != nil {
 		return qb
 	}
 	var quotedVals []string
 	for _, v := range values {
 		quotedVals = append(quotedVals, fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''")))
 	}
-	qb.conditions = append(qb.conditions, fmt.Sprintf("%s IN (%s)", field, strings.Join(quotedVals, ", ")))
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s IN (%s)", fieldName, strings.Join(quotedVals, ", ")))
 	return qb
 }
 
 // NotDeleted adds is_deleted = false condition (databases-aware)
 func (qb *QueryBuilder) NotDeleted() *QueryBuilder {
-	switch qb.dbType {
+	switch qb.DbType {
 	case base.DXDatabaseTypeSQLServer:
-		qb.conditions = append(qb.conditions, "is_deleted = 0")
+		qb.Conditions = append(qb.Conditions, "is_deleted = 0")
 	default:
-		qb.conditions = append(qb.conditions, "is_deleted = false")
+		qb.Conditions = append(qb.Conditions, "is_deleted = false")
 	}
 	return qb
 }
 
 // OrAnyLocationCode adds OR condition for multiple location code fields
-func (qb *QueryBuilder) OrAnyLocationCode(locationCode string, fields ...string) *QueryBuilder {
-	if locationCode == "" || len(fields) == 0 {
+func (qb *QueryBuilder) OrAnyLocationCode(locationCode string, fieldNames ...string) *QueryBuilder {
+	if locationCode == "" || len(fieldNames) == 0 {
 		return qb
 	}
 	var parts []string
-	for _, field := range fields {
-		parts = append(parts, fmt.Sprintf("%s = '%s'", field, strings.ReplaceAll(locationCode, "'", "''")))
+	for _, fieldName := range fieldNames {
+		qb.CheckFieldExist(fieldName)
+		if qb.Error != nil {
+			return qb
+		}
+		parts = append(parts, fmt.Sprintf("%s = '%s'", fieldName, strings.ReplaceAll(locationCode, "'", "''")))
 	}
-	qb.conditions = append(qb.conditions, "("+strings.Join(parts, " OR ")+")")
+	qb.Conditions = append(qb.Conditions, "("+strings.Join(parts, " OR ")+")")
 	return qb
 }
 
-// Build returns the WHERE clause string and args
+// Build returns the WHERE clause string and Args
 func (qb *QueryBuilder) Build() (string, utils.JSON) {
-	if len(qb.conditions) == 0 {
-		return "", qb.args
+	if len(qb.Conditions) == 0 {
+		return "", qb.Args
 	}
-	return strings.Join(qb.conditions, " AND "), qb.args
+	return strings.Join(qb.Conditions, " AND "), qb.Args
 }
 
-// BuildWithPrefix returns WHERE clause with prefix for combining with existing conditions
+// BuildWithPrefix returns WHERE clause with prefix for combining with existing Conditions
 func (qb *QueryBuilder) BuildWithPrefix(existingWhere string) (string, utils.JSON) {
 	where, args := qb.Build()
 	if existingWhere != "" && where != "" {
@@ -160,7 +224,7 @@ func (qb *QueryBuilder) BuildWithPrefix(existingWhere string) (string, utils.JSO
 	return where, args
 }
 
-func (qb *QueryBuilder) buildInClause(field string, values any) string {
+func (qb *QueryBuilder) buildInClause(fieldName string, values any) string {
 	switch v := values.(type) {
 	case []int64:
 		if len(v) == 0 {
@@ -170,7 +234,7 @@ func (qb *QueryBuilder) buildInClause(field string, values any) string {
 		for _, val := range v {
 			strVals = append(strVals, fmt.Sprintf("%d", val))
 		}
-		return fmt.Sprintf("%s IN (%s)", field, strings.Join(strVals, ", "))
+		return fmt.Sprintf("%s IN (%s)", fieldName, strings.Join(strVals, ", "))
 	case []string:
 		if len(v) == 0 {
 			return "1=0"
@@ -179,9 +243,9 @@ func (qb *QueryBuilder) buildInClause(field string, values any) string {
 		for _, val := range v {
 			quotedVals = append(quotedVals, fmt.Sprintf("'%s'", strings.ReplaceAll(val, "'", "''")))
 		}
-		return fmt.Sprintf("%s IN (%s)", field, strings.Join(quotedVals, ", "))
+		return fmt.Sprintf("%s IN (%s)", fieldName, strings.Join(quotedVals, ", "))
 	default:
-		return fmt.Sprintf("%s IN (%v)", field, values)
+		return fmt.Sprintf("%s IN (%v)", fieldName, values)
 	}
 }
 

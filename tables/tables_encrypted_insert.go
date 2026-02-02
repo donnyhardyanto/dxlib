@@ -35,7 +35,7 @@ func (t *DXRawTable) TxInsertWithEncryption(
 	}
 
 	// Build and execute INSERT
-	return executeEncryptedInsert(dtx, t.TableName(), dbType, data, encryptionColumns, returningFieldNames)
+	return executeEncryptedInsert(dtx, t.GetFullTableName(), dbType, data, encryptionColumns, returningFieldNames)
 }
 
 // InsertWithEncryption inserts with encrypted columns (creates transaction internally)

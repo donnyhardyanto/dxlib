@@ -37,7 +37,7 @@ func (t *DXRawTable) TxUpdateWithEncryption(
 	}
 
 	// Build and execute UPDATE
-	return executeEncryptedUpdate(dtx, t.TableName(), dbType, data, encryptionColumns, where, returningFieldNames)
+	return executeEncryptedUpdate(dtx, t.GetFullTableName(), dbType, data, encryptionColumns, where, returningFieldNames)
 }
 
 // UpdateWithEncryption updates with encrypted columns (creates transaction internally)

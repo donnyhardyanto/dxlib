@@ -19,7 +19,7 @@ func (t *DXRawTable) TxSelectWithEncryption(dtx *databases.DXDatabaseTx, fieldNa
 	// Use table name instead of view when FOR UPDATE is requested (views with outer joins don't support FOR UPDATE)
 	tableName := t.ListViewNameId
 	if forUpdatePart != nil && forUpdatePart == true {
-		tableName = t.TableName()
+		tableName = t.GetFullTableName()
 	}
 
 	dbType := t.Database.DatabaseType
@@ -42,7 +42,7 @@ func (t *DXRawTable) TxSelectOneWithEncryption(dtx *databases.DXDatabaseTx, fiel
 	// Use table name instead of view when FOR UPDATE is requested (views with outer joins don't support FOR UPDATE)
 	tableName := t.ListViewNameId
 	if forUpdatePart != nil && forUpdatePart == true {
-		tableName = t.TableName()
+		tableName = t.GetFullTableName()
 	}
 
 	dbType := t.Database.DatabaseType

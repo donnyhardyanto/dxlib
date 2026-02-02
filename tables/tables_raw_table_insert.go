@@ -16,12 +16,12 @@ func (t *DXRawTable) Insert(l *log.DXLog, data utils.JSON, returningFieldNames [
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-	return t.Database.Insert(t.TableName(), data, returningFieldNames)
+	return t.Database.Insert(t.GetFullTableName(), data, returningFieldNames)
 }
 
 // TxInsert inserts within a transaction
 func (t *DXRawTable) TxInsert(dtx *databases.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
-	return dtx.Insert(t.TableName(), data, returningFieldNames)
+	return dtx.Insert(t.GetFullTableName(), data, returningFieldNames)
 }
 
 // InsertReturningId is a simplified insert that returns just the new ID (backward compatible)
@@ -55,7 +55,7 @@ func (t *DXRawTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (
 		returningFields = append(returningFields, t.FieldNameForRowUid)
 	}
 
-	_, returningValues, err := t.Database.Insert(t.TableName(), data, returningFields)
+	_, returningValues, err := t.Database.Insert(t.GetFullTableName(), data, returningFields)
 	if err != nil {
 		return 0, err
 	}

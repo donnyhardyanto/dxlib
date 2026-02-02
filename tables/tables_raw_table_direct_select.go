@@ -17,7 +17,7 @@ func (t *DXRawTable) DirectSelect(l *log.DXLog, fieldNames []string, where utils
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-	return t.Database.Select(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
+	return t.Database.Select(t.GetFullTableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
 
 // DirectSelectOne returns a single row from the base table
@@ -26,7 +26,7 @@ func (t *DXRawTable) DirectSelectOne(l *log.DXLog, fieldNames []string, where ut
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-	return t.Database.SelectOne(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
+	return t.Database.SelectOne(t.GetFullTableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
 
 // DirectShouldSelectOne returns a single row from the base table or error if not found
@@ -35,7 +35,7 @@ func (t *DXRawTable) DirectShouldSelectOne(l *log.DXLog, fieldNames []string, wh
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-	return t.Database.ShouldSelectOne(t.TableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
+	return t.Database.ShouldSelectOne(t.GetFullTableName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
 
 // DirectGetById returns a row by ID from the base table
@@ -122,7 +122,7 @@ func (t *DXRawTable) DirectCount(l *log.DXLog, where utils.JSON, joinSQLPart any
 	if err := t.EnsureDatabase(); err != nil {
 		return 0, err
 	}
-	return t.Database.Count(t.TableName(), where, joinSQLPart)
+	return t.Database.Count(t.GetFullTableName(), where, joinSQLPart)
 }
 
 // DirectPaging returns paginated rows from the base table
@@ -137,7 +137,7 @@ func (t *DXRawTable) DirectPaging(l *log.DXLog, rowPerPage, pageIndex int64, whe
 		rowPerPage,
 		pageIndex,
 		"*",
-		t.TableName(),
+		t.GetFullTableName(),
 		whereClause,
 		"",
 		orderBy,
