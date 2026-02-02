@@ -49,6 +49,20 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int
 	return newId, nil
 }
 
+// DoCreate inserts a row with audit fields and writes API response
+func (t *DXTable) DoCreateReturnId(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
+	t.SetInsertAuditFields(aepr, data)
+	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
+	if err != nil {
+		return 0, err
+	}
+	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
+		t.FieldNameForRowId: newId,
+	}))
+	return newId, nil
+}
+
 // RequestCreate handles create API requests (reads parameters and inserts)
 func (t *DXTable) RequestCreate(aepr *api.DXAPIEndPointRequest) error {
 	data := utils.JSON{}
@@ -56,6 +70,16 @@ func (t *DXTable) RequestCreate(aepr *api.DXAPIEndPointRequest) error {
 		data[k] = v.Value
 	}
 	_, err := t.DoCreate(aepr, data)
+	return err
+}
+
+// RequestCreate handles create API requests (reads parameters and inserts)
+func (t *DXTable) RequestCreateReturnId(aepr *api.DXAPIEndPointRequest) error {
+	data := utils.JSON{}
+	for k, v := range aepr.ParameterValues {
+		data[k] = v.Value
+	}
+	_, err := t.DoCreateReturnId(aepr, data)
 	return err
 }
 
