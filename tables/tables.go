@@ -24,6 +24,8 @@ const (
 	DXTableExportFormatXLSX DXTableExportFormat = "xlsx"
 )
 
+var DXTableExportFormatEnumSetAll = []any{DXTableExportFormatXLS, DXTableExportFormatXLSX, DXTableExportFormatCSV}
+
 // QueryBuilder - Fluent API for building WHERE clauses
 
 // QueryBuilder builds SQL WHERE clauses with fluent API

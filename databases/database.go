@@ -49,12 +49,16 @@ const (
 	DXOrderByDirectionDesc DXOrderByDirection = "desc"
 )
 
+var DXOrderByDirectionEnumSetAll = []any{DXOrderByDirectionAsc, DXOrderByDirectionDesc}
+
 type DXOrderByNullPlacement string
 
 const (
-	DXOrderByNullPlacementAsc  DXOrderByNullPlacement = "first"
-	DXOrderByNullPlacementDesc DXOrderByNullPlacement = "last"
+	DXOrderByNullPlacementFirst DXOrderByNullPlacement = "first"
+	DXOrderByNullPlacementLast  DXOrderByNullPlacement = "last"
 )
+
+var DXOrderByNullPlacementEnumSetAll = []any{DXOrderByNullPlacementFirst, DXOrderByNullPlacementLast}
 
 type DXDatabaseTxIsolationLevel = sql.IsolationLevel
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/language"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/xuri/excelize/v2"
 )
@@ -23,10 +24,12 @@ const (
 )
 
 type ExportOptions struct {
-	Format     ExportFormat
-	FilePath   string
-	SheetName  string
-	DateFormat string
+	Format            ExportFormat
+	FilePath          string
+	SheetName         string
+	DateFormat        string
+	Language          language.DXLanguage              // Language for header translation
+	TranslateFallback language.DXTranslateFallbackMode // Fallback mode for missing translations
 }
 
 func ExportQueryResults(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts ExportOptions) error {
@@ -79,7 +82,12 @@ func exportToCSV(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts E
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	if err := writer.Write(rowsInfo.Columns); err != nil {
+	// Translate headers
+	headers := make([]string, len(rowsInfo.Columns))
+	for i, col := range rowsInfo.Columns {
+		headers[i] = language.Translate(col, opts.Language, opts.TranslateFallback)
+	}
+	if err := writer.Write(headers); err != nil {
 		return errors.Errorf("failed to write CSV headers: %+v", err)
 	}
 
@@ -100,7 +108,12 @@ func exportToCSVStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, 
 	buf := new(bytes.Buffer)
 	writer := csv.NewWriter(buf)
 
-	if err := writer.Write(rowsInfo.Columns); err != nil {
+	// Translate headers
+	headers := make([]string, len(rowsInfo.Columns))
+	for i, col := range rowsInfo.Columns {
+		headers[i] = language.Translate(col, opts.Language, opts.TranslateFallback)
+	}
+	if err := writer.Write(headers); err != nil {
 		return nil, errors.Errorf("failed to write CSV headers: %+v", err)
 	}
 
@@ -160,7 +173,8 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, row
 		if err != nil {
 			return errors.Errorf("invalid cell coordinates: %+v", err)
 		}
-		if err := f.SetCellValue(sheetName, cellName, col); err != nil {
+		header := language.Translate(col, opts.Language, opts.TranslateFallback)
+		if err := f.SetCellValue(sheetName, cellName, header); err != nil {
 			return errors.Errorf("failed to write header: %+v", err)
 		}
 	}

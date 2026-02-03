@@ -14,6 +14,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/databases/export"
 	"github.com/donnyhardyanto/dxlib/databases/models"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/language"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -479,16 +480,32 @@ func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest)
 		return err
 	}
 
+	// Get optional language parameter (default: DXLanguageDefault)
+	_, langStr, _ := aepr.GetParameterValueAsString("language")
+	lang := language.DXLanguage(langStr)
+	if langStr == "" {
+		lang = language.DXLanguageDefault
+	}
+
+	// Get optional header_fallback parameter (default: "original")
+	_, headerTranslateFallbackStr, _ := aepr.GetParameterValueAsString("header_translate_fallback")
+	fallback := language.DXTranslateFallbackMode(headerTranslateFallbackStr)
+	if headerTranslateFallbackStr == "" {
+		fallback = language.DXTranslateFallbackModeOriginal
+	}
+
 	pagingResult, err := t.PagingWithBuilder(&aepr.Log, rowPerPage, pageIndex, qb, orderByStr)
 	if err != nil {
 		return err
 	}
 
-	// Set export options
+	// Set export options with language
 	opts := export.ExportOptions{
-		Format:     export.ExportFormat(format),
-		SheetName:  "Sheet1",
-		DateFormat: "2006-01-02 15:04:05",
+		Format:            export.ExportFormat(format),
+		SheetName:         "Sheet1",
+		DateFormat:        "2006-01-02 15:04:05",
+		Language:          lang,
+		TranslateFallback: fallback,
 	}
 
 	// Get file as stream
@@ -582,6 +599,20 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
+	// Get optional language parameter (default: DXLanguageDefault)
+	_, langStr, _ := aepr.GetParameterValueAsString("language")
+	lang := language.DXLanguage(langStr)
+	if langStr == "" {
+		lang = language.DXLanguageDefault
+	}
+
+	// Get optional header_fallback parameter (default: "original")
+	_, fallbackStr, _ := aepr.GetParameterValueAsString("header_fallback")
+	fallback := language.DXTranslateFallbackMode(fallbackStr)
+	if fallbackStr == "" {
+		fallback = language.DXTranslateFallbackModeOriginal
+	}
+
 	rowsInfo, list, _, _, _, err := db.NamedQueryPaging(
 		t.Database.Connection,
 		db.DXDatabaseTableFieldTypeMapping(t.FieldTypeMapping),
@@ -599,11 +630,13 @@ func (t *DXRawTable) RequestListDownload(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	// Set export options
+	// Set export options with language
 	opts := export.ExportOptions{
-		Format:     export.ExportFormat(format),
-		SheetName:  "Sheet1",
-		DateFormat: "2006-01-02 15:04:05",
+		Format:            export.ExportFormat(format),
+		SheetName:         "Sheet1",
+		DateFormat:        "2006-01-02 15:04:05",
+		Language:          lang,
+		TranslateFallback: fallback,
 	}
 
 	// Get file as stream
