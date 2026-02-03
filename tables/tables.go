@@ -425,6 +425,7 @@ func DoNamedQueryPagingResponseWithBuilder(
 type DXTableManager struct {
 	Tables                               map[string]*DXTable
 	RawTables                            map[string]*DXRawTable
+	AuditOnlyTables                      map[string]*DXTableAuditOnly
 	StandardOperationResponsePossibility map[string]*api.DXAPIEndPointResponsePossibilities
 }
 
@@ -437,6 +438,12 @@ func (tm *DXTableManager) ConnectAll() error {
 		}
 	}
 	for _, t := range tm.RawTables {
+		err := t.EnsureDatabase()
+		if err != nil {
+			return err
+		}
+	}
+	for _, t := range tm.AuditOnlyTables {
 		err := t.EnsureDatabase()
 		if err != nil {
 			return err
@@ -616,8 +623,9 @@ var (
 
 // Manager is the global table3 manager instance
 var Manager = DXTableManager{
-	Tables:    make(map[string]*DXTable),
-	RawTables: make(map[string]*DXRawTable),
+	Tables:          make(map[string]*DXTable),
+	RawTables:       make(map[string]*DXRawTable),
+	AuditOnlyTables: make(map[string]*DXTableAuditOnly),
 	StandardOperationResponsePossibility: map[string]*api.DXAPIEndPointResponsePossibilities{
 		"create": &DXAPIEndPointResponsePossibilityCreate,
 		"read":   &DXAPIEndPointResponsePossibilityRead,
@@ -637,6 +645,11 @@ func (m *DXTableManager) RegisterRawTable(name string, table *DXRawTable) {
 	m.RawTables[name] = table
 }
 
+// RegisterAuditOnlyTable registers a DXTableAuditOnly with the manager
+func (m *DXTableManager) RegisterAuditOnlyTable(name string, table *DXTableAuditOnly) {
+	m.AuditOnlyTables[name] = table
+}
+
 // GetTable returns a registered DXTable by name
 func (m *DXTableManager) GetTable(name string) *DXTable {
 	return m.Tables[name]
@@ -645,6 +658,11 @@ func (m *DXTableManager) GetTable(name string) *DXTable {
 // GetRawTable returns a registered DXRawTable by name
 func (m *DXTableManager) GetRawTable(name string) *DXRawTable {
 	return m.RawTables[name]
+}
+
+// GetAuditOnlyTable returns a registered DXTableAuditOnly by name
+func (m *DXTableManager) GetAuditOnlyTable(name string) *DXTableAuditOnly {
+	return m.AuditOnlyTables[name]
 }
 
 // Factory Functions
@@ -769,6 +787,29 @@ func NewDXTableWithEncryption(
 			ResponseEnvelopeObjectName:      responseEnvelopeObjectName,
 			EncryptionKeyDefs:               encryptionKeyDefs,
 			EncryptionColumnDefs:            encryptionColumnDefs,
+			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+			SearchTextFieldNames:            searchTextFieldNames,
+			OrderByFieldNames:               orderByFieldNames,
+		},
+	}
+}
+
+// NewDXTableAuditOnlySimple creates a DXTableAuditOnly with direct table name
+// Use this for tables that have audit fields (created_at, created_by_*, last_modified_*) but NO is_deleted column
+func NewDXTableAuditOnlySimple(
+	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
+	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXTableAuditOnly {
+	return &DXTableAuditOnly{
+		DXRawTable: DXRawTable{
+			DatabaseNameId:                  databaseNameId,
+			TableNameDirect:                 tableName,
+			ResultObjectName:                resultObjectName,
+			ListViewNameId:                  listViewNameId,
+			FieldNameForRowId:               fieldNameForRowId,
+			FieldNameForRowUid:              fieldNameForRowUid,
+			FieldNameForRowNameId:           fieldNameForRowNameId,
+			ResponseEnvelopeObjectName:      responseEnvelopeObjectName,
+			EncryptionKeyDefs:               encryptionKeyDefs,
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
