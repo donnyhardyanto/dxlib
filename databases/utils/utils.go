@@ -104,6 +104,25 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
 		if err != nil {
 			return errors.Errorf("failed to kill connections: %+v", err)
 		}
+	case "mysql":
+		query := fmt.Sprintf(`
+            SELECT CONCAT('KILL ', id, ';')
+            FROM information_schema.processlist
+            WHERE db = '%s'
+              AND id != CONNECTION_ID();
+        `, dbName)
+		rows, err := db.Query(query)
+		if err != nil {
+			return errors.Errorf("failed to get connections: %+v", err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var killStmt string
+			if err := rows.Scan(&killStmt); err != nil {
+				continue
+			}
+			_, _ = db.Exec(killStmt)
+		}
 	default:
 		return errors.Errorf("unsupported databases driver: %s", driverName)
 	}
@@ -153,6 +172,8 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
                 END LOOP;
             END;
         `, dbName, dbName, dbName)
+	case "mysql":
+		query = fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", dbName)
 	default:
 		return errors.Errorf("unsupported databases driver: %s", driverName)
 	}
@@ -184,6 +205,8 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
                 EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO %s';
             END;
         `, dbName, dbName, dbName)
+	case "mysql":
+		query = fmt.Sprintf("CREATE DATABASE `%s`", dbName)
 	default:
 		return errors.Errorf("unsupported databases driver: %s", driverName)
 	}
