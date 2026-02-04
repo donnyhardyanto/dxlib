@@ -90,6 +90,89 @@ func (qb *QueryBuilder) Eq(fieldName string, value any) *QueryBuilder {
 	return qb
 }
 
+// EqOrIn adds field = value for single values, or field IN (values) for arrays
+// This is useful for filter_key_values where values can be either single or array
+// Supports: []any, []string, []int64, []float64 (converted to []int64)
+func (qb *QueryBuilder) EqOrIn(fieldName string, value any) *QueryBuilder {
+	qb.CheckFieldExist(fieldName)
+	if qb.Error != nil {
+		return qb
+	}
+
+	switch v := value.(type) {
+	case []any:
+		return qb.inFromAnySlice(fieldName, v)
+	case []string:
+		if len(v) == 0 {
+			return qb
+		}
+		return qb.InStrings(fieldName, v)
+	case []int64:
+		if len(v) == 0 {
+			return qb
+		}
+		return qb.InInt64(fieldName, v)
+	case []float64:
+		if len(v) == 0 {
+			return qb
+		}
+		var int64Vals []int64
+		for _, f := range v {
+			int64Vals = append(int64Vals, int64(f))
+		}
+		return qb.InInt64(fieldName, int64Vals)
+	default:
+		// Single value - use Eq
+		qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s = :%s", fieldName, fieldName))
+		qb.Args[fieldName] = value
+		return qb
+	}
+}
+
+// inFromAnySlice handles []any from JSON parsing and converts to appropriate IN clause
+func (qb *QueryBuilder) inFromAnySlice(fieldName string, values []any) *QueryBuilder {
+	if len(values) == 0 {
+		return qb
+	}
+
+	// Detect type from first element
+	first := values[0]
+	switch first.(type) {
+	case string:
+		var strVals []string
+		for _, v := range values {
+			if s, ok := v.(string); ok {
+				strVals = append(strVals, s)
+			}
+		}
+		return qb.InStrings(fieldName, strVals)
+	case float64:
+		// JSON numbers are parsed as float64
+		var int64Vals []int64
+		for _, v := range values {
+			if f, ok := v.(float64); ok {
+				int64Vals = append(int64Vals, int64(f))
+			}
+		}
+		return qb.InInt64(fieldName, int64Vals)
+	case int64:
+		var int64Vals []int64
+		for _, v := range values {
+			if i, ok := v.(int64); ok {
+				int64Vals = append(int64Vals, i)
+			}
+		}
+		return qb.InInt64(fieldName, int64Vals)
+	default:
+		// Fallback: treat as strings
+		var strVals []string
+		for _, v := range values {
+			strVals = append(strVals, fmt.Sprintf("%v", v))
+		}
+		return qb.InStrings(fieldName, strVals)
+	}
+}
+
 // Ne adds field != value condition
 func (qb *QueryBuilder) Ne(fieldName string, value any) *QueryBuilder {
 	qb.CheckFieldExist(fieldName)

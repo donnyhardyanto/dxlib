@@ -358,7 +358,7 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 	}
 	if isFilterKeyValuesExist && filterKeyValues != nil {
 		for k, v := range filterKeyValues {
-			qb.Eq(k, v)
+			qb.EqOrIn(k, v)
 		}
 	}
 
@@ -416,7 +416,7 @@ func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest)
 	}
 	if isFilterKeyValuesExist && filterKeyValues != nil {
 		for k, v := range filterKeyValues {
-			qb.Eq(k, v)
+			qb.EqOrIn(k, v)
 		}
 	}
 
