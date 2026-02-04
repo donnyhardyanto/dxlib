@@ -24,6 +24,7 @@ import (
 
 type DXRawTableInterface interface {
 	GetSearchTextFieldNames() []string
+	GetOrderByFieldNames() []string
 	GetFullTableName() string
 }
 
@@ -81,6 +82,10 @@ func (t *DXRawTable) GetFullTableName() string {
 
 func (t *DXRawTable) GetSearchTextFieldNames() []string {
 	return t.SearchTextFieldNames
+}
+
+func (t *DXRawTable) GetOrderByFieldNames() []string {
+	return t.OrderByFieldNames
 }
 
 // Delete Operations (Hard Delete)
@@ -302,6 +307,9 @@ func (t *DXRawTable) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest,
 	return t.DoPagingResponse(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
 
+// Deprecated: BuildOrderByString is vulnerable to SQL injection (SQLI-012).
+// Use QueryBuilder.BuildOrderByString() instead which validates field names against
+// OrderByFieldNames whitelist and validates direction/null_order values.
 func BuildOrderByString(orderByArray []any) string {
 	if len(orderByArray) == 0 {
 		return ""
@@ -341,7 +349,6 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 	if err != nil {
 		return err
 	}
-	orderByStr := BuildOrderByString(orderByArray)
 
 	isIncludeDeletedExist, isIncludeDeleted, err := aepr.GetParameterValueAsBool("is_include_deleted")
 	if err != nil {
@@ -368,6 +375,12 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 				qb.Eq("is_deleted", false)
 			}
 		}
+	}
+
+	// Build order by with validation
+	orderByStr, err := qb.BuildOrderByString(orderByArray)
+	if err != nil {
+		return err
 	}
 
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
@@ -404,7 +417,6 @@ func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest)
 	if err != nil {
 		return err
 	}
-	orderByStr := BuildOrderByString(orderByArray)
 
 	if err := t.EnsureDatabase(); err != nil {
 		return err
@@ -418,6 +430,11 @@ func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest)
 		for k, v := range filterKeyValues {
 			qb.EqOrIn(k, v)
 		}
+	}
+
+	orderByStr, err := qb.BuildOrderByString(orderByArray)
+	if err != nil {
+		return err
 	}
 
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")

@@ -300,6 +300,68 @@ func (qb *QueryBuilder) OrAnyLocationCode(locationCode string, fieldNames ...str
 	return qb
 }
 
+// BuildOrderByString validates and builds ORDER BY clause from API input array
+// Each entry should have: field_name (required), direction (required: asc/desc), null_order (optional: first/last)
+func (qb *QueryBuilder) BuildOrderByString(orderByArray []any) (string, error) {
+	if qb.TableInterface == nil {
+		return "", errors.New("SHOULD_NOT_HAPPEN:TABLE_NOT_SET_FOR_ORDER_BY")
+	}
+
+	if len(orderByArray) == 0 {
+		return "", nil
+	}
+
+	allowedFields := qb.TableInterface.GetOrderByFieldNames()
+	if len(allowedFields) == 0 {
+		return "", errors.New("SHOULD_NOT_HAPPEN:ORDER_BY_FIELD_NAMES_NOT_CONFIGURED")
+	}
+
+	var parts []string
+	for _, item := range orderByArray {
+		entry, ok := item.(utils.JSON)
+		if !ok {
+			continue
+		}
+
+		fieldName, _ := entry["field_name"].(string)
+		direction, _ := entry["direction"].(string)
+		nullOrder, _ := entry["null_order"].(string)
+
+		// Validate field_name against allowed list
+		if fieldName == "" {
+			continue
+		}
+		if !slices.Contains(allowedFields, fieldName) {
+			return "", errors.Errorf("INVALID_ORDER_BY_FIELD_NAME:%s", fieldName)
+		}
+
+		// Validate direction (must be asc or desc, case-insensitive)
+		if direction == "" {
+			continue
+		}
+		direction = strings.ToLower(direction)
+		if direction != string(databases.DXOrderByDirectionAsc) && direction != string(databases.DXOrderByDirectionDesc) {
+			return "", errors.Errorf("INVALID_ORDER_BY_DIRECTION:%s", direction)
+		}
+
+		// Build the order by part with quoted identifier
+		part := qb.quoteIdentifier(fieldName) + " " + strings.ToUpper(direction)
+
+		// Validate null_order if provided (must be first or last, case-insensitive)
+		if nullOrder != "" {
+			nullOrder = strings.ToLower(nullOrder)
+			if nullOrder != string(databases.DXOrderByNullPlacementFirst) && nullOrder != string(databases.DXOrderByNullPlacementLast) {
+				return "", errors.Errorf("INVALID_ORDER_BY_NULL_PLACEMENT:%s", nullOrder)
+			}
+			part += " NULLS " + strings.ToUpper(nullOrder)
+		}
+
+		parts = append(parts, part)
+	}
+
+	return strings.Join(parts, ", "), nil
+}
+
 // Build returns the WHERE clause string and Args
 func (qb *QueryBuilder) Build() (string, utils.JSON, error) {
 	if qb.Error != nil {
