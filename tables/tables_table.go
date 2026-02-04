@@ -254,51 +254,6 @@ func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where u
 
 // API Request Helpers
 
-// RequestPagingList handles list/paging API requests (with is_deleted filter)
-func (t *DXTable) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
-	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterWhere {
-		filterWhere = ""
-	}
-
-	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterOrderBy {
-		filterOrderBy = ""
-	}
-
-	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterKeyValues {
-		filterKeyValues = nil
-	}
-
-	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
-	if err != nil {
-		return err
-	}
-
-	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
-	if err != nil {
-		return err
-	}
-
-	result, err := t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
-	if err != nil {
-		return err
-	}
-
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, result.ToResponseJSON())
-	return nil
-}
-
 // DoRequestPagingList handles paging with optional result processing.
 // If the request contains an "is_deleted" parameter set to true, deleted records are included.
 // Otherwise, only non-deleted records are returned (is_deleted=false filter applied).
@@ -375,36 +330,9 @@ func (t *DXTable) RequestPagingListAll(aepr *api.DXAPIEndPointRequest) error {
 	return t.DoRequestPagingList(aepr, "", "", nil, nil)
 }
 
-// RequestList handles list API requests (with filters from parameters)
-func (t *DXTable) RequestList(aepr *api.DXAPIEndPointRequest) error {
-	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterWhere {
-		filterWhere = ""
-	}
-	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterOrderBy {
-		filterOrderBy = ""
-	}
-	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterKeyValues {
-		filterKeyValues = nil
-	}
-
-	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
-}
-
 // RequestListAll handles list all API requests (no paging, all records)
 func (t *DXTable) RequestListAll(aepr *api.DXAPIEndPointRequest) error {
-	return t.RequestList(aepr)
+	return t.RequestSearchPagingList(aepr)
 }
 
 // RequestSoftDeleteByUid handles soft delete by UID API requests

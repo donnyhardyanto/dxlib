@@ -386,11 +386,6 @@ func (t *DXTableAuditOnly) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest
 
 // API Request Helpers - pass through to DXRawTable (NO is_deleted filter)
 
-// RequestPagingList handles list/paging API requests (NO is_deleted filter)
-func (t *DXTableAuditOnly) RequestPagingList(aepr *api.DXAPIEndPointRequest) error {
-	return t.DXRawTable.RequestPagingList(aepr)
-}
-
 // DoRequestPagingList handles paging with optional result processing (NO is_deleted filter)
 func (t *DXTableAuditOnly) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) error {
 	return t.DXRawTable.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, onResultList)
@@ -401,36 +396,9 @@ func (t *DXTableAuditOnly) RequestPagingListAll(aepr *api.DXAPIEndPointRequest) 
 	return t.DoRequestPagingList(aepr, "", "", nil, nil)
 }
 
-// RequestList handles list API requests (with filters from parameters)
-func (t *DXTableAuditOnly) RequestList(aepr *api.DXAPIEndPointRequest) error {
-	isExistFilterWhere, filterWhere, err := aepr.GetParameterValueAsString("filter_where")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterWhere {
-		filterWhere = ""
-	}
-	isExistFilterOrderBy, filterOrderBy, err := aepr.GetParameterValueAsString("filter_order_by")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterOrderBy {
-		filterOrderBy = ""
-	}
-	isExistFilterKeyValues, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
-	if err != nil {
-		return err
-	}
-	if !isExistFilterKeyValues {
-		filterKeyValues = nil
-	}
-
-	return t.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, nil)
-}
-
 // RequestListAll handles list all API requests (no paging, all records)
 func (t *DXTableAuditOnly) RequestListAll(aepr *api.DXAPIEndPointRequest) error {
-	return t.RequestList(aepr)
+	return t.RequestSearchPagingList(aepr)
 }
 
 // Select helpers - pass through to DXRawTable (NO is_deleted filter)
