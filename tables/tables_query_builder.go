@@ -43,6 +43,21 @@ func (qb *QueryBuilder) And(condition string) *QueryBuilder {
 	return qb
 }
 
+// quoteIdentifier quotes a SQL identifier based on database type to prevent SQL injection
+func (qb *QueryBuilder) quoteIdentifier(identifier string) string {
+	switch qb.DbType {
+	case base.DXDatabaseTypeSQLServer:
+		// SQL Server uses [identifier] - escape ] as ]]
+		return "[" + strings.ReplaceAll(identifier, "]", "]]") + "]"
+	case base.DXDatabaseTypePostgreSQL, base.DXDatabaseTypeMariaDB, base.DXDatabaseTypeOracle:
+		// PostgreSQL, MariaDB, Oracle use "identifier" - escape " as ""
+		return "\"" + strings.ReplaceAll(identifier, "\"", "\"\"") + "\""
+	default:
+		// PostgreSQL style as fallback
+		return "\"" + strings.ReplaceAll(identifier, "\"", "\"\"") + "\""
+	}
+}
+
 func (qb *QueryBuilder) IsFieldExist(fieldName string) bool {
 	if qb.TableInterface == nil {
 		return false
@@ -73,7 +88,7 @@ func (qb *QueryBuilder) Eq(fieldName string, value any) *QueryBuilder {
 	if qb.Error != nil {
 		return qb
 	}
-	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s = :%s", fieldName, fieldName))
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s = :%s", qb.quoteIdentifier(fieldName), fieldName))
 	qb.Args[fieldName] = value
 	return qb
 }
@@ -111,7 +126,7 @@ func (qb *QueryBuilder) EqOrIn(fieldName string, value any) *QueryBuilder {
 		return qb.InInt64(fieldName, int64Vals)
 	default:
 		// Single value - use Eq
-		qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s = :%s", fieldName, fieldName))
+		qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s = :%s", qb.quoteIdentifier(fieldName), fieldName))
 		qb.Args[fieldName] = value
 		return qb
 	}
@@ -167,7 +182,7 @@ func (qb *QueryBuilder) Ne(fieldName string, value any) *QueryBuilder {
 	if qb.Error != nil {
 		return qb
 	}
-	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s != :%s", fieldName, fieldName))
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s != :%s", qb.quoteIdentifier(fieldName), fieldName))
 	qb.Args[fieldName] = value
 	return qb
 }
@@ -178,7 +193,7 @@ func (qb *QueryBuilder) Like(fieldName string, value string) *QueryBuilder {
 	if qb.Error != nil {
 		return qb
 	}
-	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s LIKE :%s", fieldName, fieldName))
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s LIKE :%s", qb.quoteIdentifier(fieldName), fieldName))
 	qb.Args[fieldName] = "%" + value + "%"
 	return qb
 }
@@ -189,7 +204,7 @@ func (qb *QueryBuilder) ILike(fieldName string, value string) *QueryBuilder {
 	if qb.Error != nil {
 		return qb
 	}
-	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s ILIKE :%s", fieldName, fieldName))
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s ILIKE :%s", qb.quoteIdentifier(fieldName), fieldName))
 	qb.Args[fieldName] = "%" + value + "%"
 	return qb
 }
@@ -206,7 +221,7 @@ func (qb *QueryBuilder) SearchLike(value string, fieldNames ...string) *QueryBui
 			return qb
 		}
 		argName := fmt.Sprintf("search_%d", i)
-		parts = append(parts, fmt.Sprintf("%s ILIKE :%s", fieldName, argName))
+		parts = append(parts, fmt.Sprintf("%s ILIKE :%s", qb.quoteIdentifier(fieldName), argName))
 		qb.Args[argName] = "%" + value + "%"
 	}
 	qb.Conditions = append(qb.Conditions, "("+strings.Join(parts, " OR ")+")")
@@ -236,7 +251,7 @@ func (qb *QueryBuilder) InInt64(fieldName string, values []int64) *QueryBuilder 
 	for _, v := range values {
 		strVals = append(strVals, fmt.Sprintf("%d", v))
 	}
-	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s IN (%s)", fieldName, strings.Join(strVals, ", ")))
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s IN (%s)", qb.quoteIdentifier(fieldName), strings.Join(strVals, ", ")))
 	return qb
 }
 
@@ -253,7 +268,7 @@ func (qb *QueryBuilder) InStrings(fieldName string, values []string) *QueryBuild
 	for _, v := range values {
 		quotedVals = append(quotedVals, fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''")))
 	}
-	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s IN (%s)", fieldName, strings.Join(quotedVals, ", ")))
+	qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s IN (%s)", qb.quoteIdentifier(fieldName), strings.Join(quotedVals, ", ")))
 	return qb
 }
 
@@ -279,7 +294,7 @@ func (qb *QueryBuilder) OrAnyLocationCode(locationCode string, fieldNames ...str
 		if qb.Error != nil {
 			return qb
 		}
-		parts = append(parts, fmt.Sprintf("%s = '%s'", fieldName, strings.ReplaceAll(locationCode, "'", "''")))
+		parts = append(parts, fmt.Sprintf("%s = '%s'", qb.quoteIdentifier(fieldName), strings.ReplaceAll(locationCode, "'", "''")))
 	}
 	qb.Conditions = append(qb.Conditions, "("+strings.Join(parts, " OR ")+")")
 	return qb
@@ -321,7 +336,7 @@ func (qb *QueryBuilder) buildInClause(fieldName string, values any) string {
 		for _, val := range v {
 			strVals = append(strVals, fmt.Sprintf("%d", val))
 		}
-		return fmt.Sprintf("%s IN (%s)", fieldName, strings.Join(strVals, ", "))
+		return fmt.Sprintf("%s IN (%s)", qb.quoteIdentifier(fieldName), strings.Join(strVals, ", "))
 	case []string:
 		if len(v) == 0 {
 			return "1=0"
@@ -330,9 +345,10 @@ func (qb *QueryBuilder) buildInClause(fieldName string, values any) string {
 		for _, val := range v {
 			quotedVals = append(quotedVals, fmt.Sprintf("'%s'", strings.ReplaceAll(val, "'", "''")))
 		}
-		return fmt.Sprintf("%s IN (%s)", fieldName, strings.Join(quotedVals, ", "))
+		return fmt.Sprintf("%s IN (%s)", qb.quoteIdentifier(fieldName), strings.Join(quotedVals, ", "))
 	default:
-		return fmt.Sprintf("%s IN (%v)", fieldName, values)
+		// Unknown type - return always false condition to prevent SQL injection
+		return "1=0"
 	}
 }
 
