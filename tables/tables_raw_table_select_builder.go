@@ -1,116 +1,64 @@
 package tables
 
 import (
-	"strings"
+	"fmt"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/databases/db"
+	"github.com/donnyhardyanto/dxlib/databases/db/query"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	tableQueryBuilder "github.com/donnyhardyanto/dxlib/tables/query_builder"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-// SelectWithBuilder returns multiple rows using TableSelectQueryBuilder for safe SQL construction
-// This is the preferred method over Select() when using JOIN, GROUP BY, HAVING, or ORDER BY clauses
-// Note: If tqb.OrderByDefs is populated (via OrderBy/OrderByAsc/OrderByDesc), it takes precedence over orderBy parameter
-// Note: For tables with encryption, this falls back to standard Select with the built where clause
-func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
-	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
+// prepareBuilderForSelect sets SourceName and handles encryption OutFields on the builder.
+// Returns true if encryption session keys need to be set in a transaction.
+func (t *DXRawTable) prepareBuilderForSelect(tqb *tableQueryBuilder.TableSelectQueryBuilder) (needsEncryptionTx bool) {
+	tqb.SourceName = t.GetListViewName()
 
+	if len(t.EncryptionColumnDefs) > 0 {
+		dbType := base.StringToDXDatabaseType(t.Database.Connection.DriverName())
+		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
+		var outFields []string
+		if len(tqb.OutFields) > 0 {
+			outFields = append(outFields, tqb.OutFields...)
+		} else {
+			outFields = append(outFields, "*")
+		}
+		for _, col := range encryptionColumns {
+			if col.ViewHasDecrypt {
+				outFields = append(outFields, col.AliasName)
+			} else {
+				expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
+				outFields = append(outFields, fmt.Sprintf("%s AS %s", expr, col.AliasName))
+			}
+		}
+		tqb.OutFields = outFields
+		return true
+	}
+
+	if len(t.EncryptionKeyDefs) > 0 {
+		return true
+	}
+
+	return false
+}
+
+// SelectWithBuilder returns multiple rows using TableSelectQueryBuilder for safe SQL construction.
+// fieldNames, orderBy, limit, forUpdatePart are all read from tqb.
+func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-
-	// Check for errors accumulated in QueryBuilder
 	if tqb.Error != nil {
 		return nil, nil, tqb.Error
 	}
 
-	// Build WHERE clause from QueryBuilder conditions
-	whereClause, whereArgs, err := tqb.Build()
-	if err != nil {
-		return nil, nil, err
-	}
+	needsEncryptionTx := t.prepareBuilderForSelect(tqb)
 
-	// Build JOIN clause (safely constructed)
-	joinClause, err := tqb.BuildJoinClause()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Build HAVING clause
-	havingClauseStr, havingArgs, err := tqb.BuildHavingClause()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Build ORDER BY - if QueryBuilder has OrderByDefs, use those instead of the parameter
-	// This allows using the fluent OrderBy/OrderByAsc/OrderByDesc methods
-	effectiveOrderBy := orderBy
-	if len(tqb.OrderByDefs) > 0 {
-		// Convert OrderByDefs to DXDatabaseTableFieldsOrderBy format
-		// Note: NULLS FIRST/LAST is handled differently - we'll use raw ORDER BY clause
-		effectiveOrderBy = db.DXDatabaseTableFieldsOrderBy{}
-		for _, o := range tqb.OrderByDefs {
-			direction := strings.ToUpper(o.Direction)
-			if o.NullPlacement != "" {
-				// Append NULLS placement to direction for proper SQL generation
-				direction += " NULLS " + strings.ToUpper(o.NullPlacement)
-			}
-			effectiveOrderBy[o.FieldName] = direction
-		}
-	}
-
-	// Create where JSON with raw where clause if we have conditions
-	var where utils.JSON
-	if whereClause != "" {
-		// Use SQLExpression for the raw where clause
-		where = utils.JSON{}
-		// Add the raw WHERE condition using proper struct
-		where["__sql_where__"] = db.SQLExpression{Expression: "(" + whereClause + ")"}
-		// Add args for parameter binding
-		for k, v := range whereArgs {
-			where[k] = v
-		}
-	} else if len(whereArgs) > 0 {
-		where = whereArgs
-	}
-
-	// Join clause as any (string or nil)
-	var joinPart any
-	if joinClause != "" {
-		joinPart = joinClause
-	}
-
-	// Group by fields
-	var groupByFields []string
-	if len(tqb.GroupByFields) > 0 {
-		groupByFields = tqb.GroupByFields
-	}
-
-	// Having clause as utils.JSON
-	var havingJSON utils.JSON
-	if havingClauseStr != "" {
-		havingJSON = utils.JSON{}
-		// Strip "HAVING " prefix since the db layer adds it
-		havingCondition := havingClauseStr
-		if len(havingCondition) > 7 && havingCondition[:7] == "HAVING " {
-			havingCondition = havingCondition[7:]
-		}
-		havingJSON["__sql_having__"] = db.SQLExpression{Expression: havingCondition}
-		for k, v := range havingArgs {
-			havingJSON[k] = v
-		}
-	}
-
-	// Handle encryption paths - fall back to standard Select with built where clause
-	if len(t.EncryptionColumnDefs) > 0 {
-		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
-		return t.SelectWithEncryption(l, fieldNames, encryptionColumns, where, joinPart, effectiveOrderBy, limit, forUpdatePart)
-	}
-
-	if len(t.EncryptionKeyDefs) > 0 {
+	if needsEncryptionTx {
 		dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
 		if err != nil {
 			return nil, nil, err
@@ -119,195 +67,90 @@ func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, fieldNames []string, tqb *t
 		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
-		return dtx.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinPart, groupByFields, havingJSON, effectiveOrderBy, limit, nil, forUpdatePart)
+		return query.TxSelectWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder)
 	}
 
-	// Call database with safely built clauses
-	return t.Database.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinPart, groupByFields, havingJSON, effectiveOrderBy, limit, nil, forUpdatePart)
+	return query.SelectWithSelectQueryBuilder2(t.Database.Connection, tqb.SelectQueryBuilder)
 }
 
-// SelectOneWithBuilder returns a single row using TableSelectQueryBuilder
-func (t *DXRawTable) SelectOneWithBuilder(l *log.DXLog, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
-	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+// SelectOneWithBuilder returns a single row using TableSelectQueryBuilder.
+func (t *DXRawTable) SelectOneWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	// Save and restore LimitValue so we don't mutate the caller's tqb
+	origLimit := tqb.LimitValue
+	tqb.LimitValue = 1
+	rowsInfo, rows, err := t.SelectWithBuilder(l, tqb)
+	tqb.LimitValue = origLimit
 
-	rowsInfo, rows, err := t.SelectWithBuilder(l, fieldNames, tqb, orderBy, 1, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if len(rows) == 0 {
 		return rowsInfo, nil, nil
 	}
-
 	return rowsInfo, rows[0], nil
 }
 
-// ShouldSelectOneWithBuilder returns a single row or error if not found
-func (t *DXRawTable) ShouldSelectOneWithBuilder(l *log.DXLog, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
-	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-
-	rowsInfo, row, err := t.SelectOneWithBuilder(l, fieldNames, tqb, orderBy)
+// ShouldSelectOneWithBuilder returns a single row or error if not found.
+func (t *DXRawTable) ShouldSelectOneWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	rowsInfo, row, err := t.SelectOneWithBuilder(l, tqb)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if row == nil {
 		return nil, nil, errors.New("RECORD_NOT_FOUND")
 	}
-
 	return rowsInfo, row, nil
 }
 
-// TxSelectWithBuilder returns multiple rows within a transaction using TableSelectQueryBuilder
-// Note: If tqb.OrderByDefs is populated (via OrderBy/OrderByAsc/OrderByDesc), it takes precedence over orderBy parameter
-func (t *DXRawTable) TxSelectWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
-	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-
-	// Check for errors accumulated in QueryBuilder
+// TxSelectWithBuilder returns multiple rows within a transaction using TableSelectQueryBuilder.
+func (t *DXRawTable) TxSelectWithBuilder(dtx *databases.DXDatabaseTx, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 	if tqb.Error != nil {
 		return nil, nil, tqb.Error
 	}
 
-	// Build WHERE clause
-	whereClause, whereArgs, err := tqb.Build()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Build JOIN clause
-	joinClause, err := tqb.BuildJoinClause()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Build HAVING clause
-	havingClauseStr, havingArgs, err := tqb.BuildHavingClause()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Build ORDER BY - if QueryBuilder has OrderByDefs, use those instead of the parameter
-	effectiveOrderBy := orderBy
-	if len(tqb.OrderByDefs) > 0 {
-		effectiveOrderBy = db.DXDatabaseTableFieldsOrderBy{}
-		for _, o := range tqb.OrderByDefs {
-			direction := strings.ToUpper(o.Direction)
-			if o.NullPlacement != "" {
-				direction += " NULLS " + strings.ToUpper(o.NullPlacement)
-			}
-			effectiveOrderBy[o.FieldName] = direction
-		}
-	}
-
-	// Create where JSON
-	var where utils.JSON
-	if whereClause != "" {
-		where = utils.JSON{}
-		where["__sql_where__"] = db.SQLExpression{Expression: "(" + whereClause + ")"}
-		for k, v := range whereArgs {
-			where[k] = v
-		}
-	} else if len(whereArgs) > 0 {
-		where = whereArgs
-	}
-
-	var joinPart any
-	if joinClause != "" {
-		joinPart = joinClause
-	}
-
-	var groupByFields []string
-	if len(tqb.GroupByFields) > 0 {
-		groupByFields = tqb.GroupByFields
-	}
-
-	var havingJSON utils.JSON
-	if havingClauseStr != "" {
-		havingJSON = utils.JSON{}
-		havingCondition := havingClauseStr
-		if len(havingCondition) > 7 && havingCondition[:7] == "HAVING " {
-			havingCondition = havingCondition[7:]
-		}
-		havingJSON["__sql_having__"] = db.SQLExpression{Expression: havingCondition}
-		for k, v := range havingArgs {
-			havingJSON[k] = v
-		}
-	}
-
-	return dtx.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinPart, groupByFields, havingJSON, effectiveOrderBy, limit, nil, forUpdatePart)
+	tqb.SourceName = t.GetListViewName()
+	return query.TxSelectWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder)
 }
 
-// TxSelectOneWithBuilder returns a single row within a transaction using TableSelectQueryBuilder
-func (t *DXRawTable) TxSelectOneWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
-	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+// TxSelectOneWithBuilder returns a single row within a transaction using TableSelectQueryBuilder.
+func (t *DXRawTable) TxSelectOneWithBuilder(dtx *databases.DXDatabaseTx, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	// Save and restore LimitValue so we don't mutate the caller's tqb
+	origLimit := tqb.LimitValue
+	tqb.LimitValue = 1
+	rowsInfo, rows, err := t.TxSelectWithBuilder(dtx, tqb)
+	tqb.LimitValue = origLimit
 
-	rowsInfo, rows, err := t.TxSelectWithBuilder(dtx, fieldNames, tqb, orderBy, 1, forUpdatePart)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if len(rows) == 0 {
 		return rowsInfo, nil, nil
 	}
-
 	return rowsInfo, rows[0], nil
 }
 
-// TxShouldSelectOneWithBuilder returns a single row or error if not found within a transaction
-func (t *DXRawTable) TxShouldSelectOneWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
-	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-
-	rowsInfo, row, err := t.TxSelectOneWithBuilder(dtx, fieldNames, tqb, orderBy, forUpdatePart)
+// TxShouldSelectOneWithBuilder returns a single row or error if not found within a transaction.
+func (t *DXRawTable) TxShouldSelectOneWithBuilder(dtx *databases.DXDatabaseTx, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	rowsInfo, row, err := t.TxSelectOneWithBuilder(dtx, tqb)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if row == nil {
 		return nil, nil, errors.New("RECORD_NOT_FOUND")
 	}
-
 	return rowsInfo, row, nil
 }
 
-// CountWithBuilder returns total row count using TableSelectQueryBuilder
+// CountWithBuilder returns total row count using TableSelectQueryBuilder.
 func (t *DXRawTable) CountWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return 0, err
 	}
-
-	// Check for errors accumulated in QueryBuilder
 	if tqb.Error != nil {
 		return 0, tqb.Error
 	}
 
-	// Build WHERE clause
-	whereClause, whereArgs, err := tqb.Build()
-	if err != nil {
-		return 0, err
-	}
-
-	// Build JOIN clause
-	joinClause, err := tqb.BuildJoinClause()
-	if err != nil {
-		return 0, err
-	}
-
-	// Create where JSON
-	var where utils.JSON
-	if whereClause != "" {
-		where = utils.JSON{}
-		where["__sql_where__"] = db.SQLExpression{Expression: "(" + whereClause + ")"}
-		for k, v := range whereArgs {
-			where[k] = v
-		}
-	} else if len(whereArgs) > 0 {
-		where = whereArgs
-	}
-
-	var joinPart any
-	if joinClause != "" {
-		joinPart = joinClause
-	}
+	tqb.SourceName = t.GetListViewName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
 		dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
@@ -318,8 +161,8 @@ func (t *DXRawTable) CountWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Table
 		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return 0, err
 		}
-		return dtx.Count(t.GetListViewName(), where, joinPart, nil, nil)
+		return query.TxCountWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder)
 	}
 
-	return t.Database.Count(t.GetListViewName(), where, joinPart)
+	return query.CountWithSelectQueryBuilder2(t.Database.Connection, tqb.SelectQueryBuilder)
 }

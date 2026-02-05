@@ -99,6 +99,7 @@ type SelectQueryBuilder struct {
 	OutFields        []string     // OutFields for SELECT or RETURNING clause
 	LimitValue       int64    // LIMIT clause value (0 = no limit)
 	OffsetValue      int64    // OFFSET clause value (0 = no offset)
+	ForUpdatePart    any      // FOR UPDATE clause (string like "FOR UPDATE", or bool true)
 	havingArgCount   int      // internal counter for unique HAVING param names
 }
 
@@ -324,6 +325,15 @@ func (qb *SelectQueryBuilder) Offset(offset int64) *SelectQueryBuilder {
 		return qb
 	}
 	qb.OffsetValue = offset
+	return qb
+}
+
+// ForUpdate sets the FOR UPDATE clause
+func (qb *SelectQueryBuilder) ForUpdate() *SelectQueryBuilder {
+	if qb.Error != nil {
+		return qb
+	}
+	qb.ForUpdatePart = "FOR UPDATE"
 	return qb
 }
 

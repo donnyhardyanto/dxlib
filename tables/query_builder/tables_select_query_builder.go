@@ -44,6 +44,26 @@ func NewTableSelectQueryBuilderWithSource(dbType base.DXDatabaseType, sourceName
 	}
 }
 
+// === Fluent Wrappers (return *TableSelectQueryBuilder for chaining) ===
+
+// Select specifies fields for SELECT clause (wraps base method for chaining)
+func (tqb *TableSelectQueryBuilder) Select(fields ...string) *TableSelectQueryBuilder {
+	tqb.SelectQueryBuilder.Select(fields...)
+	return tqb
+}
+
+// Limit sets the LIMIT clause value (wraps base method for chaining)
+func (tqb *TableSelectQueryBuilder) Limit(limit int64) *TableSelectQueryBuilder {
+	tqb.SelectQueryBuilder.Limit(limit)
+	return tqb
+}
+
+// ForUpdate sets the FOR UPDATE clause (wraps base method for chaining)
+func (tqb *TableSelectQueryBuilder) ForUpdate() *TableSelectQueryBuilder {
+	tqb.SelectQueryBuilder.ForUpdate()
+	return tqb
+}
+
 // === Field Validation Methods ===
 
 // IsFieldExist checks if a field exists in the table's search field names

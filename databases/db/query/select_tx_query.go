@@ -119,6 +119,13 @@ func TxSelectWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.Se
 		}
 	}
 
+	// Add FOR UPDATE if specified
+	if qb.ForUpdatePart != nil {
+		if s, ok := qb.ForUpdatePart.(string); ok && s != "" {
+			query += " " + s
+		}
+	}
+
 	return named.TxNamedQueryRows2(dtx, query, args)
 }
 

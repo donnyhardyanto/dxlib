@@ -119,6 +119,13 @@ func SelectWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilder) 
 		}
 	}
 
+	// Add FOR UPDATE if specified
+	if qb.ForUpdatePart != nil {
+		if s, ok := qb.ForUpdatePart.(string); ok && s != "" {
+			query += " " + s
+		}
+	}
+
 	return named.NamedQueryRows2(db, query, args)
 }
 

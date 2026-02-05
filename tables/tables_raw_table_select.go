@@ -174,6 +174,23 @@ func (t *DXRawTable) ShouldGetByNameId(l *log.DXLog, nameId string, fieldNames .
 	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
+// GetByNameId returns a row by a field
+func (t *DXRawTable) GetBy(l *log.DXLog, fieldName string, value any, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.SelectOne(l, fn, utils.JSON{fieldName: value}, nil, nil)
+}
+
+func (t *DXRawTable) ShouldGetBy(l *log.DXLog, fieldName string, value any, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	var fn []string
+	if len(fieldNames) > 0 {
+		fn = fieldNames
+	}
+	return t.ShouldSelectOne(l, fn, utils.JSON{fieldName: value}, nil, nil)
+}
+
 // Transaction Select Operations
 
 // TxSelect returns multiple rows within a transaction
