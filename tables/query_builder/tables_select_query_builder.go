@@ -170,6 +170,32 @@ func (tqb *TableSelectQueryBuilder) Ne(fieldName string, value any) *TableSelect
 	return tqb
 }
 
+// OrEq adds (field1 = value1 OR field2 = value2 OR ...) condition with field validation.
+// Takes pairs of fieldName and value as alternating arguments: OrEq("field1", val1, "field2", val2, ...)
+func (tqb *TableSelectQueryBuilder) OrEq(fieldValuePairs ...any) *TableSelectQueryBuilder {
+	if len(fieldValuePairs)%2 != 0 {
+		tqb.Error = errors.New("SHOULD_NOT_HAPPEN:OR_EQ_REQUIRES_EVEN_NUMBER_OF_ARGS")
+		return tqb
+	}
+	var orParts []string
+	for i := 0; i < len(fieldValuePairs); i += 2 {
+		fieldName, ok := fieldValuePairs[i].(string)
+		if !ok {
+			tqb.Error = errors.New("SHOULD_NOT_HAPPEN:OR_EQ_FIELD_NAME_MUST_BE_STRING")
+			return tqb
+		}
+		tqb.CheckFieldExist(fieldName)
+		if tqb.Error != nil {
+			return tqb
+		}
+		paramName := fmt.Sprintf("or_%s_%d", fieldName, i/2)
+		orParts = append(orParts, fmt.Sprintf("%s = :%s", tqb.QuoteIdentifier(fieldName), paramName))
+		tqb.Args[paramName] = fieldValuePairs[i+1]
+	}
+	tqb.Conditions = append(tqb.Conditions, "("+strings.Join(orParts, " OR ")+")")
+	return tqb
+}
+
 // Like adds field LIKE value condition (case-sensitive) with field validation
 func (tqb *TableSelectQueryBuilder) Like(fieldName string, value string) *TableSelectQueryBuilder {
 	tqb.CheckFieldExist(fieldName)
