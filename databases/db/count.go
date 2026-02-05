@@ -59,7 +59,7 @@ func isSubquery(str string) bool {
 //   - countExpr: The count expression (e.g., "count(*)", "count(distinct user_id)")
 //   - whereAndFieldNameValues: Conditions for filtering results
 //   - joinSQLPart: Optional JOIN clause
-//   - groupByFields: Fields to group by
+//   - groupByFields: OutFields to group by
 //   - havingClause: Optional HAVING clause for filtering grouped results
 //   - withCTE: Optional Common Table Expression (WITH clause)
 //
@@ -168,7 +168,7 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpression string, whereAnd
 //   - countExpr: The count expression (e.g., "count(*)", "count(distinct user_id)")
 //   - whereAndFieldNameValues: Conditions for filtering results
 //   - joinSQLPart: Optional JOIN clause
-//   - groupByFields: Fields to group by
+//   - groupByFields: OutFields to group by
 //   - havingClause: Optional HAVING clause for filtering grouped results
 //   - withCTE: Optional Common Table Expression (WITH clause)
 //

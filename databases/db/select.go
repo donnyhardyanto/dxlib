@@ -74,14 +74,14 @@ func SQLPartOrderByFieldNameDirections(orderByKeyValues map[string]string, drive
 // Parameters:
 //   - driverName: Database driver name
 //   - tableName: The table name or subquery to select from
-//   - fieldNames: Fields to select (use []string{"*"} for all fields)
+//   - fieldNames: OutFields to select (use []string{"*"} for all fields)
 //   - whereAndFieldNameValues: Conditions for filtering results
 //   - joinSQLPart: Optional JOIN clause
 //   - orderByFieldNameDirections: Optional ORDER BY specifications
 //   - limit: Maximum number of rows to return
 //   - offset: Number of rows to skip before returning results
 //   - forUpdatePart: Whether to lock rows with FOR UPDATE
-//   - groupByFields: Fields to group by
+//   - groupByFields: OutFields to group by
 //   - havingClause: Optional HAVING clause for filtering grouped results
 //   - withCTE: Optional Common Table Expression (WITH clause)
 //
@@ -211,14 +211,14 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 //   - db: The databases connection
 //   - fieldTypeMapping: Type conversion mapping for fields
 //   - tableName: The table name or subquery to select from
-//   - fieldNames: Fields to select (use []string{"*"} for all fields)
+//   - fieldNames: OutFields to select (use []string{"*"} for all fields)
 //   - whereAndFieldNameValues: Conditions for filtering results (nil for no conditions)
 //   - joinSQLPart: Optional JOIN clause (nil for no joins)
 //   - orderByFieldNameDirections: Optional ORDER BY specifications (nil for no ordering)
 //   - limit: Maximum number of rows to return (nil for no limit)
 //   - offset: Number of rows to skip before returning results (nil for no offset)
 //   - forUpdatePart: Whether to lock rows with FOR UPDATE (nil or false for no locking)
-//   - groupByFields: Fields to group by (nil for no grouping)
+//   - groupByFields: OutFields to group by (nil for no grouping)
 //   - havingClause: Optional HAVING clause for filtering grouped results (empty string for none)
 //   - withCTE: Optional Common Table Expression (WITH clause) (empty string for none)
 //
@@ -282,14 +282,14 @@ func BaseSelect(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableF
 //   - tx: The databases transaction
 //   - fieldTypeMapping: Type conversion mapping for fields
 //   - tableName: The table name or subquery to select from
-//   - fieldNames: Fields to select (use []string{"*"} for all fields)
+//   - fieldNames: OutFields to select (use []string{"*"} for all fields)
 //   - whereAndFieldNameValues: Conditions for filtering results (nil for no conditions)
 //   - joinSQLPart: Optional JOIN clause (nil for no joins)
 //   - orderByFieldNameDirections: Optional ORDER BY specifications (nil for no ordering)
 //   - limit: Maximum number of rows to return (nil for no limit)
 //   - offset: Number of rows to skip before returning results (nil for no offset)
 //   - forUpdatePart: Whether to lock rows with FOR UPDATE (nil or false for no locking)
-//   - groupByFields: Fields to group by (nil for no grouping)
+//   - groupByFields: OutFields to group by (nil for no grouping)
 //   - havingClause: Optional HAVING clause for filtering grouped results (empty string for none)
 //   - withCTE: Optional Common Table Expression (WITH clause) (empty string for none)
 //
@@ -385,7 +385,7 @@ func BaseTxSelect(tx *sqlx.Tx, tableName string, fieldTypeMapping DXDatabaseTabl
 //   - db: The databases connection
 //   - fieldTypeMapping: Type conversion mapping for fields
 //   - tableName: The table name to select from
-//   - fieldNames: Fields to select
+//   - fieldNames: OutFields to select
 //   - whereAndFieldNameValues: Conditions for filtering results
 //   - joinSQLPart: Optional JOIN clause
 //   - orderByFieldNameDirections: Optional ORDER BY specifications
@@ -415,7 +415,7 @@ func Select(db *sqlx.DB, tableName string, fieldTypeMapping DXDatabaseTableField
 //   - tx: The databases transaction
 //   - fieldTypeMapping: Type conversion mapping for fields
 //   - tableName: The table name to select from
-//   - fieldNames: Fields to select
+//   - fieldNames: OutFields to select
 //   - whereAndFieldNameValues: Conditions for filtering results
 //   - joinSQLPart: Optional JOIN clause
 //   - orderByFieldNameDirections: Optional ORDER BY specifications

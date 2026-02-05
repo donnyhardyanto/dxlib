@@ -2,10 +2,10 @@ package tables
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 )
 
@@ -68,7 +68,7 @@ func placeholder(dbType base.DXDatabaseType, index int) string {
 // encryptExpression returns databases-specific encryption SQL expression
 func encryptExpression(dbType base.DXDatabaseType, argIndex int, sessionKey string) string {
 	ph := placeholder(dbType, argIndex)
-	keyExpr := sessionKeyExpression(dbType, sessionKey)
+	keyExpr := db.SessionKeyExpression(dbType, sessionKey)
 
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
@@ -90,7 +90,7 @@ func hashExpression(dbType base.DXDatabaseType, argIndex int, saltSessionKey str
 
 	valueExpr := ph
 	if saltSessionKey != "" {
-		saltExpr := sessionKeyExpression(dbType, saltSessionKey)
+		saltExpr := db.SessionKeyExpression(dbType, saltSessionKey)
 		valueExpr = concatExpression(dbType, saltExpr, ph)
 	}
 
@@ -105,22 +105,6 @@ func hashExpression(dbType base.DXDatabaseType, argIndex int, saltSessionKey str
 		return fmt.Sprintf("SHA2(%s, 256)", valueExpr)
 	default:
 		return ph
-	}
-}
-
-// sessionKeyExpression returns databases-specific session key retrieval expression
-func sessionKeyExpression(dbType base.DXDatabaseType, sessionKey string) string {
-	switch dbType {
-	case base.DXDatabaseTypePostgreSQL:
-		return fmt.Sprintf("current_setting('%s')", sessionKey)
-	case base.DXDatabaseTypeSQLServer:
-		return fmt.Sprintf("SESSION_CONTEXT(N'%s')", sessionKey)
-	case base.DXDatabaseTypeOracle:
-		return fmt.Sprintf("SYS_CONTEXT('CLIENTCONTEXT', '%s')", sessionKey)
-	case base.DXDatabaseTypeMariaDB:
-		return fmt.Sprintf("@%s", strings.ReplaceAll(sessionKey, ".", "_"))
-	default:
-		return fmt.Sprintf("'%s'", sessionKey)
 	}
 }
 

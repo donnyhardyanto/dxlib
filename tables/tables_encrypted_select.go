@@ -280,24 +280,6 @@ func setSessionKeysForDecryption(dtx *databases.DXDatabaseTx, encryptionColumns 
 	return nil
 }
 
-// decryptExpression returns databases-specific decryption SQL expression
-func decryptExpression(dbType base.DXDatabaseType, fieldName string, sessionKey string) string {
-	keyExpr := sessionKeyExpression(dbType, sessionKey)
-
-	switch dbType {
-	case base.DXDatabaseTypePostgreSQL:
-		return fmt.Sprintf("pgp_sym_decrypt(%s, %s)", fieldName, keyExpr)
-	case base.DXDatabaseTypeSQLServer:
-		return fmt.Sprintf("CONVERT(VARCHAR(MAX), DECRYPTBYPASSPHRASE(%s, %s))", keyExpr, fieldName)
-	case base.DXDatabaseTypeOracle:
-		return fmt.Sprintf("UTL_RAW.CAST_TO_VARCHAR2(%s)", fieldName)
-	case base.DXDatabaseTypeMariaDB:
-		return fmt.Sprintf("AES_DECRYPT(%s, %s)", fieldName, keyExpr)
-	default:
-		return fieldName
-	}
-}
-
 // buildSelectColumns builds SELECT column list with decryption expressions
 func buildSelectColumns(dbType base.DXDatabaseType, columns []string, encryptionColumns []EncryptionColumn) string {
 	var selectCols []string
@@ -318,7 +300,7 @@ func buildSelectColumns(dbType base.DXDatabaseType, columns []string, encryption
 			selectCols = append(selectCols, col.AliasName)
 		} else {
 			// Build decrypt expression
-			expr := decryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
+			expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
 			selectCols = append(selectCols, fmt.Sprintf("%s AS %s", expr, col.AliasName))
 		}
 	}
