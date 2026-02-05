@@ -60,7 +60,7 @@ func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.
 		return err
 	}
 
-	// Re-fetch and return updated row
+	// Re-fetch and return the updated row
 	_, updatedRow, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
@@ -149,7 +149,7 @@ func (t *DXTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int6
 	}
 
 	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
-		// Merge current row with new data for validation
+		// Merge the current row with new data for validation
 		mergedData := utils.JSON{}
 		for k, v := range row {
 			mergedData[k] = v
@@ -170,7 +170,7 @@ func (t *DXTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int6
 		return txErr
 	}
 
-	// Re-fetch and return updated row
+	// Re-fetch and return the updated row
 	_, updatedRow, err := t.DirectShouldGetById(&aepr.Log, id)
 	if err != nil {
 		return err
