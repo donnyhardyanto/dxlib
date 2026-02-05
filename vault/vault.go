@@ -6,18 +6,18 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	vault "github.com/hashicorp/vault/api"
-	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 type DXVaultInterface interface {
 	Start() (err error)
-	ResolveAsString(v string) string
-	ResolveAsInt(v string) int
-	ResolveAsInt64(v string) int64
-	ResolveAsBool(v string) bool
+	ResolveAsString(v string) (string, error)
+	ResolveAsInt(v string) (int, error)
+	ResolveAsInt64(v string) (int64, error)
+	ResolveAsBool(v string) (bool, error)
 	GetStringOrDefault(v string, d string) string
 	GetIntOrDefault(v string, d int) int
 	GetInt64OrDefault(v string, d int64) int64
@@ -87,78 +87,76 @@ func (hv *DXHashicorpVault) Start() (err error) {
 	return nil
 }
 
-func (hv *DXHashicorpVault) ResolveAsInt64(v string) int64 {
-	vi := int64(0)
-	s := hv.VaultMapString(&log.Log, v)
+func (hv *DXHashicorpVault) ResolveAsInt64(v string) (int64, error) {
+	s, err := hv.VaultMapString(&log.Log, v)
+	if err != nil {
+		return 0, err
+	}
 	if s != "" {
 		parsedValue, parseErr := strconv.ParseInt(s, 10, 64)
 		if parseErr != nil {
-			panic(parseErr)
-			return 0
+			return 0, errors.Wrapf(parseErr, "failed to parse int64 from vault value: %s", v)
 		}
-		vi = parsedValue
+		return parsedValue, nil
 	}
-	return vi
+	return 0, nil
 }
 
-func (hv *DXHashicorpVault) ResolveAsInt(v string) int {
-	vi := 0
-	s := hv.VaultMapString(&log.Log, v)
+func (hv *DXHashicorpVault) ResolveAsInt(v string) (int, error) {
+	s, err := hv.VaultMapString(&log.Log, v)
+	if err != nil {
+		return 0, err
+	}
 	if s != "" {
 		parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
 		if parseErr != nil {
-			panic(parseErr)
-			return 0
+			return 0, errors.Wrapf(parseErr, "failed to parse int from vault value: %s", v)
 		}
-		vi = int(parsedValue)
+		return int(parsedValue), nil
 	}
-	return vi
+	return 0, nil
 }
 
-func (hv *DXHashicorpVault) ResolveAsBool(v string) bool {
-	s := hv.VaultMapString(&log.Log, v)
+func (hv *DXHashicorpVault) ResolveAsBool(v string) (bool, error) {
+	s, err := hv.VaultMapString(&log.Log, v)
+	if err != nil {
+		return false, err
+	}
 	if s == "" {
-		return false
+		return false, nil
 	}
 	s = strings.TrimSpace(s)
 	s = strings.ToLower(s)
 	if slices.Contains([]string{"true", "yes", "on", "1"}, s) {
-		return true
+		return true, nil
 	}
 	if slices.Contains([]string{"false", "no", "off", "0"}, s) {
-		return false
+		return false, nil
 	}
 	parsedValue, parseErr := strconv.ParseInt(s, 10, 32)
 	if parseErr != nil {
-		panic(parseErr)
-		return false
+		return false, errors.Wrapf(parseErr, "failed to parse bool from vault value: %s", v)
 	}
-	vi := int(parsedValue)
-	if vi > 1 {
-		return true
-	}
-	
-	return false
+	return parsedValue > 0, nil
 }
 
-func (hv *DXHashicorpVault) ResolveAsString(v string) string {
+func (hv *DXHashicorpVault) ResolveAsString(v string) (string, error) {
 	return hv.VaultMapString(&log.Log, v)
 }
 
 func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
-		fmt.Printf("GetStringOrDefault/hv.VaultGetData=%s", err.Error())
-		panic(err)
-	}
-	dv, ok := data[v]
-	if !ok {
+		fmt.Print(err, "failed to get vault data for key: %s %+v", v, err)
 		return d
 	}
-	dvv, ok := dv.(string)
-	if !ok {
-		err = errors.Errorf("vault data is not string: %s=%v", v, dv)
-		panic(err)
+
+	// Use utils.GetStringFromKV for safe type conversion
+	dvv, err := utils.GetStringFromKV(data, v)
+	if err != nil {
+		// Key not found or type mismatch - return default
+		fmt.Println(err, "failed to get vault data for key: %s %+v", v, err)
+		return d
 	}
 	return dvv
 }
@@ -166,31 +164,35 @@ func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 func (hv *DXHashicorpVault) GetIntOrDefault(v string, d int) int {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
-		panic(err)
-	}
-	dv, ok := data[v]
-	if !ok {
+		// Key not found or type mismatch - return default
+		fmt.Print(err, "failed to get vault data for key: %s %+v", v, err)
 		return d
 	}
-	dvv, err := strconv.ParseInt(dv.(string), 10, 32)
+
+	// Use utils.GetIntFromKV for safe type conversion
+	dvv, err := utils.GetIntFromKV(data, v)
 	if err != nil {
-		panic(err)
+		// Key not found or type mismatch - return default
+		fmt.Println(err, "failed to get vault data for key: %s %+v", v, err)
+		return d
 	}
-	return int(dvv)
+	return dvv
 }
 
 func (hv *DXHashicorpVault) GetInt64OrDefault(v string, d int64) int64 {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
-		panic(err)
-	}
-	dv, ok := data[v]
-	if !ok {
+		// Key not found or type mismatch - return default
+		fmt.Println(err, "failed to get vault data for key: %s %+v", v, err)
 		return d
 	}
-	dvv, err := strconv.ParseInt(dv.(string), 10, 64)
+
+	// Use utils.GetInt64FromKV for safe type conversion
+	dvv, err := utils.GetInt64FromKV(data, v)
 	if err != nil {
-		panic(err)
+		// Key not found or type mismatch - return default
+		fmt.Println(err, "failed to get vault data for key: %s %+v", v, err)
+		return d
 	}
 	return dvv
 }
@@ -198,33 +200,48 @@ func (hv *DXHashicorpVault) GetInt64OrDefault(v string, d int64) int64 {
 func (hv *DXHashicorpVault) GetBoolOrDefault(v string, d bool) bool {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
-		panic(err)
-	}
-	dv, ok := data[v].(string)
-	if !ok {
+		// Key not found or type mismatch - return default
+		fmt.Println(err, "failed to get vault data for key: %s %+v", v, err)
 		return d
 	}
+
+	// Use utils.GetBoolFromKV for safe type conversion
+	dvv, err := utils.GetBoolFromKV(data, v)
+	if err != nil {
+		// Key not found or type mismatch - try parsing as string
+		dvStr, strErr := utils.GetStringFromKV(data, v)
+		if strErr != nil {
+			fmt.Println("failed to get vault data for key: %s: %+v", v, strErr)
+			return d
+		}
+		dv, err := hv.parseBoolFromString(dvStr, d)
+		if err != nil {
+			fmt.Println("failed to get vault data for key: %s: %+v", v, err)
+			return d
+		}
+		return dv
+	}
+	return dvv
+}
+
+// Helper function to parse bool from string
+func (hv *DXHashicorpVault) parseBoolFromString(dv string, d bool) (bool, error) {
 	if dv == "" {
-		return d
+		return d, nil
 	}
 	dv = strings.TrimSpace(dv)
 	dv = strings.ToLower(dv)
 	if slices.Contains([]string{"true", "yes", "on", "1"}, dv) {
-		return true
+		return true, nil
 	}
 	if slices.Contains([]string{"false", "no", "off", "0"}, dv) {
-		return false
+		return false, nil
 	}
 	parsedValue, parseErr := strconv.ParseInt(dv, 10, 32)
 	if parseErr != nil {
-		panic(parseErr)
-		return false
+		return d, errors.Wrapf(parseErr, "failed to parse bool from string: %s", dv)
 	}
-	vi := int(parsedValue)
-	if vi >= 1 {
-		return true
-	}
-	return false
+	return parsedValue >= 1, nil
 }
 
 func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []string, err error) {
@@ -250,7 +267,12 @@ func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []s
 		for _, text := range texts {
 			if strings.Contains(text, hv.Prefix) {
 				key := strings.TrimPrefix(text, hv.Prefix)
-				results = append(results, data[key].(string))
+				// Use utils.GetStringFromKV for safe type conversion
+				value, err := utils.GetStringFromKV(data, key)
+				if err != nil {
+					return nil, errors.Wrapf(err, "vault key %s not found or not a string", key)
+				}
+				results = append(results, value)
 			} else {
 				results = append(results, text)
 			}
@@ -260,26 +282,29 @@ func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []s
 	return texts, nil
 }
 
-func (hv *DXHashicorpVault) VaultMapString(log *log.DXLog, text string) string {
+func (hv *DXHashicorpVault) VaultMapString(log *log.DXLog, text string) (string, error) {
 	if strings.Contains(text, hv.Prefix) {
 		mapString := text
 		secret, err := hv.Client.Logical().Read(hv.Path)
 		if err != nil {
-			log.Fatalf("Unable to read credentials from Vault: %v", err.Error())
-			return ""
+			return "", errors.Wrapf(err, "unable to read credentials from Vault")
 		}
 		data, ok := secret.Data["data"].(map[string]any)
 		if !ok {
-			log.Fatalf("unable to read path from Vault")
-			return ""
+			return "", errors.Errorf("unable to read path from Vault")
 		}
 		for key, value := range data {
 			placeholder := hv.Prefix + key
-			mapString = strings.Replace(mapString, placeholder, value.(string), -1)
+			// Safe type assertion
+			valueStr, ok := value.(string)
+			if !ok {
+				return "", errors.Errorf("vault value for key %s is not a string: %v", key, value)
+			}
+			mapString = strings.Replace(mapString, placeholder, valueStr, -1)
 		}
-		return mapString
+		return mapString, nil
 	}
-	return text
+	return text, nil
 }
 
 func (hv *DXHashicorpVault) VaultGetData(log *log.DXLog) (r utils.JSON, err error) {

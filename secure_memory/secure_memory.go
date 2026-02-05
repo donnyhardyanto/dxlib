@@ -138,14 +138,17 @@ func (m *DXSecureMemoryManager) StoreEnclave(key string, data []byte) error {
 // StoreFromVault gets value from vault and stores using LockedBuffer
 func (m *DXSecureMemoryManager) StoreFromVault(v vault.DXVaultInterface, vaultKey string, secureMemoryKey string) error {
 	// Get value from vault as string
-	value := v.ResolveAsString(vaultKey)
+	value, err := v.ResolveAsString(vaultKey)
+	if err != nil {
+		return errors.Wrapf(err, "SECURE_MEMORY_VAULT_GET_ERROR:%s", vaultKey)
+	}
 	if value == "" {
 		return errors.Errorf("SECURE_MEMORY_VAULT_KEY_EMPTY_OR_NOT_FOUND:%s", vaultKey)
 	}
 
 	// Convert string to bytes and store
 	data := []byte(value)
-	err := m.Store(secureMemoryKey, data)
+	err = m.Store(secureMemoryKey, data)
 	if err != nil {
 		return errors.Wrapf(err, "SECURE_MEMORY_STORE_FROM_VAULT_ERROR:%s->%s", vaultKey, secureMemoryKey)
 	}
@@ -157,14 +160,17 @@ func (m *DXSecureMemoryManager) StoreFromVault(v vault.DXVaultInterface, vaultKe
 // StoreEnclaveFromVault gets value from vault and stores using Enclave
 func (m *DXSecureMemoryManager) StoreEnclaveFromVault(v vault.DXVaultInterface, vaultKey string, secureMemoryKey string) error {
 	// Get value from vault as string
-	value := v.ResolveAsString(vaultKey)
+	value, err := v.ResolveAsString(vaultKey)
+	if err != nil {
+		return errors.Wrapf(err, "SECURE_MEMORY_VAULT_GET_ERROR:%s", vaultKey)
+	}
 	if value == "" {
 		return errors.Errorf("SECURE_MEMORY_VAULT_KEY_EMPTY_OR_NOT_FOUND:%s", vaultKey)
 	}
 
 	// Convert string to bytes and store as Enclave
 	data := []byte(value)
-	err := m.StoreEnclave(secureMemoryKey, data)
+	err = m.StoreEnclave(secureMemoryKey, data)
 	if err != nil {
 		return errors.Wrapf(err, "SECURE_MEMORY_STORE_ENCLAVE_FROM_VAULT_ERROR:%s->%s", vaultKey, secureMemoryKey)
 	}

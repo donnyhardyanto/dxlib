@@ -323,7 +323,10 @@ func (a *DXApp) SetupNewRelicApplication() {
 			newrelic.ConfigDistributedTracerEnabled(true),
 		)
 		if err != nil {
-			log.Log.Panic("New Relic Application Error: ", err)
+			// Graceful degradation: log warning but continue without monitoring
+			log.Log.Warnf("New Relic initialization failed (application will continue without monitoring): %v", err)
+			core.IsNewRelicEnabled = false
+			core.NewRelicApplication = nil
 		}
 	}
 	return
