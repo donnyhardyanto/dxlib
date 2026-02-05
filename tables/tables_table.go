@@ -151,55 +151,6 @@ func (t *DXTable) addNotDeletedToWhere(whereClause string) string {
 	return fmt.Sprintf("(%s) AND %s", whereClause, notDeletedClause)
 }
 
-// Paging executes a paging query with an automatic is_deleted filter
-func (t *DXTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
-	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, t.addNotDeletedToWhere(whereClause), orderBy, args)
-}
-
-// PagingWithBuilder executes a paging query using a QueryBuilder (assumes NotDeleted already added)
-func (t *DXTable) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
-	whereClause, args, err := qb.Build()
-	if err != nil {
-		return nil, err
-	}
-	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
-}
-
-// PagingIncludeDeleted executes a paging query including deleted records
-func (t *DXTable) PagingIncludeDeleted(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
-	return t.DXRawTable.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
-}
-
-// DoPaging is an API helper with an automatic is_deleted filter
-func (t *DXTable) DoPaging(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
-	return t.Paging(&aepr.Log, rowPerPage, pageIndex, whereClause, orderBy, args)
-}
-
-// DoPagingWithBuilder is an API helper using QueryBuilder
-func (t *DXTable) DoPagingWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
-	return t.PagingWithBuilder(&aepr.Log, rowPerPage, pageIndex, qb, orderBy)
-}
-
-// DoPagingResponse executes paging and writes standard JSON response
-func (t *DXTable) DoPagingResponse(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) error {
-	result, err := t.DoPaging(aepr, rowPerPage, pageIndex, whereClause, orderBy, args)
-	if err != nil {
-		return err
-	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, result.ToResponseJSON())
-	return nil
-}
-
-// DoPagingResponseWithBuilder executes paging with QueryBuilder and writes response
-func (t *DXTable) DoPagingResponseWithBuilder(aepr *api.DXAPIEndPointRequest, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) error {
-	result, err := t.DoPagingWithBuilder(aepr, rowPerPage, pageIndex, qb, orderBy)
-	if err != nil {
-		return err
-	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, result.ToResponseJSON())
-	return nil
-}
-
 // Upsert Operations (with audit fields)
 
 // Upsert inserts or updates with audit fields
@@ -254,43 +205,6 @@ func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where u
 
 // API Request Helpers
 
-// DoRequestPagingList handles paging with optional result processing.
-// If the request contains an "is_deleted" parameter set to true, deleted records are included.
-// Otherwise, only non-deleted records are returned (is_deleted=false filter applied).
-func (t *DXTable) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) error {
-	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
-	if err != nil {
-		return err
-	}
-
-	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
-	if err != nil {
-		return err
-	}
-
-	_, isDeletedIncluded, _ := aepr.GetParameterValueAsBool("is_deleted", false)
-
-	var result *PagingResult
-	if isDeletedIncluded {
-		result, err = t.PagingIncludeDeleted(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
-	} else {
-		result, err = t.Paging(&aepr.Log, rowPerPage, pageIndex, filterWhere, filterOrderBy, filterKeyValues)
-	}
-	if err != nil {
-		return err
-	}
-
-	if onResultList != nil {
-		result.Rows, err = onResultList(aepr, result.Rows)
-		if err != nil {
-			return err
-		}
-	}
-
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, result.ToResponseJSON())
-	return nil
-}
-
 // RequestSoftDelete handles soft delete by ID API requests
 func (t *DXTable) RequestSoftDelete(aepr *api.DXAPIEndPointRequest) error {
 	_, id, err := aepr.GetParameterValueAsInt64(t.FieldNameForRowId)
@@ -325,9 +239,11 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 	return nil
 }
 
-// RequestPagingListAll handles a paging list all API requests (no filter, all records)
-func (t *DXTable) RequestPagingListAll(aepr *api.DXAPIEndPointRequest) error {
-	return t.DoRequestPagingList(aepr, "", "", nil, nil)
+// RequestSearchPagingList overrides DXRawTable to add NotDeleted filter by default
+func (t *DXTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) error {
+	qb := t.DXRawTable.NewTableSelectQueryBuilder()
+	qb.NotDeleted()
+	return t.DoRequestSearchPagingList(aepr, qb, nil)
 }
 
 // RequestListAll handles list all API requests (no paging, all records)

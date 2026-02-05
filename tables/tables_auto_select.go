@@ -173,32 +173,3 @@ func (t *DXTable) ShouldGetByNameIdNotDeletedAuto(l *log.DXLog, nameId string, f
 	return t.ShouldGetByNameIdNotDeleted(l, nameId, fieldNames...)
 }
 
-// DXRawTable Paging Auto Methods
-
-// PagingAuto executes paging query using table's EncryptionColumnDefs and EncryptionKeyDefs.
-// Note: parameter order differs from Paging (whereArgs and orderBy are swapped).
-// Delegates to Paging which is now auto-encryption-aware.
-func (t *DXRawTable) PagingAuto(
-	l *log.DXLog,
-	rowPerPage, pageIndex int64,
-	whereClause string,
-	whereArgs utils.JSON,
-	orderBy string,
-) (*PagingResult, error) {
-	return t.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, whereArgs)
-}
-
-// DXTable Paging Auto Methods
-
-// PagingAuto executes paging query with is_deleted filter using table's EncryptionColumnDefs.
-// Note: parameter order differs from Paging (whereArgs and orderBy are swapped).
-// Delegates to Paging which adds is_deleted filter and is auto-encryption-aware.
-func (t *DXTable) PagingAuto(
-	l *log.DXLog,
-	rowPerPage, pageIndex int64,
-	whereClause string,
-	whereArgs utils.JSON,
-	orderBy string,
-) (*PagingResult, error) {
-	return t.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, whereArgs)
-}

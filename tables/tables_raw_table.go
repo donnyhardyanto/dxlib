@@ -234,62 +234,6 @@ func (t *DXRawTable) NewTableDeleteQueryBuilder() *tableQueryBuilder.TableDelete
 	return tableQueryBuilder.NewTableDeleteQueryBuilder(t.GetDbType(), t)
 }
 
-// Paging executes a paging query with WHERE clause and ORDER BY
-func (t *DXRawTable) Paging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
-	if err := t.EnsureDatabase(); err != nil {
-		return nil, err
-	}
-
-	if len(t.EncryptionColumnDefs) > 0 {
-		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
-		return t.PagingWithEncryption(l, nil, encryptionColumns, whereClause, args, orderBy, rowPerPage, pageIndex)
-	}
-	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-		if err != nil {
-			return nil, err
-		}
-		defer dtx.Finish(l, err)
-		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return nil, err
-		}
-		return executeEncryptedPaging(dtx, t.ListViewNameId, t.Database.DatabaseType, nil, nil, whereClause, args, orderBy, rowPerPage, pageIndex)
-	}
-
-	rowsInfo, list, totalRows, totalPages, _, err := db.NamedQueryPaging(
-		t.Database.Connection,
-		t.FieldTypeMapping,
-		"",
-		rowPerPage,
-		pageIndex,
-		"*",
-		t.GetListViewName(),
-		whereClause,
-		"",
-		orderBy,
-		args,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PagingResult{
-		RowsInfo:   rowsInfo,
-		Rows:       list,
-		TotalRows:  totalRows,
-		TotalPages: totalPages,
-	}, nil
-}
-
-// PagingWithBuilder executes a paging query using a QueryBuilder
-func (t *DXRawTable) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *QueryBuilder, orderBy string) (*PagingResult, error) {
-	whereClause, args, err := qb.Build()
-	if err != nil {
-		return nil, err
-	}
-	return t.Paging(l, rowPerPage, pageIndex, whereClause, orderBy, args)
-}
-
 // DoPagingWithSelectQueryBuilder executes a paging query using SelectQueryBuilder (core implementation).
 // Supports EncryptionColumnDefs and EncryptionKeyDefs for encrypted tables.
 // Uses CountWithSelectQueryBuilder2 for total count and SelectWithSelectQueryBuilder2 for rows.

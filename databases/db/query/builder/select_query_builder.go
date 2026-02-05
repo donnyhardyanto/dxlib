@@ -95,7 +95,8 @@ type SelectQueryBuilder struct {
 	GroupByFields    []string
 	HavingConditions []HavingConditionDef
 	OrderByDefs      []OrderByDef
-	OutFields        []string // OutFields for SELECT or RETURNING clause
+	RawOrderBys      []string     // Raw ORDER BY expressions (e.g., PostGIS distance)
+	OutFields        []string     // OutFields for SELECT or RETURNING clause
 	LimitValue       int64    // LIMIT clause value (0 = no limit)
 	OffsetValue      int64    // OFFSET clause value (0 = no offset)
 	havingArgCount   int      // internal counter for unique HAVING param names
@@ -367,6 +368,18 @@ func (qb *SelectQueryBuilder) AddOrderBy(fieldName string, direction string, nul
 	return qb
 }
 
+// AddOrderByRaw adds a raw ORDER BY expression (e.g., PostGIS distance expressions).
+// No validation is performed on the expression — caller is responsible for safety.
+func (qb *SelectQueryBuilder) AddOrderByRaw(rawExpr string) *SelectQueryBuilder {
+	if qb.Error != nil {
+		return qb
+	}
+	if rawExpr != "" {
+		qb.RawOrderBys = append(qb.RawOrderBys, rawExpr)
+	}
+	return qb
+}
+
 // === Build Methods for Extended Clauses ===
 
 // BuildJoinClause returns the JOIN clause string
@@ -516,13 +529,13 @@ func (qb *SelectQueryBuilder) BuildOutputClause(prefix string) (string, error) {
 	return "OUTPUT " + strings.Join(quotedFields, ", "), nil
 }
 
-// BuildOrderByClause returns the ORDER BY clause string from OrderByDefs
+// BuildOrderByClause returns the ORDER BY clause string from OrderByDefs and RawOrderBys
 func (qb *SelectQueryBuilder) BuildOrderByClause() (string, error) {
 	if qb.Error != nil {
 		return "", qb.Error
 	}
 
-	if len(qb.OrderByDefs) == 0 {
+	if len(qb.OrderByDefs) == 0 && len(qb.RawOrderBys) == 0 {
 		return "", nil
 	}
 
@@ -537,6 +550,9 @@ func (qb *SelectQueryBuilder) BuildOrderByClause() (string, error) {
 
 		parts = append(parts, part)
 	}
+
+	// Append raw ORDER BY expressions
+	parts = append(parts, qb.RawOrderBys...)
 
 	return strings.Join(parts, ", "), nil
 }

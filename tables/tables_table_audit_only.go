@@ -384,18 +384,6 @@ func (t *DXTableAuditOnly) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest
 	return nil
 }
 
-// API Request Helpers - pass through to DXRawTable (NO is_deleted filter)
-
-// DoRequestPagingList handles paging with optional result processing (NO is_deleted filter)
-/*func (t *DXTableAuditOnly) DoRequestPagingList(aepr *api.DXAPIEndPointRequest, filterWhere string, filterOrderBy string, filterKeyValues utils.JSON, onResultList OnResultList) error {
-	return t.DXRawTable.DoRequestPagingList(aepr, filterWhere, filterOrderBy, filterKeyValues, onResultList)
-}
-*/
-// RequestPagingListAll handles a paging list all API requests (no filter, all records)
-/*func (t *DXTableAuditOnly) RequestPagingListAll(aepr *api.DXAPIEndPointRequest) error {
-	return t.DoRequestPagingList(aepr, "", "", nil, nil)
-}
-*/
 // RequestListAll handles list all API requests (no paging, all records)
 func (t *DXTableAuditOnly) RequestListAll(aepr *api.DXAPIEndPointRequest) error {
 	return t.RequestSearchPagingList(aepr)

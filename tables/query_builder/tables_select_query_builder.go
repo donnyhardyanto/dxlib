@@ -378,6 +378,13 @@ func (tqb *TableSelectQueryBuilder) OrderByDescNullsLast(fieldName string) *Tabl
 	return tqb.OrderBy(fieldName, databases.DXOrderByDirectionDesc, databases.DXOrderByNullPlacementLast)
 }
 
+// OrderByRaw adds a raw ORDER BY expression (e.g., PostGIS distance expressions).
+// No field validation is performed — caller is responsible for safety.
+func (tqb *TableSelectQueryBuilder) OrderByRaw(rawExpr string) *TableSelectQueryBuilder {
+	tqb.SelectQueryBuilder.AddOrderByRaw(rawExpr)
+	return tqb
+}
+
 // BuildOrderByString validates and builds ORDER BY clause from API input array
 func (tqb *TableSelectQueryBuilder) BuildOrderByString(orderByArray []any) (string, error) {
 	if tqb.TableInterface == nil {
