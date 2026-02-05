@@ -593,6 +593,35 @@ func (qb *SelectQueryBuilder) BuildWithPrefix(existingWhere string) (string, uti
 	return where, args, nil
 }
 
+// OrGroups adds multiple ConditionGroups joined by OR.
+// Each group is AND-joined internally, then groups are OR'd together.
+// Single group → no extra outer parens.
+func (qb *SelectQueryBuilder) OrGroups(groups []*ConditionGroup) *SelectQueryBuilder {
+	if len(groups) == 0 {
+		return qb
+	}
+	var parts []string
+	for _, g := range groups {
+		built := g.Build()
+		if built == "" {
+			continue
+		}
+		parts = append(parts, "("+built+")")
+		for k, v := range g.Args {
+			qb.Args[k] = v
+		}
+	}
+	if len(parts) == 0 {
+		return qb
+	}
+	if len(parts) == 1 {
+		qb.Conditions = append(qb.Conditions, parts[0])
+	} else {
+		qb.Conditions = append(qb.Conditions, "("+strings.Join(parts, " OR ")+")")
+	}
+	return qb
+}
+
 // BuildInClause builds an IN clause for the given field and values
 func (qb *SelectQueryBuilder) BuildInClause(fieldName string, values any) string {
 	switch v := values.(type) {

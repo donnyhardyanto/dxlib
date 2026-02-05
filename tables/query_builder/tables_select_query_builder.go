@@ -462,6 +462,12 @@ func (tqb *TableSelectQueryBuilder) BuildOrderByString(orderByArray []any) (stri
 	return strings.Join(parts, ", "), nil
 }
 
+// OrGroups adds multiple ConditionGroups joined by OR (pass-through to base builder).
+func (tqb *TableSelectQueryBuilder) OrGroups(groups []*builder.ConditionGroup) *TableSelectQueryBuilder {
+	tqb.SelectQueryBuilder.OrGroups(groups)
+	return tqb
+}
+
 // ParseOrderByFromArray parses order_by array from API input into OrderBy calls.
 // Each array element should be a JSON object with "field_name", "direction", and optional "null_order".
 func (tqb *TableSelectQueryBuilder) ParseOrderByFromArray(orderByArray []any) *TableSelectQueryBuilder {
