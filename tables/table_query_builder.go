@@ -11,6 +11,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/databases/db/query/builder"
 	utils2 "github.com/donnyhardyanto/dxlib/databases/db/query/utils"
 	"github.com/donnyhardyanto/dxlib/errors"
+	tableQueryBuilder "github.com/donnyhardyanto/dxlib/tables/query_builder"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
@@ -485,13 +486,13 @@ func NamedQueryPaging(
 	}, nil
 }
 
-// NamedQueryPagingWithBuilder executes a paging query using TableQueryBuilder
+// NamedQueryPagingWithBuilder executes a paging query using TableSelectQueryBuilder
 func NamedQueryPagingWithBuilder(
 	dxDb3 *databases.DXDatabase,
 	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
 	tableName string,
 	rowPerPage, pageIndex int64,
-	tqb *TableQueryBuilder,
+	tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy string,
 ) (*PagingResult, error) {
 	whereClause, args, err := tqb.Build()

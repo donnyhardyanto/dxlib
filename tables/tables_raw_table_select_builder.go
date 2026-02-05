@@ -7,14 +7,15 @@ import (
 	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
+	tableQueryBuilder "github.com/donnyhardyanto/dxlib/tables/query_builder"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-// SelectWithBuilder returns multiple rows using TableQueryBuilder for safe SQL construction
+// SelectWithBuilder returns multiple rows using TableSelectQueryBuilder for safe SQL construction
 // This is the preferred method over Select() when using JOIN, GROUP BY, HAVING, or ORDER BY clauses
 // Note: If tqb.OrderByDefs is populated (via OrderBy/OrderByAsc/OrderByDesc), it takes precedence over orderBy parameter
 // Note: For tables with encryption, this falls back to standard Select with the built where clause
-func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, fieldNames []string, tqb *TableQueryBuilder,
+func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 
 	if err := t.EnsureDatabase(); err != nil {
@@ -125,8 +126,8 @@ func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, fieldNames []string, tqb *T
 	return t.Database.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinPart, groupByFields, havingJSON, effectiveOrderBy, limit, nil, forUpdatePart)
 }
 
-// SelectOneWithBuilder returns a single row using TableQueryBuilder
-func (t *DXRawTable) SelectOneWithBuilder(l *log.DXLog, fieldNames []string, tqb *TableQueryBuilder,
+// SelectOneWithBuilder returns a single row using TableSelectQueryBuilder
+func (t *DXRawTable) SelectOneWithBuilder(l *log.DXLog, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 
 	rowsInfo, rows, err := t.SelectWithBuilder(l, fieldNames, tqb, orderBy, 1, nil)
@@ -142,7 +143,7 @@ func (t *DXRawTable) SelectOneWithBuilder(l *log.DXLog, fieldNames []string, tqb
 }
 
 // ShouldSelectOneWithBuilder returns a single row or error if not found
-func (t *DXRawTable) ShouldSelectOneWithBuilder(l *log.DXLog, fieldNames []string, tqb *TableQueryBuilder,
+func (t *DXRawTable) ShouldSelectOneWithBuilder(l *log.DXLog, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 
 	rowsInfo, row, err := t.SelectOneWithBuilder(l, fieldNames, tqb, orderBy)
@@ -157,9 +158,9 @@ func (t *DXRawTable) ShouldSelectOneWithBuilder(l *log.DXLog, fieldNames []strin
 	return rowsInfo, row, nil
 }
 
-// TxSelectWithBuilder returns multiple rows within a transaction using TableQueryBuilder
+// TxSelectWithBuilder returns multiple rows within a transaction using TableSelectQueryBuilder
 // Note: If tqb.OrderByDefs is populated (via OrderBy/OrderByAsc/OrderByDesc), it takes precedence over orderBy parameter
-func (t *DXRawTable) TxSelectWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *TableQueryBuilder,
+func (t *DXRawTable) TxSelectWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 
 	// Check for errors accumulated in QueryBuilder
@@ -236,8 +237,8 @@ func (t *DXRawTable) TxSelectWithBuilder(dtx *databases.DXDatabaseTx, fieldNames
 	return dtx.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinPart, groupByFields, havingJSON, effectiveOrderBy, limit, nil, forUpdatePart)
 }
 
-// TxSelectOneWithBuilder returns a single row within a transaction using TableQueryBuilder
-func (t *DXRawTable) TxSelectOneWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *TableQueryBuilder,
+// TxSelectOneWithBuilder returns a single row within a transaction using TableSelectQueryBuilder
+func (t *DXRawTable) TxSelectOneWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 
 	rowsInfo, rows, err := t.TxSelectWithBuilder(dtx, fieldNames, tqb, orderBy, 1, forUpdatePart)
@@ -253,7 +254,7 @@ func (t *DXRawTable) TxSelectOneWithBuilder(dtx *databases.DXDatabaseTx, fieldNa
 }
 
 // TxShouldSelectOneWithBuilder returns a single row or error if not found within a transaction
-func (t *DXRawTable) TxShouldSelectOneWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *TableQueryBuilder,
+func (t *DXRawTable) TxShouldSelectOneWithBuilder(dtx *databases.DXDatabaseTx, fieldNames []string, tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy db.DXDatabaseTableFieldsOrderBy, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 
 	rowsInfo, row, err := t.TxSelectOneWithBuilder(dtx, fieldNames, tqb, orderBy, forUpdatePart)
@@ -268,8 +269,8 @@ func (t *DXRawTable) TxShouldSelectOneWithBuilder(dtx *databases.DXDatabaseTx, f
 	return rowsInfo, row, nil
 }
 
-// CountWithBuilder returns total row count using TableQueryBuilder
-func (t *DXRawTable) CountWithBuilder(l *log.DXLog, tqb *TableQueryBuilder) (int64, error) {
+// CountWithBuilder returns total row count using TableSelectQueryBuilder
+func (t *DXRawTable) CountWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return 0, err
 	}
