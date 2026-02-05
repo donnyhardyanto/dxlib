@@ -2,11 +2,9 @@ package tables
 
 import (
 	"fmt"
-	"net/http"
 	"slices"
 	"strings"
 
-	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/databases/db"
@@ -502,44 +500,6 @@ func NamedQueryPagingWithBuilder(
 	}
 	return NamedQueryPaging(dxDb3, fieldTypeMapping, tableName, rowPerPage, pageIndex, whereClause, orderBy, args)
 }
-
-// DoNamedQueryPagingResponse executes paging and writes standard JSON response
-func DoNamedQueryPagingResponse(
-	aepr *api.DXAPIEndPointRequest,
-	dxDb3 *databases.DXDatabase,
-	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
-	tableName string,
-	rowPerPage, pageIndex int64,
-	whereClause, orderBy string,
-	args utils.JSON,
-) error {
-	result, err := NamedQueryPaging(dxDb3, fieldTypeMapping, tableName, rowPerPage, pageIndex, whereClause, orderBy, args)
-	if err != nil {
-		aepr.Log.Errorf(err, "Error at paging table %s (%s)", tableName, err.Error())
-		return err
-	}
-	aepr.WriteResponseAsJSON(http.StatusOK, nil, result.ToResponseJSON())
-	return nil
-}
-
-// DoNamedQueryPagingResponseWithBuilder executes paging with TableQueryBuilder and writes response
-func DoNamedQueryPagingResponseWithBuilder(
-	aepr *api.DXAPIEndPointRequest,
-	dxDb3 *databases.DXDatabase,
-	fieldTypeMapping db.DXDatabaseTableFieldTypeMapping,
-	tableName string,
-	rowPerPage, pageIndex int64,
-	tqb *TableQueryBuilder,
-	orderBy string,
-) error {
-	whereClause, args, err := tqb.Build()
-	if err != nil {
-		return err
-	}
-	return DoNamedQueryPagingResponse(aepr, dxDb3, fieldTypeMapping, tableName, rowPerPage, pageIndex, whereClause, orderBy, args)
-}
-
-// === Backward Compatibility Aliases ===
 
 // QueryBuilder is an alias for TableQueryBuilder for backward compatibility
 // Deprecated: Use TableQueryBuilder directly

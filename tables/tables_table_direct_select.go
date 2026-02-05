@@ -85,8 +85,3 @@ func (t *DXTable) DirectShouldGetByNameId(l *log.DXLog, nameId string, fieldName
 func (t *DXTable) DirectCount(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
 	return t.DXRawTable.DirectCount(l, t.addNotDeletedFilter(where), joinSQLPart)
 }
-
-// DirectPaging returns paginated non-deleted rows from the base table
-func (t *DXTable) DirectPaging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
-	return t.DXRawTable.DirectPaging(l, rowPerPage, pageIndex, t.addNotDeletedToWhere(whereClause), orderBy, args)
-}

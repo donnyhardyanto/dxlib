@@ -124,32 +124,3 @@ func (t *DXRawTable) DirectCount(l *log.DXLog, where utils.JSON, joinSQLPart any
 	}
 	return t.Database.Count(t.GetFullTableName(), where, joinSQLPart)
 }
-
-// DirectPaging returns paginated rows from the base table
-func (t *DXRawTable) DirectPaging(l *log.DXLog, rowPerPage, pageIndex int64, whereClause, orderBy string, args utils.JSON) (*PagingResult, error) {
-	if err := t.EnsureDatabase(); err != nil {
-		return nil, err
-	}
-	rowsInfo, list, totalRows, totalPages, _, err := db.NamedQueryPaging(
-		t.Database.Connection,
-		t.FieldTypeMapping,
-		"",
-		rowPerPage,
-		pageIndex,
-		"*",
-		t.GetFullTableName(),
-		whereClause,
-		"",
-		orderBy,
-		args,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &PagingResult{
-		RowsInfo:   rowsInfo,
-		Rows:       list,
-		TotalRows:  totalRows,
-		TotalPages: totalPages,
-	}, nil
-}
