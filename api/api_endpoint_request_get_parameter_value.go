@@ -5,15 +5,24 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 func (aepr *DXAPIEndPointRequest) GetParameterValueEntry(k string) (val *DXAPIEndPointRequestParameterValue, err error) {
 	var ok bool
 	if val, ok = aepr.ParameterValues[k]; !ok {
-		err = errors.Errorf("REQUEST_FIELD_NOT_FOUND_IN_REQUEST:%s", k)
-		return nil, err
+		// Parameter not defined in endpoint or not sent by client
+		// Return a default entry indicating it doesn't exist (not an error)
+		return &DXAPIEndPointRequestParameterValue{
+			Owner:    aepr,
+			Value:    nil,
+			RawValue: nil,
+			Metadata: DXAPIEndPointParameter{
+				NameId:      k,
+				IsMustExist: false,
+				IsNullable:  true,
+			},
+		}, nil
 	}
 	return val, nil
 }

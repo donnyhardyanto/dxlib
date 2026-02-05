@@ -210,7 +210,6 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 // RequestSearchPagingList overrides DXRawTable to add NotDeleted filter by default
 func (t *DXTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) error {
 	qb := t.DXRawTable.NewTableSelectQueryBuilder()
-	qb.NotDeleted()
 	return t.DoRequestSearchPagingList(aepr, qb, nil)
 }
 
