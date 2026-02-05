@@ -434,3 +434,22 @@ func (tqb *TableSelectQueryBuilder) BuildOrderByString(orderByArray []any) (stri
 
 	return strings.Join(parts, ", "), nil
 }
+
+// ParseOrderByFromArray parses order_by array from API input into OrderBy calls.
+// Each array element should be a JSON object with "field_name", "direction", and optional "null_order".
+func (tqb *TableSelectQueryBuilder) ParseOrderByFromArray(orderByArray []any) *TableSelectQueryBuilder {
+	for _, item := range orderByArray {
+		entry, ok := item.(utils.JSON)
+		if !ok {
+			continue
+		}
+		fieldName, _ := entry["field_name"].(string)
+		direction, _ := entry["direction"].(string)
+		nullOrder, _ := entry["null_order"].(string)
+		if fieldName == "" || direction == "" {
+			continue
+		}
+		tqb.OrderBy(fieldName, databases.DXOrderByDirection(direction), databases.DXOrderByNullPlacement(nullOrder))
+	}
+	return tqb
+}

@@ -293,7 +293,7 @@ func (t *DXRawTable) PagingWithBuilder(l *log.DXLog, rowPerPage, pageIndex int64
 // DoPagingWithSelectQueryBuilder executes a paging query using SelectQueryBuilder (core implementation).
 // Supports EncryptionColumnDefs and EncryptionKeyDefs for encrypted tables.
 // Uses CountWithSelectQueryBuilder2 for total count and SelectWithSelectQueryBuilder2 for rows.
-func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *tableQueryBuilder.TableSelectQueryBuilder) (*PagingResult, error) {
+func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQueryBuilder.TableSelectQueryBuilder) (*PagingResult, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, err
 	}
@@ -319,6 +319,7 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, rowPerPage, pa
 		return nil, err
 	}
 
+	rowPerPage := qb.LimitValue
 	totalPages := int64(0)
 	if rowPerPage > 0 {
 		totalPages = (totalRows + rowPerPage - 1) / rowPerPage
@@ -341,11 +342,6 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, rowPerPage, pa
 		qb.OutFields = outFields
 	}
 
-	qb.LimitValue = rowPerPage
-	if pageIndex > 0 {
-		qb.OffsetValue = pageIndex * rowPerPage
-	}
-
 	// Select
 	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(dtx, qb.SelectQueryBuilder)
 	if err != nil {
@@ -362,11 +358,21 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, rowPerPage, pa
 
 // PagingWithSelectQueryBuilder executes a paging query using TableSelectQueryBuilder.
 // Delegates to DoPagingWithSelectQueryBuilder.
-func (t *DXRawTable) PagingWithSelectQueryBuilder(l *log.DXLog, rowPerPage, pageIndex int64, qb *tableQueryBuilder.TableSelectQueryBuilder) (*PagingResult, error) {
-	return t.DoPagingWithSelectQueryBuilder(l, rowPerPage, pageIndex, qb)
+func (t *DXRawTable) PagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQueryBuilder.TableSelectQueryBuilder) (*PagingResult, error) {
+	return t.DoPagingWithSelectQueryBuilder(l, qb)
 }
 
 func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) error {
+
+	qb := t.NewTableSelectQueryBuilder()
+
+	return t.DoRequestSearchPagingList(aepr, qb, nil)
+}
+
+// DoRequestSearchPagingList executes paging with a pre-built TableSelectQueryBuilder and writes JSON response.
+// Parses row_per_page and page_index from the request. The caller is responsible for building the query builder
+// with all WHERE and ORDER BY conditions. Optional onResultList callback allows post-processing of rows.
+func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, qb *tableQueryBuilder.TableSelectQueryBuilder, onResultList OnResultList) error {
 	_, searchText, err := aepr.GetParameterValueAsString("search_text")
 	if err != nil {
 		return err
@@ -387,11 +393,16 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 		return err
 	}
 
-	if err := t.EnsureDatabase(); err != nil {
+	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
+	if err != nil {
 		return err
 	}
 
-	qb := t.NewTableSelectQueryBuilder()
+	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
+	if err != nil {
+		return err
+	}
+
 	if searchText != "" {
 		qb.SearchLike(searchText, t.SearchTextFieldNames...)
 	}
@@ -410,38 +421,14 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 	}
 
 	// Parse order_by into OrderBy calls with validation
-	for _, item := range orderByArray {
-		entry, ok := item.(utils.JSON)
-		if !ok {
-			continue
-		}
-		fieldName, _ := entry["field_name"].(string)
-		direction, _ := entry["direction"].(string)
-		nullOrder, _ := entry["null_order"].(string)
-		if fieldName == "" || direction == "" {
-			continue
-		}
-		qb.OrderBy(fieldName, databases.DXOrderByDirection(direction), databases.DXOrderByNullPlacement(nullOrder))
+	qb.ParseOrderByFromArray(orderByArray)
+
+	qb.Limit(rowPerPage)
+	if pageIndex > 0 {
+		qb.Offset(pageIndex * rowPerPage)
 	}
 
-	return t.DoRequestSearchPagingList(aepr, qb, nil)
-}
-
-// DoRequestSearchPagingList executes paging with a pre-built TableSelectQueryBuilder and writes JSON response.
-// Parses row_per_page and page_index from the request. The caller is responsible for building the query builder
-// with all WHERE and ORDER BY conditions. Optional onResultList callback allows post-processing of rows.
-func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, qb *tableQueryBuilder.TableSelectQueryBuilder, onResultList OnResultList) error {
-	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
-	if err != nil {
-		return err
-	}
-
-	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
-	if err != nil {
-		return err
-	}
-
-	result, err := t.DoPagingWithSelectQueryBuilder(&aepr.Log, rowPerPage, pageIndex, qb)
+	result, err := t.DoPagingWithSelectQueryBuilder(&aepr.Log, qb)
 	if err != nil {
 		return err
 	}
@@ -488,19 +475,7 @@ func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest)
 	}
 
 	// Parse order_by into OrderBy calls with validation
-	for _, item := range orderByArray {
-		entry, ok := item.(utils.JSON)
-		if !ok {
-			continue
-		}
-		fieldName, _ := entry["field_name"].(string)
-		direction, _ := entry["direction"].(string)
-		nullOrder, _ := entry["null_order"].(string)
-		if fieldName == "" || direction == "" {
-			continue
-		}
-		qb.OrderBy(fieldName, databases.DXOrderByDirection(direction), databases.DXOrderByNullPlacement(nullOrder))
-	}
+	qb.ParseOrderByFromArray(orderByArray)
 
 	return t.DoRequestSearchPagingDownload(aepr, qb)
 }
@@ -538,7 +513,12 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 		fallback = language.DXTranslateFallbackModeOriginal
 	}
 
-	pagingResult, err := t.DoPagingWithSelectQueryBuilder(&aepr.Log, rowPerPage, pageIndex, qb)
+	qb.Limit(rowPerPage)
+	if pageIndex > 0 {
+		qb.Offset(pageIndex * rowPerPage)
+	}
+
+	pagingResult, err := t.DoPagingWithSelectQueryBuilder(&aepr.Log, qb)
 	if err != nil {
 		return err
 	}
