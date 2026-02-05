@@ -6,12 +6,13 @@ import (
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/log"
+	tableQueryBuilder "github.com/donnyhardyanto/dxlib/tables/query_builder"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-// UpdateWithBuilder executes an UPDATE using TableQueryBuilder for safe SQL construction
-// The TableQueryBuilder provides safe WHERE clause building and RETURNING field validation
-func (t *DXRawTable) UpdateWithBuilder(l *log.DXLog, setFieldNameValues utils.JSON, tqb *TableQueryBuilder) (sql.Result, []utils.JSON, error) {
+// UpdateWithBuilder executes an UPDATE using TableUpdateQueryBuilder for safe SQL construction
+// The TableUpdateQueryBuilder provides safe WHERE clause building and RETURNING field validation
+func (t *DXRawTable) UpdateWithBuilder(l *log.DXLog, setFieldNameValues utils.JSON, tqb *tableQueryBuilder.TableUpdateQueryBuilder) (sql.Result, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
@@ -22,7 +23,7 @@ func (t *DXRawTable) UpdateWithBuilder(l *log.DXLog, setFieldNameValues utils.JS
 	}
 
 	// Build WHERE clause from QueryBuilder conditions
-	whereClause, whereArgs, err := tqb.Build()
+	whereClause, whereArgs, err := tqb.BuildWhereClause()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,15 +68,15 @@ func (t *DXRawTable) UpdateWithBuilder(l *log.DXLog, setFieldNameValues utils.JS
 	return t.Database.Update(t.GetFullTableName(), setFieldNameValues, where, returningFields)
 }
 
-// TxUpdateWithBuilder executes an UPDATE within a transaction using TableQueryBuilder
-func (t *DXRawTable) TxUpdateWithBuilder(dtx *databases.DXDatabaseTx, setFieldNameValues utils.JSON, tqb *TableQueryBuilder) (sql.Result, []utils.JSON, error) {
+// TxUpdateWithBuilder executes an UPDATE within a transaction using TableUpdateQueryBuilder
+func (t *DXRawTable) TxUpdateWithBuilder(dtx *databases.DXDatabaseTx, setFieldNameValues utils.JSON, tqb *tableQueryBuilder.TableUpdateQueryBuilder) (sql.Result, []utils.JSON, error) {
 	// Check for errors accumulated in QueryBuilder
 	if tqb.Error != nil {
 		return nil, nil, tqb.Error
 	}
 
 	// Build WHERE clause from QueryBuilder conditions
-	whereClause, whereArgs, err := tqb.Build()
+	whereClause, whereArgs, err := tqb.BuildWhereClause()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -107,8 +108,8 @@ func (t *DXRawTable) TxUpdateWithBuilder(dtx *databases.DXDatabaseTx, setFieldNa
 	return dtx.Update(t.GetFullTableName(), setFieldNameValues, where, returningFields)
 }
 
-// UpdateByIdWithBuilder executes an UPDATE by ID using TableQueryBuilder for RETURNING
-func (t *DXRawTable) UpdateByIdWithBuilder(l *log.DXLog, id int64, setFieldNameValues utils.JSON, tqb *TableQueryBuilder) (sql.Result, []utils.JSON, error) {
+// UpdateByIdWithBuilder executes an UPDATE by ID using TableUpdateQueryBuilder for RETURNING
+func (t *DXRawTable) UpdateByIdWithBuilder(l *log.DXLog, id int64, setFieldNameValues utils.JSON, tqb *tableQueryBuilder.TableUpdateQueryBuilder) (sql.Result, []utils.JSON, error) {
 	// Add ID condition to the QueryBuilder
 	// Note: We don't use tqb.Eq because the ID field might not be in SearchTextFieldNames
 	tqb.Conditions = append(tqb.Conditions, t.FieldNameForRowId+" = :__update_id__")
@@ -117,8 +118,8 @@ func (t *DXRawTable) UpdateByIdWithBuilder(l *log.DXLog, id int64, setFieldNameV
 	return t.UpdateWithBuilder(l, setFieldNameValues, tqb)
 }
 
-// TxUpdateByIdWithBuilder executes an UPDATE by ID within a transaction using TableQueryBuilder
-func (t *DXRawTable) TxUpdateByIdWithBuilder(dtx *databases.DXDatabaseTx, id int64, setFieldNameValues utils.JSON, tqb *TableQueryBuilder) (sql.Result, []utils.JSON, error) {
+// TxUpdateByIdWithBuilder executes an UPDATE by ID within a transaction using TableUpdateQueryBuilder
+func (t *DXRawTable) TxUpdateByIdWithBuilder(dtx *databases.DXDatabaseTx, id int64, setFieldNameValues utils.JSON, tqb *tableQueryBuilder.TableUpdateQueryBuilder) (sql.Result, []utils.JSON, error) {
 	// Add ID condition to the QueryBuilder
 	tqb.Conditions = append(tqb.Conditions, t.FieldNameForRowId+" = :__update_id__")
 	tqb.Args["__update_id__"] = id
