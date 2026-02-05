@@ -12,12 +12,12 @@ import (
 
 func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
-	dbt := base.StringToDXDatabaseType(db.DriverName())
-	err = CheckAll(dbt, query, arg)
-	if err != nil {
-		return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
-	}
-
+	// dbt := base.StringToDXDatabaseType(db.DriverName())
+	/*	err = CheckAll(dbt, query, arg)
+		if err != nil {
+			return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
+		}
+	*/
 	rows, err := db.Queryx(query, arg...)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "DB_QUERY_ERROR sql=%s", query)
@@ -52,12 +52,12 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 
-	dbt := base.StringToDXDatabaseType(tx.DriverName())
-	err = CheckAll(dbt, query, arg)
-	if err != nil {
-		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
-	}
-
+	// dbt := base.StringToDXDatabaseType(tx.DriverName())
+	/*	err = CheckAll(dbt, query, arg)
+		if err != nil {
+			return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
+		}
+	*/
 	rows, err := tx.Queryx(query, arg...)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "DB_TX_QUERY_ERROR sql=%s", query)

@@ -1,7 +1,6 @@
 package base
 
 import (
-	"github.com/donnyhardyanto/dxlib/base"
 	databaseDb "github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -16,12 +15,12 @@ func BaseQueryRows2(db *sqlx.DB, query string, arg any) (rowsInfo *databaseDb.DX
 		arg = utils.JSON{}
 	}
 
-	dbt := base.StringToDXDatabaseType(db.DriverName())
-	err = databaseDb.CheckAll(dbt, query, arg)
-	if err != nil {
-		return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
-	}
-
+	//dbt := base.StringToDXDatabaseType(db.DriverName())
+	/*	err = databaseDb.CheckAll(dbt, query, arg)
+		if err != nil {
+			return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
+		}
+	*/
 	// Check if arg is a slice (positional parameters) or map/struct (named parameters)
 	var rows *sqlx.Rows
 	switch v := arg.(type) {
