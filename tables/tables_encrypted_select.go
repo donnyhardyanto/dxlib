@@ -9,6 +9,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
+	tableQueryBuilder "github.com/donnyhardyanto/dxlib/tables/query_builder"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
 )
@@ -147,17 +148,17 @@ func (t *DXRawTable) PagingWithEncryption(
 	return t.TxPagingWithEncryption(dtx, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
 }
 
-// PagingWithEncryptionAndBuilder executes paging with QueryBuilder and decrypted columns
+// PagingWithEncryptionAndBuilder executes paging with TableSelectQueryBuilder and decrypted columns
 func (t *DXRawTable) PagingWithEncryptionAndBuilder(
 	l *log.DXLog,
 	columns []string,
 	encryptionColumns []EncryptionColumn,
-	qb *QueryBuilder,
+	tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy string,
 	rowPerPage int64,
 	pageIndex int64,
 ) (*PagingResult, error) {
-	whereClause, whereArgs, err := qb.Build()
+	whereClause, whereArgs, err := tqb.Build()
 	if err != nil {
 		return nil, err
 	}
@@ -246,17 +247,17 @@ func (t *DXTable) PagingWithEncryption(
 	return t.DXRawTable.PagingWithEncryption(l, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
 }
 
-// PagingWithEncryptionAndBuilder executes paging with QueryBuilder and decrypted columns
+// PagingWithEncryptionAndBuilder executes paging with TableSelectQueryBuilder and decrypted columns
 func (t *DXTable) PagingWithEncryptionAndBuilder(
 	l *log.DXLog,
 	columns []string,
 	encryptionColumns []EncryptionColumn,
-	qb *QueryBuilder,
+	tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy string,
 	rowPerPage int64,
 	pageIndex int64,
 ) (*PagingResult, error) {
-	return t.DXRawTable.PagingWithEncryptionAndBuilder(l, columns, encryptionColumns, qb, orderBy, rowPerPage, pageIndex)
+	return t.DXRawTable.PagingWithEncryptionAndBuilder(l, columns, encryptionColumns, tqb, orderBy, rowPerPage, pageIndex)
 }
 
 // Internal Select Helper Functions

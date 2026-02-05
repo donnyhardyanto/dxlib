@@ -3,8 +3,10 @@ package tables
 import (
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/databases/models"
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 type DXTableExportFormat = string
@@ -411,6 +413,28 @@ func NewDXTableAuditOnlySimple(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
+		},
+	}
+}
+
+// PagingResult contains paging query results
+type PagingResult struct {
+	RowsInfo   *db.DXDatabaseTableRowsInfo
+	Rows       []utils.JSON
+	TotalRows  int64
+	TotalPages int64
+}
+
+// ToResponseJSON converts PagingResult to standard JSON response format
+func (pr *PagingResult) ToResponseJSON() utils.JSON {
+	return utils.JSON{
+		"data": utils.JSON{
+			"list": utils.JSON{
+				"rows":       pr.Rows,
+				"total_rows": pr.TotalRows,
+				"total_page": pr.TotalPages,
+				"rows_info":  pr.RowsInfo,
+			},
 		},
 	}
 }

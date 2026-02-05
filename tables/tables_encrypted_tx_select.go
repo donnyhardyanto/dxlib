@@ -4,6 +4,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
+	tableQueryBuilder "github.com/donnyhardyanto/dxlib/tables/query_builder"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
@@ -165,17 +166,17 @@ func (t *DXRawTable) TxPagingWithEncryption(
 	return executeEncryptedPaging(dtx, t.ListViewNameId, dbType, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
 }
 
-// TxPagingWithEncryptionAndBuilder executes paging with QueryBuilder and decrypted columns
+// TxPagingWithEncryptionAndBuilder executes paging with TableSelectQueryBuilder and decrypted columns
 func (t *DXRawTable) TxPagingWithEncryptionAndBuilder(
 	dtx *databases.DXDatabaseTx,
 	columns []string,
 	encryptionColumns []EncryptionColumn,
-	qb *QueryBuilder,
+	tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy string,
 	rowPerPage int64,
 	pageIndex int64,
 ) (*PagingResult, error) {
-	whereClause, whereArgs, err := qb.Build()
+	whereClause, whereArgs, err := tqb.Build()
 	if err != nil {
 		return nil, err
 	}
@@ -264,15 +265,15 @@ func (t *DXTable) TxPagingWithEncryption(
 	return t.DXRawTable.TxPagingWithEncryption(dtx, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
 }
 
-// TxPagingWithEncryptionAndBuilder executes paging with QueryBuilder and decrypted columns
+// TxPagingWithEncryptionAndBuilder executes paging with TableSelectQueryBuilder and decrypted columns
 func (t *DXTable) TxPagingWithEncryptionAndBuilder(
 	dtx *databases.DXDatabaseTx,
 	columns []string,
 	encryptionColumns []EncryptionColumn,
-	qb *QueryBuilder,
+	tqb *tableQueryBuilder.TableSelectQueryBuilder,
 	orderBy string,
 	rowPerPage int64,
 	pageIndex int64,
 ) (*PagingResult, error) {
-	return t.DXRawTable.TxPagingWithEncryptionAndBuilder(dtx, columns, encryptionColumns, qb, orderBy, rowPerPage, pageIndex)
+	return t.DXRawTable.TxPagingWithEncryptionAndBuilder(dtx, columns, encryptionColumns, tqb, orderBy, rowPerPage, pageIndex)
 }

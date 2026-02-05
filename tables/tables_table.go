@@ -2,12 +2,10 @@ package tables
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/api"
-	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -119,36 +117,6 @@ func (t *DXTable) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 func (t *DXTable) TxHardDelete(dtx *databases.DXDatabaseTx, where utils.JSON) (sql.Result, error) {
 	result, _, err := t.DXRawTable.TxDelete(dtx, where, nil)
 	return result, err
-}
-
-// Paging Operations (with is_deleted = false filter)
-
-// NewQueryBuilder creates a QueryBuilder with NotDeleted filter pre-applied
-func (t *DXTable) NewQueryBuilder() *QueryBuilder {
-	qb := NewQueryBuilder(t.GetDbType(), t)
-	qb.NotDeleted()
-	return qb
-}
-
-// NewQueryBuilderRaw creates a QueryBuilder without a NotDeleted filter (for special cases)
-func (t *DXTable) NewQueryBuilderRaw() *QueryBuilder {
-	return NewQueryBuilder(t.GetDbType(), t)
-}
-
-// addNotDeletedToWhere adds is_deleted filter to the existing WHERE clause
-func (t *DXTable) addNotDeletedToWhere(whereClause string) string {
-	var notDeletedClause string
-	switch t.GetDbType() {
-	case base.DXDatabaseTypeSQLServer:
-		notDeletedClause = "is_deleted = 0"
-	default:
-		notDeletedClause = "is_deleted = false"
-	}
-
-	if whereClause == "" {
-		return notDeletedClause
-	}
-	return fmt.Sprintf("(%s) AND %s", whereClause, notDeletedClause)
 }
 
 // Upsert Operations (with audit fields)

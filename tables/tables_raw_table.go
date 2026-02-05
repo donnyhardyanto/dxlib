@@ -209,11 +209,6 @@ func (t *DXRawTable) GetListViewName() string {
 	return t.GetFullTableName()
 }
 
-// NewQueryBuilder creates a QueryBuilder with the table's databases type
-func (t *DXRawTable) NewQueryBuilder() *QueryBuilder {
-	return NewQueryBuilder(t.GetDbType(), t)
-}
-
 // NewTableSelectQueryBuilder creates a TableSelectQueryBuilder with the table's database type
 func (t *DXRawTable) NewTableSelectQueryBuilder() *tableQueryBuilder.TableSelectQueryBuilder {
 	return tableQueryBuilder.NewTableSelectQueryBuilder(t.GetDbType(), t)
