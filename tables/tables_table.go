@@ -214,11 +214,6 @@ func (t *DXTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) error 
 	return t.DoRequestSearchPagingList(aepr, qb, nil)
 }
 
-// RequestListAll handles list all API requests (no paging, all records)
-func (t *DXTable) RequestListAll(aepr *api.DXAPIEndPointRequest) error {
-	return t.RequestSearchPagingList(aepr)
-}
-
 // RequestSoftDeleteByUid handles soft delete by UID API requests
 func (t *DXTable) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
