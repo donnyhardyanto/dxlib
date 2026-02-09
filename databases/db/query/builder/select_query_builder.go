@@ -648,3 +648,69 @@ func (qb *SelectQueryBuilder) BuildInClause(fieldName string, values any) string
 		return "1=0"
 	}
 }
+
+// === Filter Operator Methods (for SQL-injection-proof filtering) ===
+
+// AndWithParam adds a condition with a single parameter
+func (qb *SelectQueryBuilder) AndWithParam(condition string, paramName string, paramValue any) *SelectQueryBuilder {
+	if qb.Error != nil {
+		return qb
+	}
+	if condition != "" {
+		qb.Conditions = append(qb.Conditions, condition)
+		qb.Args[paramName] = paramValue
+	}
+	return qb
+}
+
+// AndWithParams adds a condition with multiple parameters
+func (qb *SelectQueryBuilder) AndWithParams(condition string, params map[string]any) *SelectQueryBuilder {
+	if qb.Error != nil {
+		return qb
+	}
+	if condition != "" {
+		qb.Conditions = append(qb.Conditions, condition)
+		for k, v := range params {
+			qb.Args[k] = v
+		}
+	}
+	return qb
+}
+
+// GenerateParamName creates unique parameter names for filtering
+func (qb *SelectQueryBuilder) GenerateParamName(fieldName string) string {
+	// Generate unique param name using field name and current arg count
+	return fmt.Sprintf("%s_%d", fieldName, len(qb.Args))
+}
+
+// NotIn adds field NOT IN (values) condition
+func (qb *SelectQueryBuilder) NotIn(fieldName string, values any) *SelectQueryBuilder {
+	if qb.Error != nil {
+		return qb
+	}
+
+	switch v := values.(type) {
+	case []int64:
+		if len(v) == 0 {
+			return qb // Empty array means no condition
+		}
+		var strVals []string
+		for _, val := range v {
+			strVals = append(strVals, fmt.Sprintf("%d", val))
+		}
+		qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s NOT IN (%s)", qb.QuoteIdentifier(fieldName), strings.Join(strVals, ", ")))
+	case []string:
+		if len(v) == 0 {
+			return qb
+		}
+		var quotedVals []string
+		for _, val := range v {
+			quotedVals = append(quotedVals, fmt.Sprintf("'%s'", strings.ReplaceAll(val, "'", "''")))
+		}
+		qb.Conditions = append(qb.Conditions, fmt.Sprintf("%s NOT IN (%s)", qb.QuoteIdentifier(fieldName), strings.Join(quotedVals, ", ")))
+	default:
+		// Unknown type - return error to prevent SQL injection
+		qb.Error = errors.New("NOT_IN_REQUIRES_INT64_OR_STRING_ARRAY")
+	}
+	return qb
+}

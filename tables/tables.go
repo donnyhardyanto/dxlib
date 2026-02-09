@@ -269,7 +269,7 @@ func (m *DXTableManager) GetAuditOnlyTable(name string) *DXTableAuditOnly {
 
 // NewDXRawTable creates a new DXRawTable wrapping a models.ModelDBTable
 func NewDXRawTable(
-	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXRawTable {
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:                  databaseNameId,
 		DBTable:                         dbTable,
@@ -277,12 +277,13 @@ func NewDXRawTable(
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		SearchTextFieldNames:            searchTextFieldNames,
 		OrderByFieldNames:               orderByFieldNames,
+		FilterableFields:                filterableFields,
 	}
 }
 
 // NewDXRawTableWithView creates a new DXRawTable with a custom list view
 func NewDXRawTableWithView(
-	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXRawTable {
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:                  databaseNameId,
 		DBTable:                         dbTable,
@@ -291,12 +292,13 @@ func NewDXRawTableWithView(
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		SearchTextFieldNames:            searchTextFieldNames,
 		OrderByFieldNames:               orderByFieldNames,
+		FilterableFields:                filterableFields,
 	}
 }
 
 // NewDXTable creates a new DXTable wrapping a models.ModelDBTable
 func NewDXTable(
-	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXTable {
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
@@ -305,13 +307,14 @@ func NewDXTable(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
+			FilterableFields:                filterableFields,
 		},
 	}
 }
 
 // NewDXTableWithView creates a new DXTable with a custom list view
 func NewDXTableWithView(
-	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXTable {
+	databaseNameId string, dbTable *models.ModelDBTable, fieldNameForRowId, listViewNameId string, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
@@ -321,6 +324,7 @@ func NewDXTableWithView(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
+			FilterableFields:                filterableFields,
 		},
 	}
 }
@@ -330,7 +334,7 @@ func NewDXTableWithView(
 // NewDXRawTableSimple creates a DXRawTable with direct table name (no models.ModelDBTable needed)
 func NewDXRawTableSimple(
 	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
-	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXRawTable {
+	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXRawTable {
 	return &DXRawTable{
 		DatabaseNameId:                  databaseNameId,
 		TableNameDirect:                 tableName,
@@ -344,13 +348,14 @@ func NewDXRawTableSimple(
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		SearchTextFieldNames:            searchTextFieldNames,
 		OrderByFieldNames:               orderByFieldNames,
+		FilterableFields:                filterableFields,
 	}
 }
 
 // NewDXTableSimple creates a DXTable with direct table name (no models.ModelDBTable needed)
 func NewDXTableSimple(
 	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
-	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXTable {
+	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
@@ -365,6 +370,7 @@ func NewDXTableSimple(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
+			FilterableFields:                filterableFields,
 		},
 	}
 }
@@ -374,7 +380,7 @@ func NewDXTableWithEncryption(
 	databaseNameId, tableName, resultObjectName, listViewNameId,
 	fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string,
 	encryptionKeyDefs []*databases.EncryptionKeyDef,
-	encryptionColumnDefs []databases.EncryptionColumnDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXTable {
+	encryptionColumnDefs []databases.EncryptionColumnDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXTable {
 	return &DXTable{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
@@ -390,6 +396,7 @@ func NewDXTableWithEncryption(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
+			FilterableFields:                filterableFields,
 		},
 	}
 }
@@ -398,7 +405,7 @@ func NewDXTableWithEncryption(
 // Use this for tables that have audit fields (created_at, created_by_*, last_modified_*) but NO is_deleted column
 func NewDXTableAuditOnlySimple(
 	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
-	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string) *DXTableAuditOnly {
+	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXTableAuditOnly {
 	return &DXTableAuditOnly{
 		DXRawTable: DXRawTable{
 			DatabaseNameId:                  databaseNameId,
@@ -413,6 +420,7 @@ func NewDXTableAuditOnlySimple(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
+			FilterableFields:                filterableFields,
 		},
 	}
 }

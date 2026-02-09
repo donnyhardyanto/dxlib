@@ -52,6 +52,7 @@ type DXRawTable struct {
 	ValidationUniqueFieldNameGroups [][]string
 	SearchTextFieldNames            []string
 	OrderByFieldNames               []string
+	FilterableFields                []string // Whitelist of fields that can be filtered via filter_key_values
 }
 
 // EnsureDatabase ensures databases connection is initialized
@@ -346,8 +347,9 @@ func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, q
 		qb.SearchLike(searchText, t.SearchTextFieldNames...)
 	}
 	if isFilterKeyValuesExist && filterKeyValues != nil {
-		for k, v := range filterKeyValues {
-			qb.EqOrIn(k, v)
+		err := t.processFilterKeyValues(qb, filterKeyValues)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -408,8 +410,9 @@ func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest)
 		qb.SearchLike(searchText, t.SearchTextFieldNames...)
 	}
 	if isFilterKeyValuesExist && filterKeyValues != nil {
-		for k, v := range filterKeyValues {
-			qb.EqOrIn(k, v)
+		err := t.processFilterKeyValues(qb, filterKeyValues)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -511,3 +514,142 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 
 // OnResultList is a callback type for paging result processing
 type OnResultList func(aepr *api.DXAPIEndPointRequest, list []utils.JSON) ([]utils.JSON, error)
+
+// === Filter Operator Support (SQL-injection-proof filtering) ===
+
+// isFieldFilterable checks if a field is in the filterable fields whitelist
+func (t *DXRawTable) isFieldFilterable(fieldName string) bool {
+	if len(t.FilterableFields) == 0 {
+		return true // No restriction if not specified (backwards compat)
+	}
+	for _, allowed := range t.FilterableFields {
+		if allowed == fieldName {
+			return true
+		}
+	}
+	return false
+}
+
+// isOperatorFormat checks if a value is in operator format {"op": "...", "value": ...}
+func isOperatorFormat(value any) bool {
+	if valueMap, ok := value.(map[string]any); ok {
+		_, hasOp := valueMap["op"]
+		return hasOp
+	}
+	return false
+}
+
+// applyOperatorFilter applies operator-based filtering (SQL injection proof)
+func (t *DXRawTable) applyOperatorFilter(
+	qb *tableQueryBuilder.TableSelectQueryBuilder,
+	fieldName string,
+	operatorObj map[string]any,
+) error {
+	op, ok := operatorObj["op"].(string)
+	if !ok {
+		return errors.New("OPERATOR_MUST_BE_STRING")
+	}
+
+	value := operatorObj["value"]
+	paramName := qb.GenerateParamName(fieldName)
+	quotedField := qb.QuoteIdentifier(fieldName)
+
+	switch op {
+	case "not_null_and_not_empty", "not_empty":
+		// No parameters needed
+		qb.And(fmt.Sprintf("(%s IS NOT NULL AND %s <> '')", quotedField, quotedField))
+
+	case "not_null":
+		qb.And(fmt.Sprintf("%s IS NOT NULL", quotedField))
+
+	case "is_null":
+		qb.And(fmt.Sprintf("%s IS NULL", quotedField))
+
+	case "gt":
+		qb.AndWithParam(
+			fmt.Sprintf("%s > :%s", quotedField, paramName),
+			paramName, value)
+
+	case "gte":
+		qb.AndWithParam(
+			fmt.Sprintf("%s >= :%s", quotedField, paramName),
+			paramName, value)
+
+	case "lt":
+		qb.AndWithParam(
+			fmt.Sprintf("%s < :%s", quotedField, paramName),
+			paramName, value)
+
+	case "lte":
+		qb.AndWithParam(
+			fmt.Sprintf("%s <= :%s", quotedField, paramName),
+			paramName, value)
+
+	case "eq":
+		qb.Eq(fieldName, value)
+
+	case "ne":
+		qb.Ne(fieldName, value)
+
+	case "in":
+		qb.EqOrIn(fieldName, value) // Already handles IN with params
+
+	case "not_in":
+		qb.NotIn(fieldName, value)
+
+	case "like":
+		valueStr, ok := value.(string)
+		if !ok {
+			return errors.New("LIKE_VALUE_MUST_BE_STRING")
+		}
+		qb.Like(fieldName, valueStr)
+
+	case "ilike":
+		valueStr, ok := value.(string)
+		if !ok {
+			return errors.New("ILIKE_VALUE_MUST_BE_STRING")
+		}
+		qb.ILike(fieldName, valueStr)
+
+	case "between":
+		values, ok := value.([]any)
+		if !ok || len(values) != 2 {
+			return errors.New("BETWEEN_REQUIRES_ARRAY_OF_2_VALUES")
+		}
+		param1 := paramName + "_1"
+		param2 := paramName + "_2"
+		qb.AndWithParams(
+			fmt.Sprintf("%s BETWEEN :%s AND :%s", quotedField, param1, param2),
+			map[string]any{param1: values[0], param2: values[1]})
+
+	default:
+		return errors.Errorf("UNSUPPORTED_OPERATOR:%s", op)
+	}
+
+	return nil
+}
+
+// processFilterKeyValues processes filter_key_values with operator support
+func (t *DXRawTable) processFilterKeyValues(
+	qb *tableQueryBuilder.TableSelectQueryBuilder,
+	filterKeyValues map[string]any,
+) error {
+	for fieldName, filterValue := range filterKeyValues {
+		// SECURITY: Validate field name against whitelist
+		if !t.isFieldFilterable(fieldName) {
+			return errors.Errorf("FIELD_NOT_FILTERABLE:%s", fieldName)
+		}
+
+		// Detect operator format vs simple value
+		if operatorMap, ok := filterValue.(map[string]any); ok && isOperatorFormat(filterValue) {
+			err := t.applyOperatorFilter(qb, fieldName, operatorMap)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Backwards compatible: simple equality or IN
+			qb.EqOrIn(fieldName, filterValue)
+		}
+	}
+	return nil
+}

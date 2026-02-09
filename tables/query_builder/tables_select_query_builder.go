@@ -486,3 +486,32 @@ func (tqb *TableSelectQueryBuilder) ParseOrderByFromArray(orderByArray []any) *T
 	}
 	return tqb
 }
+
+// === Filter Operator Methods (wrappers for base query builder) ===
+
+// AndWithParam adds condition with a single parameter (wrapper for base method)
+func (tqb *TableSelectQueryBuilder) AndWithParam(condition string, paramName string, paramValue any) *TableSelectQueryBuilder {
+	tqb.SelectQueryBuilder.AndWithParam(condition, paramName, paramValue)
+	return tqb
+}
+
+// AndWithParams adds condition with multiple parameters (wrapper for base method)
+func (tqb *TableSelectQueryBuilder) AndWithParams(condition string, params map[string]any) *TableSelectQueryBuilder {
+	tqb.SelectQueryBuilder.AndWithParams(condition, params)
+	return tqb
+}
+
+// GenerateParamName creates unique parameter names (wrapper for base method)
+func (tqb *TableSelectQueryBuilder) GenerateParamName(fieldName string) string {
+	return tqb.SelectQueryBuilder.GenerateParamName(fieldName)
+}
+
+// NotIn adds field NOT IN (values) condition with field validation
+func (tqb *TableSelectQueryBuilder) NotIn(fieldName string, values any) *TableSelectQueryBuilder {
+	tqb.CheckFieldExist(fieldName)
+	if tqb.Error != nil {
+		return tqb
+	}
+	tqb.SelectQueryBuilder.NotIn(fieldName, values)
+	return tqb
+}
