@@ -356,12 +356,13 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 			// Send HTTP 500 response with error_log reference
 			if !aepr.ResponseHeaderSent {
-				reasonMessage := fmt.Sprintf("ERROR_LOG=%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
+				errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
 				responseBody := utils.JSON{
 					"status":         "Internal Server Error",
 					"status_code":    http.StatusInternalServerError,
 					"reason":         "INTERNAL_SERVER_ERROR",
-					"reason_message": reasonMessage,
+					"reason_message": "INTERNAL_SERVER_ERROR",
+					"error_log_ref":  errorLogRef,
 				}
 				aepr.ResponseStatusCode = http.StatusInternalServerError
 				aepr.WriteResponseAsJSON(http.StatusInternalServerError, nil, responseBody)
@@ -416,8 +417,15 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		}
 		aepr.Log.Errorf(err, "PREPROCESS_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
 		// Send sanitized response with error_log reference for correlation
-		reasonMessage := fmt.Sprintf("ERROR_LOG=%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
-		aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "PREPROCESS_ERROR", reasonMessage)
+		errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
+		responseBody := utils.JSON{
+			"status":         "Bad Request",
+			"status_code":    http.StatusBadRequest,
+			"reason":         "PREPROCESS_ERROR",
+			"reason_message": "PREPROCESS_ERROR",
+			"error_log_ref":  errorLogRef,
+		}
+		aepr.WriteResponseAsJSON(http.StatusBadRequest, nil, responseBody)
 		return
 	}
 
@@ -450,8 +458,15 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			}
 			aepr.Log.Errorf(err, "MIDDLEWARE_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
 			// Send sanitized response with error_log reference for correlation
-			reasonMessage := fmt.Sprintf("ERROR_LOG=%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
-			aepr.WriteResponseAsErrorMessageNotLogged(http.StatusBadRequest, "MIDDLEWARE_ERROR", reasonMessage)
+			errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
+			responseBody := utils.JSON{
+				"status":         "Bad Request",
+				"status_code":    http.StatusBadRequest,
+				"reason":         "MIDDLEWARE_ERROR",
+				"reason_message": "MIDDLEWARE_ERROR",
+				"error_log_ref":  errorLogRef,
+			}
+			aepr.WriteResponseAsJSON(http.StatusBadRequest, nil, responseBody)
 			return
 		}
 
@@ -524,8 +539,15 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s", err, dbContextStr, requestDump)
 			// Send sanitized response with error_log reference for correlation
 			if !aepr.ResponseHeaderSent {
-				reasonMessage := fmt.Sprintf("ERROR_LOG=%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
-				aepr.WriteResponseAsErrorMessageNotLogged(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", reasonMessage)
+				errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
+				responseBody := utils.JSON{
+					"status":         "Internal Server Error",
+					"status_code":    http.StatusInternalServerError,
+					"reason":         "INTERNAL_SERVER_ERROR",
+					"reason_message": "INTERNAL_SERVER_ERROR",
+					"error_log_ref":  errorLogRef,
+				}
+				aepr.WriteResponseAsJSON(http.StatusInternalServerError, nil, responseBody)
 			}
 			return
 		} else {

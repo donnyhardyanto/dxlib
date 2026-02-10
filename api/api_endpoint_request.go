@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/language"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
@@ -58,6 +59,48 @@ func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
 		r[k] = v.Value
 	}
 	return r
+}
+
+// TranslateMessage translates a message key using the user's language from session.
+// Falls back to system default language ('id') if user language is not set.
+// Returns the original key if translation is not found.
+func (aepr *DXAPIEndPointRequest) TranslateMessage(messageKey string) string {
+	// Get language from session (populated by SessionKeyToSessionObject)
+	userLanguageStr, ok := aepr.LocalData["language"].(string)
+	if !ok || userLanguageStr == "" {
+		userLanguageStr = "id" // Default to Indonesian
+	}
+
+	// Convert string to DXLanguage type
+	userLanguage := language.DXLanguage(userLanguageStr)
+
+	// Translate using the language package with original fallback mode
+	translated := language.Translate(messageKey, userLanguage, language.DXTranslateFallbackModeOriginal)
+	return translated
+}
+
+// TranslateMessageWithArgs translates a message key and formats it with arguments.
+// Uses fmt.Sprintf for formatting after translation.
+// Falls back to system default language ('id') if user language is not set.
+// Returns formatted original key if translation is not found.
+func (aepr *DXAPIEndPointRequest) TranslateMessageWithArgs(messageKey string, args ...any) string {
+	// Get language from session (populated by SessionKeyToSessionObject)
+	userLanguageStr, ok := aepr.LocalData["language"].(string)
+	if !ok || userLanguageStr == "" {
+		userLanguageStr = "id" // Default to Indonesian
+	}
+
+	// Convert string to DXLanguage type
+	userLanguage := language.DXLanguage(userLanguageStr)
+
+	// Translate the template with original fallback mode
+	template := language.Translate(messageKey, userLanguage, language.DXTranslateFallbackModeOriginal)
+
+	// Format with arguments
+	if len(args) > 0 {
+		return fmt.Sprintf(template, args...)
+	}
+	return template
 }
 
 // logResponseTrace logs response phase trace information for Grafana monitoring
@@ -293,6 +336,31 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 		} else {
 			bodyAsJSON["reason_message"] = http.StatusText(statusCode)
 		}
+	}
+
+	// Extract ERROR_LOG= from reason_message and move to error_log_ref
+	if reasonMessage, ok := bodyAsJSON["reason_message"].(string); ok {
+		if strings.Contains(reasonMessage, "ERROR_LOG=") {
+			// Extract error log reference
+			parts := strings.Split(reasonMessage, "ERROR_LOG=")
+			if len(parts) >= 2 {
+				// Store error log reference in separate field
+				bodyAsJSON["error_log_ref"] = strings.TrimSpace(parts[1])
+				// Remove ERROR_LOG= from reason_message
+				bodyAsJSON["reason_message"] = strings.TrimSpace(parts[0])
+			}
+		}
+	}
+
+	// Translate status, reason, and reason_message using user's language
+	if status, ok := bodyAsJSON["status"].(string); ok {
+		bodyAsJSON["status"] = aepr.TranslateMessage(status)
+	}
+	if reason, ok := bodyAsJSON["reason"].(string); ok {
+		bodyAsJSON["reason"] = aepr.TranslateMessage(reason)
+	}
+	if reasonMessage, ok := bodyAsJSON["reason_message"].(string); ok {
+		bodyAsJSON["reason_message"] = aepr.TranslateMessage(reasonMessage)
 	}
 
 	jsonBytes, err = json.Marshal(bodyAsJSON)
