@@ -331,7 +331,7 @@ func NewDXTableWithView(
 
 // Simple Factory Functions - without models.ModelDBTable (for gradual migration)
 
-// NewDXRawTableSimple creates a DXRawTable with direct table name (no models.ModelDBTable needed)
+// NewDXRawTableSimple creates a DXRawTable with a direct table name (no models.ModelDBTable needed)
 func NewDXRawTableSimple(
 	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
 	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXRawTable {
@@ -352,7 +352,7 @@ func NewDXRawTableSimple(
 	}
 }
 
-// NewDXTableSimple creates a DXTable with direct table name (no models.ModelDBTable needed)
+// NewDXTableSimple creates a DXTable with a direct table name (no models.ModelDBTable needed)
 func NewDXTableSimple(
 	databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId,
 	responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXTable {
@@ -375,7 +375,7 @@ func NewDXTableSimple(
 	}
 }
 
-// NewDXTableWithEncryption creates a DXTable with encryption/decryption definitions
+// NewDXTableWithEncryption creates an DXTable with encryption/decryption definitions
 func NewDXTableWithEncryption(
 	databaseNameId, tableName, resultObjectName, listViewNameId,
 	fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string,
@@ -433,7 +433,7 @@ type PagingResult struct {
 	TotalPages int64
 }
 
-// ToResponseJSON converts PagingResult to standard JSON response format
+// ToResponseJSON converts PagingResult to the standard JSON response format
 func (pr *PagingResult) ToResponseJSON() utils.JSON {
 	return utils.JSON{
 		"data": utils.JSON{

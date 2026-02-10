@@ -536,7 +536,13 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if errors.As(err, &dbCtx) {
 				dbContextStr = fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
 			}
-			aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s", err, dbContextStr, requestDump)
+			// Add decrypted request info for E2E encrypted requests or when parameters are available
+		decryptedDump := ""
+		if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
+			decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
+		}
+
+		aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s%s", err, dbContextStr, requestDump, decryptedDump)
 			// Send sanitized response with error_log reference for correlation
 			if !aepr.ResponseHeaderSent {
 				errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)

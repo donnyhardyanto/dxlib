@@ -203,6 +203,74 @@ func (aepr *DXAPIEndPointRequest) RequestDumpAsString() (string, error) {
 	return string(b), err
 }
 
+// isSensitiveField checks if a field name contains sensitive keywords
+func isSensitiveField(fieldName string) bool {
+	lowerFieldName := strings.ToLower(fieldName)
+	sensitiveKeywords := []string{
+		"password", "passwd", "pwd",
+		"pin", "otp", "totp",
+		"secret", "token", "key",
+		"authorization", "auth",
+		"credential", "private",
+		"api_key", "apikey",
+		"session", "cookie",
+	}
+	for _, keyword := range sensitiveKeywords {
+		if strings.Contains(lowerFieldName, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// maskSensitiveValue masks sensitive data
+func maskSensitiveValue(fieldName string, value interface{}) interface{} {
+	if isSensitiveField(fieldName) {
+		return "***"
+	}
+	return value
+}
+
+// DecryptedRequestDumpAsString returns a formatted dump of decrypted request headers and body parameters
+// with sensitive fields masked. This is useful for debugging E2E encrypted requests.
+func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
+	var b strings.Builder
+
+	// Dump effective (decrypted) headers
+	b.WriteString("Decrypted Headers:\n")
+	if aepr.EffectiveRequestHeader != nil {
+		for k, v := range aepr.EffectiveRequestHeader {
+			maskedValue := maskSensitiveValue(k, v)
+			b.WriteString(fmt.Sprintf("%s: %v\n", k, maskedValue))
+		}
+	} else {
+		b.WriteString("(no decrypted headers)\n")
+	}
+
+	// Dump decrypted body parameters
+	b.WriteString("\nDecrypted Body Parameters:\n")
+	params := aepr.GetParameterValues()
+	if len(params) > 0 {
+		// Mask sensitive fields before marshaling
+		maskedParams := utils.JSON{}
+		for k, v := range params {
+			maskedParams[k] = maskSensitiveValue(k, v)
+		}
+
+		paramsJSON, err := json.MarshalIndent(maskedParams, "", "  ")
+		if err != nil {
+			b.WriteString(fmt.Sprintf("ERROR_MARSHALING_PARAMS: %v\n", err))
+		} else {
+			b.Write(paramsJSON)
+			b.WriteString("\n")
+		}
+	} else {
+		b.WriteString("(no parameters)\n")
+	}
+
+	return b.String()
+}
+
 func (aepr *DXAPIEndPointRequest) GetResponseWriter() *http.ResponseWriter {
 	return aepr.ResponseWriter
 }
