@@ -353,11 +353,10 @@ func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, q
 		}
 	}
 
-	if isIncludeDeletedExist {
-		if isIncludeDeleted {
-			if qb.IsFieldExist("is_deleted") {
-				qb.Eq("is_deleted", false)
-			}
+	// Apply "not deleted" filter by default, unless explicitly told to include deleted
+	if !isIncludeDeletedExist || !isIncludeDeleted {
+		if qb.IsFieldExist("is_deleted") {
+			qb.Eq("is_deleted", false)
 		}
 	}
 
