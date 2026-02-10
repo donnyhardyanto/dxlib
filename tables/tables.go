@@ -236,33 +236,33 @@ var Manager = DXTableManager{
 }
 
 // RegisterTable registers a DXTable with the manager
-func (m *DXTableManager) RegisterTable(name string, table *DXTable) {
-	m.Tables[name] = table
+func (tm *DXTableManager) RegisterTable(name string, table *DXTable) {
+	tm.Tables[name] = table
 }
 
 // RegisterRawTable registers a DXRawTable with the manager
-func (m *DXTableManager) RegisterRawTable(name string, table *DXRawTable) {
-	m.RawTables[name] = table
+func (tm *DXTableManager) RegisterRawTable(name string, table *DXRawTable) {
+	tm.RawTables[name] = table
 }
 
 // RegisterAuditOnlyTable registers a DXTableAuditOnly with the manager
-func (m *DXTableManager) RegisterAuditOnlyTable(name string, table *DXTableAuditOnly) {
-	m.AuditOnlyTables[name] = table
+func (tm *DXTableManager) RegisterAuditOnlyTable(name string, table *DXTableAuditOnly) {
+	tm.AuditOnlyTables[name] = table
 }
 
 // GetTable returns a registered DXTable by name
-func (m *DXTableManager) GetTable(name string) *DXTable {
-	return m.Tables[name]
+func (tm *DXTableManager) GetTable(name string) *DXTable {
+	return tm.Tables[name]
 }
 
 // GetRawTable returns a registered DXRawTable by name
-func (m *DXTableManager) GetRawTable(name string) *DXRawTable {
-	return m.RawTables[name]
+func (tm *DXTableManager) GetRawTable(name string) *DXRawTable {
+	return tm.RawTables[name]
 }
 
 // GetAuditOnlyTable returns a registered DXTableAuditOnly by name
-func (m *DXTableManager) GetAuditOnlyTable(name string) *DXTableAuditOnly {
-	return m.AuditOnlyTables[name]
+func (tm *DXTableManager) GetAuditOnlyTable(name string) *DXTableAuditOnly {
+	return tm.AuditOnlyTables[name]
 }
 
 // Factory Functions
