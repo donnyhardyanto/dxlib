@@ -17,19 +17,23 @@ type DXPropertyTable struct {
 }
 
 // NewDXPropertyTableSimple creates a DXPropertyTable with direct table name
-func NewDXPropertyTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef) *DXPropertyTable {
+func NewDXPropertyTableSimple(databaseNameId, tableName, resultObjectName, listViewNameId, fieldNameForRowId, fieldNameForRowUid, fieldNameForRowNameId, responseEnvelopeObjectName string, encryptionKeyDefs []*databases.EncryptionKeyDef, validationUniqueFieldNameGroups [][]string, searchTextFieldNames []string, orderByFieldNames []string, filterableFields []string) *DXPropertyTable {
 	return &DXPropertyTable{
 		DXTable: DXTable{
 			DXRawTable: DXRawTable{
-				DatabaseNameId:             databaseNameId,
-				TableNameDirect:            tableName,
-				ResultObjectName:           resultObjectName,
-				ListViewNameId:             listViewNameId,
-				FieldNameForRowId:          fieldNameForRowId,
-				FieldNameForRowUid:         fieldNameForRowUid,
-				FieldNameForRowNameId:      fieldNameForRowNameId,
-				ResponseEnvelopeObjectName: responseEnvelopeObjectName,
-				EncryptionKeyDefs:          encryptionKeyDefs,
+				DatabaseNameId:                  databaseNameId,
+				TableNameDirect:                 tableName,
+				ResultObjectName:                resultObjectName,
+				ListViewNameId:                  listViewNameId,
+				FieldNameForRowId:               fieldNameForRowId,
+				FieldNameForRowUid:              fieldNameForRowUid,
+				FieldNameForRowNameId:           fieldNameForRowNameId,
+				ResponseEnvelopeObjectName:      responseEnvelopeObjectName,
+				EncryptionKeyDefs:               encryptionKeyDefs,
+				ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
+				SearchTextFieldNames:            searchTextFieldNames,
+				OrderByFieldNames:               orderByFieldNames,
+				FilterableFields:                filterableFields,
 			},
 		},
 	}
