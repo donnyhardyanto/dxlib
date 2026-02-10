@@ -77,7 +77,7 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 	if err != nil {
 		location = l.Prefix
 		stack = fmt.Sprintf("%+v", err)
-		text = text + "\n" + err.Error()
+		text = text + "\n" + stack
 	}
 
 	attrs := []any{
