@@ -55,7 +55,7 @@ func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.
 
 	t.SetUpdateAuditFields(aepr, data)
 
-	_, err = t.DXRawTable.UpdateById(&aepr.Log, id, data)
+	_, err = t.DXRawTable.UpdateByIdAuto(&aepr.Log, id, data)
 	if err != nil {
 		return err
 	}

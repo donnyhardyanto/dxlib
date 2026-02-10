@@ -927,6 +927,73 @@ func Int64SliceToStrings(nums []int64) []string {
 	return strs
 }
 
+func ConvertInt64FromKV(kv map[string]any, key string) (r int64, err error) {
+	if kv == nil {
+		// Error Code: KV_IS_NIL
+		return r, errors.New("KV_IS_NIL")
+	}
+
+	// 1. Map Lookup
+	v, ok := kv[key]
+	if !ok {
+		// Error Code: KEY_IS_NOT_EXIST
+		return r, errors.Errorf("KEY_IS_NOT_EXIST:%s", key)
+	}
+
+	return ConvertToInt64(v)
+}
+
+// ConvertIntFromKV retrieves a value from map and converts it to int
+func ConvertIntFromKV(kv map[string]any, key string) (r int, err error) {
+	if kv == nil {
+		// Error Code: KV_IS_NIL
+		return r, errors.New("KV_IS_NIL")
+	}
+
+	// 1. Map Lookup
+	v, ok := kv[key]
+	if !ok {
+		// Error Code: KEY_IS_NOT_EXIST
+		return r, errors.Errorf("KEY_IS_NOT_EXIST:%s", key)
+	}
+
+	return ConvertToInt(v)
+}
+
+// ConvertFloat32FromKV retrieves a value from map and converts it to float32
+func ConvertFloat32FromKV(kv map[string]any, key string) (r float32, err error) {
+	if kv == nil {
+		// Error Code: KV_IS_NIL
+		return r, errors.New("KV_IS_NIL")
+	}
+
+	// 1. Map Lookup
+	v, ok := kv[key]
+	if !ok {
+		// Error Code: KEY_IS_NOT_EXIST
+		return r, errors.Errorf("KEY_IS_NOT_EXIST:%s", key)
+	}
+
+	return ConvertToFloat32(v)
+}
+
+// ConvertFloat64FromKV retrieves a value from map and converts it to float64
+func ConvertFloat64FromKV(kv map[string]any, key string) (r float64, err error) {
+	if kv == nil {
+		// Error Code: KV_IS_NIL
+		return r, errors.New("KV_IS_NIL")
+	}
+
+	// 1. Map Lookup
+	v, ok := kv[key]
+	if !ok {
+		// Error Code: KEY_IS_NOT_EXIST
+		return r, errors.Errorf("KEY_IS_NOT_EXIST:%s", key)
+	}
+
+	return ConvertToFloat64(v)
+}
+
 // GetMapValue safely retrieves and type-asserts a value from a map[string]any.
 // Returns:
 // - exists: True if the key exists in the map
@@ -1040,6 +1107,96 @@ func ConvertToInt64(value interface{}) (int64, error) {
 		return parsed, nil
 	default:
 		return 0, errors.Errorf("unexpected count value type: %T", value)
+	}
+}
+
+// ConvertToInt converts various types to int
+func ConvertToInt(value interface{}) (int, error) {
+	switch v := value.(type) {
+	case int:
+		return v, nil
+	case int64:
+		return int(v), nil
+	case int32:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	case float32:
+		return int(v), nil
+	case string:
+		parsed, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert string to int")
+		}
+		return parsed, nil
+	case []byte:
+		parsed, err := strconv.Atoi(string(v))
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert []byte to int")
+		}
+		return parsed, nil
+	default:
+		return 0, errors.Errorf("unexpected value type for int conversion: %T", value)
+	}
+}
+
+// ConvertToFloat32 converts various types to float32
+func ConvertToFloat32(value interface{}) (float32, error) {
+	switch v := value.(type) {
+	case float32:
+		return v, nil
+	case float64:
+		return float32(v), nil
+	case int:
+		return float32(v), nil
+	case int64:
+		return float32(v), nil
+	case int32:
+		return float32(v), nil
+	case string:
+		parsed, err := strconv.ParseFloat(v, 32)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert string to float32")
+		}
+		return float32(parsed), nil
+	case []byte:
+		parsed, err := strconv.ParseFloat(string(v), 32)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert []byte to float32")
+		}
+		return float32(parsed), nil
+	default:
+		return 0, errors.Errorf("unexpected value type for float32 conversion: %T", value)
+	}
+}
+
+// ConvertToFloat64 converts various types to float64
+func ConvertToFloat64(value interface{}) (float64, error) {
+	switch v := value.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	case string:
+		parsed, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert string to float64")
+		}
+		return parsed, nil
+	case []byte:
+		parsed, err := strconv.ParseFloat(string(v), 64)
+		if err != nil {
+			return 0, errors.Wrap(err, "failed to convert []byte to float64")
+		}
+		return parsed, nil
+	default:
+		return 0, errors.Errorf("unexpected value type for float64 conversion: %T", value)
 	}
 }
 

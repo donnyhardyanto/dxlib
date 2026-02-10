@@ -170,7 +170,7 @@ func (hv *DXHashicorpVault) GetIntOrDefault(v string, d int) int {
 	}
 
 	// Use utils.GetIntFromKV for safe type conversion
-	dvv, err := utils.GetIntFromKV(data, v)
+	dvv, err := utils.ConvertIntFromKV(data, v)
 	if err != nil {
 		// Key not found or type mismatch - return default
 		fmt.Println(err, "failed to get vault data for key: %s %+v", v, err)
@@ -188,7 +188,7 @@ func (hv *DXHashicorpVault) GetInt64OrDefault(v string, d int64) int64 {
 	}
 
 	// Use utils.GetInt64FromKV for safe type conversion
-	dvv, err := utils.GetInt64FromKV(data, v)
+	dvv, err := utils.ConvertInt64FromKV(data, v)
 	if err != nil {
 		// Key not found or type mismatch - return default
 		fmt.Println(err, "failed to get vault data for key: %s %+v", v, err)

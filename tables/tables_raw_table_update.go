@@ -64,7 +64,7 @@ func (t *DXRawTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data uti
 		}
 	}
 
-	_, err = t.UpdateById(&aepr.Log, id, data)
+	_, err = t.UpdateByIdAuto(&aepr.Log, id, data)
 	if err != nil {
 		return err
 	}
