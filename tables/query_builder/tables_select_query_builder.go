@@ -82,8 +82,14 @@ func (tqb *TableSelectQueryBuilder) CheckFieldExist(fieldName string) *TableSele
 		tqb.Error = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:TABLE_NOT_SET:%s", fieldName))
 		return tqb
 	}
-	searchFieldNames := tqb.TableInterface.GetFilterableFieldNames()
-	if !slices.Contains(searchFieldNames, fieldName) {
+	// Check against all valid field names (search, order, and filter)
+	searchFields := tqb.TableInterface.GetSearchTextFieldNames()
+	orderFields := tqb.TableInterface.GetOrderByFieldNames()
+	filterFields := tqb.TableInterface.GetFilterableFieldNames()
+
+	if !slices.Contains(searchFields, fieldName) &&
+	   !slices.Contains(orderFields, fieldName) &&
+	   !slices.Contains(filterFields, fieldName) {
 		tqb.Error = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:INVALID_FIELD_NAME_IN_TABLE:%s:%s", tqb.TableInterface.GetFullTableName(), fieldName))
 		return tqb
 	}
