@@ -33,7 +33,7 @@ func NewDXPropertyTableSimple(databaseNameId, tableName, resultObjectName, listV
 				ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 				SearchTextFieldNames:            searchTextFieldNames,
 				OrderByFieldNames:               orderByFieldNames,
-				FilterableFields:                filterableFields,
+				FilterableFieldNames:            filterableFields,
 			},
 		},
 	}

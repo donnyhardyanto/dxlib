@@ -23,11 +23,12 @@ import (
 
 // DXRawTable - Basic table wrapper without soft-delete
 
-type DXRawTableInterface interface {
+/*type DXRawTableInterface interface {
 	GetSearchTextFieldNames() []string
 	GetOrderByFieldNames() []string
 	GetFullTableName() string
-}
+	GetFilterableFieldNames() []string
+}*/
 
 // DXRawTable wraps database3 with connection management and basic CRUD
 type DXRawTable struct {
@@ -52,7 +53,7 @@ type DXRawTable struct {
 	ValidationUniqueFieldNameGroups [][]string
 	SearchTextFieldNames            []string
 	OrderByFieldNames               []string
-	FilterableFields                []string // Whitelist of fields that can be filtered via filter_key_values
+	FilterableFieldNames            []string // Whitelist of fields that can be filtered via filter_key_values
 }
 
 // EnsureDatabase ensures databases connection is initialized
@@ -88,6 +89,10 @@ func (t *DXRawTable) GetSearchTextFieldNames() []string {
 
 func (t *DXRawTable) GetOrderByFieldNames() []string {
 	return t.OrderByFieldNames
+}
+
+func (t *DXRawTable) GetFilterableFieldNames() []string {
+	return t.FilterableFieldNames
 }
 
 // Delete Operations (Hard Delete)
@@ -518,10 +523,10 @@ type OnResultList func(aepr *api.DXAPIEndPointRequest, list []utils.JSON) ([]uti
 
 // isFieldFilterable checks if a field is in the filterable fields whitelist
 func (t *DXRawTable) isFieldFilterable(fieldName string) bool {
-	if len(t.FilterableFields) == 0 {
+	if len(t.FilterableFieldNames) == 0 {
 		return true // No restriction if not specified (backwards compat)
 	}
-	for _, allowed := range t.FilterableFields {
+	for _, allowed := range t.FilterableFieldNames {
 		if allowed == fieldName {
 			return true
 		}

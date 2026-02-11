@@ -19,6 +19,7 @@ type TableInterface interface {
 	GetSearchTextFieldNames() []string
 	GetOrderByFieldNames() []string
 	GetFullTableName() string
+	GetFilterableFieldNames() []string
 }
 
 // TableSelectQueryBuilder wraps builder.SelectQueryBuilder with table-specific field validation.
@@ -71,7 +72,7 @@ func (tqb *TableSelectQueryBuilder) IsFieldExist(fieldName string) bool {
 	if tqb.TableInterface == nil {
 		return false
 	}
-	searchFieldNames := tqb.TableInterface.GetSearchTextFieldNames()
+	searchFieldNames := tqb.TableInterface.GetFilterableFieldNames()
 	return slices.Contains(searchFieldNames, fieldName)
 }
 
@@ -81,7 +82,7 @@ func (tqb *TableSelectQueryBuilder) CheckFieldExist(fieldName string) *TableSele
 		tqb.Error = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:TABLE_NOT_SET:%s", fieldName))
 		return tqb
 	}
-	searchFieldNames := tqb.TableInterface.GetSearchTextFieldNames()
+	searchFieldNames := tqb.TableInterface.GetFilterableFieldNames()
 	if !slices.Contains(searchFieldNames, fieldName) {
 		tqb.Error = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:INVALID_FIELD_NAME_IN_TABLE:%s:%s", tqb.TableInterface.GetFullTableName(), fieldName))
 		return tqb

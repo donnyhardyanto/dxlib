@@ -277,7 +277,7 @@ func NewDXRawTable(
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		SearchTextFieldNames:            searchTextFieldNames,
 		OrderByFieldNames:               orderByFieldNames,
-		FilterableFields:                filterableFields,
+		FilterableFieldNames:            filterableFields,
 	}
 }
 
@@ -292,7 +292,7 @@ func NewDXRawTableWithView(
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		SearchTextFieldNames:            searchTextFieldNames,
 		OrderByFieldNames:               orderByFieldNames,
-		FilterableFields:                filterableFields,
+		FilterableFieldNames:            filterableFields,
 	}
 }
 
@@ -307,7 +307,7 @@ func NewDXTable(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
-			FilterableFields:                filterableFields,
+			FilterableFieldNames:            filterableFields,
 		},
 	}
 }
@@ -324,7 +324,7 @@ func NewDXTableWithView(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
-			FilterableFields:                filterableFields,
+			FilterableFieldNames:            filterableFields,
 		},
 	}
 }
@@ -348,7 +348,7 @@ func NewDXRawTableSimple(
 		ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 		SearchTextFieldNames:            searchTextFieldNames,
 		OrderByFieldNames:               orderByFieldNames,
-		FilterableFields:                filterableFields,
+		FilterableFieldNames:            filterableFields,
 	}
 }
 
@@ -370,7 +370,7 @@ func NewDXTableSimple(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
-			FilterableFields:                filterableFields,
+			FilterableFieldNames:            filterableFields,
 		},
 	}
 }
@@ -396,7 +396,7 @@ func NewDXTableWithEncryption(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
-			FilterableFields:                filterableFields,
+			FilterableFieldNames:            filterableFields,
 		},
 	}
 }
@@ -420,7 +420,7 @@ func NewDXTableAuditOnlySimple(
 			ValidationUniqueFieldNameGroups: validationUniqueFieldNameGroups,
 			SearchTextFieldNames:            searchTextFieldNames,
 			OrderByFieldNames:               orderByFieldNames,
-			FilterableFields:                filterableFields,
+			FilterableFieldNames:            filterableFields,
 		},
 	}
 }
