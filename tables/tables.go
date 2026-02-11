@@ -19,8 +19,6 @@ const (
 
 var DXTableExportFormatEnumSetAll = []any{DXTableExportFormatXLS, DXTableExportFormatXLSX, DXTableExportFormatCSV}
 
-// Table3 Manager - Registry for tables
-
 // DXTableManager manages a collection of DXTable instances
 type DXTableManager struct {
 	Tables                               map[string]*DXTable
@@ -221,7 +219,6 @@ var (
 	}
 )
 
-// Manager is the global table3 manager instance
 var Manager = DXTableManager{
 	Tables:          make(map[string]*DXTable),
 	RawTables:       make(map[string]*DXRawTable),
