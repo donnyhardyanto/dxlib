@@ -2,16 +2,19 @@ package tables
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/databases/db"
+	"github.com/donnyhardyanto/dxlib/databases/db/query"
+	"github.com/donnyhardyanto/dxlib/databases/db/query/builder"
+	utils2 "github.com/donnyhardyanto/dxlib/databases/db/query/utils"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	tableQueryBuilder "github.com/donnyhardyanto/dxlib/tables/query_builder"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/jmoiron/sqlx"
 )
 
 // DXRawTable Encrypted Select Methods
@@ -281,46 +284,6 @@ func setSessionKeysForDecryption(dtx *databases.DXDatabaseTx, encryptionColumns 
 	return nil
 }
 
-// buildSelectColumns builds SELECT column list with decryption expressions
-func buildSelectColumns(dbType base.DXDatabaseType, columns []string, encryptionColumns []EncryptionColumn) string {
-	var selectCols []string
-
-	// Add regular columns (or * if empty)
-	if len(columns) == 0 {
-		selectCols = append(selectCols, "*")
-	} else {
-		for _, col := range columns {
-			selectCols = append(selectCols, col)
-		}
-	}
-
-	// Add decrypted columns
-	for _, col := range encryptionColumns {
-		if col.ViewHasDecrypt {
-			// View already has decryption, just select the alias
-			selectCols = append(selectCols, col.AliasName)
-		} else {
-			// Build decrypt expression
-			expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
-			selectCols = append(selectCols, fmt.Sprintf("%s AS %s", expr, col.AliasName))
-		}
-	}
-
-	return strings.Join(selectCols, ", ")
-}
-
-// orderByToString converts DXDatabaseTableFieldsOrderBy to string
-func orderByToString(orderBy db.DXDatabaseTableFieldsOrderBy) string {
-	if orderBy == nil || len(orderBy) == 0 {
-		return ""
-	}
-	var parts []string
-	for field, direction := range orderBy {
-		parts = append(parts, fmt.Sprintf("%s %s", field, direction))
-	}
-	return strings.Join(parts, ", ")
-}
-
 // limitToInt converts limit any to int
 func limitToInt(limit any) int {
 	if limit == nil {
@@ -340,7 +303,143 @@ func limitToInt(limit any) int {
 	}
 }
 
-// executeEncryptedSelect builds and executes SELECT with decrypted columns
+// validateFieldName checks if a field name is safe for SQL
+func validateFieldName(fieldName string) error {
+	if !utils2.IsValidIdentifier(fieldName) {
+		return errors.Errorf("INVALID_FIELD_NAME:%s", fieldName)
+	}
+	return nil
+}
+
+// validateOrderByDirection validates ORDER BY direction
+func validateOrderByDirection(direction string) error {
+	dir := strings.ToLower(direction)
+	if dir != "asc" && dir != "desc" {
+		return errors.Errorf("INVALID_ORDER_BY_DIRECTION:%s", direction)
+	}
+	return nil
+}
+
+// convertJoinToQueryBuilder safely converts joinSQLPart to QueryBuilder joins
+func convertJoinToQueryBuilder(qb *builder.SelectQueryBuilder, joinSQLPart any) error {
+	if joinSQLPart == nil {
+		return nil
+	}
+
+	// Support structured JoinDef (preferred, safe by design)
+	if joins, ok := joinSQLPart.([]builder.JoinDef); ok {
+		for _, j := range joins {
+			if err := validateFieldName(j.OnLeft); err != nil {
+				return errors.Wrapf(err, "INVALID_JOIN_ON_LEFT")
+			}
+			if err := validateFieldName(j.OnRight); err != nil {
+				return errors.Wrapf(err, "INVALID_JOIN_ON_RIGHT")
+			}
+			qb.Joins = append(qb.Joins, j)
+		}
+		return nil
+	}
+
+	// Support string (parse and validate)
+	if joinStr, ok := joinSQLPart.(string); ok && joinStr != "" {
+		// Parse JOIN string: "INNER JOIN table ON t1.id = t2.id"
+		return parseAndValidateJoinString(qb, joinStr)
+	}
+
+	return nil
+}
+
+// parseAndValidateJoinString parses JOIN string and validates all components
+func parseAndValidateJoinString(qb *builder.SelectQueryBuilder, joinStr string) error {
+	// Normalize whitespace
+	joinStr = strings.TrimSpace(joinStr)
+	if joinStr == "" {
+		return nil
+	}
+
+	// Find all JOIN clauses using regex
+	joinPattern := regexp.MustCompile(`(?i)(INNER|LEFT|RIGHT|FULL)\s+JOIN\s+([^\s]+)(?:\s+(?:AS\s+)?([^\s]+))?\s+ON\s+([^\s=]+)\s*=\s*([^\s]+)`)
+	matches := joinPattern.FindAllStringSubmatch(joinStr, -1)
+
+	if len(matches) == 0 {
+		// No valid JOIN found - check if there's partial JOIN syntax
+		if strings.Contains(strings.ToUpper(joinStr), "JOIN") {
+			return errors.New("INVALID_JOIN_SYNTAX:Could not parse JOIN clause")
+		}
+		return nil
+	}
+
+	for _, match := range matches {
+		joinTypeStr := strings.ToUpper(strings.TrimSpace(match[1]))
+		tableName := strings.TrimSpace(match[2])
+		alias := strings.TrimSpace(match[3])
+		leftField := strings.TrimSpace(match[4])
+		rightField := strings.TrimSpace(match[5])
+
+		// Validate table name
+		if err := validateFieldName(tableName); err != nil {
+			return errors.Wrapf(err, "INVALID_JOIN_TABLE_NAME")
+		}
+
+		// Validate alias if provided
+		if alias != "" {
+			// Skip "ON" keyword if it was captured as alias
+			if strings.ToUpper(alias) == "ON" {
+				alias = ""
+			} else if err := validateFieldName(alias); err != nil {
+				return errors.Wrapf(err, "INVALID_JOIN_ALIAS")
+			}
+		}
+
+		// Validate ON fields
+		if err := validateFieldName(leftField); err != nil {
+			return errors.Wrapf(err, "INVALID_JOIN_ON_LEFT_FIELD")
+		}
+		if err := validateFieldName(rightField); err != nil {
+			return errors.Wrapf(err, "INVALID_JOIN_ON_RIGHT_FIELD")
+		}
+
+		// Map join type
+		var jt builder.JoinType
+		switch joinTypeStr {
+		case "INNER":
+			jt = builder.JoinTypeInner
+		case "LEFT":
+			jt = builder.JoinTypeLeft
+		case "RIGHT":
+			jt = builder.JoinTypeRight
+		case "FULL":
+			jt = builder.JoinTypeFull
+		default:
+			return errors.Errorf("INVALID_JOIN_TYPE:%s", joinTypeStr)
+		}
+
+		qb.Joins = append(qb.Joins, builder.JoinDef{
+			Type:    jt,
+			Table:   tableName,
+			Alias:   alias,
+			OnLeft:  leftField,
+			OnRight: rightField,
+		})
+	}
+
+	return nil
+}
+
+// executeEncryptedSelect executes SELECT with encrypted column decryption.
+//
+// SECURITY: This function uses SelectQueryBuilder to prevent SQL injection.
+// - Field names validated with IsValidIdentifier()
+// - ORDER BY directions validated (asc/desc only)
+// - WHERE values always parameterized
+// - JOIN clauses parsed and validated (table names, aliases, ON conditions)
+//
+// Parameters:
+//   - joinSQLPart: Supports nil, []builder.JoinDef (preferred), or string (validated)
+//     String format: "INNER|LEFT|RIGHT|FULL JOIN table [AS alias] ON field1 = field2"
+//     All components are validated for SQL injection protection
+//   - orderBy: Field names validated, only asc/desc allowed
+//   - where: Field names validated, values parameterized
 func executeEncryptedSelect(
 	dtx *databases.DXDatabaseTx,
 	tableName string,
@@ -355,99 +454,112 @@ func executeEncryptedSelect(
 	forUpdatePart any,
 ) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
 
-	selectCols := buildSelectColumns(dbType, fieldNames, encryptionColumns)
+	// 1. Create query builder
+	qb := builder.NewSelectQueryBuilderWithSource(dbType, tableName)
 
-	// Build WHERE clause
-	var whereClauses []string
-	var args []any
-	argIndex := 1
+	// 2. Build SELECT fields with decryption
+	if len(fieldNames) == 0 {
+		qb.Select("*")
+	} else {
+		for _, field := range fieldNames {
+			if err := validateFieldName(field); err != nil {
+				return nil, nil, err
+			}
+			qb.Select(field)
+		}
+	}
 
-	for fieldName, value := range where {
-		if value == nil {
-			whereClauses = append(whereClauses, fieldName+" IS NULL")
-		} else if sqlExpr, ok := value.(db.SQLExpression); ok {
-			whereClauses = append(whereClauses, sqlExpr.String())
+	// Add encrypted columns with decryption expressions
+	for _, col := range encryptionColumns {
+		if col.ViewHasDecrypt {
+			qb.Select(col.AliasName)
 		} else {
-			whereClauses = append(whereClauses, fmt.Sprintf("%s = %s", fieldName, placeholder(dbType, argIndex)))
-			args = append(args, value)
-			argIndex++
+			expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
+			qb.Select(fmt.Sprintf("%s AS %s", expr, col.AliasName))
 		}
 	}
 
-	// Build SQL
-	sqlStr := fmt.Sprintf("SELECT"+" %s FROM %s", selectCols, tableName)
+	// 3. Convert and validate JOIN clause
+	if err := convertJoinToQueryBuilder(qb, joinSQLPart); err != nil {
+		return nil, nil, err
+	}
 
-	// Add JOIN if specified
-	if joinSQLPart != nil {
-		if joinStr, ok := joinSQLPart.(string); ok && joinStr != "" {
-			sqlStr += " " + joinStr
+	// 4. Build WHERE clause with validation
+	for fieldName, value := range where {
+		if err := validateFieldName(fieldName); err != nil {
+			return nil, nil, err
+		}
+
+		if value == nil {
+			qb.And(qb.QuoteIdentifier(fieldName) + " IS NULL")
+		} else if sqlExpr, ok := value.(db.SQLExpression); ok {
+			qb.And(sqlExpr.String())
+		} else {
+			paramName := qb.GenerateParamName(fieldName)
+			qb.AndWithParam(
+				qb.QuoteIdentifier(fieldName)+" = :"+paramName,
+				paramName,
+				value,
+			)
 		}
 	}
 
-	if len(whereClauses) > 0 {
-		sqlStr += " WHERE " + strings.Join(whereClauses, " AND ")
+	// 5. Build ORDER BY with validation
+	if orderBy != nil {
+		for fieldName, direction := range orderBy {
+			if err := validateFieldName(fieldName); err != nil {
+				return nil, nil, err
+			}
+			if err := validateOrderByDirection(direction); err != nil {
+				return nil, nil, err
+			}
+			qb.AddOrderBy(fieldName, strings.ToLower(direction), "")
+		}
 	}
 
-	orderByStr := orderByToString(orderBy)
-	if orderByStr != "" {
-		sqlStr += " ORDER BY " + orderByStr
+	// 6. Add LIMIT
+	if limit != nil {
+		switch v := limit.(type) {
+		case int:
+			qb.Limit(int64(v))
+		case int64:
+			qb.Limit(v)
+		}
 	}
 
-	limitInt := limitToInt(limit)
-	if limitInt > 0 {
-		sqlStr += fmt.Sprintf(" LIMIT %d", limitInt)
-	}
-
-	// Add FOR UPDATE if specified
+	// 7. Add FOR UPDATE
 	if forUpdatePart != nil {
 		if forUpdateStr, ok := forUpdatePart.(string); ok && forUpdateStr != "" {
-			sqlStr += " " + forUpdateStr
+			qb.ForUpdatePart = forUpdateStr
 		} else if forUpdateBool, ok := forUpdatePart.(bool); ok && forUpdateBool {
-			sqlStr += " FOR UPDATE"
+			qb.ForUpdate()
 		}
 	}
 
-	// Execute
-	rows, err := dtx.Tx.Queryx(sqlStr, args...)
+	// 8. Execute query
+	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(dtx, qb, fieldTypeMapping)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "ENCRYPTED_SELECT_ERROR")
-	}
-	defer func(rows *sqlx.Rows) {
-		err := rows.Close()
-		if err != nil {
-			log.Log.Error("ERROR_IN_ROWS_CLOSE", err)
-		}
-	}(rows)
-
-	// Get column info
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "ENCRYPTED_SELECT_COLUMNS_ERROR")
+		return nil, nil, errors.Wrap(err, "ENCRYPTED_SELECT_ERROR")
 	}
 
-	rowsInfo := &db.DXDatabaseTableRowsInfo{
-		Columns: columns,
-	}
-
-	var results []utils.JSON
-	for rows.Next() {
-		row := make(map[string]any)
-		if err := rows.MapScan(row); err != nil {
-			return rowsInfo, nil, errors.Wrapf(err, "ENCRYPTED_SELECT_SCAN_ERROR")
-		}
-		// Convert []byte to string for decrypted text fields
+	// 9. Post-process bytes to strings (preserve existing behavior)
+	for _, row := range rows {
 		for k, v := range row {
 			if b, ok := v.([]byte); ok {
 				row[k] = string(b)
 			}
 		}
-		results = append(results, row)
 	}
 
-	return rowsInfo, results, nil
+	return rowsInfo, rows, nil
 }
 
-// executeEncryptedPaging builds and executes paging query with decrypted columns
+// executeEncryptedPaging executes paging query with encrypted column decryption.
+//
+// SECURITY: This function uses SelectQueryBuilder to prevent SQL injection.
+// - ORDER BY string parsed and validated (field names and directions)
+// - WHERE clause provided by caller (assumed to be already parameterized)
+// - All field names validated with IsValidIdentifier()
 func executeEncryptedPaging(
 	dtx *databases.DXDatabaseTx,
 	tableName string,
@@ -461,83 +573,113 @@ func executeEncryptedPaging(
 	pageIndex int64,
 ) (*PagingResult, error) {
 
-	selectCols := buildSelectColumns(dbType, columns, encryptionColumns)
-
-	// Count total rows
-	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM"+" %s", tableName)
+	// 1. COUNT query
+	qbCount := builder.NewSelectQueryBuilderWithSource(dbType, tableName)
 	if whereClause != "" {
-		countSQL += " WHERE " + whereClause
+		qbCount.And(whereClause)
+		qbCount.Args = whereArgs
 	}
 
-	var totalRows int64
-	row := dtx.Tx.QueryRowx(countSQL)
-	if err := row.Scan(&totalRows); err != nil {
-		return nil, errors.Wrapf(err, "ENCRYPTED_PAGING_COUNT_ERROR")
+	totalRows, err := query.TxCountWithSelectQueryBuilder2(dtx, qbCount)
+	if err != nil {
+		return nil, errors.Wrap(err, "ENCRYPTED_PAGING_COUNT_ERROR")
 	}
 
-	// Calculate pagination
+	// 2. Calculate pagination
 	offset := (pageIndex - 1) * rowPerPage
 	if offset < 0 {
 		offset = 0
 	}
-
 	totalPages := totalRows / rowPerPage
 	if totalRows%rowPerPage > 0 {
 		totalPages++
 	}
 
-	// Build SELECT with paging
-	sqlStr := fmt.Sprintf("SELECT"+" %s FROM %s", selectCols, tableName)
+	// 3. SELECT query builder
+	qbSelect := builder.NewSelectQueryBuilderWithSource(dbType, tableName)
 
+	// 4. Build SELECT fields with decryption
+	if len(columns) == 0 {
+		qbSelect.Select("*")
+	} else {
+		for _, field := range columns {
+			if err := validateFieldName(field); err != nil {
+				return nil, err
+			}
+			qbSelect.Select(field)
+		}
+	}
+
+	// Add encrypted columns
+	for _, col := range encryptionColumns {
+		if col.ViewHasDecrypt {
+			qbSelect.Select(col.AliasName)
+		} else {
+			expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
+			qbSelect.Select(fmt.Sprintf("%s AS %s", expr, col.AliasName))
+		}
+	}
+
+	// 5. Add WHERE
 	if whereClause != "" {
-		sqlStr += " WHERE " + whereClause
+		qbSelect.And(whereClause)
+		qbSelect.Args = whereArgs
 	}
 
+	// 6. Parse and validate ORDER BY string
 	if orderBy != "" {
-		sqlStr += " ORDER BY " + orderBy
-	}
+		parts := strings.Split(orderBy, ",")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			tokens := strings.Fields(part)
+			if len(tokens) == 0 {
+				continue
+			}
 
-	sqlStr += fmt.Sprintf(" LIMIT %d OFFSET %d", rowPerPage, offset)
+			fieldName := tokens[0]
+			direction := "asc"
+			nullPlacement := ""
 
-	// Execute
-	rows, err := dtx.Tx.NamedQuery(sqlStr, whereArgs)
-	if err != nil {
-		return nil, errors.Wrapf(err, "ENCRYPTED_PAGING_QUERY_ERROR")
-	}
-	defer func(rows *sqlx.Rows) {
-		err := rows.Close()
-		if err != nil {
-			log.Log.Error("ERROR_IN_ROWS_CLOSE", err)
+			if len(tokens) >= 2 {
+				direction = tokens[1]
+			}
+			if len(tokens) >= 4 && strings.ToLower(tokens[2]) == "nulls" {
+				nullPlacement = tokens[3]
+			}
+
+			if err := validateFieldName(fieldName); err != nil {
+				return nil, err
+			}
+			if err := validateOrderByDirection(direction); err != nil {
+				return nil, err
+			}
+
+			qbSelect.AddOrderBy(fieldName, strings.ToLower(direction), strings.ToLower(nullPlacement))
 		}
-	}(rows)
+	}
 
-	// Get column info from result set
-	columnNames, err := rows.Columns()
+	// 7. Add LIMIT/OFFSET
+	qbSelect.Limit(rowPerPage)
+	qbSelect.Offset(offset)
+
+	// 8. Execute query (no fieldTypeMapping since we handle it manually)
+	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(dtx, qbSelect, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "ENCRYPTED_PAGING_COLUMNS_ERROR")
-	}
-	rowsInfo := &db.DXDatabaseTableRowsInfo{
-		Columns: columnNames,
+		return nil, errors.Wrap(err, "ENCRYPTED_PAGING_QUERY_ERROR")
 	}
 
-	var results []utils.JSON
-	for rows.Next() {
-		row := make(map[string]any)
-		if err := rows.MapScan(row); err != nil {
-			return nil, errors.Wrapf(err, "ENCRYPTED_PAGING_SCAN_ERROR")
-		}
-		// Convert []byte to string for decrypted text fields
+	// 9. Post-process bytes to strings
+	for _, row := range rows {
 		for k, v := range row {
 			if b, ok := v.([]byte); ok {
 				row[k] = string(b)
 			}
 		}
-		results = append(results, row)
 	}
 
 	return &PagingResult{
 		RowsInfo:   rowsInfo,
-		Rows:       results,
+		Rows:       rows,
 		TotalRows:  totalRows,
 		TotalPages: totalPages,
 	}, nil
