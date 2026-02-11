@@ -95,6 +95,19 @@ func (t *DXRawTable) GetFilterableFieldNames() []string {
 	return t.FilterableFieldNames
 }
 
+func (t *DXRawTable) GetEncryptedFieldAliasNames() []string {
+	if len(t.EncryptionColumnDefs) == 0 {
+		return nil
+	}
+	aliases := make([]string, 0, len(t.EncryptionColumnDefs))
+	for _, colDef := range t.EncryptionColumnDefs {
+		if colDef.AliasName != "" {
+			aliases = append(aliases, colDef.AliasName)
+		}
+	}
+	return aliases
+}
+
 // Delete Operations (Hard Delete)
 
 // Delete performs hard delete of rows matching where condition

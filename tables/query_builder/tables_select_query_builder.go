@@ -20,6 +20,7 @@ type TableInterface interface {
 	GetOrderByFieldNames() []string
 	GetFullTableName() string
 	GetFilterableFieldNames() []string
+	GetEncryptedFieldAliasNames() []string
 }
 
 // TableSelectQueryBuilder wraps builder.SelectQueryBuilder with table-specific field validation.
@@ -82,14 +83,16 @@ func (tqb *TableSelectQueryBuilder) CheckFieldExist(fieldName string) *TableSele
 		tqb.Error = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:TABLE_NOT_SET:%s", fieldName))
 		return tqb
 	}
-	// Check against all valid field names (search, order, and filter)
+	// Check against all valid field names (search, order, filter, and encrypted aliases)
 	searchFields := tqb.TableInterface.GetSearchTextFieldNames()
 	orderFields := tqb.TableInterface.GetOrderByFieldNames()
 	filterFields := tqb.TableInterface.GetFilterableFieldNames()
+	encryptedAliases := tqb.TableInterface.GetEncryptedFieldAliasNames()
 
 	if !slices.Contains(searchFields, fieldName) &&
 	   !slices.Contains(orderFields, fieldName) &&
-	   !slices.Contains(filterFields, fieldName) {
+	   !slices.Contains(filterFields, fieldName) &&
+	   !slices.Contains(encryptedAliases, fieldName) {
 		tqb.Error = errors.New(fmt.Sprintf("SHOULD_NOT_HAPPEN:INVALID_FIELD_NAME_IN_TABLE:%s:%s", tqb.TableInterface.GetFullTableName(), fieldName))
 		return tqb
 	}
