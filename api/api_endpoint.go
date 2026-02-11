@@ -240,5 +240,6 @@ func (aep *DXAPIEndPoint) NewEndPointRequest(context context.Context, w http.Res
 	}
 	er.Id = fmt.Sprintf("%p", er)
 	er.Log = log.NewLog(&aep.Owner.Log, context, aep.Title+" | "+er.Id)
+	er.Log.RequestURL = r.URL.Path
 	return er
 }

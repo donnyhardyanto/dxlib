@@ -43,6 +43,7 @@ const (
 type DXLog struct {
 	Context         context.Context
 	Prefix          string
+	RequestURL      string
 	LastErrorLogId  int64
 	LastErrorLogUid string
 }
