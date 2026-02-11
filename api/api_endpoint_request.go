@@ -303,7 +303,15 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 	if err2 != nil {
 		requestDump = "DUMP REQUEST FAIL"
 	}
-	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
+
+	// Add decrypted request dump if parameters are available
+	decryptedDump := ""
+	if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
+		decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
+	}
+
+	fullDump := requestDump + decryptedDump
+	aepr.Log.LogText(err, log.DXLogLevelError, "", fullDump)
 	aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, err.Error())
 	return
 }
@@ -325,8 +333,16 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, re
 	if err2 != nil {
 		requestDump = "DUMP REQUEST FAIL"
 	}
+
+	// Add decrypted request dump if parameters are available
+	decryptedDump := ""
+	if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
+		decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
+	}
+
 	err = errors.New(msg)
-	aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
+	fullDump := requestDump + decryptedDump
+	aepr.Log.LogText(err, log.DXLogLevelError, "", fullDump)
 	aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, msg)
 
 	return err
