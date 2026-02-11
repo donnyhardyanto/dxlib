@@ -1200,6 +1200,85 @@ func ConvertToFloat64(value interface{}) (float64, error) {
 	}
 }
 
+// ConvertToInt64FromKV gets value from map by key and converts it to int64
+func ConvertToInt64FromKV(kv map[string]any, key string) (int64, error) {
+	val, ok := kv[key]
+	if !ok {
+		return 0, errors.Errorf("key '%s' not found in map", key)
+	}
+	return ConvertToInt64(val)
+}
+
+// ConvertToIntFromKV gets value from map by key and converts it to int
+func ConvertToIntFromKV(kv map[string]any, key string) (int, error) {
+	val, ok := kv[key]
+	if !ok {
+		return 0, errors.Errorf("key '%s' not found in map", key)
+	}
+	return ConvertToInt(val)
+}
+
+// ConvertToFloat32FromKV gets value from map by key and converts it to float32
+func ConvertToFloat32FromKV(kv map[string]any, key string) (float32, error) {
+	val, ok := kv[key]
+	if !ok {
+		return 0, errors.Errorf("key '%s' not found in map", key)
+	}
+	return ConvertToFloat32(val)
+}
+
+// ConvertToFloat64FromKV gets value from map by key and converts it to float64
+func ConvertToFloat64FromKV(kv map[string]any, key string) (float64, error) {
+	val, ok := kv[key]
+	if !ok {
+		return 0, errors.Errorf("key '%s' not found in map", key)
+	}
+	return ConvertToFloat64(val)
+}
+
+// ConvertToStringFromKV gets value from map by key and converts it to string
+func ConvertToStringFromKV(kv map[string]any, key string) (string, error) {
+	val, ok := kv[key]
+	if !ok {
+		return "", errors.Errorf("key '%s' not found in map", key)
+	}
+	if val == nil {
+		return "", nil
+	}
+	switch v := val.(type) {
+	case string:
+		return v, nil
+	case []byte:
+		return string(v), nil
+	default:
+		return fmt.Sprintf("%v", val), nil
+	}
+}
+
+// ConvertToBoolFromKV gets value from map by key and converts it to bool
+func ConvertToBoolFromKV(kv map[string]any, key string) (bool, error) {
+	val, ok := kv[key]
+	if !ok {
+		return false, errors.Errorf("key '%s' not found in map", key)
+	}
+	switch v := val.(type) {
+	case bool:
+		return v, nil
+	case int:
+		return v != 0, nil
+	case int64:
+		return v != 0, nil
+	case string:
+		parsed, err := strconv.ParseBool(v)
+		if err != nil {
+			return false, errors.Wrap(err, "failed to convert string to bool")
+		}
+		return parsed, nil
+	default:
+		return false, errors.Errorf("unexpected value type for bool conversion: %T", val)
+	}
+}
+
 func IsValuesMatch(a, b any) bool {
 	// 1. If types are identical, direct comparison is safest
 	if a == b {

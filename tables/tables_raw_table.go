@@ -497,6 +497,27 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 		return err
 	}
 
+	// Filter out "id" and "uid" fields from pagingResult for download
+	excludeFields := map[string]bool{"id": true, "uid": true}
+
+	// Filter RowsInfo.Columns (column metadata)
+	if pagingResult.RowsInfo != nil && len(pagingResult.RowsInfo.Columns) > 0 {
+		filteredColumns := make([]string, 0, len(pagingResult.RowsInfo.Columns))
+		for _, columnName := range pagingResult.RowsInfo.Columns {
+			if !excludeFields[columnName] {
+				filteredColumns = append(filteredColumns, columnName)
+			}
+		}
+		pagingResult.RowsInfo.Columns = filteredColumns
+
+		// Filter each row to remove excluded fields
+		for i := range pagingResult.Rows {
+			for fieldName := range excludeFields {
+				delete(pagingResult.Rows[i], fieldName)
+			}
+		}
+	}
+
 	// Set export options with language
 	opts := export.ExportOptions{
 		Format:            export.ExportFormat(format),
