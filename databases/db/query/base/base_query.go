@@ -9,7 +9,8 @@ import (
 
 // BaseQueryRows2 executes a named query and returns all matching rows
 // It supports both named parameters (map/struct) and positional parameters (slice)
-func BaseQueryRows2(db *sqlx.DB, query string, arg any) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+// If fieldTypeMapping is provided, applies type conversion to the results
+func BaseQueryRows2(db *sqlx.DB, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}
@@ -56,12 +57,24 @@ func BaseQueryRows2(db *sqlx.DB, query string, arg any) (rowsInfo *databaseDb.DX
 		}
 		r = append(r, rowJSON)
 	}
+
+	// Apply field type conversion if fieldTypeMapping is provided
+	if fieldTypeMapping != nil && len(fieldTypeMapping) > 0 {
+		for i, row := range r {
+			convertedRow, err := databaseDb.DeformatKeys(row, db.DriverName(), fieldTypeMapping)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "FIELD_TYPE_CONVERSION_ERROR:QUERY=%s", query)
+			}
+			r[i] = convertedRow
+		}
+	}
+
 	return rowsInfo, r, nil
 }
 
 // BaseQueryRow2 executes a named query and returns a single row
-func BaseQueryRow2(db *sqlx.DB, query string, arg any) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
-	rowsInfo, rows, err := BaseQueryRows2(db, query, arg)
+func BaseQueryRow2(db *sqlx.DB, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	rowsInfo, rows, err := BaseQueryRows2(db, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}

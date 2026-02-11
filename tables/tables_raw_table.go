@@ -316,7 +316,7 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQuery
 	qb.OutFields = outFields
 
 	// Select
-	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(dtx, qb.SelectQueryBuilder)
+	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(dtx, qb.SelectQueryBuilder, t.FieldTypeMapping)
 	if err != nil {
 		return nil, err
 	}

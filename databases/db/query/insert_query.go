@@ -82,7 +82,7 @@ func InsertWithInsertQueryBuilder2(db *sqlx.DB, qb *builder.InsertQueryBuilder) 
 	}
 
 	if len(qb.OutFields) > 0 {
-		_, row, err := named.NamedQueryRow2(db, query, args)
+		_, row, err := named.NamedQueryRow2(db, query, args, nil)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "INSERT_WITH_RETURNING_ERROR")
 		}

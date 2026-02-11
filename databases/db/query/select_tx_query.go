@@ -14,7 +14,7 @@ import (
 
 // TxSelectWithSelectQueryBuilder2 executes a query within a transaction using SelectQueryBuilder and returns all matching rows.
 // Builds SELECT query from SelectQueryBuilder (SourceName, OutFields, WHERE, JOIN, GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET) and calls TxNamedQueryRows2.
-func TxSelectWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.SelectQueryBuilder) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func TxSelectWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	// Check for errors accumulated in SelectQueryBuilder
 	if qb.Error != nil {
@@ -126,13 +126,13 @@ func TxSelectWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.Se
 		}
 	}
 
-	return named.TxNamedQueryRows2(dtx, query, args)
+	return named.TxNamedQueryRows2(dtx, query, args, fieldTypeMapping)
 }
 
 // TxShouldSelectWithSelectQueryBuilder2 executes a query within a transaction using SelectQueryBuilder and returns all matching rows,
 // erroring if no rows found.
-func TxShouldSelectWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.SelectQueryBuilder) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	rowsInfo, r, err = TxSelectWithSelectQueryBuilder2(dtx, qb)
+func TxShouldSelectWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	rowsInfo, r, err = TxSelectWithSelectQueryBuilder2(dtx, qb, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, r, err
 	}
@@ -145,9 +145,9 @@ func TxShouldSelectWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *buil
 
 // TxSelectOneWithSelectQueryBuilder2 executes a query within a transaction using SelectQueryBuilder and returns a single row.
 // Sets LimitValue to 1 automatically.
-func TxSelectOneWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.SelectQueryBuilder) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func TxSelectOneWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	qb.LimitValue = 1
-	rowsInfo, rows, err := TxSelectWithSelectQueryBuilder2(dtx, qb)
+	rowsInfo, rows, err := TxSelectWithSelectQueryBuilder2(dtx, qb, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -159,8 +159,8 @@ func TxSelectOneWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder
 
 // TxShouldSelectOneWithSelectQueryBuilder2 executes a query within a transaction using SelectQueryBuilder and returns a single row,
 // erroring if no row found.
-func TxShouldSelectOneWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.SelectQueryBuilder) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = TxSelectOneWithSelectQueryBuilder2(dtx, qb)
+func TxShouldSelectOneWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = TxSelectOneWithSelectQueryBuilder2(dtx, qb, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, r, err
 	}
@@ -228,7 +228,7 @@ func TxCountWithSelectQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.Sel
 		query += " " + havingClause
 	}
 
-	_, row, err := named.TxNamedQueryRow2(dtx, query, args)
+	_, row, err := named.TxNamedQueryRow2(dtx, query, args, nil)
 	if err != nil {
 		return 0, err
 	}

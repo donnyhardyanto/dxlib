@@ -13,7 +13,7 @@ import (
 // NamedQueryRows2 executes a named query and returns all matching rows.
 // Based on database type: if the database supports named parameters (:name),
 // calls BaseQueryRows2 directly. Otherwise, converts to positional parameters first.
-func NamedQueryRows2(db *sqlx.DB, query string, arg utils.JSON) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func NamedQueryRows2(db *sqlx.DB, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	dbType := base.StringToDXDatabaseType(db.DriverName())
 
 	// MariaDB and Oracle do not support named parameters, convert to positional
@@ -22,17 +22,17 @@ func NamedQueryRows2(db *sqlx.DB, query string, arg utils.JSON) (rowsInfo *datab
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "PARAMETER_CONVERSION_ERROR:QUERY=%s", query)
 		}
-		return base2.BaseQueryRows2(db, positionalQuery, positionalArgs)
+		return base2.BaseQueryRows2(db, positionalQuery, positionalArgs, fieldTypeMapping)
 	}
 
 	// PostgreSQL, SQL Server support named parameters
-	return base2.BaseQueryRows2(db, query, arg)
+	return base2.BaseQueryRows2(db, query, arg, fieldTypeMapping)
 }
 
 // ShouldNamedQueryRows2 executes a named query and returns all matching rows,
 // erroring if no rows found.
-func ShouldNamedQueryRows2(db *sqlx.DB, query string, arg utils.JSON) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	rowsInfo, r, err = NamedQueryRows2(db, query, arg)
+func ShouldNamedQueryRows2(db *sqlx.DB, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	rowsInfo, r, err = NamedQueryRows2(db, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, r, err
 	}
@@ -44,8 +44,8 @@ func ShouldNamedQueryRows2(db *sqlx.DB, query string, arg utils.JSON) (rowsInfo 
 }
 
 // NamedQueryRow2 executes a named query and returns a single row.
-func NamedQueryRow2(db *sqlx.DB, query string, arg utils.JSON) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
-	rowsInfo, rows, err := NamedQueryRows2(db, query, arg)
+func NamedQueryRow2(db *sqlx.DB, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	rowsInfo, rows, err := NamedQueryRows2(db, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -57,8 +57,8 @@ func NamedQueryRow2(db *sqlx.DB, query string, arg utils.JSON) (rowsInfo *databa
 
 // ShouldNamedQueryRow2 executes a named query and returns a single row,
 // erroring if no row found.
-func ShouldNamedQueryRow2(db *sqlx.DB, query string, arg utils.JSON) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = NamedQueryRow2(db, query, arg)
+func ShouldNamedQueryRow2(db *sqlx.DB, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = NamedQueryRow2(db, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, r, err
 	}

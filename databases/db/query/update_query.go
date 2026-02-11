@@ -94,7 +94,7 @@ func UpdateWithUpdateQueryBuilder2(db *sqlx.DB, qb *builder.UpdateQueryBuilder) 
 	}
 
 	if len(qb.OutFields) > 0 {
-		_, rows, err := named.NamedQueryRows2(db, query, args)
+		_, rows, err := named.NamedQueryRows2(db, query, args, nil)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "UPDATE_WITH_RETURNING_ERROR")
 		}

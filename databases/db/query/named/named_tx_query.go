@@ -13,7 +13,7 @@ import (
 // TxNamedQueryRows2 executes a named query within a transaction and returns all matching rows.
 // Based on database type: if the database supports named parameters (:name),
 // calls TxBaseQueryRows2 directly. Otherwise, converts to positional parameters first.
-func TxNamedQueryRows2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func TxNamedQueryRows2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	dbType := base.StringToDXDatabaseType(dtx.Tx.DriverName())
 
 	// MariaDB and Oracle do not support named parameters, convert to positional
@@ -22,17 +22,17 @@ func TxNamedQueryRows2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "PARAMETER_CONVERSION_ERROR:QUERY=%s", query)
 		}
-		return base2.TxBaseQueryRows2(dtx, positionalQuery, positionalArgs)
+		return base2.TxBaseQueryRows2(dtx, positionalQuery, positionalArgs, fieldTypeMapping)
 	}
 
 	// PostgreSQL, SQL Server support named parameters
-	return base2.TxBaseQueryRows2(dtx, query, arg)
+	return base2.TxBaseQueryRows2(dtx, query, arg, fieldTypeMapping)
 }
 
 // TxShouldNamedQueryRows2 executes a named query within a transaction and returns all matching rows,
 // erroring if no rows found.
-func TxShouldNamedQueryRows2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	rowsInfo, r, err = TxNamedQueryRows2(dtx, query, arg)
+func TxShouldNamedQueryRows2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	rowsInfo, r, err = TxNamedQueryRows2(dtx, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, r, err
 	}
@@ -44,8 +44,8 @@ func TxShouldNamedQueryRows2(dtx *databases.DXDatabaseTx, query string, arg util
 }
 
 // TxNamedQueryRow2 executes a named query within a transaction and returns a single row.
-func TxNamedQueryRow2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
-	rowsInfo, rows, err := TxNamedQueryRows2(dtx, query, arg)
+func TxNamedQueryRow2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	rowsInfo, rows, err := TxNamedQueryRows2(dtx, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -57,8 +57,8 @@ func TxNamedQueryRow2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON)
 
 // TxShouldNamedQueryRow2 executes a named query within a transaction and returns a single row,
 // erroring if no row found.
-func TxShouldNamedQueryRow2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
-	rowsInfo, r, err = TxNamedQueryRow2(dtx, query, arg)
+func TxShouldNamedQueryRow2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	rowsInfo, r, err = TxNamedQueryRow2(dtx, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, r, err
 	}

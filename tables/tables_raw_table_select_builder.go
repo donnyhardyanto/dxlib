@@ -67,10 +67,10 @@ func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
-		return query.TxSelectWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder)
+		return query.TxSelectWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder, t.FieldTypeMapping)
 	}
 
-	return query.SelectWithSelectQueryBuilder2(t.Database.Connection, tqb.SelectQueryBuilder)
+	return query.SelectWithSelectQueryBuilder2(t.Database.Connection, tqb.SelectQueryBuilder, t.FieldTypeMapping)
 }
 
 // SelectOneWithBuilder returns a single row using TableSelectQueryBuilder.
@@ -109,7 +109,7 @@ func (t *DXRawTable) TxSelectWithBuilder(dtx *databases.DXDatabaseTx, tqb *table
 	}
 
 	tqb.SourceName = t.GetListViewName()
-	return query.TxSelectWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder)
+	return query.TxSelectWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder, t.FieldTypeMapping)
 }
 
 // TxSelectOneWithBuilder returns a single row within a transaction using TableSelectQueryBuilder.

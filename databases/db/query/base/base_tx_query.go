@@ -10,7 +10,8 @@ import (
 
 // TxBaseQueryRows2 executes a query within a transaction and returns all matching rows
 // It supports both named parameters (map/struct) and positional parameters (slice)
-func TxBaseQueryRows2(dtx *databases.DXDatabaseTx, query string, arg any) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+// If fieldTypeMapping is provided, applies type conversion to the results
+func TxBaseQueryRows2(dtx *databases.DXDatabaseTx, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}
@@ -57,12 +58,24 @@ func TxBaseQueryRows2(dtx *databases.DXDatabaseTx, query string, arg any) (rowsI
 		}
 		r = append(r, rowJSON)
 	}
+
+	// Apply field type conversion if fieldTypeMapping is provided
+	if fieldTypeMapping != nil && len(fieldTypeMapping) > 0 {
+		for i, row := range r {
+			convertedRow, err := databaseDb.DeformatKeys(row, dtx.Tx.DriverName(), fieldTypeMapping)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "FIELD_TYPE_CONVERSION_ERROR:QUERY=%s", query)
+			}
+			r[i] = convertedRow
+		}
+	}
+
 	return rowsInfo, r, nil
 }
 
 // TxBaseQueryRow2 executes a query within a transaction and returns a single row
-func TxBaseQueryRow2(dtx *databases.DXDatabaseTx, query string, arg any) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
-	rowsInfo, rows, err := TxBaseQueryRows2(dtx, query, arg)
+func TxBaseQueryRow2(dtx *databases.DXDatabaseTx, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	rowsInfo, rows, err := TxBaseQueryRows2(dtx, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}

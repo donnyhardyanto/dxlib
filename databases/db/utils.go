@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
@@ -328,12 +329,12 @@ func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping
 			fieldValueType, isExist := fieldTypeMapping[newKey]
 			if isExist {
 				switch fieldValueType {
-				case "array-string":
+				case types.APIParameterTypeArrayString:
 					v, err = utils.GetArrayFromV(v)
 					if err != nil {
 						return nil, err
 					}
-				case "json":
+				case types.APIParameterTypeJSON:
 					v, err = utils.GetJSONFromV(v)
 					if err != nil {
 						return nil, err

@@ -25,7 +25,7 @@ func TxInsertWithInsertQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.In
 	}
 
 	if len(qb.OutFields) > 0 {
-		_, row, err := named.TxNamedQueryRow2(dtx, query, args)
+		_, row, err := named.TxNamedQueryRow2(dtx, query, args, nil)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "TX_INSERT_WITH_RETURNING_ERROR")
 		}
