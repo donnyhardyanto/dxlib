@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime/debug"
+	"strings"
 
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/errors"
@@ -50,6 +51,7 @@ type DXLog struct {
 
 var Format DXLogFormat
 var OnError func(l *DXLog, errPrev error, severity DXLogLevel, location string, text string, stack string) (err error)
+var ConsoleLogLevel = LevelTrace // Default: show all logs (backward compatible)
 
 // Custom slog levels for TRACE, FATAL, and PANIC
 const (
@@ -258,7 +260,7 @@ var Log DXLog
 
 func SetFormatJSON() {
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: LevelTrace,
+		Level: ConsoleLogLevel, // Use configurable level instead of hardcoded
 	})
 	slog.SetDefault(slog.New(handler))
 	Format = DXLogFormatJSON
@@ -266,10 +268,50 @@ func SetFormatJSON() {
 
 func SetFormatText() {
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: LevelTrace,
+		Level: ConsoleLogLevel, // Use configurable level instead of hardcoded
 	})
 	slog.SetDefault(slog.New(handler))
 	Format = DXLogFormatText
+}
+
+// SetConsoleLogLevel sets the minimum log level that will be written to console (stdout).
+// This does NOT affect the error_log database audit trail, which always captures errors.
+// Valid levels: LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelError
+//
+// Example: SetConsoleLogLevel(LevelInfo) will only show INFO, WARN, ERROR, FATAL, PANIC on console
+func SetConsoleLogLevel(level slog.Level) {
+	ConsoleLogLevel = level
+	// Re-apply current format with new level
+	if Format == DXLogFormatJSON {
+		SetFormatJSON()
+	} else {
+		SetFormatText()
+	}
+}
+
+// SetConsoleLogLevelFromString sets console log level from string value.
+// Valid values: "TRACE", "DEBUG", "INFO", "WARN", "ERROR"
+// Invalid/empty values default to INFO
+func SetConsoleLogLevelFromString(levelStr string) {
+	levelStr = strings.ToUpper(strings.TrimSpace(levelStr))
+
+	var level slog.Level
+	switch levelStr {
+	case "TRACE":
+		level = LevelTrace
+	case "DEBUG":
+		level = slog.LevelDebug
+	case "INFO":
+		level = slog.LevelInfo
+	case "WARN", "WARNING":
+		level = slog.LevelWarn
+	case "ERROR":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo // Default to INFO for invalid/empty values
+	}
+
+	SetConsoleLogLevel(level)
 }
 
 func init() {
