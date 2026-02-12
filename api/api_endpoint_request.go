@@ -480,6 +480,58 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 
 	switch aepr.EndPoint.EndPointType {
 	case EndPointTypeHTTPEndToEndEncryptionV2:
+		// Check if EncryptionParameters was populated during request preprocessing
+		// If nil, it means preprocessing failed (used/expired prekey, replay attack, etc.)
+		// Send unencrypted error telling client to refresh prekey
+		if aepr.EncryptionParameters == nil {
+			aepr.Log.Warnf("E2EE_ENCRYPTION_PARAMETERS_NIL:PREKEY_MISSING_OR_USED:status=%d", statusCode)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "E2EE_PREKEY_MISSING_FALLBACK_TO_PLAIN")
+
+			// Determine if this is a captcha endpoint
+			isCaptchaEndpoint := strings.Contains(aepr.EndPoint.Uri, "captcha")
+
+			// Send plain error response instructing client to refresh prekey/captcha
+			// This happens when:
+			// 1. Prekey already used (deleted after first use)
+			// 2. Prekey expired (TTL elapsed)
+			// 3. Replay attack (same prekey reused)
+			var errorResponse utils.JSON
+			if isCaptchaEndpoint {
+				errorResponse = utils.JSON{
+					"status":         http.StatusText(statusCode),
+					"status_code":    statusCode,
+					"reason":         "REFRESH_CAPTCHA",
+					"reason_message": "Captcha missing, expired, or already used. Please call /prelogin_captcha to get a new captcha.",
+				}
+			} else {
+				errorResponse = utils.JSON{
+					"status":         http.StatusText(statusCode),
+					"status_code":    statusCode,
+					"reason":         "REFRESH_PREKEY",
+					"reason_message": "Prekey missing, expired, or already used. Please call /prelogin to get a new prekey.",
+				}
+			}
+			errorBytes, _ := json.Marshal(errorResponse)
+
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(statusCode)
+			aepr.ResponseHeaderSent = true
+			aepr.ResponseStatusCode = statusCode
+
+			_, err := responseWriter.Write(errorBytes)
+			if err != nil {
+				aepr.Log.Warnf("ERROR_WRITING_PREKEY_REFRESH_RESPONSE:%v", err)
+			}
+			aepr.ResponseBodySent = true
+
+			traceMsg := "REFRESH_PREKEY_SENT"
+			if isCaptchaEndpoint {
+				traceMsg = "REFRESH_CAPTCHA_SENT"
+			}
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, traceMsg)
+			return
+		}
+
 		preKeyIndex, err := utils.GetStringFromKV(aepr.EncryptionParameters, "PRE_KEY_INDEX")
 		if err != nil {
 			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:ERROR_GET_PRE_KEY_INDEX:%+v\n", err)
