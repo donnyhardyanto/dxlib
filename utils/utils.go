@@ -832,6 +832,12 @@ func GetJSONFromKV(kv map[string]any, key string) (r JSON, err error) {
 	return r, nil
 }
 
+// GetKVFromKV retrieves a nested map[string]any (KV) from a map by key.
+// This is an alias to GetJSONFromKV since JSON is defined as map[string]any.
+func GetKVFromKV(kv map[string]any, key string) (r map[string]any, err error) {
+	return GetJSONFromKV(kv, key)
+}
+
 // GetVFromKV retrieves a value of a specific generic type T from a map[string]any.
 // Error messages are structured for client-side parsing and localization.
 func GetVFromKV[T any](kv map[string]any, key string) (r T, err error) {
