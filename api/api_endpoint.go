@@ -68,6 +68,19 @@ func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
 			r = "optional"
 		}
 		s += fmt.Sprintf("%*s - %s (%s) %s %s\n", leftIndent, "", aep.NameId, aep.Type, r, aep.Description)
+		if len(aep.Enum) > 0 {
+			var enumBuilder strings.Builder
+			enumBuilder.WriteString("[")
+			for i, v := range aep.Enum {
+				if i > 0 {
+					enumBuilder.WriteString(", ")
+				}
+				// Always wrap enum values in quotes for consistent spec output
+				enumBuilder.WriteString(fmt.Sprintf(`"%v"`, v))
+			}
+			enumBuilder.WriteString("]")
+			s += fmt.Sprintf("%*s   Possible values: %s\n", leftIndent, "", enumBuilder.String())
+		}
 		if len(aep.Children) > 0 {
 			for _, c := range aep.Children {
 				s += c.PrintSpec(leftIndent + 2)
