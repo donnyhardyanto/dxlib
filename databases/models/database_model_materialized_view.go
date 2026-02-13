@@ -124,7 +124,7 @@ func (mv *ModelDBMaterializedView) AddColumn(field *ModelDBField, alias string) 
 }
 
 // AddColumnFromTable adds a column from a joined table
-func (mv *ModelDBMaterializedView) AddColumnFromTable(table *ModelDBTable, field *ModelDBField, alias string) *ModelDBMaterializedView {
+func (mv *ModelDBMaterializedView) AddColumnFromTable(table *ModelDBEntity, field *ModelDBField, alias string) *ModelDBMaterializedView {
 	mv.Columns = append(mv.Columns, ModelDBViewColumn{
 		SourceTable: table,
 		SourceField: field,
@@ -143,7 +143,7 @@ func (mv *ModelDBMaterializedView) AddExpression(expr string, alias string) *Mod
 }
 
 // AddJoin adds a join to another table
-func (mv *ModelDBMaterializedView) AddJoin(joinType ModelDBJoinType, targetTable *ModelDBTable, fromField *ModelDBField, toField *ModelDBField) *ModelDBMaterializedView {
+func (mv *ModelDBMaterializedView) AddJoin(joinType ModelDBJoinType, targetTable *ModelDBEntity, fromField *ModelDBField, toField *ModelDBField) *ModelDBMaterializedView {
 	mv.Joins = append(mv.Joins, ModelDBJoin{
 		JoinType:       joinType,
 		TargetTable:    targetTable,
@@ -443,7 +443,7 @@ func (mv *ModelDBMaterializedView) buildColumnExpr(col ModelDBViewColumn) (strin
 
 		if col.SourceTable != nil {
 			// ModelDBField from a joined table: table.field_name
-			expr = col.SourceTable.FullTableName() + "." + fieldName
+			expr = col.SourceTable.FullName() + "." + fieldName
 		} else {
 			// ModelDBField from the main table: main_table.field_name
 			expr = mv.FromTable.FullTableName() + "." + fieldName
@@ -467,7 +467,7 @@ func (mv *ModelDBMaterializedView) buildJoinClause(join ModelDBJoin) (string, er
 	if join.TargetTableName != "" {
 		targetTableName = join.TargetTableName
 	} else if join.TargetTable != nil {
-		targetTableName = join.TargetTable.FullTableName()
+		targetTableName = join.TargetTable.FullName()
 	} else {
 		return "", fmt.Errorf("join must have either TargetTable or TargetTableName")
 	}

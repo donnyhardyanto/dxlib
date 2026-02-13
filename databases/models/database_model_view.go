@@ -101,13 +101,14 @@ func (j ModelDBJoinType) String() string {
 	}
 }
 
-// ModelDBJoin represents a join between two tables
+// ModelDBJoin represents a join between two tables or views
 type ModelDBJoin struct {
 	JoinType        ModelDBJoinType
-	TargetTable     *ModelDBTable // The table to join TO
-	FromLocalField  *ModelDBField // ModelDBField from the source/left table
-	ToTargetField   *ModelDBField // ModelDBField from the target/right table
-	TargetTableName string        // Optional: override target table name (for self-joins or subqueries)
+	TargetTable     *ModelDBEntity // The table or view to join TO (changed from *ModelDBTable to support views)
+	TargetAlias     string         // Optional: alias for the target table/view (e.g., "st", "st2" for multiple joins)
+	FromLocalField  *ModelDBField  // ModelDBField from the source/left table
+	ToTargetField   *ModelDBField  // ModelDBField from the target/right table
+	TargetTableName string         // Optional: override target table name (for self-joins or subqueries)
 }
 
 // ================== ORDER BY ==================
@@ -135,10 +136,10 @@ type ModelDBOrderBy struct {
 
 // DBViewColumn represents a column in the SELECT clause
 type ModelDBViewColumn struct {
-	SourceTable *ModelDBTable // Which table this column comes from (nil = from main table)
-	SourceField *ModelDBField // The field reference (nil if using Expression)
-	Expression  string        // Raw SQL expression like "COUNT(*)", "SUM(amount)", etc.
-	Alias       string        // AS alias_name (required if Expression is used)
+	SourceTable *ModelDBEntity // Which table this column comes from (nil = from main table)
+	SourceField *ModelDBField  // The field reference (nil if using Expression)
+	Expression  string         // Raw SQL expression like "COUNT(*)", "SUM(amount)", etc.
+	Alias       string         // AS alias_name (required if Expression is used)
 }
 
 // ================== AGGREGATE FUNCTIONS ==================
@@ -237,7 +238,7 @@ func (v *ModelDBView) AddColumn(field *ModelDBField, alias string) *ModelDBView 
 }
 
 // AddColumnFromTable adds a column from a joined table
-func (v *ModelDBView) AddColumnFromTable(table *ModelDBTable, field *ModelDBField, alias string) *ModelDBView {
+func (v *ModelDBView) AddColumnFromTable(table *ModelDBEntity, field *ModelDBField, alias string) *ModelDBView {
 	v.Columns = append(v.Columns, ModelDBViewColumn{
 		SourceTable: table,
 		SourceField: field,
@@ -256,7 +257,7 @@ func (v *ModelDBView) AddExpression(expr string, alias string) *ModelDBView {
 }
 
 // AddJoin adds a join to another table
-func (v *ModelDBView) AddJoin(joinType ModelDBJoinType, targetTable *ModelDBTable, fromField *ModelDBField, toField *ModelDBField) *ModelDBView {
+func (v *ModelDBView) AddJoin(joinType ModelDBJoinType, targetTable *ModelDBEntity, fromField *ModelDBField, toField *ModelDBField) *ModelDBView {
 	v.Joins = append(v.Joins, ModelDBJoin{
 		JoinType:       joinType,
 		TargetTable:    targetTable,
@@ -440,7 +441,7 @@ func (v *ModelDBView) buildColumnExpr(col ModelDBViewColumn, dbType base.DXDatab
 
 		if col.SourceTable != nil {
 			// ModelDBField from a joined table: table.field_name
-			expr = col.SourceTable.FullTableName() + "." + fieldName
+			expr = col.SourceTable.FullName() + "." + fieldName
 		} else {
 			// ModelDBField from the main table: main_table.field_name
 			expr = v.FromTable.FullTableName() + "." + fieldName
@@ -491,7 +492,7 @@ func (v *ModelDBView) buildJoinClause(join ModelDBJoin, dbType base.DXDatabaseTy
 	if join.TargetTableName != "" {
 		targetTableName = join.TargetTableName
 	} else if join.TargetTable != nil {
-		targetTableName = join.TargetTable.FullTableName()
+		targetTableName = join.TargetTable.FullName()
 	} else {
 		return "", fmt.Errorf("join must have either TargetTable or TargetTableName")
 	}
