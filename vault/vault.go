@@ -205,43 +205,14 @@ func (hv *DXHashicorpVault) GetBoolOrDefault(v string, d bool) bool {
 		return d
 	}
 
-	// Use utils.GetBoolFromKV for safe type conversion
-	dvv, err := utils.GetBoolFromKV(data, v)
+	// Use utils.ConvertToBoolFromKV for safe type conversion
+	dvv, err := utils.ConvertToBoolFromKV(data, v)
 	if err != nil {
-		// Key not found or type mismatch - try parsing as string
-		dvStr, strErr := utils.GetStringFromKV(data, v)
-		if strErr != nil {
-			fmt.Println("failed to get vault data for key: %s: %+v", v, strErr)
-			return d
-		}
-		dv, err := hv.parseBoolFromString(dvStr, d)
-		if err != nil {
-			fmt.Println("failed to get vault data for key: %s: %+v", v, err)
-			return d
-		}
-		return dv
+		// Key not found or type mismatch - return default
+		fmt.Println(err, "failed to get vault data for key: %s %+v", v, err)
+		return d
 	}
 	return dvv
-}
-
-// Helper function to parse bool from string
-func (hv *DXHashicorpVault) parseBoolFromString(dv string, d bool) (bool, error) {
-	if dv == "" {
-		return d, nil
-	}
-	dv = strings.TrimSpace(dv)
-	dv = strings.ToLower(dv)
-	if slices.Contains([]string{"true", "yes", "on", "1"}, dv) {
-		return true, nil
-	}
-	if slices.Contains([]string{"false", "no", "off", "0"}, dv) {
-		return false, nil
-	}
-	parsedValue, parseErr := strconv.ParseInt(dv, 10, 32)
-	if parseErr != nil {
-		return d, errors.Wrapf(parseErr, "failed to parse bool from string: %s", dv)
-	}
-	return parsedValue >= 1, nil
 }
 
 func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []string, err error) {
