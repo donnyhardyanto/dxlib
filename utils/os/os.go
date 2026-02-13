@@ -60,6 +60,19 @@ func GetEnvDefaultValue(key string, defaultValue string) string {
 	return value
 }
 
+// GetEnvDefaultWithFallback gets environment variable with fallback chain
+// Tries keys in order, returns first non-empty value, or defaultValue if all are empty/unset
+// Example: GetEnvDefaultWithFallback([]string{"ENCRYPTION_VAULT_ADDRESS", "VAULT_ADDRESS"}, "http://localhost:8200")
+func GetEnvDefaultWithFallback(keys []string, defaultValue string) string {
+	for _, key := range keys {
+		value, isPresent := os.LookupEnv(key)
+		if isPresent && value != "" {
+			return value
+		}
+	}
+	return defaultValue
+}
+
 func GetEnvDefaultValueAsInt(key string, defaultValue int) int {
 	value, isPresent := os.LookupEnv(key)
 	if !isPresent {
