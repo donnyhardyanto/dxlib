@@ -12,6 +12,33 @@ import (
 	"github.com/donnyhardyanto/dxlib/errors"
 )
 
+// SanitizeForPostgreSQL replaces null bytes and other invalid UTF-8 sequences
+// with their hex representation (e.g., \x00 becomes "0x00") so they can be
+// safely stored in PostgreSQL TEXT fields while remaining visible to log viewers.
+func SanitizeForPostgreSQL(s string) string {
+	if s == "" {
+		return s
+	}
+
+	var result strings.Builder
+	result.Grow(len(s)) // Pre-allocate for common case (no special chars)
+
+	for i := 0; i < len(s); i++ {
+		b := s[i]
+		if b == 0x00 {
+			// Null byte - show as hex so viewers know it was present
+			result.WriteString("0x00")
+		} else if b < 0x20 && b != '\n' && b != '\r' && b != '\t' {
+			// Other control characters (except newline, carriage return, tab)
+			fmt.Fprintf(&result, "0x%02x", b)
+		} else {
+			result.WriteByte(b)
+		}
+	}
+
+	return result.String()
+}
+
 type DXLogLevel int
 
 const (
@@ -77,9 +104,15 @@ func (l *DXLog) LogText(err error, severity DXLogLevel, location string, text st
 	} else {
 		text = fmt.Sprintf(text, v...)
 	}
+
+	// Sanitize text to escape null bytes and invalid UTF-8 for PostgreSQL
+	text = SanitizeForPostgreSQL(text)
+
 	if err != nil {
 		location = l.Prefix
 		stack = fmt.Sprintf("%+v", err)
+		// Sanitize stack trace as well
+		stack = SanitizeForPostgreSQL(stack)
 		text = text + "\n" + stack
 	}
 
