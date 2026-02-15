@@ -1,8 +1,6 @@
 package vault
 
 import (
-	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/errors"
@@ -11,18 +9,15 @@ import (
 	vault "github.com/hashicorp/vault/api"
 )
 
-type DXVaultInterface interface {
-	Start() (err error)
-	ResolveAsString(v string) (string, error)
-	ResolveAsInt(v string) (int, error)
-	ResolveAsInt64(v string) (int64, error)
-	ResolveAsBool(v string) (bool, error)
-	GetStringOrDefault(v string, d string) string
-	GetIntOrDefault(v string, d int) int
-	GetInt64OrDefault(v string, d int64) int64
-	GetBoolOrDefault(v string, d bool) bool
-}
-
+/*
+	type DXVaultInterface interface {
+		Start() (err error)
+		GetStringOrDefault(v string, d string) string
+		GetIntOrDefault(v string, d int) int
+		GetInt64OrDefault(v string, d int64) int64
+		GetBoolOrDefault(v string, d bool) bool
+	}
+*/
 type DXVault struct {
 	Vendor  string
 	Address string
@@ -86,7 +81,7 @@ func (hv *DXHashicorpVault) Start() (err error) {
 	return nil
 }
 
-func (hv *DXHashicorpVault) ResolveAsInt64(v string) (int64, error) {
+/*func (hv *DXHashicorpVault) ResolveAsInt64(v string) (int64, error) {
 	s, err := hv.VaultMapString(&log.Log, v)
 	if err != nil {
 		return 0, err
@@ -142,7 +137,7 @@ func (hv *DXHashicorpVault) ResolveAsBool(v string) (bool, error) {
 func (hv *DXHashicorpVault) ResolveAsString(v string) (string, error) {
 	return hv.VaultMapString(&log.Log, v)
 }
-
+*/
 // maskSensitiveValue masks the value if the key name contains sensitive patterns
 func maskSensitiveValue(keyName string, value string) string {
 	keyUpper := strings.ToUpper(keyName)
@@ -165,6 +160,20 @@ func maskSensitiveValue(keyName string, value string) string {
 		return "(empty)"
 	}
 	return value
+}
+
+func (hv *DXHashicorpVault) GetString(key string) (string, error) {
+	data, err := hv.VaultGetData(&log.Log)
+	if err != nil {
+		return "", err
+	}
+
+	// Use utils.GetStringFromKV for safe type conversion
+	dvv, err := utils.GetStringFromKV(data, key)
+	if err != nil {
+		return "", err
+	}
+	return dvv, nil
 }
 
 func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {

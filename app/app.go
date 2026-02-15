@@ -75,8 +75,8 @@ type DXApp struct {
 	OnExecute                    DXAppEvent
 	OnStartStorageReady          DXAppEvent
 	OnStopping                   DXAppEvent
-	InitVault                    vault.DXVaultInterface
-	EncryptionVault              vault.DXVaultInterface
+	InitVault                    *vault.DXHashicorpVault
+	EncryptionVault              *vault.DXHashicorpVault
 }
 
 func (a *DXApp) Run() (err error) {

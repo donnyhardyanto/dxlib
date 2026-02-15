@@ -136,9 +136,9 @@ func (m *DXSecureMemoryManager) StoreEnclave(key string, data []byte) error {
 }
 
 // StoreFromVault gets value from vault and stores using LockedBuffer
-func (m *DXSecureMemoryManager) StoreFromVault(v vault.DXVaultInterface, vaultKey string, secureMemoryKey string) error {
+func (m *DXSecureMemoryManager) StoreFromVault(v *vault.DXHashicorpVault, vaultKey string, secureMemoryKey string) error {
 	// Get value from vault as string
-	value, err := v.ResolveAsString(vaultKey)
+	value, err := v.GetString(vaultKey)
 	if err != nil {
 		return errors.Wrapf(err, "SECURE_MEMORY_VAULT_GET_ERROR:%s", vaultKey)
 	}
@@ -158,9 +158,9 @@ func (m *DXSecureMemoryManager) StoreFromVault(v vault.DXVaultInterface, vaultKe
 }
 
 // StoreEnclaveFromVault gets value from vault and stores using Enclave
-func (m *DXSecureMemoryManager) StoreEnclaveFromVault(v vault.DXVaultInterface, vaultKey string, secureMemoryKey string) error {
+func (m *DXSecureMemoryManager) StoreEnclaveFromVault(v *vault.DXHashicorpVault, vaultKey string, secureMemoryKey string) error {
 	// Get value from vault as string
-	value, err := v.ResolveAsString(vaultKey)
+	value, err := v.GetString(vaultKey)
 	if err != nil {
 		return errors.Wrapf(err, "SECURE_MEMORY_VAULT_GET_ERROR:%s", vaultKey)
 	}
