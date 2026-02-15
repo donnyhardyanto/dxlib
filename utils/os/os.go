@@ -90,6 +90,21 @@ func GetEnvDefaultValueAsBool(key string, defaultValue bool) bool {
 	if !isPresent {
 		return defaultValue
 	}
-	valueBool := (strings.ToUpper(value) == "TRUE") || (value == "1")
-	return valueBool
+
+	// Trim whitespace and convert to uppercase for case-insensitive comparison
+	value = strings.TrimSpace(value)
+	valueUpper := strings.ToUpper(value)
+
+	// Accept TRUE in any case: "true", "True", "TRUE", "tRuE", etc. AND "1"
+	if valueUpper == "TRUE" || value == "1" {
+		return true
+	}
+
+	// Accept FALSE in any case: "false", "False", "FALSE", "fAlSe", etc. AND "0"
+	if valueUpper == "FALSE" || value == "0" {
+		return false
+	}
+
+	// Fallback: return default for unrecognized values
+	return defaultValue
 }
