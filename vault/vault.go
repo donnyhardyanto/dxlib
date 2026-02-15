@@ -1,7 +1,6 @@
 package vault
 
 import (
-	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -171,7 +170,7 @@ func maskSensitiveValue(keyName string, value string) string {
 func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
-		fmt.Printf("Vault key not found: %s, using default: %s\n", v, maskSensitiveValue(v, d))
+		log.Log.Infof("Vault key not found: %s, using default: %s", v, maskSensitiveValue(v, d))
 		return d
 	}
 
@@ -179,7 +178,7 @@ func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	dvv, err := utils.GetStringFromKV(data, v)
 	if err != nil {
 		// Key not found or type mismatch - return default
-		fmt.Printf("Vault key not found: %s, using default: %s\n", v, maskSensitiveValue(v, d))
+		log.Log.Infof("Vault key not found: %s, using default: %s", v, maskSensitiveValue(v, d))
 		return d
 	}
 	return dvv
@@ -189,7 +188,7 @@ func (hv *DXHashicorpVault) GetIntOrDefault(v string, d int) int {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
-		fmt.Printf("Vault key not found: %s, using default: %d\n", v, d)
+		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
 		return d
 	}
 
@@ -197,7 +196,7 @@ func (hv *DXHashicorpVault) GetIntOrDefault(v string, d int) int {
 	dvv, err := utils.ConvertIntFromKV(data, v)
 	if err != nil {
 		// Key not found or type mismatch - return default
-		fmt.Printf("Vault key not found: %s, using default: %d\n", v, d)
+		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
 		return d
 	}
 	return dvv
@@ -207,7 +206,7 @@ func (hv *DXHashicorpVault) GetInt64OrDefault(v string, d int64) int64 {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
-		fmt.Printf("Vault key not found: %s, using default: %d\n", v, d)
+		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
 		return d
 	}
 
@@ -215,7 +214,7 @@ func (hv *DXHashicorpVault) GetInt64OrDefault(v string, d int64) int64 {
 	dvv, err := utils.ConvertInt64FromKV(data, v)
 	if err != nil {
 		// Key not found or type mismatch - return default
-		fmt.Printf("Vault key not found: %s, using default: %d\n", v, d)
+		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
 		return d
 	}
 	return dvv
@@ -225,7 +224,7 @@ func (hv *DXHashicorpVault) GetBoolOrDefault(v string, d bool) bool {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
-		fmt.Printf("Vault key not found: %s, using default: %t\n", v, d)
+		log.Log.Infof("Vault key not found: %s, using default: %t", v, d)
 		return d
 	}
 
@@ -233,7 +232,7 @@ func (hv *DXHashicorpVault) GetBoolOrDefault(v string, d bool) bool {
 	dvv, err := utils.ConvertToBoolFromKV(data, v)
 	if err != nil {
 		// Key not found or type mismatch - return default
-		fmt.Printf("Vault key not found: %s, using default: %t\n", v, d)
+		log.Log.Infof("Vault key not found: %s, using default: %t", v, d)
 		return d
 	}
 	return dvv

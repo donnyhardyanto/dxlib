@@ -307,6 +307,37 @@ func SetFormatText() {
 	Format = DXLogFormatText
 }
 
+// SetFormatSimple sets a clean, human-readable format without field labels
+// Output: "2026-02-15 18:16:58 Message here"
+// Best for CLI tools and human-readable console output
+func SetFormatSimple() {
+	handler := &simpleHandler{}
+	slog.SetDefault(slog.New(handler))
+	Format = DXLogFormatText
+}
+
+// simpleHandler is a custom slog handler for clean console output
+type simpleHandler struct{}
+
+func (h *simpleHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return level >= ConsoleLogLevel
+}
+
+func (h *simpleHandler) Handle(ctx context.Context, r slog.Record) error {
+	// Format: "2026-02-15 18:16:58 Message"
+	timestamp := r.Time.Format("2006-01-02 15:04:05")
+	fmt.Fprintf(os.Stdout, "%s %s\n", timestamp, r.Message)
+	return nil
+}
+
+func (h *simpleHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return h
+}
+
+func (h *simpleHandler) WithGroup(name string) slog.Handler {
+	return h
+}
+
 // SetConsoleLogLevel sets the minimum log level that will be written to console (stdout).
 // This does NOT affect the error_log database audit trail, which always captures errors.
 // Valid levels: LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelError
