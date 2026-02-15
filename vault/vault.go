@@ -138,29 +138,6 @@ func (hv *DXHashicorpVault) ResolveAsString(v string) (string, error) {
 	return hv.VaultMapString(&log.Log, v)
 }
 */
-// maskSensitiveValue masks the value if the key name contains sensitive patterns
-func maskSensitiveValue(keyName string, value string) string {
-	keyUpper := strings.ToUpper(keyName)
-	sensitivePatterns := []string{
-		"PASSWORD", "SECRET", "KEY", "TOKEN", "SALT", "CREDENTIAL", "API_KEY",
-		"ENCRYPTION", "HASH", "PRIVATE", "PASSPHRASE",
-	}
-
-	for _, pattern := range sensitivePatterns {
-		if strings.Contains(keyUpper, pattern) {
-			if value == "" {
-				return "(empty)"
-			}
-			return "********"
-		}
-	}
-
-	// Not sensitive - return actual value
-	if value == "" {
-		return "(empty)"
-	}
-	return value
-}
 
 func (hv *DXHashicorpVault) GetString(key string) (string, error) {
 	data, err := hv.VaultGetData(&log.Log)
@@ -179,7 +156,17 @@ func (hv *DXHashicorpVault) GetString(key string) (string, error) {
 func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	data, err := hv.VaultGetData(&log.Log)
 	if err != nil {
-		log.Log.Infof("Vault key not found: %s, using default: %s", v, maskSensitiveValue(v, d))
+		maskedDefault := d
+		if utils.IsSensitiveField(v) {
+			if d == "" {
+				maskedDefault = "(empty)"
+			} else {
+				maskedDefault = "********"
+			}
+		} else if d == "" {
+			maskedDefault = "(empty)"
+		}
+		log.Log.Infof("Vault key not found: %s, using default: %s", v, maskedDefault)
 		return d
 	}
 
@@ -187,7 +174,17 @@ func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	dvv, err := utils.GetStringFromKV(data, v)
 	if err != nil {
 		// Key not found or type mismatch - return default
-		log.Log.Infof("Vault key not found: %s, using default: %s", v, maskSensitiveValue(v, d))
+		maskedDefault := d
+		if utils.IsSensitiveField(v) {
+			if d == "" {
+				maskedDefault = "(empty)"
+			} else {
+				maskedDefault = "********"
+			}
+		} else if d == "" {
+			maskedDefault = "(empty)"
+		}
+		log.Log.Infof("Vault key not found: %s, using default: %s", v, maskedDefault)
 		return d
 	}
 	return dvv

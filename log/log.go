@@ -64,8 +64,9 @@ var DXLogLevelAsString = map[DXLogLevel]string{
 type DXLogFormat int
 
 const (
-	DXLogFormatText DXLogFormat = iota
-	DXLogFormatJSON             = 1
+	DXLogFormatText   DXLogFormat = iota
+	DXLogFormatJSON               = 1
+	DXLogFormatSimple             = 2
 )
 
 type DXLog struct {
@@ -313,7 +314,7 @@ func SetFormatText() {
 func SetFormatSimple() {
 	handler := &simpleHandler{}
 	slog.SetDefault(slog.New(handler))
-	Format = DXLogFormatText
+	Format = DXLogFormatSimple
 }
 
 // simpleHandler is a custom slog handler for clean console output
@@ -348,6 +349,8 @@ func SetConsoleLogLevel(level slog.Level) {
 	// Re-apply current format with new level
 	if Format == DXLogFormatJSON {
 		SetFormatJSON()
+	} else if Format == DXLogFormatSimple {
+		SetFormatSimple()
 	} else {
 		SetFormatText()
 	}

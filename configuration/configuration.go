@@ -77,9 +77,15 @@ func (c *DXConfiguration) ByteArrayYAMLToJSON(v []byte) (r utils.JSON, err error
 func (c *DXConfiguration) FilterSensitiveData() (r utils.JSON) {
 	r = json2.Copy(*c.Data)
 
+	// Apply automatic pattern-based masking first
+	r = utils.MaskSensitiveDataInJSON(r)
+
+	// Also apply explicit sensitive key list (for backwards compatibility and unique cases)
+	// This ensures any keys not caught by pattern matching are still masked
 	for _, v := range c.SensitiveDataKey {
 		utils.SetValueInNestedMap(r, v, "********")
 	}
+
 	return r
 }
 

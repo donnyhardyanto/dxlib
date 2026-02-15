@@ -203,34 +203,6 @@ func (aepr *DXAPIEndPointRequest) RequestDumpAsString() (string, error) {
 	return string(b), err
 }
 
-// isSensitiveField checks if a field name contains sensitive keywords
-func isSensitiveField(fieldName string) bool {
-	lowerFieldName := strings.ToLower(fieldName)
-	sensitiveKeywords := []string{
-		"password", "passwd", "pwd",
-		"pin", "otp", "totp",
-		"secret", "token", "key",
-		"authorization", "auth",
-		"credential", "private",
-		"api_key", "apikey",
-		"session", "cookie",
-	}
-	for _, keyword := range sensitiveKeywords {
-		if strings.Contains(lowerFieldName, keyword) {
-			return true
-		}
-	}
-	return false
-}
-
-// maskSensitiveValue masks sensitive data
-func maskSensitiveValue(fieldName string, value interface{}) interface{} {
-	if isSensitiveField(fieldName) {
-		return "***"
-	}
-	return value
-}
-
 // DecryptedRequestDumpAsString returns a formatted dump of decrypted request headers and body parameters
 // with sensitive fields masked. This is useful for debugging E2E encrypted requests.
 func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
@@ -240,7 +212,7 @@ func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
 	b.WriteString("Decrypted Headers:\n")
 	if aepr.EffectiveRequestHeader != nil {
 		for k, v := range aepr.EffectiveRequestHeader {
-			maskedValue := maskSensitiveValue(k, v)
+			maskedValue := utils.MaskSensitiveValue(k, v)
 			b.WriteString(fmt.Sprintf("%s: %v\n", k, maskedValue))
 		}
 	} else {
@@ -254,7 +226,7 @@ func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
 		// Mask sensitive fields before marshaling
 		maskedParams := utils.JSON{}
 		for k, v := range params {
-			maskedParams[k] = maskSensitiveValue(k, v)
+			maskedParams[k] = utils.MaskSensitiveValue(k, v)
 		}
 
 		paramsJSON, err := json.MarshalIndent(maskedParams, "", "  ")

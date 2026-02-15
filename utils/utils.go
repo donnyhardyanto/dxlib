@@ -1261,6 +1261,84 @@ func ConvertToStringFromKV(kv map[string]any, key string) (string, error) {
 	}
 }
 
+// IsSensitiveField checks if a field name contains sensitive keywords.
+// This is a unified function to detect sensitive data across the codebase.
+func IsSensitiveField(fieldName string) bool {
+	lowerFieldName := strings.ToLower(fieldName)
+	sensitiveKeywords := []string{
+		// Authentication & Authorization
+		"password", "passwd", "pwd",
+		"pin", "otp", "totp",
+		"secret", "token", "key",
+		"authorization", "auth",
+		"credential", "private",
+		"api_key", "apikey",
+		"session", "cookie",
+
+		// Encryption & Security
+		"salt", "hash", "passphrase",
+		"encryption", "cipher",
+
+		// Database & Storage
+		"user_password", "db_password",
+		"connection_string",
+	}
+
+	for _, keyword := range sensitiveKeywords {
+		if strings.Contains(lowerFieldName, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// MaskSensitiveValue masks a value if the field name is determined to be sensitive.
+// Uses "********" as the standard mask across the codebase.
+func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
+	if IsSensitiveField(fieldName) {
+		return "********"
+	}
+	return value
+}
+
+// MaskSensitiveDataInJSON recursively masks sensitive fields in a JSON structure.
+// Returns a deep copy with sensitive values replaced by "********".
+func MaskSensitiveDataInJSON(data JSON) JSON {
+	return maskSensitiveDataInJSONRecursive(data, "")
+}
+
+// maskSensitiveDataInJSONRecursive is the internal recursive implementation.
+// The keyPath parameter tracks the full dot-notation path for nested keys.
+func maskSensitiveDataInJSONRecursive(data JSON, keyPath string) JSON {
+	result := make(JSON)
+
+	for k, v := range data {
+		// Build full key path for nested keys
+		var fullKey string
+		if keyPath == "" {
+			fullKey = k
+		} else {
+			fullKey = keyPath + "." + k
+		}
+
+		// Check if this key is sensitive
+		if IsSensitiveField(fullKey) || IsSensitiveField(k) {
+			result[k] = "********"
+			continue
+		}
+
+		// Recursively process nested maps
+		switch typedValue := v.(type) {
+		case map[string]interface{}:
+			result[k] = maskSensitiveDataInJSONRecursive(typedValue, fullKey)
+		default:
+			result[k] = v
+		}
+	}
+
+	return result
+}
+
 // ConvertToBoolFromKV gets value from map by key and converts it to bool
 func ConvertToBoolFromKV(kv map[string]any, key string) (bool, error) {
 	val, ok := kv[key]
