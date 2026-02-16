@@ -11,22 +11,24 @@ import (
 )
 
 // TxNamedQueryRows2 executes a named query within a transaction and returns all matching rows.
-// Based on database type: if the database supports named parameters (:name),
-// calls TxBaseQueryRows2 directly. Otherwise, converts to positional parameters first.
+// Converts named parameters (:name) to database-specific parameter format.
+// PostgreSQL: $1, $2, ... (positional)
+// SQL Server: @p1, @p2, ... (named, but different syntax)
+// MariaDB/MySQL: ? (positional)
+// Oracle: :1, :2, ... (positional)
 func TxNamedQueryRows2(dtx *databases.DXDatabaseTx, query string, arg utils.JSON, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	dbType := base.StringToDXDatabaseType(dtx.Tx.DriverName())
 
-	// MariaDB and Oracle do not support named parameters, convert to positional
-	if dbType == base.DXDatabaseTypeMariaDB || dbType == base.DXDatabaseTypeOracle {
-		positionalQuery, positionalArgs, err := query2.ParameterizedSQLQueryNamedBasedToIndexBased(dbType, query, arg)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "PARAMETER_CONVERSION_ERROR:QUERY=%s", query)
-		}
-		return base2.TxBaseQueryRows2(dtx, positionalQuery, positionalArgs, fieldTypeMapping)
+	// All databases need parameter conversion from :name format
+	// PostgreSQL uses $1, $2, ... (positional)
+	// MariaDB uses ? (positional)
+	// Oracle uses :1, :2, ... (positional)
+	// SQL Server uses @p1, @p2, ... (named but different syntax)
+	positionalQuery, positionalArgs, err := query2.ParameterizedSQLQueryNamedBasedToIndexBased(dbType, query, arg)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "PARAMETER_CONVERSION_ERROR:QUERY=%s", query)
 	}
-
-	// PostgreSQL, SQL Server support named parameters
-	return base2.TxBaseQueryRows2(dtx, query, arg, fieldTypeMapping)
+	return base2.TxBaseQueryRows2(dtx, positionalQuery, positionalArgs, fieldTypeMapping)
 }
 
 // TxShouldNamedQueryRows2 executes a named query within a transaction and returns all matching rows,
