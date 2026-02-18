@@ -1265,6 +1265,16 @@ func ConvertToStringFromKV(kv map[string]any, key string) (string, error) {
 // This is a unified function to detect sensitive data across the codebase.
 func IsSensitiveField(fieldName string) bool {
 	lowerFieldName := strings.ToLower(fieldName)
+
+	exceptions := []string{
+		"filter_key_values",
+	}
+	for _, exception := range exceptions {
+		if lowerFieldName == exception {
+			return false
+		}
+	}
+
 	sensitiveKeywords := []string{
 		// Authentication & Authorization
 		"password", "passwd", "pwd",
