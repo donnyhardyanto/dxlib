@@ -473,14 +473,14 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 					"status":         http.StatusText(statusCode),
 					"status_code":    statusCode,
 					"reason":         "REFRESH_CAPTCHA",
-					"reason_message": "Captcha missing, expired, or already used. Please call /prelogin_captcha to get a new captcha.",
+					"reason_message": "Captcha missing, expired, or already used. Please call /prekey_captcha to get a new captcha.",
 				}
 			} else {
 				errorResponse = utils.JSON{
 					"status":         http.StatusText(statusCode),
 					"status_code":    statusCode,
 					"reason":         "REFRESH_PREKEY",
-					"reason_message": "Prekey missing, expired, or already used. Please call /prelogin to get a new prekey.",
+					"reason_message": "Prekey missing, expired, or already used. Please call /prekey to get a new prekey.",
 				}
 			}
 			errorBytes, _ := json.Marshal(errorResponse)
