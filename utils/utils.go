@@ -24,6 +24,10 @@ import (
 // JSON is a type alias for map[string]any, representing a JSON object.
 type JSON = map[string]any
 
+// OverrideShowPasswordOnLog disables sensitive field masking in logs when true.
+// Set via PGNPARTNER_OVERRIDE_SHOW_PASSWORD_ON_LOG env var. Never enable in production.
+var OverrideShowPasswordOnLog = false
+
 // ArrayToJSON converts a slice of any type to a JSON string.
 func ArrayToJSON[T any](arr []T) (string, error) {
 	jsonBytes, err := json.Marshal(arr)
@@ -1305,6 +1309,9 @@ func IsSensitiveField(fieldName string) bool {
 // MaskSensitiveValue masks a value if the field name is determined to be sensitive.
 // Uses "********" as the standard mask across the codebase.
 func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
+	if OverrideShowPasswordOnLog {
+		return value
+	}
 	if IsSensitiveField(fieldName) {
 		return "********"
 	}
