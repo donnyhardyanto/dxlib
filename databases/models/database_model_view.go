@@ -470,7 +470,10 @@ func (v *ModelDBView) buildDecryptExpr(placeholder string, dbType base.DXDatabas
 	encColumn := parts[0]
 	keyConfigName := parts[1]
 
-	keyExpr := BuildGetSessionConfigExpr(dbType, keyConfigName)
+	keyExpr, err := BuildGetSessionConfigExpr(dbType, keyConfigName)
+	if err != nil {
+		return "", err
+	}
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
 		return fmt.Sprintf("pgp_sym_decrypt(%s, %s)", encColumn, keyExpr), nil

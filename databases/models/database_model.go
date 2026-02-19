@@ -44,75 +44,77 @@ func parseOracleKey(key string) (namespace string, attribute string) {
 	return
 }
 
-// BuildSetSessionConfigSQL generates SQL to set a session-level configuration variable
-// NOTE: This function is for DDL/script generation only. For runtime execution, use SetSessionConfig()
-// which uses parameterized queries to prevent SQL injection.
-// PostgreSQL: SET app.key = 'value'
-// SQL Server: EXEC sp_set_session_context @key = N'key', @value = N'value'
-// Oracle: EXEC DBMS_SESSION.SET_CONTEXT('app_ctx', 'key', 'value')
-// MariaDB/MySQL: SET @key = 'value'
-func BuildSetSessionConfigSQL(dbType base.DXDatabaseType, key string, value string) string {
+// BuildSetSessionConfigSQL generates a parameterized SQL query to set a session-level configuration variable.
+// Returns the SQL string with placeholders and the corresponding args slice.
+// PostgreSQL: SELECT set_config($1, $2, false)
+// SQL Server: EXEC sp_set_session_context @key = @p1, @value = @p2
+// Oracle: BEGIN DBMS_SESSION.SET_CONTEXT(:1, :2, :3); END;
+// MariaDB/MySQL: SET @varName = ? (varName is derived from validated key, not user data)
+func BuildSetSessionConfigSQL(dbType base.DXDatabaseType, key string, value string) (string, []any) {
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
-		// PostgreSQL uses SET for custom GUC variables
-		// Key format: "namespace.variable" e.g., "app.encryption_key"
-		return fmt.Sprintf("SET %s = '%s'", key, value)
+		return "SELECT set_config($1, $2, false)", []any{key, value}
 	case base.DXDatabaseTypeSQLServer:
-		// SQL Server 2016+ uses sp_set_session_context
-		return fmt.Sprintf("EXEC sp_set_session_context @key = N'%s', @value = N'%s'", key, value)
+		return "EXEC sp_set_session_context @key = @p1, @value = @p2", []any{key, value}
 	case base.DXDatabaseTypeOracle:
-		// Oracle uses application context (requires context to be created first)
 		namespace, attribute := parseOracleKey(key)
-		return fmt.Sprintf("BEGIN DBMS_SESSION.SET_CONTEXT('%s', '%s', '%s'); END;", namespace, attribute, value)
+		return "BEGIN DBMS_SESSION.SET_CONTEXT(:1, :2, :3); END;", []any{namespace, attribute, value}
 	case base.DXDatabaseTypeMariaDB:
-		// MySQL/MariaDB uses user-defined variables with @ prefix
-		// Replace dots with underscores for variable name
+		// MySQL/MariaDB user variable names cannot be parameterized; varName is derived from validated key
 		varName := strings.ReplaceAll(key, ".", "_")
-		return fmt.Sprintf("SET @%s = '%s'", varName, value)
+		return fmt.Sprintf("SET @%s = ?", varName), []any{value}
 	default:
-		return fmt.Sprintf("-- Unknown databases type for setting: %s = %s", key, value)
+		return "-- Unknown databases type for setting", nil
 	}
 }
 
-// BuildGetSessionConfigExpr returns the SQL expression to retrieve a session configuration value
-// This expression can be used within SQL queries (e.g., in SELECT, WHERE, or function calls)
-// NOTE: The key parameter should be validated with ValidateSessionConfigKey() before use
+// BuildGetSessionConfigExpr returns the SQL expression to retrieve a session configuration value.
+// The key is validated first to prevent SQL injection (key must be literal in view DDL).
 // PostgreSQL: current_setting('app.key')
 // SQL Server: SESSION_CONTEXT(N'key')
 // Oracle: SYS_CONTEXT('APP_CTX', 'key')
 // MariaDB/MySQL: @key
-func BuildGetSessionConfigExpr(dbType base.DXDatabaseType, key string) string {
+func BuildGetSessionConfigExpr(dbType base.DXDatabaseType, key string) (string, error) {
+	if err := ValidateSessionConfigKey(key); err != nil {
+		return "", fmt.Errorf("BuildGetSessionConfigExpr: %w", err)
+	}
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
-		return fmt.Sprintf("current_setting('%s')", key)
+		return fmt.Sprintf("current_setting('%s')", key), nil
 	case base.DXDatabaseTypeSQLServer:
-		return fmt.Sprintf("CAST(SESSION_CONTEXT(N'%s') AS NVARCHAR(MAX))", key)
+		return fmt.Sprintf("CAST(SESSION_CONTEXT(N'%s') AS NVARCHAR(MAX))", key), nil
 	case base.DXDatabaseTypeOracle:
 		namespace, attribute := parseOracleKey(key)
-		return fmt.Sprintf("SYS_CONTEXT('%s', '%s')", namespace, attribute)
+		return fmt.Sprintf("SYS_CONTEXT('%s', '%s')", namespace, attribute), nil
 	case base.DXDatabaseTypeMariaDB:
-		// MySQL/MariaDB uses user-defined variables
 		varName := strings.ReplaceAll(key, ".", "_")
-		return fmt.Sprintf("@%s", varName)
+		return fmt.Sprintf("@%s", varName), nil
 	default:
-		return fmt.Sprintf("'%s'", key) // Fallback to literal
+		return fmt.Sprintf("'%s'", key), nil
 	}
 }
 
-// BuildGetSessionConfigSQL generates a complete SQL query to retrieve a session configuration value
-// NOTE: This function is for DDL/script generation only. For runtime execution, use GetSessionConfig()
-// which uses parameterized queries to prevent SQL injection.
-// PostgreSQL: SELECT current_setting('app.key')
-// SQL Server: SELECT SESSION_CONTEXT(N'key')
-// Oracle: SELECT SYS_CONTEXT('APP_CTX', 'key') FROM DUAL
-// MariaDB/MySQL: SELECT @key
-func BuildGetSessionConfigSQL(dbType base.DXDatabaseType, key string) string {
-	expr := BuildGetSessionConfigExpr(dbType, key)
+// BuildGetSessionConfigSQL generates a parameterized SQL query to retrieve a session configuration value.
+// Returns the SQL string with placeholders and the corresponding args slice.
+// PostgreSQL: SELECT current_setting($1)
+// SQL Server: SELECT CAST(SESSION_CONTEXT(@p1) AS NVARCHAR(MAX))
+// Oracle: SELECT SYS_CONTEXT(:1, :2) FROM DUAL
+// MariaDB/MySQL: SELECT @varName (varName is derived from validated key, not user data)
+func BuildGetSessionConfigSQL(dbType base.DXDatabaseType, key string) (string, []any) {
 	switch dbType {
+	case base.DXDatabaseTypePostgreSQL:
+		return "SELECT current_setting($1)", []any{key}
+	case base.DXDatabaseTypeSQLServer:
+		return "SELECT CAST(SESSION_CONTEXT(@p1) AS NVARCHAR(MAX))", []any{key}
 	case base.DXDatabaseTypeOracle:
-		return fmt.Sprintf("SELECT "+"%s FROM DUAL", expr)
+		namespace, attribute := parseOracleKey(key)
+		return "SELECT SYS_CONTEXT(:1, :2) FROM DUAL", []any{namespace, attribute}
+	case base.DXDatabaseTypeMariaDB:
+		// MySQL/MariaDB user variable names cannot be parameterized; varName is derived from validated key
+		varName := strings.ReplaceAll(key, ".", "_")
+		return fmt.Sprintf("SELECT @%s", varName), nil
 	default:
-		return fmt.Sprintf("SELECT %s", expr)
+		return "-- Unknown databases type for getting", nil
 	}
 }
 
