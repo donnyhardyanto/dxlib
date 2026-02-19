@@ -456,7 +456,16 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		// If nil, it means preprocessing failed (used/expired prekey, replay attack, etc.)
 		// Send unencrypted error telling client to refresh prekey
 		if aepr.EncryptionParameters == nil {
-			aepr.Log.Warnf("E2EE_ENCRYPTION_PARAMETERS_NIL:PREKEY_MISSING_OR_USED:status=%d", statusCode)
+			// Log error with stack trace and raw request dump (decrypted dump unavailable since decryption failed)
+			errMsg := fmt.Sprintf("E2EE_ENCRYPTION_PARAMETERS_NIL:PREKEY_MISSING_OR_USED:status=%d", statusCode)
+			err := errors.New(errMsg)
+
+			requestDump, err2 := aepr.RequestDumpAsString()
+			if err2 != nil {
+				requestDump = "DUMP REQUEST FAIL"
+			}
+
+			aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
 			aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "E2EE_PREKEY_MISSING_FALLBACK_TO_PLAIN")
 
 			// Determine if this is a captcha endpoint
@@ -490,7 +499,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 			aepr.ResponseHeaderSent = true
 			aepr.ResponseStatusCode = statusCode
 
-			_, err := responseWriter.Write(errorBytes)
+			_, err = responseWriter.Write(errorBytes)
 			if err != nil {
 				aepr.Log.Warnf("ERROR_WRITING_PREKEY_REFRESH_RESPONSE:%v", err)
 			}
