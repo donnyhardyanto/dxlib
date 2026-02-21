@@ -460,22 +460,32 @@ func executeEncryptedSelect(
 	// 2. Build SELECT fields with decryption
 	if len(fieldNames) == 0 {
 		qb.Select("*")
+		// When SELECT *, only add encrypted columns that view doesn't have
+		// to avoid duplicate columns (e.g., "SELECT *, fullname, email" would duplicate those fields)
+		for _, col := range encryptionColumns {
+			if !col.ViewHasDecrypt {
+				// View doesn't have this decrypted - add manual decryption
+				expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
+				qb.Select(fmt.Sprintf("%s AS %s", expr, col.AliasName))
+			}
+			// If ViewHasDecrypt=true, column already included in SELECT *
+		}
 	} else {
+		// Specific fields requested - select them explicitly
 		for _, field := range fieldNames {
 			if err := validateFieldName(field); err != nil {
 				return nil, nil, err
 			}
 			qb.Select(field)
 		}
-	}
-
-	// Add encrypted columns with decryption expressions
-	for _, col := range encryptionColumns {
-		if col.ViewHasDecrypt {
-			qb.Select(col.AliasName)
-		} else {
-			expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
-			qb.Select(fmt.Sprintf("%s AS %s", expr, col.AliasName))
+		// Add encrypted columns with decryption expressions
+		for _, col := range encryptionColumns {
+			if col.ViewHasDecrypt {
+				qb.Select(col.AliasName)
+			} else {
+				expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
+				qb.Select(fmt.Sprintf("%s AS %s", expr, col.AliasName))
+			}
 		}
 	}
 
