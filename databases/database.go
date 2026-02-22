@@ -687,10 +687,10 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		}
 		err = tx.Commit()
 		if err != nil {
-			log.Errorf(err, "TX_ERROR_IN_COMMIT: (%v)", err.Error())
+			log.Errorf(err, "TX_ERROR_IN_COMMIT:Details:%+v", err)
 			errTx := tx.Rollback()
 			if errTx != nil {
-				log.Errorf(err, "ErrorInCommitRollback: (%v)", errTx.Error())
+				log.Errorf(err, "ErrorInCommitRollback:Details:%+v", errTx)
 			}
 			return err
 		}
@@ -722,10 +722,10 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 	}
 	err = dtx.Tx.Commit()
 	if err != nil {
-		log.Errorf(err, "TX_ERROR_IN_COMMIT: (%v)", err.Error())
+		log.Errorf(err, "TX_ERROR_IN_COMMIT:Details:%+v", err)
 		errTx := tx.Rollback()
 		if errTx != nil {
-			log.Errorf(err, "ErrorInCommitRollback: (%v)", errTx.Error())
+			log.Errorf(err, "ErrorInCommitRollback:Details:%+v", errTx)
 		}
 		return err
 	}

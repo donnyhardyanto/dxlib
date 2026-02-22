@@ -386,7 +386,12 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 		if (err != nil) && (dxlib.IsDebug) && (p.RequestContentType == utilsHttp.RequestContentTypeApplicationJSON) {
 			if aepr.RequestBodyAsBytes != nil {
-				aepr.Log.Infof("%d %s Request: %s", aepr.ResponseStatusCode, r.URL.Path, string(aepr.RequestBodyAsBytes))
+				requestBody := string(aepr.RequestBodyAsBytes)
+				const maxLogLength = 2000
+				if len(requestBody) > maxLogLength {
+					requestBody = requestBody[:maxLogLength] + "... (truncated)"
+				}
+				aepr.Log.Infof("%d %s Request: %s", aepr.ResponseStatusCode, r.URL.Path, requestBody)
 			}
 		} else {
 			aepr.Log.Infof("%d %s", aepr.ResponseStatusCode, r.URL.Path)
