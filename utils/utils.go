@@ -25,7 +25,6 @@ import (
 type JSON = map[string]any
 
 // OverrideShowPasswordOnLog disables sensitive field masking in logs when true.
-// Set via PGNPARTNER_OVERRIDE_SHOW_PASSWORD_ON_LOG env var. Never enable in production.
 var OverrideShowPasswordOnLog = false
 
 // ArrayToJSON converts a slice of any type to a JSON string.
