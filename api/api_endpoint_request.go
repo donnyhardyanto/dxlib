@@ -189,7 +189,14 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 	}
 
 	_, _ = io.WriteString(&b, "\r\n")
-	b.Write(aepr.RequestBodyAsBytes)
+	const maxBodyDumpBytes = 1024
+	body := aepr.RequestBodyAsBytes
+	if len(body) > maxBodyDumpBytes {
+		b.Write(body[:maxBodyDumpBytes])
+		_, _ = fmt.Fprintf(&b, "...(truncated, total %d bytes)", len(body))
+	} else {
+		b.Write(body)
+	}
 	_, err = io.WriteString(&b, "\r\n\r\n")
 
 	if err != nil {
