@@ -51,9 +51,10 @@ type DXRawTable struct {
 	EncryptionColumnDefs []databases.EncryptionColumnDef // for INSERT/UPDATE/SELECT encryption/decryption
 
 	ValidationUniqueFieldNameGroups [][]string
-	SearchTextFieldNames            []string
-	OrderByFieldNames               []string
-	FilterableFieldNames            []string // Whitelist of fields that can be filtered via filter_key_values
+	SearchTextFieldNames             []string
+	OrderByFieldNames                []string
+	FilterableFieldNames             []string // Whitelist of fields that can be filtered via filter_key_values
+	DownloadableOrderByFieldNames    []string // If set, used for SELECT in download. Falls back to OrderByFieldNames if nil.
 }
 
 // EnsureDatabase ensures databases connection is initialized
@@ -283,37 +284,40 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQuery
 		totalPages = (totalRows + rowPerPage - 1) / rowPerPage
 	}
 
-	// Use OrderByFieldNames to control which columns are returned
-	var outFields []string
+	// Only set OutFields if not already pre-set by caller (e.g. DoRequestSearchPagingDownload)
+	if len(qb.OutFields) == 0 {
+		// Use OrderByFieldNames to control which columns are returned
+		var outFields []string
 
-	if len(t.EncryptionColumnDefs) > 0 {
-		dbType := base.StringToDXDatabaseType(dtx.Tx.DriverName())
-		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
+		if len(t.EncryptionColumnDefs) > 0 {
+			dbType := base.StringToDXDatabaseType(dtx.Tx.DriverName())
+			encryptionColumns := t.convertEncryptionColumnDefsForSelect()
 
-		// Process each field in OrderByFieldNames
-		for _, fieldName := range t.OrderByFieldNames {
-			added := false
-			// Check if this field needs runtime decryption
-			for _, col := range encryptionColumns {
-				if col.AliasName == fieldName && !col.ViewHasDecrypt {
-					// Field needs runtime decryption - add decryption expression
-					expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
-					outFields = append(outFields, fmt.Sprintf("%s AS %s", expr, fieldName))
-					added = true
-					break
+			// Process each field in OrderByFieldNames
+			for _, fieldName := range t.OrderByFieldNames {
+				added := false
+				// Check if this field needs runtime decryption
+				for _, col := range encryptionColumns {
+					if col.AliasName == fieldName && !col.ViewHasDecrypt {
+						// Field needs runtime decryption - add decryption expression
+						expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
+						outFields = append(outFields, fmt.Sprintf("%s AS %s", expr, fieldName))
+						added = true
+						break
+					}
+				}
+				if !added {
+					// Field doesn't need runtime decryption - add as-is
+					outFields = append(outFields, fieldName)
 				}
 			}
-			if !added {
-				// Field doesn't need runtime decryption - add as-is
-				outFields = append(outFields, fieldName)
-			}
+		} else {
+			// No encryption - use OrderByFieldNames directly
+			outFields = t.OrderByFieldNames
 		}
-	} else {
-		// No encryption - use OrderByFieldNames directly
-		outFields = t.OrderByFieldNames
-	}
 
-	qb.OutFields = outFields
+		qb.OutFields = outFields
+	}
 
 	// Select
 	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(dtx, qb.SelectQueryBuilder, t.FieldTypeMapping)
@@ -490,6 +494,11 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 	qb.Limit(rowPerPage)
 	if pageIndex > 0 {
 		qb.Offset(pageIndex * rowPerPage)
+	}
+
+	// Pre-set OutFields to DownloadableOrderByFieldNames so DoPagingWithSelectQueryBuilder will not overwrite it
+	if len(t.DownloadableOrderByFieldNames) > 0 {
+		qb.OutFields = t.DownloadableOrderByFieldNames
 	}
 
 	pagingResult, err := t.DoPagingWithSelectQueryBuilder(&aepr.Log, qb)
