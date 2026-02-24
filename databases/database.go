@@ -704,7 +704,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		ReadOnly:  false,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "TX_ERROR_BEGIN_TRANSACTION")
 	}
 	dtx := &DXDatabaseTx{
 		Tx:       tx,
@@ -727,7 +727,7 @@ func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callb
 		if errTx != nil {
 			log.Errorf(err, "ErrorInCommitRollback:Details:%+v", errTx)
 		}
-		return err
+		return errors.Wrap(err, "TX_ERROR_IN_COMMIT")
 	}
 
 	return nil

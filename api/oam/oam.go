@@ -5,12 +5,13 @@ import (
 	"net/http"
 
 	"github.com/donnyhardyanto/dxlib/api"
+	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 func LogRequest(r *http.Request) (map[string]interface{}, error) {
 	requestBodyAsBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "OAM_LOG_REQUEST_READ_BODY_ERROR")
 	}
 	lr := map[string]interface{}{
 		"remote_addr": r.RemoteAddr,

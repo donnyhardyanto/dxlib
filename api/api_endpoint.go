@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
@@ -213,12 +214,12 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 
 		collectionJSON, err := json.MarshalIndent(collection, "", "  ")
 		if err != nil {
-			return "", err
+			return "", errors.Wrap(err, "API_ENDPOINT_SPEC_JSON_MARSHAL_ERROR")
 		}
 
 		return string(collectionJSON), nil
 	default:
-		return "", fmt.Errorf("SpecFormat %s is not supported", SpecFormat)
+		return "", errors.Errorf("SpecFormat %s is not supported", SpecFormat)
 	}
 
 	return s, nil
