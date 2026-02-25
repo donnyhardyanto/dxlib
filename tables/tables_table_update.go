@@ -39,7 +39,7 @@ func (t *DXTable) TxUpdateById(dtx *databases.DXDatabaseTx, id int64, data utils
 
 // DoUpdate is an API helper with audit fields
 func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
-	_, row, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
+	_, row, err := t.GetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -107,9 +107,12 @@ func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.ShouldGetByUidNotDeletedAuto(&aepr.Log, uid)
+	_, row, err := t.GetByUidNotDeletedAuto(&aepr.Log, uid)
 	if err != nil {
 		return err
+	}
+	if row == nil {
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", uid)
 	}
 
 	id, ok := row[t.FieldNameForRowId].(int64)
@@ -127,9 +130,12 @@ func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
 
 // DoUpdateWithValidation updates with unique field validation, merging current row data with new data for validation
 func (t *DXTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
-	_, row, err := t.DirectShouldGetById(&aepr.Log, id)
+	_, row, err := t.DirectGetById(&aepr.Log, id)
 	if err != nil {
 		return err
+	}
+	if row == nil {
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
 	}
 	if isDeleted, ok := row["is_deleted"].(bool); ok && isDeleted {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
@@ -212,9 +218,12 @@ func (t *DXTable) RequestEditByUidWithValidation(aepr *api.DXAPIEndPointRequest)
 	}
 
 	// Use Direct to just get the id
-	_, row, err := t.DirectShouldGetByUid(&aepr.Log, uid)
+	_, row, err := t.DirectGetByUid(&aepr.Log, uid)
 	if err != nil {
 		return err
+	}
+	if row == nil {
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", uid)
 	}
 
 	id, ok := row[t.FieldNameForRowId].(int64)

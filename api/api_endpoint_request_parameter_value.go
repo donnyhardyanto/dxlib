@@ -582,7 +582,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 	if len(aeprpv.Metadata.Enum) > 0 {
 		found := false
 		for _, enumVal := range aeprpv.Metadata.Enum {
-			if fmt.Sprintf("%v", aeprpv.Value) == fmt.Sprintf("%v", enumVal) {
+			valStr := fmt.Sprintf("%v", aeprpv.Value)
+			enumStr := fmt.Sprintf("%v", enumVal)
+			if strings.EqualFold(valStr, enumStr) {
 				found = true
 				break
 			}

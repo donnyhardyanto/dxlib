@@ -91,7 +91,7 @@ func (t *DXTable) TxSoftDeleteById(dtx *databases.DXDatabaseTx, id int64) (sql.R
 
 // DoSoftDelete is an API helper for soft delete
 func (t *DXTable) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
-	_, row, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
+	_, row, err := t.GetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
+	_, row, err := t.GetByIdNotDeletedAuto(&aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -210,6 +210,18 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 // RequestSearchPagingList overrides DXRawTable to add NotDeleted filter by default
 func (t *DXTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) error {
 	qb := t.DXRawTable.NewTableSelectQueryBuilder()
+
+	// DXTable always has is_deleted — apply filter unless explicitly including deleted.
+	// This is a safety net: even if is_deleted is missing from FilterableFieldNames,
+	// DXTable search_paging will still exclude soft-deleted rows by default.
+	isIncludeDeletedExist, isIncludeDeleted, err := aepr.GetParameterValueAsBool("is_include_deleted")
+	if err != nil {
+		return err
+	}
+	if !isIncludeDeletedExist || !isIncludeDeleted {
+		qb.Eq("is_deleted", false)
+	}
+
 	return t.DoRequestSearchPagingList(aepr, qb, nil)
 }
 
@@ -220,9 +232,12 @@ func (t *DXTable) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.ShouldGetByUidNotDeletedAuto(&aepr.Log, uid)
+	_, row, err := t.GetByUidNotDeletedAuto(&aepr.Log, uid)
 	if err != nil {
 		return err
+	}
+	if row == nil {
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", uid)
 	}
 
 	id, ok := row[t.FieldNameForRowId].(int64)
@@ -240,9 +255,12 @@ func (t *DXTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.ShouldGetByUidNotDeletedAuto(&aepr.Log, uid)
+	_, row, err := t.GetByUidNotDeletedAuto(&aepr.Log, uid)
 	if err != nil {
 		return err
+	}
+	if row == nil {
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", uid)
 	}
 
 	id, ok := row[t.FieldNameForRowId].(int64)

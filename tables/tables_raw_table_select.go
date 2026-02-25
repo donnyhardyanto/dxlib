@@ -390,9 +390,12 @@ func (t *DXRawTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	rowsInfo, row, err := t.ShouldGetByUtag(&aepr.Log, utag)
+	rowsInfo, row, err := t.GetByUtag(&aepr.Log, utag)
 	if err != nil {
 		return err
+	}
+	if row == nil {
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", utag)
 	}
 
 	responseData := utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{

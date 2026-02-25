@@ -412,15 +412,19 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	}
 
 	if err != nil {
-		if aepr.ResponseHeaderSent {
-			return
-		}
-		// Log full error + request dump server-side
+		// Always log full error + request dump (including decrypted body), even if response already sent
 		requestDump, err2 := aepr.RequestDumpAsString()
 		if err2 != nil {
 			requestDump = "REQUEST_DUMP_ERROR"
 		}
-		aepr.Log.Errorf(err, "PREPROCESS_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
+		decryptedDump := ""
+		if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
+			decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
+		}
+		aepr.Log.Errorf(err, "PREPROCESS_ERROR:%+v\nRaw Request:\n%s%s", err, requestDump, decryptedDump)
+		if aepr.ResponseHeaderSent {
+			return
+		}
 		// Send sanitized response with error_log reference for correlation
 		errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
 		responseBody := utils.JSON{

@@ -45,8 +45,8 @@ type DXDatabaseTxCallback func(dtx *DXDatabaseTx) (err error)
 type DXOrderByDirection string
 
 const (
-	DXOrderByDirectionAsc  DXOrderByDirection = "asc"
-	DXOrderByDirectionDesc DXOrderByDirection = "desc"
+	DXOrderByDirectionAsc  DXOrderByDirection = "ASC"
+	DXOrderByDirectionDesc DXOrderByDirection = "DESC"
 )
 
 var DXOrderByDirectionEnumSetAll = []any{DXOrderByDirectionAsc, DXOrderByDirectionDesc}
@@ -54,8 +54,8 @@ var DXOrderByDirectionEnumSetAll = []any{DXOrderByDirectionAsc, DXOrderByDirecti
 type DXOrderByNullPlacement string
 
 const (
-	DXOrderByNullPlacementFirst DXOrderByNullPlacement = "first"
-	DXOrderByNullPlacementLast  DXOrderByNullPlacement = "last"
+	DXOrderByNullPlacementFirst DXOrderByNullPlacement = "FIRST"
+	DXOrderByNullPlacementLast  DXOrderByNullPlacement = "LAST"
 )
 
 var DXOrderByNullPlacementEnumSetAll = []any{DXOrderByNullPlacementFirst, DXOrderByNullPlacementLast}
