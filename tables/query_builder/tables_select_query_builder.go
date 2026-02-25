@@ -360,11 +360,16 @@ func (tqb *TableSelectQueryBuilder) OrderBy(fieldName string, direction database
 		}
 	}
 
+	// Normalize to uppercase for case-insensitive comparison
+	direction = databases.DXOrderByDirection(strings.ToUpper(string(direction)))
 	if direction != databases.DXOrderByDirectionAsc && direction != databases.DXOrderByDirectionDesc {
 		tqb.Error = errors.Errorf("INVALID_ORDER_BY_DIRECTION:%s", direction)
 		return tqb
 	}
 
+	if nullPlacement != "" {
+		nullPlacement = databases.DXOrderByNullPlacement(strings.ToUpper(string(nullPlacement)))
+	}
 	if nullPlacement != "" && nullPlacement != databases.DXOrderByNullPlacementFirst && nullPlacement != databases.DXOrderByNullPlacementLast {
 		tqb.Error = errors.Errorf("INVALID_ORDER_BY_NULL_PLACEMENT:%s", nullPlacement)
 		return tqb
@@ -451,19 +456,19 @@ func (tqb *TableSelectQueryBuilder) BuildOrderByString(orderByArray []any) (stri
 		if direction == "" {
 			continue
 		}
-		direction = strings.ToLower(direction)
+		direction = strings.ToUpper(direction)
 		if direction != string(databases.DXOrderByDirectionAsc) && direction != string(databases.DXOrderByDirectionDesc) {
 			return "", errors.Errorf("INVALID_ORDER_BY_DIRECTION:%s", direction)
 		}
 
-		part := tqb.QuoteIdentifier(fieldName) + " " + strings.ToUpper(direction)
+		part := tqb.QuoteIdentifier(fieldName) + " " + direction
 
 		if nullOrder != "" {
-			nullOrder = strings.ToLower(nullOrder)
+			nullOrder = strings.ToUpper(nullOrder)
 			if nullOrder != string(databases.DXOrderByNullPlacementFirst) && nullOrder != string(databases.DXOrderByNullPlacementLast) {
 				return "", errors.Errorf("INVALID_ORDER_BY_NULL_PLACEMENT:%s", nullOrder)
 			}
-			part += " NULLS " + strings.ToUpper(nullOrder)
+			part += " NULLS " + nullOrder
 		}
 
 		parts = append(parts, part)

@@ -225,6 +225,53 @@ func (t *DXTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) error 
 	return t.DoRequestSearchPagingList(aepr, qb, nil)
 }
 
+// RequestSearchPagingDownload overrides DXRawTable to add NotDeleted filter by default
+func (t *DXTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest) error {
+	_, searchText, err := aepr.GetParameterValueAsString("search_text")
+	if err != nil {
+		return err
+	}
+
+	isFilterKeyValuesExist, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	if err != nil {
+		return err
+	}
+
+	_, orderByArray, err := aepr.GetParameterValueAsArrayOfAny("order_by")
+	if err != nil {
+		return err
+	}
+
+	if err := t.EnsureDatabase(); err != nil {
+		return err
+	}
+
+	qb := t.DXRawTable.NewTableSelectQueryBuilder()
+	if searchText != "" {
+		qb.SearchLike(searchText, t.SearchTextFieldNames...)
+	}
+	if isFilterKeyValuesExist && filterKeyValues != nil {
+		err := t.processFilterKeyValues(qb, filterKeyValues)
+		if err != nil {
+			return err
+		}
+	}
+
+	// DXTable always has is_deleted — apply filter unless explicitly including deleted
+	isIncludeDeletedExist, isIncludeDeleted, err := aepr.GetParameterValueAsBool("is_include_deleted")
+	if err != nil {
+		return err
+	}
+	if !isIncludeDeletedExist || !isIncludeDeleted {
+		qb.Eq("is_deleted", false)
+	}
+
+	// Parse order_by into OrderBy calls with validation
+	qb.ParseOrderByFromArray(orderByArray)
+
+	return t.DoRequestSearchPagingDownload(aepr, qb)
+}
+
 // RequestSoftDeleteByUid handles soft delete by UID API requests
 func (t *DXTable) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)

@@ -457,15 +457,19 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			LogExecutionTrace(requestContext, fmt.Sprintf("middleware_%d_end", i), aepr.Id, p.Uri, r.Method, middlewareItemStartTime, http.StatusBadRequest, err.Error())
 			LogExecutionTrace(requestContext, "middleware_end", aepr.Id, p.Uri, r.Method, middlewareStartTime, http.StatusBadRequest, err.Error())
 
-			if aepr.ResponseHeaderSent {
-				return
-			}
-			// Log full error + request dump server-side
+			// Always log full error + request dump (including decrypted body), even if response already sent
 			requestDump, err2 := aepr.RequestDumpAsString()
 			if err2 != nil {
 				requestDump = "REQUEST_DUMP_ERROR"
 			}
-			aepr.Log.Errorf(err, "MIDDLEWARE_ERROR:%+v\nRaw Request:\n%s", err, requestDump)
+			decryptedDump := ""
+			if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
+				decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
+			}
+			aepr.Log.Errorf(err, "MIDDLEWARE_ERROR:%+v\nRaw Request:\n%s%s", err, requestDump, decryptedDump)
+			if aepr.ResponseHeaderSent {
+				return
+			}
 			// Send sanitized response with error_log reference for correlation
 			errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
 			responseBody := utils.JSON{
@@ -512,12 +516,6 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		err = p.OnExecute(aepr)
 
 		if err != nil {
-			if aepr.ResponseHeaderSent {
-				// TRACE: execute_end (error, response already sent by handler)
-				LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, aepr.ResponseStatusCode, err.Error())
-				return
-			}
-
 			// Check for domain validation errors (e.g., unique field violation)
 			// These are expected validation failures, not server errors.
 			var domainErr DXAPIDomainError
@@ -527,14 +525,16 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				// Log as warning (not error) -- this is expected validation, not a bug
 				aepr.Log.Warnf("DOMAIN_VALIDATION:%s:%s", domainErr.DomainErrorCode(), domainErr.DomainErrorLogDetails())
 				// Send a sanitized response (no DB structure exposed)
-				aepr.WriteResponseAsJSON(domainErr.DomainErrorHTTPStatusCode(), nil, domainErr.DomainErrorResponseBody())
+				if !aepr.ResponseHeaderSent {
+					aepr.WriteResponseAsJSON(domainErr.DomainErrorHTTPStatusCode(), nil, domainErr.DomainErrorResponseBody())
+				}
 				err = nil // clear error so deferred functions don't treat as error
 				return
 			}
 			// TRACE: execute_end (error)
 			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, http.StatusInternalServerError, err.Error())
 
-			// Log full error + request dump server-side (single consolidated entry)
+			// Always log full error + request dump (including decrypted body), even if response already sent
 			requestDump, err2 := aepr.RequestDumpAsString()
 			if err2 != nil {
 				requestDump = "REQUEST_DUMP_ERROR"
@@ -546,12 +546,11 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 				dbContextStr = fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
 			}
 			// Add decrypted request info for E2E encrypted requests or when parameters are available
-		decryptedDump := ""
-		if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
-			decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
-		}
-
-		aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s%s", err, dbContextStr, requestDump, decryptedDump)
+			decryptedDump := ""
+			if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
+				decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
+			}
+			aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s%s", err, dbContextStr, requestDump, decryptedDump)
 			// Send sanitized response with error_log reference for correlation
 			if !aepr.ResponseHeaderSent {
 				errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
