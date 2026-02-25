@@ -48,16 +48,16 @@ func (t *DXRawTable) UpdateWithEncryption(
 	encryptionColumns []EncryptionColumn,
 	where utils.JSON,
 	returningFieldNames []string,
-) (sql.Result, []utils.JSON, error) {
-	if err := t.EnsureDatabase(); err != nil {
+) (result sql.Result, rows []utils.JSON, err error) {
+	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 
-	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-	if err != nil {
-		return nil, nil, err
+	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	if txErr != nil {
+		return nil, nil, txErr
 	}
-	defer dtx.Finish(l, err)
+	defer func() { dtx.Finish(l, err) }()
 
 	return t.TxUpdateWithEncryption(dtx, data, encryptionColumns, where, returningFieldNames)
 }

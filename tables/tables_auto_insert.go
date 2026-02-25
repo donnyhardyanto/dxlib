@@ -112,8 +112,8 @@ func (t *DXRawTable) InsertAuto(
 	l *log.DXLog,
 	data utils.JSON,
 	returningFieldNames []string,
-) (sql.Result, utils.JSON, error) {
-	if err := t.EnsureDatabase(); err != nil {
+) (result sql.Result, returning utils.JSON, err error) {
+	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 
@@ -123,11 +123,11 @@ func (t *DXRawTable) InsertAuto(
 	}
 
 	// Encryption configured, need transaction
-	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-	if err != nil {
-		return nil, nil, err
+	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	if txErr != nil {
+		return nil, nil, txErr
 	}
-	defer dtx.Finish(l, err)
+	defer func() { dtx.Finish(l, err) }()
 
 	err = t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
 	if err != nil {

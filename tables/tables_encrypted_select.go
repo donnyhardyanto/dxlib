@@ -21,16 +21,16 @@ import (
 
 // SelectWithEncryption selects with decrypted columns (creates transaction internally)
 func (t *DXRawTable) SelectWithEncryption(l *log.DXLog, fieldNames []string, encryptionColumns []EncryptionColumn,
-	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	if err := t.EnsureDatabase(); err != nil {
+	where utils.JSON, joinSQLPart any, orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, err error) {
+	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 
-	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-	if err != nil {
-		return nil, nil, err
+	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	if txErr != nil {
+		return nil, nil, txErr
 	}
-	defer dtx.Finish(l, err)
+	defer func() { dtx.Finish(l, err) }()
 
 	return t.TxSelectWithEncryption(dtx, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
@@ -137,16 +137,16 @@ func (t *DXRawTable) PagingWithEncryption(
 	orderBy string,
 	rowPerPage int64,
 	pageIndex int64,
-) (*PagingResult, error) {
-	if err := t.EnsureDatabase(); err != nil {
+) (pagingResult *PagingResult, err error) {
+	if err = t.EnsureDatabase(); err != nil {
 		return nil, err
 	}
 
-	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-	if err != nil {
-		return nil, err
+	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	if txErr != nil {
+		return nil, txErr
 	}
-	defer dtx.Finish(l, err)
+	defer func() { dtx.Finish(l, err) }()
 
 	return t.TxPagingWithEncryption(dtx, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
 }

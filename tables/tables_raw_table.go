@@ -252,18 +252,18 @@ func (t *DXRawTable) NewTableDeleteQueryBuilder() *tableQueryBuilder.TableDelete
 // DoPagingWithSelectQueryBuilder executes a paging query using SelectQueryBuilder (core implementation).
 // Supports EncryptionColumnDefs and EncryptionKeyDefs for encrypted tables.
 // Uses CountWithSelectQueryBuilder2 for total count and SelectWithSelectQueryBuilder2 for rows.
-func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQueryBuilder.TableSelectQueryBuilder) (*PagingResult, error) {
-	if err := t.EnsureDatabase(); err != nil {
+func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQueryBuilder.TableSelectQueryBuilder) (pagingResult *PagingResult, err error) {
+	if err = t.EnsureDatabase(); err != nil {
 		return nil, err
 	}
 	// Set source to list view name
 	qb.SourceName = t.GetListViewName()
 
-	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-	if err != nil {
-		return nil, err
+	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	if txErr != nil {
+		return nil, txErr
 	}
-	defer dtx.Finish(l, err)
+	defer func() { dtx.Finish(l, err) }()
 
 	// Set encryption session keys if needed
 	if len(t.EncryptionColumnDefs) > 0 || len(t.EncryptionKeyDefs) > 0 {

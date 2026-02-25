@@ -12,8 +12,8 @@ import (
 
 // InsertWithBuilder executes an INSERT using TableInsertQueryBuilder for safe SQL construction.
 // SetFields and RETURNING are read from tqb.
-func (t *DXRawTable) InsertWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableInsertQueryBuilder) (sql.Result, utils.JSON, error) {
-	if err := t.EnsureDatabase(); err != nil {
+func (t *DXRawTable) InsertWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableInsertQueryBuilder) (result sql.Result, returning utils.JSON, err error) {
+	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 	if tqb.Error != nil {
@@ -23,12 +23,12 @@ func (t *DXRawTable) InsertWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 	tqb.SourceName = t.GetFullTableName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-		if err != nil {
-			return nil, nil, err
+		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		if txErr != nil {
+			return nil, nil, txErr
 		}
-		defer dtx.Finish(l, err)
-		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+		defer func() { dtx.Finish(l, err) }()
+		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
 		return query.TxInsertWithInsertQueryBuilder2(dtx, tqb.InsertQueryBuilder)

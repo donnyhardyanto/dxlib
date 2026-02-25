@@ -12,8 +12,8 @@ import (
 
 // UpdateWithBuilder executes an UPDATE using TableUpdateQueryBuilder for safe SQL construction.
 // SetFields, WHERE, and RETURNING are all read from tqb.
-func (t *DXRawTable) UpdateWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableUpdateQueryBuilder) (sql.Result, []utils.JSON, error) {
-	if err := t.EnsureDatabase(); err != nil {
+func (t *DXRawTable) UpdateWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableUpdateQueryBuilder) (result sql.Result, rows []utils.JSON, err error) {
+	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 	if tqb.Error != nil {
@@ -23,12 +23,12 @@ func (t *DXRawTable) UpdateWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 	tqb.SourceName = t.GetFullTableName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-		if err != nil {
-			return nil, nil, err
+		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		if txErr != nil {
+			return nil, nil, txErr
 		}
-		defer dtx.Finish(l, err)
-		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+		defer func() { dtx.Finish(l, err) }()
+		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
 		return query.TxUpdateWithUpdateQueryBuilder2(dtx, tqb.UpdateQueryBuilder)

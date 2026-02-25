@@ -45,19 +45,18 @@ func (t *DXRawTable) InsertWithEncryption(
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 	returningFieldNames []string,
-) (sql.Result, utils.JSON, error) {
-	if err := t.EnsureDatabase(); err != nil {
+) (result sql.Result, returning utils.JSON, err error) {
+	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 
-	dtx, err := t.Database.TransactionBegin(databases.LevelReadCommitted)
-	if err != nil {
-		return nil, nil, err
+	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	if txErr != nil {
+		return nil, nil, txErr
 	}
-	defer dtx.Finish(l, err)
+	defer func() { dtx.Finish(l, err) }()
 
-	result, returning, err := t.TxInsertWithEncryption(dtx, data, encryptionColumns, returningFieldNames)
-	return result, returning, err
+	return t.TxInsertWithEncryption(dtx, data, encryptionColumns, returningFieldNames)
 }
 
 // TxInsertWithEncryptionReturningId is a simplified version returning just the new ID
