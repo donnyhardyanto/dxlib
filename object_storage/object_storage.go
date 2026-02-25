@@ -382,7 +382,11 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 
 	objectInfo, err := object.Stat()
 	if err != nil {
-		return errors.Wrapf(err, "MINIO_OBJECT_STAT_ERROR:%s/%s/%s", r.NameId, r.BucketName, filename)
+		var minioErr minio.ErrorResponse
+		if errors.As(err, &minioErr) && minioErr.Code == "NoSuchKey" {
+			return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "OBJECT_NOT_FOUND:%s/%s/%s", r.NameId, r.BucketName, filename)
+		}
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "MINIO_OBJECT_STAT_ERROR:%s/%s/%s:%s", r.NameId, r.BucketName, filename, err.Error())
 	}
 
 	originalFilename, ok := objectInfo.UserMetadata["filename"]
