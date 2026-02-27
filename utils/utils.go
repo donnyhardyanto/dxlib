@@ -927,6 +927,11 @@ func GetBytesFromKV(kv map[string]any, key string) (r []byte, err error) {
 	return GetVFromKV[[]byte](kv, key)
 }
 
+// GetTimeFromKV retrieves a time.Time value for the given key.
+func GetTimeFromKV(kv map[string]any, key string) (r time.Time, err error) {
+	return GetVFromKV[time.Time](kv, key)
+}
+
 // Int64SliceToStrings converts a slice of int64 to a slice of strings.
 func Int64SliceToStrings(nums []int64) []string {
 	strs := make([]string, len(nums))
