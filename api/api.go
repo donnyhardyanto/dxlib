@@ -417,10 +417,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		if err2 != nil {
 			requestDump = "REQUEST_DUMP_ERROR"
 		}
-		decryptedDump := ""
-		if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
-			decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
-		}
+		decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
 		aepr.Log.Errorf(err, "PREPROCESS_ERROR:%+v\nRaw Request:\n%s%s", err, requestDump, decryptedDump)
 		if aepr.ResponseHeaderSent {
 			return
@@ -462,10 +459,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if err2 != nil {
 				requestDump = "REQUEST_DUMP_ERROR"
 			}
-			decryptedDump := ""
-			if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
-				decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
-			}
+			decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
 			aepr.Log.Errorf(err, "MIDDLEWARE_ERROR:%+v\nRaw Request:\n%s%s", err, requestDump, decryptedDump)
 			if aepr.ResponseHeaderSent {
 				return
@@ -508,7 +502,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	}
 
-	if p.OnExecute != nil {
+	if p.OnExecute != nil && !aepr.ResponseHeaderSent {
 		// TRACE: execute_start
 		executeStartTime := time.Now()
 		LogExecutionTrace(requestContext, "execute_start", aepr.Id, p.Uri, r.Method, executeStartTime, 0, "")
@@ -545,11 +539,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if errors.As(err, &dbCtx) {
 				dbContextStr = fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
 			}
-			// Add decrypted request info for E2E encrypted requests or when parameters are available
-			decryptedDump := ""
-			if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
-				decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
-			}
+			decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
 			aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s%s", err, dbContextStr, requestDump, decryptedDump)
 			// Send sanitized response with error_log reference for correlation
 			if !aepr.ResponseHeaderSent {
