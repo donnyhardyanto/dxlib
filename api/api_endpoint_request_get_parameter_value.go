@@ -211,3 +211,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsInt64s(k string) (isExist b
 func (aepr *DXAPIEndPointRequest) GetParameterValueAsJSON(k string) (isExist bool, val utils.JSON, err error) {
 	return getParameterValue[utils.JSON](aepr, k)
 }
+
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsMapStringString(k string) (isExist bool, val map[string]string, err error) {
+	return getParameterValue[map[string]string](aepr, k)
+}

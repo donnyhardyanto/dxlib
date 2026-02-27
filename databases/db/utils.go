@@ -339,6 +339,11 @@ func DeformatKeys(kv map[string]interface{}, driverName string, fieldTypeMapping
 					if err != nil {
 						return nil, err
 					}
+				case types.APIParameterTypeMapStringString:
+					v, err = utils.GetMapStringStringFromV(v)
+					if err != nil {
+						return nil, err
+					}
 				default:
 
 				}

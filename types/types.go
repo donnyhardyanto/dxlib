@@ -36,6 +36,7 @@ const (
 	GoTypeSliceInt64              GoType = "[]int64"
 	GoTypeSliceByte               GoType = "[]byte"
 	GoTypeSliceMapStringInterface GoType = "[]map[string]interface{}"
+	GoTypeMapStringString         GoType = "map[string]string"
 )
 
 const (
@@ -85,6 +86,9 @@ const (
 	APIParameterTypeArrayString       APIParameterType = "array-string"
 	APIParameterTypeArrayInt64        APIParameterType = "array-int64"
 	APIParameterTypeArrayJSONTemplate APIParameterType = "array-json-template"
+
+	// Map types
+	APIParameterTypeMapStringString APIParameterType = "map-string-string"
 )
 
 type DataType struct {
@@ -328,6 +332,13 @@ var (
 		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "JSONB", base.DXDatabaseTypeSQLServer: "NVARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "JSON", base.DXDatabaseTypeOracle: "CLOB"},
 	}
 
+	DataTypeMapStringString = DataType{
+		APIParameterType:   APIParameterTypeMapStringString,
+		JSONType:           JSONTypeObject,
+		GoType:             GoTypeMapStringString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "JSONB", base.DXDatabaseTypeSQLServer: "NVARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "JSON", base.DXDatabaseTypeOracle: "CLOB"},
+	}
+
 	DataTypeSerial = DataType{
 		APIParameterType:   "serial",
 		JSONType:           JSONTypeNumber,
@@ -546,6 +557,9 @@ var (
 		APIParameterTypeArrayString:       DataTypeArrayString,
 		APIParameterTypeArrayInt64:        DataTypeArrayInt64,
 		APIParameterTypeArrayJSONTemplate: DataTypeArrayJSONTemplate,
+
+		// Map types
+		APIParameterTypeMapStringString: DataTypeMapStringString,
 	}
 )
 

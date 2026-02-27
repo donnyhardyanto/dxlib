@@ -932,6 +932,52 @@ func GetTimeFromKV(kv map[string]any, key string) (r time.Time, err error) {
 	return GetVFromKV[time.Time](kv, key)
 }
 
+// GetMapStringStringFromV converts an any value to map[string]string.
+// Handles: direct map[string]string, []byte (JSON), map[string]any (converts values to string).
+func GetMapStringStringFromV(v any) (r map[string]string, err error) {
+	if v == nil {
+		return nil, errors.New("VALUE_IS_NIL")
+	}
+	// Direct type assertion
+	if m, ok := v.(map[string]string); ok {
+		return m, nil
+	}
+	// From []byte (JSONB from database)
+	if rASBytes, ok := v.([]byte); ok {
+		r = map[string]string{}
+		err = json.Unmarshal(rASBytes, &r)
+		if err != nil {
+			return nil, errors.Wrapf(err, "VALUE_IS_NOT_MAP_STRING_STRING")
+		}
+		return r, nil
+	}
+	// From map[string]any (convert values to string)
+	if m, ok := v.(map[string]any); ok {
+		r = make(map[string]string, len(m))
+		for k, val := range m {
+			if str, ok := val.(string); ok {
+				r[k] = str
+			} else {
+				r[k] = fmt.Sprintf("%v", val)
+			}
+		}
+		return r, nil
+	}
+	return nil, errors.Errorf("VALUE_IS_NOT_MAP_STRING_STRING:%T", v)
+}
+
+// GetMapStringStringFromKV retrieves a map[string]string value for the given key.
+func GetMapStringStringFromKV(kv map[string]any, key string) (r map[string]string, err error) {
+	if kv == nil {
+		return nil, errors.New("KV_IS_NIL")
+	}
+	v, ok := kv[key]
+	if !ok {
+		return nil, errors.Errorf("KEY_IS_NOT_EXIST:%s", key)
+	}
+	return GetMapStringStringFromV(v)
+}
+
 // Int64SliceToStrings converts a slice of int64 to a slice of strings.
 func Int64SliceToStrings(nums []int64) []string {
 	strs := make([]string, len(nums))

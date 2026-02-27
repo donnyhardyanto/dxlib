@@ -162,6 +162,10 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 		if rawValueType != "map[string]interface {}" {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 		}
+	case dxlibTypes.APIParameterTypeMapStringString:
+		if rawValueType != "map[string]interface {}" {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+		}
 	case dxlibTypes.APIParameterTypeArray, dxlibTypes.APIParameterTypeArrayString, dxlibTypes.APIParameterTypeArrayInt64:
 		if rawValueType != "[]interface {}" {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
@@ -449,6 +453,21 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		s, ok := aeprpv.RawValue.(map[string]any)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		aeprpv.Value = s
+		return nil
+	case dxlibTypes.APIParameterTypeMapStringString:
+		rawMap, ok := aeprpv.RawValue.(map[string]any)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		s := make(map[string]string, len(rawMap))
+		for k, v := range rawMap {
+			if str, ok := v.(string); ok {
+				s[k] = str
+			} else {
+				s[k] = fmt.Sprintf("%v", v)
+			}
 		}
 		aeprpv.Value = s
 		return nil
