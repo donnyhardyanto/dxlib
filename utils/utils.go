@@ -932,7 +932,7 @@ func GetTimeFromKV(kv map[string]any, key string) (r time.Time, err error) {
 	return GetVFromKV[time.Time](kv, key)
 }
 
-// GetMapStringStringFromV converts an any value to map[string]string.
+// GetMapStringStringFromV converts any value to map[string]string.
 // Handles: direct map[string]string, []byte (JSON), map[string]any (converts values to string).
 func GetMapStringStringFromV(v any) (r map[string]string, err error) {
 	if v == nil {
@@ -942,7 +942,7 @@ func GetMapStringStringFromV(v any) (r map[string]string, err error) {
 	if m, ok := v.(map[string]string); ok {
 		return m, nil
 	}
-	// From []byte (JSONB from database)
+	// From []byte (JSONB from a database)
 	if rASBytes, ok := v.([]byte); ok {
 		r = map[string]string{}
 		err = json.Unmarshal(rASBytes, &r)
