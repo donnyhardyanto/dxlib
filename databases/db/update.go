@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -62,7 +63,7 @@ func SQLPartUpdateSetFieldValues(setFieldValues utils.JSON, driverName string) (
 //   - SQL Server: OUTPUT clause
 //   - Oracle: RETURNING INTO clause
 //   - MySQL: Separate SELECT query after UPDATE (with limitations)
-func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+func Update(ctx context.Context, db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	defer func() {
 		if err != nil {
 			err = NewDBOperationErrorWithWhereAndSet("UPDATE", tableName, setFieldNameValues, whereAndFieldNameValues, err)
@@ -168,7 +169,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 
 		if len(returningFieldNames) == 0 {
 			// Simple update without returning
-			result, err := Exec(db, baseSQL, combinedParams)
+			result, err := Exec(ctx, db, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing update")
 			}
@@ -183,7 +184,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 			returningClause,
 		}, " ")
 
-		_, rows, err := QueryRows(db, nil, sqlStatement, combinedParams)
+		_, rows, err := QueryRows(ctx, db, nil, sqlStatement, combinedParams)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing update with RETURNING clause")
 		}
@@ -201,7 +202,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 				setClause,
 				effectiveWhere,
 			}, " ")
-			result, err := Exec(db, baseSQL, combinedParams)
+			result, err := Exec(ctx, db, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing update")
 			}
@@ -225,7 +226,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := QueryRows(db, nil, sqlStatement, combinedParams)
+		_, rows, err := QueryRows(ctx, db, nil, sqlStatement, combinedParams)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing update with OUTPUT clause")
 		}
@@ -244,7 +245,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 
 		if len(returningFieldNames) == 0 {
 			// Simple update without returning
-			result, err := Exec(db, baseSQL, combinedParams)
+			result, err := Exec(ctx, db, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle update")
 			}
@@ -308,7 +309,7 @@ func Update(db *sqlx.DB, tableName string, setFieldNameValues utils.JSON, whereA
 	}
 }
 
-func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+func TxUpdate(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	defer func() {
 		if err != nil {
 			err = NewDBOperationErrorWithWhereAndSet("UPDATE", tableName, setFieldValues, whereAndFieldNameValues, err)
@@ -415,7 +416,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 
 		if len(returningFieldNames) == 0 {
 			// Simple update without returning
-			result, err := TxExec(tx, baseSQL, combinedParams)
+			result, err := TxExec(ctx, tx, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing update")
 			}
@@ -430,7 +431,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 			returningClause,
 		}, " ")
 
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, combinedParams)
+		_, rows, err := TxQueryRows(ctx, tx, nil, sqlStatement, combinedParams)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing update with RETURNING clause")
 		}
@@ -448,7 +449,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 				setClause,
 				effectiveWhere,
 			}, " ")
-			result, err := TxExec(tx, baseSQL, combinedParams)
+			result, err := TxExec(ctx, tx, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing update")
 			}
@@ -472,7 +473,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, combinedParams)
+		_, rows, err := TxQueryRows(ctx, tx, nil, sqlStatement, combinedParams)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing update with OUTPUT clause")
 		}
@@ -491,7 +492,7 @@ func TxUpdate(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, whereAnd
 
 		if len(returningFieldNames) == 0 {
 			// Simple update without returning
-			result, err := TxExec(tx, baseSQL, combinedParams)
+			result, err := TxExec(ctx, tx, baseSQL, combinedParams)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle update")
 			}

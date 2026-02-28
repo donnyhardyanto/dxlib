@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/databases"
@@ -28,11 +29,12 @@ func (t *DXRawTable) TxUpdateAuto(
 			return nil, nil, err
 		}
 	}
-	return dtx.Update(t.GetFullTableName(), data, where, returningFieldNames)
+	return dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, returningFieldNames)
 }
 
 // UpdateAuto updates using table's EncryptionColumnDefs and EncryptionKeyDefs (creates transaction if needed)
 func (t *DXRawTable) UpdateAuto(
+	ctx context.Context,
 	l *log.DXLog,
 	data utils.JSON,
 	where utils.JSON,
@@ -44,11 +46,11 @@ func (t *DXRawTable) UpdateAuto(
 
 	if !t.HasEncryptionConfig() {
 		// No encryption at all, no transaction needed
-		return t.Database.Update(t.GetFullTableName(), data, where, returningFieldNames)
+		return t.Database.Update(ctx, t.GetFullTableName(), data, where, returningFieldNames)
 	}
 
 	// Encryption configured, need transaction
-	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 	if txErr != nil {
 		return nil, nil, txErr
 	}
@@ -69,11 +71,12 @@ func (t *DXRawTable) TxUpdateByIdAuto(
 
 // UpdateByIdAuto updates by ID using table's EncryptionColumnDefs
 func (t *DXRawTable) UpdateByIdAuto(
+	ctx context.Context,
 	l *log.DXLog,
 	id int64,
 	data utils.JSON,
 ) (sql.Result, error) {
-	result, _, err := t.UpdateAuto(l, data, utils.JSON{t.FieldNameForRowId: id}, nil)
+	result, _, err := t.UpdateAuto(ctx, l, data, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
 
@@ -92,13 +95,14 @@ func (t *DXTable) TxUpdateAuto(
 
 // UpdateAuto updates with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) UpdateAuto(
+	ctx context.Context,
 	l *log.DXLog,
 	data utils.JSON,
 	where utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, []utils.JSON, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable.UpdateAuto(l, data, where, returningFieldNames)
+	return t.DXRawTable.UpdateAuto(ctx, l, data, where, returningFieldNames)
 }
 
 // TxUpdateByIdAuto updates by ID with audit fields
@@ -113,10 +117,11 @@ func (t *DXTable) TxUpdateByIdAuto(
 
 // UpdateByIdAuto updates by ID with audit fields
 func (t *DXTable) UpdateByIdAuto(
+	ctx context.Context,
 	l *log.DXLog,
 	id int64,
 	data utils.JSON,
 ) (sql.Result, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable.UpdateByIdAuto(l, id, data)
+	return t.DXRawTable.UpdateByIdAuto(ctx, l, id, data)
 }

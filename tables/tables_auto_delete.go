@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/databases"
@@ -28,7 +29,7 @@ func (t *DXTable) TxHardDeleteAuto(dtx *databases.DXDatabaseTx, where utils.JSON
 }
 
 // HardDeleteAuto deletes rows permanently (non-transaction version)
-func (t *DXTable) HardDeleteAuto(where utils.JSON) (sql.Result, error) {
-	result, _, err := t.DXRawTable.Delete(nil, where, nil)
+func (t *DXTable) HardDeleteAuto(ctx context.Context, where utils.JSON) (sql.Result, error) {
+	result, _, err := t.DXRawTable.Delete(ctx, nil, where, nil)
 	return result, err
 }

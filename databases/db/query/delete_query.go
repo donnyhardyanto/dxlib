@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -66,7 +67,7 @@ func buildDeleteSQL(driverName string, qb *builder.DeleteQueryBuilder) (string, 
 // DeleteWithDeleteQueryBuilder2 executes a DELETE using DeleteQueryBuilder.
 // If RETURNING fields are specified, returns the deleted rows.
 // Otherwise, returns sql.Result info.
-func DeleteWithDeleteQueryBuilder2(db *sqlx.DB, qb *builder.DeleteQueryBuilder) (result sql.Result, returningRows []utils.JSON, err error) {
+func DeleteWithDeleteQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder.DeleteQueryBuilder) (result sql.Result, returningRows []utils.JSON, err error) {
 	if qb.Error != nil {
 		return nil, nil, qb.Error
 	}
@@ -78,14 +79,14 @@ func DeleteWithDeleteQueryBuilder2(db *sqlx.DB, qb *builder.DeleteQueryBuilder) 
 	}
 
 	if len(qb.OutFields) > 0 {
-		_, rows, err := named.NamedQueryRows2(db, query, args, nil)
+		_, rows, err := named.NamedQueryRows2(ctx, db, query, args, nil)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "DELETE_WITH_RETURNING_ERROR")
 		}
 		return nil, rows, nil
 	}
 
-	result, err = named.NamedExec2(db, query, args)
+	result, err = named.NamedExec2(ctx, db, query, args)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "DELETE_ERROR")
 	}

@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/databases"
@@ -13,7 +14,7 @@ import (
 // TxDeleteWithDeleteQueryBuilder2 executes a DELETE within a transaction using DeleteQueryBuilder.
 // If RETURNING fields are specified, returns the deleted rows.
 // Otherwise returns sql.Result info.
-func TxDeleteWithDeleteQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.DeleteQueryBuilder) (result sql.Result, returningRows []utils.JSON, err error) {
+func TxDeleteWithDeleteQueryBuilder2(ctx context.Context, dtx *databases.DXDatabaseTx, qb *builder.DeleteQueryBuilder) (result sql.Result, returningRows []utils.JSON, err error) {
 	if qb.Error != nil {
 		return nil, nil, qb.Error
 	}
@@ -25,14 +26,14 @@ func TxDeleteWithDeleteQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.De
 	}
 
 	if len(qb.OutFields) > 0 {
-		_, rows, err := named.TxNamedQueryRows2(dtx, query, args, nil)
+		_, rows, err := named.TxNamedQueryRows2(ctx, dtx, query, args, nil)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "TX_DELETE_WITH_RETURNING_ERROR")
 		}
 		return nil, rows, nil
 	}
 
-	result, err = named.TxNamedExec2(dtx, query, args)
+	result, err = named.TxNamedExec2(ctx, dtx, query, args)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "TX_DELETE_ERROR")
 	}

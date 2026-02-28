@@ -14,6 +14,7 @@ var RootContextCancel context.CancelFunc
 var IsNewRelicEnabled = false
 var NewRelicApplication *newrelic.Application
 var NewRelicLicense = ""
+var IsOtelEnabled = false
 
 func init() {
 	_ = dxlibOs.LoadEnvFile("./run.env")
@@ -21,5 +22,6 @@ func init() {
 	_ = dxlibOs.LoadEnvFile("./.env")
 	IsNewRelicEnabled = dxlibOs.GetEnvDefaultValue("NEW_RELIC_ENABLED", "false") == "true"
 	NewRelicLicense = dxlibOs.GetEnvDefaultValue("NEW_RELIC_LICENSE", "")
+	IsOtelEnabled = dxlibOs.GetEnvDefaultValue("OTEL_EXPORTER_OTLP_ENDPOINT", "") != ""
 	RootContext, RootContextCancel = signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 }

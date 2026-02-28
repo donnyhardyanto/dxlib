@@ -8,6 +8,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/object_storage"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/secure_memory"
 	"github.com/donnyhardyanto/dxlib/tables"
 	"github.com/donnyhardyanto/dxlib/vault"
@@ -271,6 +272,8 @@ func (a *DXApp) Stop() (err error) {
 			return err
 		}
 	}
+	// Shutdown OpenTelemetry (flush pending traces/metrics)
+	_ = dxlibOtel.ShutdownOpenTelemetry()
 	// Destroy all secure memory (keys, sensitive data)
 	secure_memory.Manager.DestroyAll()
 	log.Log.Info("Stopped")
@@ -332,6 +335,13 @@ func (a *DXApp) SetupNewRelicApplication() {
 	return
 }
 
+func (a *DXApp) SetupOpenTelemetry() {
+	err := dxlibOtel.SetupOpenTelemetry(a.NameId)
+	if err != nil {
+		log.Log.Warnf("OpenTelemetry initialization failed (application will continue without OTel): %v", err)
+	}
+}
+
 var App DXApp
 
 func Set(nameId, title, description string, isLoop bool, debugKey string, debugValue string) {
@@ -346,6 +356,7 @@ func Set(nameId, title, description string, isLoop bool, debugKey string, debugV
 	}
 	log.Log.Prefix = nameId
 	App.SetupNewRelicApplication()
+	App.SetupOpenTelemetry()
 }
 
 func GetNameId() string {

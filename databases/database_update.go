@@ -1,6 +1,7 @@
 package databases
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/databases/db"
@@ -8,14 +9,14 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-func (d *DXDatabase) Update(tableName string, setFieldValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+func (d *DXDatabase) Update(ctx context.Context, tableName string, setFieldValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	err = d.EnsureConnection()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		result, returningFieldValues, err = db.Update(d.Connection, tableName, setFieldValues, whereAndFieldNameValues, returningFieldNames)
+		result, returningFieldValues, err = db.Update(ctx, d.Connection, tableName, setFieldValues, whereAndFieldNameValues, returningFieldNames)
 		if err == nil {
 			return nil, nil, err
 		}

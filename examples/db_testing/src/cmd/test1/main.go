@@ -110,7 +110,7 @@ func testTableFunction(db *databases.DXDatabase) (err error) {
 	defer dtx.Finish(&log.Log, err)
 
 	var aId int64
-	_, returningData, err := dtx.Insert("test1.test1_table", map[string]any{
+	_, returningData, err := dtx.Insert(dtx.Ctx, "test1.test1_table", map[string]any{
 		"name":  "abc",
 		"at":    "2024-01-10 15:16:17.001+07:00",
 		"is_ok": true,

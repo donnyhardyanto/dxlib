@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/donnyhardyanto/dxlib/api"
@@ -13,17 +14,17 @@ import (
 )
 
 // Select returns multiple rows matching where condition
-func (t *DXRawTable) Select(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) Select(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 	if len(t.EncryptionColumnDefs) > 0 {
 		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
-		return t.SelectWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
+		return t.SelectWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -33,21 +34,21 @@ func (t *DXRawTable) Select(l *log.DXLog, fieldNames []string, where utils.JSON,
 		}
 		return t.TxSelect(dtx, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
 	}
-	return t.Database.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
+	return t.Database.Select(ctx, t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
 
 // SelectOne returns a single row matching where condition
-func (t *DXRawTable) SelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) SelectOne(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, row utils.JSON, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 	if len(t.EncryptionColumnDefs) > 0 {
 		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
-		return t.SelectOneWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
+		return t.SelectOneWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -57,21 +58,21 @@ func (t *DXRawTable) SelectOne(l *log.DXLog, fieldNames []string, where utils.JS
 		}
 		return t.TxSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
 	}
-	return t.Database.SelectOne(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
+	return t.Database.SelectOne(ctx, t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
 
 // ShouldSelectOne returns a single row or error if not found
-func (t *DXRawTable) ShouldSelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXRawTable) ShouldSelectOne(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (rowsInfo *db.DXDatabaseTableRowsInfo, row utils.JSON, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
 	if len(t.EncryptionColumnDefs) > 0 {
 		encryptionColumns := t.convertEncryptionColumnDefsForSelect()
-		return t.ShouldSelectOneWithEncryption(l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
+		return t.ShouldSelectOneWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -81,29 +82,29 @@ func (t *DXRawTable) ShouldSelectOne(l *log.DXLog, fieldNames []string, where ut
 		}
 		return t.TxShouldSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
 	}
-	return t.Database.ShouldSelectOne(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
+	return t.Database.ShouldSelectOne(ctx, t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
 
 // GetById returns a row by ID
-func (t *DXRawTable) GetById(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetById(ctx context.Context, l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+	return t.SelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // ShouldGetById returns a row by ID or error if not found
-func (t *DXRawTable) ShouldGetById(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetById(ctx context.Context, l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+	return t.ShouldSelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // GetByUid returns a row by UID
-func (t *DXRawTable) GetByUid(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByUid(ctx context.Context, l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -111,11 +112,11 @@ func (t *DXRawTable) GetByUid(l *log.DXLog, uid string, fieldNames ...string) (*
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+	return t.SelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
 // ShouldGetByUid returns a row by UID or error if not found
-func (t *DXRawTable) ShouldGetByUid(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByUid(ctx context.Context, l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -123,11 +124,11 @@ func (t *DXRawTable) ShouldGetByUid(l *log.DXLog, uid string, fieldNames ...stri
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+	return t.ShouldSelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
 // GetByUtag returns a row by Utag
-func (t *DXRawTable) GetByUtag(l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByUtag(ctx context.Context, l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
@@ -135,11 +136,11 @@ func (t *DXRawTable) GetByUtag(l *log.DXLog, utag string, fieldNames ...string) 
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+	return t.SelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
 // ShouldGetByUtag returns a row by Utag or error if not found
-func (t *DXRawTable) ShouldGetByUtag(l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByUtag(ctx context.Context, l *log.DXLog, utag string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUtag == "" {
 		return nil, nil, errors.New("FieldNameForRowUtag not configured")
 	}
@@ -147,11 +148,11 @@ func (t *DXRawTable) ShouldGetByUtag(l *log.DXLog, utag string, fieldNames ...st
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
+	return t.ShouldSelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowUtag: utag}, nil, nil)
 }
 
 // GetByNameId returns a row by NameId
-func (t *DXRawTable) GetByNameId(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetByNameId(ctx context.Context, l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -159,11 +160,11 @@ func (t *DXRawTable) GetByNameId(l *log.DXLog, nameId string, fieldNames ...stri
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+	return t.SelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
 // ShouldGetByNameId returns a row by NameId or error if not found
-func (t *DXRawTable) ShouldGetByNameId(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetByNameId(ctx context.Context, l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -171,24 +172,24 @@ func (t *DXRawTable) ShouldGetByNameId(l *log.DXLog, nameId string, fieldNames .
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+	return t.ShouldSelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
 // GetByNameId returns a row by a field
-func (t *DXRawTable) GetBy(l *log.DXLog, fieldName string, value any, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) GetBy(ctx context.Context, l *log.DXLog, fieldName string, value any, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.SelectOne(l, fn, utils.JSON{fieldName: value}, nil, nil)
+	return t.SelectOne(ctx, l, fn, utils.JSON{fieldName: value}, nil, nil)
 }
 
-func (t *DXRawTable) ShouldGetBy(l *log.DXLog, fieldName string, value any, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) ShouldGetBy(ctx context.Context, l *log.DXLog, fieldName string, value any, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.ShouldSelectOne(l, fn, utils.JSON{fieldName: value}, nil, nil)
+	return t.ShouldSelectOne(ctx, l, fn, utils.JSON{fieldName: value}, nil, nil)
 }
 
 // Transaction Select Operations
@@ -196,7 +197,7 @@ func (t *DXRawTable) ShouldGetBy(l *log.DXLog, fieldName string, value any, fiel
 // TxSelect returns multiple rows within a transaction
 func (t *DXRawTable) TxSelect(dtx *databases.DXDatabaseTx, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return dtx.Select(t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
+	return dtx.Select(dtx.Ctx, t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
 
 // TxSelectOne returns a single row within a transaction
@@ -207,7 +208,7 @@ func (t *DXRawTable) TxSelectOne(dtx *databases.DXDatabaseTx, fieldNames []strin
 	if forUpdatePart != nil && forUpdatePart != false && forUpdatePart != "" {
 		tableName = t.GetFullTableName()
 	}
-	return dtx.SelectOne(tableName, t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
+	return dtx.SelectOne(dtx.Ctx, tableName, t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxShouldSelectOne returns a single row or error if not found within a transaction
@@ -218,7 +219,7 @@ func (t *DXRawTable) TxShouldSelectOne(dtx *databases.DXDatabaseTx, fieldNames [
 	if forUpdatePart != nil && forUpdatePart != false && forUpdatePart != "" {
 		tableName = t.GetFullTableName()
 	}
-	return dtx.ShouldSelectOne(tableName, t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
+	return dtx.ShouldSelectOne(dtx.Ctx, tableName, t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, forUpdatePart)
 }
 
 // TxGetById returns a row by ID within a transaction
@@ -314,12 +315,12 @@ func (t *DXRawTable) TxShouldGetByNameId(dtx *databases.DXDatabaseTx, nameId str
 // Count Operations
 
 // Count returns total row count
-func (t *DXRawTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (count int64, err error) {
+func (t *DXRawTable) Count(ctx context.Context, l *log.DXLog, where utils.JSON, joinSQLPart any) (count int64, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return 0, err
 	}
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return 0, txErr
 		}
@@ -327,14 +328,14 @@ func (t *DXRawTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (cou
 		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return 0, err
 		}
-		return dtx.Count(t.GetListViewName(), where, joinSQLPart, nil, nil)
+		return dtx.Count(dtx.Ctx, t.GetListViewName(), where, joinSQLPart, nil, nil)
 	}
-	return t.Database.Count(t.GetListViewName(), where, joinSQLPart)
+	return t.Database.Count(ctx, t.GetListViewName(), where, joinSQLPart)
 }
 
 // SelectAll returns all rows from the table
-func (t *DXRawTable) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return t.Select(l, nil, nil, nil, nil, nil, nil)
+func (t *DXRawTable) SelectAll(ctx context.Context, l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
+	return t.Select(ctx, l, nil, nil, nil, nil, nil, nil)
 }
 
 // API Select Helpers
@@ -346,7 +347,7 @@ func (t *DXRawTable) RequestRead(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetById(&aepr.Log, id)
+	_, row, err := t.GetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -368,7 +369,7 @@ func (t *DXRawTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByUid(&aepr.Log, uid)
+	_, row, err := t.GetByUid(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -390,7 +391,7 @@ func (t *DXRawTable) RequestReadByUtag(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	rowsInfo, row, err := t.GetByUtag(&aepr.Log, utag)
+	rowsInfo, row, err := t.GetByUtag(aepr.Context, &aepr.Log, utag)
 	if err != nil {
 		return err
 	}
@@ -413,7 +414,7 @@ func (t *DXRawTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByNameId(&aepr.Log, nameId)
+	_, row, err := t.GetByNameId(aepr.Context, &aepr.Log, nameId)
 	if err != nil {
 		return err
 	}

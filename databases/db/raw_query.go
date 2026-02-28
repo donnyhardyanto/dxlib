@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func RawQueryRows(ctx context.Context, db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	// dbt := base.StringToDXDatabaseType(db.DriverName())
 	/*	err = CheckAll(dbt, query, arg)
@@ -18,7 +19,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 			return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
 		}
 	*/
-	rows, err := db.Queryx(query, arg...)
+	rows, err := db.QueryxContext(ctx, query, arg...)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "DB_QUERY_ERROR sql=%s", query)
 	}
@@ -49,7 +50,7 @@ func RawQueryRows(db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	return rowsInfo, r, nil
 }
 
-func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func RawTxQueryRows(ctx context.Context, tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 
 	// dbt := base.StringToDXDatabaseType(tx.DriverName())
@@ -58,7 +59,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMappin
 			return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
 		}
 	*/
-	rows, err := tx.Queryx(query, arg...)
+	rows, err := tx.QueryxContext(ctx, query, arg...)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "DB_TX_QUERY_ERROR sql=%s", query)
 	}
@@ -90,6 +91,7 @@ func RawTxQueryRows(tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMappin
 }
 
 func QueryRows(
+	ctx context.Context,
 	db *sqlx.DB,
 	fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	sqlStatement string,
@@ -141,10 +143,11 @@ func QueryRows(
 	}
 
 	// Call the original RawQueryRows function with the modified SQL and arguments
-	return RawQueryRows(db, fieldTypeMapping, modifiedSQL, args)
+	return RawQueryRows(ctx, db, fieldTypeMapping, modifiedSQL, args)
 }
 
 func RawCount(
+	ctx context.Context,
 	db *sqlx.DB,
 	fromWhereJoinPartSqlStatement string,
 	sqlArguments utils.JSON,
@@ -198,7 +201,7 @@ func RawCount(
 	}
 
 	// Call the original RawQueryRows function with the modified SQL and arguments
-	_, r, err := RawQueryRows(db, nil, modifiedSQL, args)
+	_, r, err := RawQueryRows(ctx, db, nil, modifiedSQL, args)
 	if err != nil {
 		return 0, errors.Wrapf(err, "error executing count query %s with args %+v", modifiedSQL, args)
 	}
@@ -222,6 +225,7 @@ func RawCount(
 }
 
 func TxQueryRows(
+	ctx context.Context,
 	tx *sqlx.Tx,
 	fieldTypeMapping DXDatabaseTableFieldTypeMapping,
 	sqlStatement string,
@@ -274,5 +278,5 @@ func TxQueryRows(
 	}
 
 	// Call the original RawQueryRows function with the modified SQL and arguments
-	return RawTxQueryRows(tx, fieldTypeMapping, modifiedSQL, args)
+	return RawTxQueryRows(ctx, tx, fieldTypeMapping, modifiedSQL, args)
 }

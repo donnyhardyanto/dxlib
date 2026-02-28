@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/donnyhardyanto/dxlib/databases"
@@ -65,8 +66,8 @@ func propertyGetAs[T any](l *log.DXLog, expectedType string, property map[string
 }
 
 // GetAsString gets a string property value
-func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (string, error) {
-	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
+func (pt *DXPropertyTable) GetAsString(ctx context.Context, l *log.DXLog, propertyId string) (string, error) {
+	_, v, err := pt.ShouldSelectOne(ctx, l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return "", err
 	}
@@ -74,12 +75,12 @@ func (pt *DXPropertyTable) GetAsString(l *log.DXLog, propertyId string) (string,
 }
 
 // SetAsString sets a string property value
-func (pt *DXPropertyTable) SetAsString(l *log.DXLog, propertyId string, value string) error {
+func (pt *DXPropertyTable) SetAsString(ctx context.Context, l *log.DXLog, propertyId string, value string) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
 	}
-	_, _, err = pt.Upsert(l, utils.JSON{
+	_, _, err = pt.Upsert(ctx, l, utils.JSON{
 		"type":  "STRING",
 		"value": string(v),
 	}, utils.JSON{
@@ -89,8 +90,8 @@ func (pt *DXPropertyTable) SetAsString(l *log.DXLog, propertyId string, value st
 }
 
 // GetAsInt gets an int property value
-func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error) {
-	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
+func (pt *DXPropertyTable) GetAsInt(ctx context.Context, l *log.DXLog, propertyId string) (int, error) {
+	_, v, err := pt.ShouldSelectOne(ctx, l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -102,13 +103,13 @@ func (pt *DXPropertyTable) GetAsInt(l *log.DXLog, propertyId string) (int, error
 }
 
 // GetAsIntOrDefault gets an int property value, returns default if not found
-func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, defaultValue int) (int, error) {
-	_, v, err := pt.SelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
+func (pt *DXPropertyTable) GetAsIntOrDefault(ctx context.Context, l *log.DXLog, propertyId string, defaultValue int) (int, error) {
+	_, v, err := pt.SelectOne(ctx, l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return 0, err
 	}
 	if v == nil {
-		err = pt.SetAsInt(l, propertyId, defaultValue)
+		err = pt.SetAsInt(ctx, l, propertyId, defaultValue)
 		if err != nil {
 			return 0, err
 		}
@@ -122,12 +123,12 @@ func (pt *DXPropertyTable) GetAsIntOrDefault(l *log.DXLog, propertyId string, de
 }
 
 // SetAsInt sets an int property value
-func (pt *DXPropertyTable) SetAsInt(l *log.DXLog, propertyId string, value int) error {
+func (pt *DXPropertyTable) SetAsInt(ctx context.Context, l *log.DXLog, propertyId string, value int) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
 	}
-	_, _, err = pt.Upsert(l, utils.JSON{
+	_, _, err = pt.Upsert(ctx, l, utils.JSON{
 		"type":  "INT",
 		"value": string(v),
 	}, utils.JSON{
@@ -152,8 +153,8 @@ func (pt *DXPropertyTable) TxSetAsInt(dtx *databases.DXDatabaseTx, propertyId st
 }
 
 // GetAsInt64 gets an int64 property value
-func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, error) {
-	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
+func (pt *DXPropertyTable) GetAsInt64(ctx context.Context, l *log.DXLog, propertyId string) (int64, error) {
+	_, v, err := pt.ShouldSelectOne(ctx, l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -165,12 +166,12 @@ func (pt *DXPropertyTable) GetAsInt64(l *log.DXLog, propertyId string) (int64, e
 }
 
 // SetAsInt64 sets an int64 property value
-func (pt *DXPropertyTable) SetAsInt64(l *log.DXLog, propertyId string, value int64) error {
+func (pt *DXPropertyTable) SetAsInt64(ctx context.Context, l *log.DXLog, propertyId string, value int64) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return err
 	}
-	_, _, err = pt.Upsert(l, utils.JSON{
+	_, _, err = pt.Upsert(ctx, l, utils.JSON{
 		"type":  "INT64",
 		"value": string(v),
 	}, utils.JSON{
@@ -180,8 +181,8 @@ func (pt *DXPropertyTable) SetAsInt64(l *log.DXLog, propertyId string, value int
 }
 
 // GetAsJSON gets a JSON property value
-func (pt *DXPropertyTable) GetAsJSON(l *log.DXLog, propertyId string) (map[string]any, error) {
-	_, v, err := pt.ShouldSelectOne(l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
+func (pt *DXPropertyTable) GetAsJSON(ctx context.Context, l *log.DXLog, propertyId string) (map[string]any, error) {
+	_, v, err := pt.ShouldSelectOne(ctx, l, nil, utils.JSON{"nameid": propertyId}, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -189,12 +190,12 @@ func (pt *DXPropertyTable) GetAsJSON(l *log.DXLog, propertyId string) (map[strin
 }
 
 // SetAsJSON sets a JSON property value
-func (pt *DXPropertyTable) SetAsJSON(l *log.DXLog, propertyId string, value map[string]any) error {
+func (pt *DXPropertyTable) SetAsJSON(ctx context.Context, l *log.DXLog, propertyId string, value map[string]any) error {
 	v, err := json.Marshal(utils.JSON{"value": value})
 	if err != nil {
 		return errors.Wrap(err, "SetAsJSON.Marshal")
 	}
-	_, _, err = pt.Upsert(l, utils.JSON{
+	_, _, err = pt.Upsert(ctx, l, utils.JSON{
 		"type":  "JSON",
 		"value": string(v),
 	}, utils.JSON{

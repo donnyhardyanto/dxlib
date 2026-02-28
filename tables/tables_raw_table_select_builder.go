@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/donnyhardyanto/dxlib/base"
@@ -48,7 +49,7 @@ func (t *DXRawTable) prepareBuilderForSelect(tqb *tableQueryBuilder.TableSelectQ
 
 // SelectWithBuilder returns multiple rows using TableSelectQueryBuilder for safe SQL construction.
 // fieldNames, orderBy, limit, forUpdatePart are all read from tqb.
-func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, err error) {
+func (t *DXRawTable) SelectWithBuilder(ctx context.Context, l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
@@ -59,7 +60,7 @@ func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 	needsEncryptionTx := t.prepareBuilderForSelect(tqb)
 
 	if needsEncryptionTx {
-		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -67,18 +68,18 @@ func (t *DXRawTable) SelectWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
-		return query.TxSelectWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder, t.FieldTypeMapping)
+		return query.TxSelectWithSelectQueryBuilder2(ctx, dtx, tqb.SelectQueryBuilder, t.FieldTypeMapping)
 	}
 
-	return query.SelectWithSelectQueryBuilder2(t.Database.Connection, tqb.SelectQueryBuilder, t.FieldTypeMapping)
+	return query.SelectWithSelectQueryBuilder2(ctx, t.Database.Connection, tqb.SelectQueryBuilder, t.FieldTypeMapping)
 }
 
 // SelectOneWithBuilder returns a single row using TableSelectQueryBuilder.
-func (t *DXRawTable) SelectOneWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXRawTable) SelectOneWithBuilder(ctx context.Context, l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	// Save and restore LimitValue so we don't mutate the caller's tqb
 	origLimit := tqb.LimitValue
 	tqb.LimitValue = 1
-	rowsInfo, rows, err := t.SelectWithBuilder(l, tqb)
+	rowsInfo, rows, err := t.SelectWithBuilder(ctx, l, tqb)
 	tqb.LimitValue = origLimit
 
 	if err != nil {
@@ -91,8 +92,8 @@ func (t *DXRawTable) SelectOneWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.T
 }
 
 // ShouldSelectOneWithBuilder returns a single row or error if not found.
-func (t *DXRawTable) ShouldSelectOneWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	rowsInfo, row, err := t.SelectOneWithBuilder(l, tqb)
+func (t *DXRawTable) ShouldSelectOneWithBuilder(ctx context.Context, l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	rowsInfo, row, err := t.SelectOneWithBuilder(ctx, l, tqb)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -109,7 +110,7 @@ func (t *DXRawTable) TxSelectWithBuilder(dtx *databases.DXDatabaseTx, tqb *table
 	}
 
 	tqb.SourceName = t.GetListViewName()
-	return query.TxSelectWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder, t.FieldTypeMapping)
+	return query.TxSelectWithSelectQueryBuilder2(dtx.Ctx, dtx, tqb.SelectQueryBuilder, t.FieldTypeMapping)
 }
 
 // TxSelectOneWithBuilder returns a single row within a transaction using TableSelectQueryBuilder.
@@ -142,7 +143,7 @@ func (t *DXRawTable) TxShouldSelectOneWithBuilder(dtx *databases.DXDatabaseTx, t
 }
 
 // CountWithBuilder returns total row count using TableSelectQueryBuilder.
-func (t *DXRawTable) CountWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (count int64, err error) {
+func (t *DXRawTable) CountWithBuilder(ctx context.Context, l *log.DXLog, tqb *tableQueryBuilder.TableSelectQueryBuilder) (count int64, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return 0, err
 	}
@@ -153,7 +154,7 @@ func (t *DXRawTable) CountWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Table
 	tqb.SourceName = t.GetListViewName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return 0, txErr
 		}
@@ -161,8 +162,8 @@ func (t *DXRawTable) CountWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Table
 		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return 0, err
 		}
-		return query.TxCountWithSelectQueryBuilder2(dtx, tqb.SelectQueryBuilder)
+		return query.TxCountWithSelectQueryBuilder2(ctx, dtx, tqb.SelectQueryBuilder)
 	}
 
-	return query.CountWithSelectQueryBuilder2(t.Database.Connection, tqb.SelectQueryBuilder)
+	return query.CountWithSelectQueryBuilder2(ctx, t.Database.Connection, tqb.SelectQueryBuilder)
 }

@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/databases"
@@ -13,7 +14,7 @@ import (
 // TxUpdateWithUpdateQueryBuilder2 executes an UPDATE within a transaction using UpdateQueryBuilder.
 // If RETURNING fields are specified, returns the affected rows.
 // Otherwise, returns sql.Result info.
-func TxUpdateWithUpdateQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.UpdateQueryBuilder) (result sql.Result, returningRows []utils.JSON, err error) {
+func TxUpdateWithUpdateQueryBuilder2(ctx context.Context, dtx *databases.DXDatabaseTx, qb *builder.UpdateQueryBuilder) (result sql.Result, returningRows []utils.JSON, err error) {
 	if qb.Error != nil {
 		return nil, nil, qb.Error
 	}
@@ -25,14 +26,14 @@ func TxUpdateWithUpdateQueryBuilder2(dtx *databases.DXDatabaseTx, qb *builder.Up
 	}
 
 	if len(qb.OutFields) > 0 {
-		_, rows, err := named.TxNamedQueryRows2(dtx, query, args, nil)
+		_, rows, err := named.TxNamedQueryRows2(ctx, dtx, query, args, nil)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "TX_UPDATE_WITH_RETURNING_ERROR")
 		}
 		return nil, rows, nil
 	}
 
-	result, err = named.TxNamedExec2(dtx, query, args)
+	result, err = named.TxNamedExec2(ctx, dtx, query, args)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "TX_UPDATE_ERROR")
 	}

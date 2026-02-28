@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"time"
@@ -89,7 +90,7 @@ func isSubquery(str string) bool {
 //	// Count with subquery
 //	count, err := Count(db, "(SELECT * FROM orders WHERE date > '2023-01-01')", "", nil, nil, nil, "", "")
 //	// Generates: SELECT COUNT(*) FROM (SELECT * FROM orders WHERE date > '2023-01-01') AS subquery__sq_[unique_id]
-func Count(db *sqlx.DB, tableOrSubquery string, countExpression string, whereAndFieldNameValues utils.JSON,
+func Count(ctx context.Context, db *sqlx.DB, tableOrSubquery string, countExpression string, whereAndFieldNameValues utils.JSON,
 	joinSQLPart any, groupByFields []string, havingClause string, withCTE string) (count int64, err error) {
 
 	// Determine if this is a subquery
@@ -131,7 +132,7 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpression string, whereAnd
 	}
 
 	// Execute the SELECT query with a COUNT expression
-	rowsInfo, rows, err := BaseSelect(db, effectiveTable, nil, []string{effectiveCountExpression},
+	rowsInfo, rows, err := BaseSelect(ctx, db, effectiveTable, nil, []string{effectiveCountExpression},
 		whereAndFieldNameValues, joinSQLPart, groupByFields, nil, nil, nil,
 		nil, nil, withCTE)
 
@@ -179,7 +180,7 @@ func Count(db *sqlx.DB, tableOrSubquery string, countExpression string, whereAnd
 // This function is a transaction-based version of the Count function.
 // It provides the same functionality but within a transaction context,
 // which ensures consistency across multiple databases operations.
-func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereAndFieldNameValues utils.JSON,
+func TxCount(ctx context.Context, tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereAndFieldNameValues utils.JSON,
 	joinSQLPart any, groupByFields []string, havingClause utils.JSON, withCTE string) (count int64, err error) {
 
 	// Determine if this is a subquery
@@ -221,7 +222,7 @@ func TxCount(tx *sqlx.Tx, tableOrSubquery string, countExpression string, whereA
 	}
 
 	// Execute the SELECT query with a COUNT expression
-	rowsInfo, rows, err := BaseTxSelect(tx, effectiveTable, nil, []string{effectiveCountExpression},
+	rowsInfo, rows, err := BaseTxSelect(ctx, tx, effectiveTable, nil, []string{effectiveCountExpression},
 		whereAndFieldNameValues, joinSQLPart, groupByFields, havingClause, nil, nil, nil, nil,
 		withCTE)
 

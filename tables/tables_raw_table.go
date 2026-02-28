@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -112,21 +113,21 @@ func (t *DXRawTable) GetEncryptedFieldAliasNames() []string {
 // Delete Operations (Hard Delete)
 
 // Delete performs hard delete of rows matching where condition
-func (t *DXRawTable) Delete(l *log.DXLog, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) Delete(ctx context.Context, l *log.DXLog, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-	return t.Database.Delete(t.GetFullTableName(), where, returningFieldNames)
+	return t.Database.Delete(ctx, t.GetFullTableName(), where, returningFieldNames)
 }
 
 // TxDelete deletes within a transaction
 func (t *DXRawTable) TxDelete(dtx *databases.DXDatabaseTx, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
-	return dtx.TxDelete(t.GetFullTableName(), where, returningFieldNames)
+	return dtx.TxDelete(dtx.Ctx, t.GetFullTableName(), where, returningFieldNames)
 }
 
 // DeleteById deletes a single row by ID
-func (t *DXRawTable) DeleteById(l *log.DXLog, id int64) (sql.Result, error) {
-	result, _, err := t.Delete(l, utils.JSON{t.FieldNameForRowId: id}, nil)
+func (t *DXRawTable) DeleteById(ctx context.Context, l *log.DXLog, id int64) (sql.Result, error) {
+	result, _, err := t.Delete(ctx, l, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
 
@@ -138,7 +139,7 @@ func (t *DXRawTable) TxDeleteById(dtx *databases.DXDatabaseTx, id int64) (sql.Re
 
 // DoDelete is an API helper that deletes and writes response
 func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
-	_, row, err := t.ShouldGetById(&aepr.Log, id)
+	_, row, err := t.ShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -146,7 +147,7 @@ func (t *DXRawTable) DoDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
 	}
 
-	_, err = t.DeleteById(&aepr.Log, id)
+	_, err = t.DeleteById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -174,19 +175,19 @@ func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 // Upsert Operations
 
 // Upsert inserts or updates a row based on where condition
-func (t *DXRawTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXRawTable) Upsert(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, 0, err
 	}
 
-	_, existing, err := t.SelectOne(l, nil, where, nil, nil)
+	_, existing, err := t.SelectOne(ctx, l, nil, where, nil, nil)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	if existing == nil {
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := t.Database.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := t.Database.Insert(ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -194,7 +195,7 @@ func (t *DXRawTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sq
 		return nil, newId, nil
 	}
 
-	result, _, err := t.Database.Update(t.GetFullTableName(), data, where, nil)
+	result, _, err := t.Database.Update(ctx, t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -207,7 +208,7 @@ func (t *DXRawTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, wher
 
 	if existing == nil {
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := dtx.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := dtx.Insert(dtx.Ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -215,7 +216,7 @@ func (t *DXRawTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, wher
 		return nil, newId, nil
 	}
 
-	result, _, err := dtx.Update(t.GetFullTableName(), data, where, nil)
+	result, _, err := dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -252,14 +253,14 @@ func (t *DXRawTable) NewTableDeleteQueryBuilder() *tableQueryBuilder.TableDelete
 // DoPagingWithSelectQueryBuilder executes a paging query using SelectQueryBuilder (core implementation).
 // Supports EncryptionColumnDefs and EncryptionKeyDefs for encrypted tables.
 // Uses CountWithSelectQueryBuilder2 for total count and SelectWithSelectQueryBuilder2 for rows.
-func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQueryBuilder.TableSelectQueryBuilder) (pagingResult *PagingResult, err error) {
+func (t *DXRawTable) DoPagingWithSelectQueryBuilder(ctx context.Context, l *log.DXLog, qb *tableQueryBuilder.TableSelectQueryBuilder) (pagingResult *PagingResult, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return nil, err
 	}
 	// Set source to list view name
 	qb.SourceName = t.GetListViewName()
 
-	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 	if txErr != nil {
 		return nil, txErr
 	}
@@ -273,7 +274,7 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQuery
 	}
 
 	// Count
-	totalRows, err := query.TxCountWithSelectQueryBuilder2(dtx, qb.SelectQueryBuilder)
+	totalRows, err := query.TxCountWithSelectQueryBuilder2(ctx, dtx, qb.SelectQueryBuilder)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +321,7 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQuery
 	}
 
 	// Select
-	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(dtx, qb.SelectQueryBuilder, t.FieldTypeMapping)
+	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(ctx, dtx, qb.SelectQueryBuilder, t.FieldTypeMapping)
 	if err != nil {
 		return nil, err
 	}
@@ -335,8 +336,8 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQuery
 
 // PagingWithSelectQueryBuilder executes a paging query using TableSelectQueryBuilder.
 // Delegates to DoPagingWithSelectQueryBuilder.
-func (t *DXRawTable) PagingWithSelectQueryBuilder(l *log.DXLog, qb *tableQueryBuilder.TableSelectQueryBuilder) (*PagingResult, error) {
-	return t.DoPagingWithSelectQueryBuilder(l, qb)
+func (t *DXRawTable) PagingWithSelectQueryBuilder(ctx context.Context, l *log.DXLog, qb *tableQueryBuilder.TableSelectQueryBuilder) (*PagingResult, error) {
+	return t.DoPagingWithSelectQueryBuilder(ctx, l, qb)
 }
 
 func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) error {
@@ -405,7 +406,7 @@ func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, q
 		qb.Offset(pageIndex * rowPerPage)
 	}
 
-	result, err := t.DoPagingWithSelectQueryBuilder(&aepr.Log, qb)
+	result, err := t.DoPagingWithSelectQueryBuilder(aepr.Context, &aepr.Log, qb)
 	if err != nil {
 		return err
 	}
@@ -501,7 +502,7 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 		qb.OutFields = t.DownloadableOrderByFieldNames
 	}
 
-	pagingResult, err := t.DoPagingWithSelectQueryBuilder(&aepr.Log, qb)
+	pagingResult, err := t.DoPagingWithSelectQueryBuilder(aepr.Context, &aepr.Log, qb)
 	if err != nil {
 		return err
 	}

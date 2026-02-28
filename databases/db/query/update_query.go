@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -82,7 +83,7 @@ func buildUpdateSQL(driverName string, qb *builder.UpdateQueryBuilder) (string, 
 // UpdateWithUpdateQueryBuilder2 executes an UPDATE using UpdateQueryBuilder.
 // If RETURNING fields are specified, returns the affected rows.
 // Otherwise, returns sql.Result info.
-func UpdateWithUpdateQueryBuilder2(db *sqlx.DB, qb *builder.UpdateQueryBuilder) (result sql.Result, returningRows []utils.JSON, err error) {
+func UpdateWithUpdateQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder.UpdateQueryBuilder) (result sql.Result, returningRows []utils.JSON, err error) {
 	if qb.Error != nil {
 		return nil, nil, qb.Error
 	}
@@ -94,14 +95,14 @@ func UpdateWithUpdateQueryBuilder2(db *sqlx.DB, qb *builder.UpdateQueryBuilder) 
 	}
 
 	if len(qb.OutFields) > 0 {
-		_, rows, err := named.NamedQueryRows2(db, query, args, nil)
+		_, rows, err := named.NamedQueryRows2(ctx, db, query, args, nil)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "UPDATE_WITH_RETURNING_ERROR")
 		}
 		return nil, rows, nil
 	}
 
-	result, err = named.NamedExec2(db, query, args)
+	result, err = named.NamedExec2(ctx, db, query, args)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "UPDATE_ERROR")
 	}

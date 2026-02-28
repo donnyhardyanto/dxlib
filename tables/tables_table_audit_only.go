@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"time"
@@ -64,9 +65,9 @@ func (t *DXTableAuditOnly) SetUpdateAuditFields(aepr *api.DXAPIEndPointRequest, 
 // Insert Operations (with audit fields)
 
 // Insert inserts with audit fields
-func (t *DXTableAuditOnly) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXTableAuditOnly) Insert(ctx context.Context, l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	t.SetInsertAuditFields(nil, data)
-	return t.DXRawTable.Insert(l, data, returningFieldNames)
+	return t.DXRawTable.Insert(ctx, l, data, returningFieldNames)
 }
 
 // TxInsert inserts within a transaction with audit fields
@@ -84,7 +85,7 @@ func (t *DXTableAuditOnly) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.J
 // DoCreate inserts a row with audit fields and writes API response
 func (t *DXTableAuditOnly) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
-	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
+	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 	if err != nil {
 		return 0, err
 	}
@@ -102,7 +103,7 @@ func (t *DXTableAuditOnly) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.J
 // DoCreateReturnId inserts a row with audit fields and writes API response with id
 func (t *DXTableAuditOnly) DoCreateReturnId(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
-	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
+	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 	if err != nil {
 		return 0, err
 	}
@@ -136,7 +137,7 @@ func (t *DXTableAuditOnly) RequestCreateReturnId(aepr *api.DXAPIEndPointRequest)
 // DoCreateReturnUid inserts a row with audit fields and writes API response with uid (not id)
 func (t *DXTableAuditOnly) DoCreateReturnUid(aepr *api.DXAPIEndPointRequest, data utils.JSON) (string, error) {
 	t.SetInsertAuditFields(aepr, data)
-	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowUid})
+	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowUid})
 	if err != nil {
 		return "", err
 	}
@@ -163,9 +164,9 @@ func (t *DXTableAuditOnly) RequestCreateReturnUid(aepr *api.DXAPIEndPointRequest
 // Update Operations (with audit fields)
 
 // Update updates with audit fields
-func (t *DXTableAuditOnly) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXTableAuditOnly) Update(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable.Update(l, data, where, returningFieldNames)
+	return t.DXRawTable.Update(ctx, l, data, where, returningFieldNames)
 }
 
 // TxUpdate updates within a transaction with audit fields
@@ -175,9 +176,9 @@ func (t *DXTableAuditOnly) TxUpdate(dtx *databases.DXDatabaseTx, data utils.JSON
 }
 
 // UpdateById updates with audit fields
-func (t *DXTableAuditOnly) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXTableAuditOnly) UpdateById(ctx context.Context, l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable.UpdateById(l, id, data)
+	return t.DXRawTable.UpdateById(ctx, l, id, data)
 }
 
 // TxUpdateById updates within a transaction with audit fields
@@ -188,7 +189,7 @@ func (t *DXTableAuditOnly) TxUpdateById(dtx *databases.DXDatabaseTx, id int64, d
 
 // DoUpdate is an API helper with audit fields
 func (t *DXTableAuditOnly) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
-	_, row, err := t.DXRawTable.ShouldGetById(&aepr.Log, id)
+	_, row, err := t.DXRawTable.ShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -204,13 +205,13 @@ func (t *DXTableAuditOnly) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, da
 
 	t.SetUpdateAuditFields(aepr, data)
 
-	_, err = t.DXRawTable.UpdateByIdAuto(&aepr.Log, id, data)
+	_, err = t.DXRawTable.UpdateByIdAuto(aepr.Context, &aepr.Log, id, data)
 	if err != nil {
 		return err
 	}
 
 	// Re-fetch and return updated row
-	_, updatedRow, err := t.DXRawTable.ShouldGetById(&aepr.Log, id)
+	_, updatedRow, err := t.DXRawTable.ShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -256,7 +257,7 @@ func (t *DXTableAuditOnly) RequestEditByUid(aepr *api.DXAPIEndPointRequest) erro
 		return err
 	}
 
-	_, row, err := t.DXRawTable.ShouldGetByUid(&aepr.Log, uid)
+	_, row, err := t.DXRawTable.ShouldGetByUid(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -277,12 +278,12 @@ func (t *DXTableAuditOnly) RequestEditByUid(aepr *api.DXAPIEndPointRequest) erro
 // Upsert Operations (with audit fields)
 
 // Upsert inserts or updates with audit fields
-func (t *DXTableAuditOnly) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXTableAuditOnly) Upsert(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, 0, err
 	}
 
-	_, existing, err := t.DXRawTable.SelectOne(l, nil, where, nil, nil)
+	_, existing, err := t.DXRawTable.SelectOne(ctx, l, nil, where, nil, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -290,7 +291,7 @@ func (t *DXTableAuditOnly) Upsert(l *log.DXLog, data utils.JSON, where utils.JSO
 	if existing == nil {
 		t.SetInsertAuditFields(nil, data)
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := t.Database.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := t.Database.Insert(ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -299,7 +300,7 @@ func (t *DXTableAuditOnly) Upsert(l *log.DXLog, data utils.JSON, where utils.JSO
 	}
 
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := t.Database.Update(t.GetFullTableName(), data, where, nil)
+	result, _, err := t.Database.Update(ctx, t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -313,7 +314,7 @@ func (t *DXTableAuditOnly) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON
 	if existing == nil {
 		t.SetInsertAuditFields(nil, data)
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := dtx.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := dtx.Insert(dtx.Ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -322,7 +323,7 @@ func (t *DXTableAuditOnly) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON
 	}
 
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := dtx.Update(t.GetFullTableName(), data, where, nil)
+	result, _, err := dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -341,7 +342,7 @@ func (t *DXTableAuditOnly) RequestHardDelete(aepr *api.DXAPIEndPointRequest) err
 		return err
 	}
 
-	_, row, err := t.DXRawTable.ShouldGetById(&aepr.Log, id)
+	_, row, err := t.DXRawTable.ShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -349,7 +350,7 @@ func (t *DXTableAuditOnly) RequestHardDelete(aepr *api.DXAPIEndPointRequest) err
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
 	}
 
-	_, err = t.DXRawTable.DeleteById(&aepr.Log, id)
+	_, err = t.DXRawTable.DeleteById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -365,7 +366,7 @@ func (t *DXTableAuditOnly) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest
 		return err
 	}
 
-	_, row, err := t.DXRawTable.ShouldGetByUid(&aepr.Log, uid)
+	_, row, err := t.DXRawTable.ShouldGetByUid(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -375,7 +376,7 @@ func (t *DXTableAuditOnly) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest
 		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "CANNOT_GET_ID_FROM_ROW")
 	}
 
-	_, err = t.DXRawTable.DeleteById(&aepr.Log, id)
+	_, err = t.DXRawTable.DeleteById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -392,63 +393,63 @@ func (t *DXTableAuditOnly) RequestListAll(aepr *api.DXAPIEndPointRequest) error 
 // Select helpers - pass through to DXRawTable (NO is_deleted filter)
 
 // Select returns rows (NO is_deleted filter)
-func (t *DXTableAuditOnly) Select(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTableAuditOnly) Select(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return t.DXRawTable.Select(l, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	return t.DXRawTable.Select(ctx, l, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
 // SelectOne returns a single row (NO is_deleted filter)
-func (t *DXTableAuditOnly) SelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTableAuditOnly) SelectOne(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable.SelectOne(l, fieldNames, where, joinSQLPart, orderBy)
+	return t.DXRawTable.SelectOne(ctx, l, fieldNames, where, joinSQLPart, orderBy)
 }
 
 // ShouldSelectOne returns a single row or error if not found (NO is_deleted filter)
-func (t *DXTableAuditOnly) ShouldSelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTableAuditOnly) ShouldSelectOne(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable.ShouldSelectOne(l, fieldNames, where, joinSQLPart, orderBy)
+	return t.DXRawTable.ShouldSelectOne(ctx, l, fieldNames, where, joinSQLPart, orderBy)
 }
 
 // GetById returns a row by ID (NO is_deleted filter)
-func (t *DXTableAuditOnly) GetById(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable.GetById(l, id, fieldNames...)
+func (t *DXTableAuditOnly) GetById(ctx context.Context, l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.GetById(ctx, l, id, fieldNames...)
 }
 
 // ShouldGetById returns a row by ID or error if not found (NO is_deleted filter)
-func (t *DXTableAuditOnly) ShouldGetById(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable.ShouldGetById(l, id, fieldNames...)
+func (t *DXTableAuditOnly) ShouldGetById(ctx context.Context, l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+	return t.DXRawTable.ShouldGetById(ctx, l, id, fieldNames...)
 }
 
 // GetByUid returns a row by UID (NO is_deleted filter)
-func (t *DXTableAuditOnly) GetByUid(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTableAuditOnly) GetByUid(ctx context.Context, l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
-	return t.DXRawTable.GetByUid(l, uid, fieldNames...)
+	return t.DXRawTable.GetByUid(ctx, l, uid, fieldNames...)
 }
 
 // ShouldGetByUid returns a row by UID or error if not found (NO is_deleted filter)
-func (t *DXTableAuditOnly) ShouldGetByUid(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTableAuditOnly) ShouldGetByUid(ctx context.Context, l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
-	return t.DXRawTable.ShouldGetByUid(l, uid, fieldNames...)
+	return t.DXRawTable.ShouldGetByUid(ctx, l, uid, fieldNames...)
 }
 
 // GetByNameId returns a row by NameId (NO is_deleted filter)
-func (t *DXTableAuditOnly) GetByNameId(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTableAuditOnly) GetByNameId(ctx context.Context, l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
-	return t.DXRawTable.GetByNameId(l, nameId, fieldNames...)
+	return t.DXRawTable.GetByNameId(ctx, l, nameId, fieldNames...)
 }
 
 // ShouldGetByNameId returns a row by NameId or error if not found (NO is_deleted filter)
-func (t *DXTableAuditOnly) ShouldGetByNameId(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTableAuditOnly) ShouldGetByNameId(ctx context.Context, l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
-	return t.DXRawTable.ShouldGetByNameId(l, nameId, fieldNames...)
+	return t.DXRawTable.ShouldGetByNameId(ctx, l, nameId, fieldNames...)
 }
 
 // Transaction Select Operations (NO is_deleted filter)
@@ -492,13 +493,13 @@ func (t *DXTableAuditOnly) TxShouldGetById(dtx *databases.DXDatabaseTx, id int64
 // Count Operations (NO is_deleted filter)
 
 // Count returns total row count (NO is_deleted filter)
-func (t *DXTableAuditOnly) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
-	return t.DXRawTable.Count(l, where, joinSQLPart)
+func (t *DXTableAuditOnly) Count(ctx context.Context, l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
+	return t.DXRawTable.Count(ctx, l, where, joinSQLPart)
 }
 
 // SelectAll returns all rows from the table (NO is_deleted filter)
-func (t *DXTableAuditOnly) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return t.Select(l, nil, nil, nil, nil, nil, nil)
+func (t *DXTableAuditOnly) SelectAll(ctx context.Context, l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
+	return t.Select(ctx, l, nil, nil, nil, nil, nil, nil)
 }
 
 // API Select Helpers
@@ -510,7 +511,7 @@ func (t *DXTableAuditOnly) RequestRead(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetById(&aepr.Log, id)
+	_, row, err := t.GetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -532,7 +533,7 @@ func (t *DXTableAuditOnly) RequestReadByUid(aepr *api.DXAPIEndPointRequest) erro
 		return err
 	}
 
-	_, row, err := t.GetByUid(&aepr.Log, uid)
+	_, row, err := t.GetByUid(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -554,7 +555,7 @@ func (t *DXTableAuditOnly) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) e
 		return err
 	}
 
-	_, row, err := t.GetByNameId(&aepr.Log, nameId)
+	_, row, err := t.GetByNameId(aepr.Context, &aepr.Log, nameId)
 	if err != nil {
 		return err
 	}

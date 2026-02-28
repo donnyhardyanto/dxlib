@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 
@@ -12,21 +13,21 @@ import (
 )
 
 // Update updates rows matching where condition
-func (t *DXRawTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) Update(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
-	return t.Database.Update(t.GetFullTableName(), data, where, returningFieldNames)
+	return t.Database.Update(ctx, t.GetFullTableName(), data, where, returningFieldNames)
 }
 
 // TxUpdate updates within a transaction
 func (t *DXRawTable) TxUpdate(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
-	return dtx.Update(t.GetFullTableName(), data, where, returningFieldNames)
+	return dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, returningFieldNames)
 }
 
 // UpdateSimple is a simplified update that just takes data and where (backward compatible)
 func (t *DXRawTable) UpdateSimple(data utils.JSON, where utils.JSON) (sql.Result, error) {
-	result, _, err := t.Update(nil, data, where, nil)
+	result, _, err := t.Update(context.Background(), nil, data, where, nil)
 	return result, err
 }
 
@@ -37,8 +38,8 @@ func (t *DXRawTable) TxUpdateSimple(dtx *databases.DXDatabaseTx, data utils.JSON
 }
 
 // UpdateById updates a single row by ID
-func (t *DXRawTable) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
-	result, _, err := t.Update(l, data, utils.JSON{t.FieldNameForRowId: id}, nil)
+func (t *DXRawTable) UpdateById(ctx context.Context, l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
+	result, _, err := t.Update(ctx, l, data, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
 
@@ -50,7 +51,7 @@ func (t *DXRawTable) TxUpdateById(dtx *databases.DXDatabaseTx, id int64, data ut
 
 // DoUpdate is an API helper that updates and writes response
 func (t *DXRawTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
-	_, row, err := t.ShouldGetById(&aepr.Log, id)
+	_, row, err := t.ShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -64,13 +65,13 @@ func (t *DXRawTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data uti
 		}
 	}
 
-	_, err = t.UpdateByIdAuto(&aepr.Log, id, data)
+	_, err = t.UpdateByIdAuto(aepr.Context, &aepr.Log, id, data)
 	if err != nil {
 		return err
 	}
 
 	// Re-fetch and return updated row
-	_, updatedRow, err := t.ShouldGetById(&aepr.Log, id)
+	_, updatedRow, err := t.ShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -111,7 +112,7 @@ func (t *DXRawTable) RequestEdit(aepr *api.DXAPIEndPointRequest) error {
 
 // DoUpdateWithValidation updates with unique field validation, merging current row data with new data for validation
 func (t *DXRawTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
-	_, row, err := t.ShouldGetById(&aepr.Log, id)
+	_, row, err := t.ShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -153,7 +154,7 @@ func (t *DXRawTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id i
 	}
 
 	// Re-fetch and return updated row
-	_, updatedRow, err := t.ShouldGetById(&aepr.Log, id)
+	_, updatedRow, err := t.ShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}

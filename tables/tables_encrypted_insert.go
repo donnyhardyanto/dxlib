@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -41,6 +42,7 @@ func (t *DXRawTable) TxInsertWithEncryption(
 // InsertWithEncryption inserts with encrypted columns (creates transaction internally)
 // Automatically sets session keys from secure memory before insert
 func (t *DXRawTable) InsertWithEncryption(
+	ctx context.Context,
 	l *log.DXLog,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
@@ -50,7 +52,7 @@ func (t *DXRawTable) InsertWithEncryption(
 		return nil, nil, err
 	}
 
-	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 	if txErr != nil {
 		return nil, nil, txErr
 	}
@@ -75,11 +77,12 @@ func (t *DXRawTable) TxInsertWithEncryptionReturningId(
 
 // InsertWithEncryptionReturningId is a simplified version returning just the new ID
 func (t *DXRawTable) InsertWithEncryptionReturningId(
+	ctx context.Context,
 	l *log.DXLog,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 ) (int64, error) {
-	_, returningValues, err := t.InsertWithEncryption(l, data, encryptionColumns, []string{t.FieldNameForRowId})
+	_, returningValues, err := t.InsertWithEncryption(ctx, l, data, encryptionColumns, []string{t.FieldNameForRowId})
 	if err != nil {
 		return 0, err
 	}
@@ -102,13 +105,14 @@ func (t *DXTable) TxInsertWithEncryption(
 
 // InsertWithEncryption inserts with encrypted columns and audit fields
 func (t *DXTable) InsertWithEncryption(
+	ctx context.Context,
 	l *log.DXLog,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 	returningFieldNames []string,
 ) (sql.Result, utils.JSON, error) {
 	t.SetInsertAuditFields(nil, data)
-	return t.DXRawTable.InsertWithEncryption(l, data, encryptionColumns, returningFieldNames)
+	return t.DXRawTable.InsertWithEncryption(ctx, l, data, encryptionColumns, returningFieldNames)
 }
 
 // TxInsertWithEncryptionReturningId is a simplified version with audit fields
@@ -123,12 +127,13 @@ func (t *DXTable) TxInsertWithEncryptionReturningId(
 
 // InsertWithEncryptionReturningId is a simplified version with audit fields
 func (t *DXTable) InsertWithEncryptionReturningId(
+	ctx context.Context,
 	l *log.DXLog,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 ) (int64, error) {
 	t.SetInsertAuditFields(nil, data)
-	return t.DXRawTable.InsertWithEncryptionReturningId(l, data, encryptionColumns)
+	return t.DXRawTable.InsertWithEncryptionReturningId(ctx, l, data, encryptionColumns)
 }
 
 // Internal Insert Helper Function

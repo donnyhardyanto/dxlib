@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/databases"
@@ -12,7 +13,7 @@ import (
 
 // DeleteWithBuilder executes a DELETE using TableDeleteQueryBuilder for safe SQL construction.
 // WHERE and RETURNING are read from tqb.
-func (t *DXRawTable) DeleteWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableDeleteQueryBuilder) (result sql.Result, rows []utils.JSON, err error) {
+func (t *DXRawTable) DeleteWithBuilder(ctx context.Context, l *log.DXLog, tqb *tableQueryBuilder.TableDeleteQueryBuilder) (result sql.Result, rows []utils.JSON, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
@@ -23,7 +24,7 @@ func (t *DXRawTable) DeleteWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 	tqb.SourceName = t.GetFullTableName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -31,10 +32,10 @@ func (t *DXRawTable) DeleteWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
-		return query.TxDeleteWithDeleteQueryBuilder2(dtx, tqb.DeleteQueryBuilder)
+		return query.TxDeleteWithDeleteQueryBuilder2(ctx, dtx, tqb.DeleteQueryBuilder)
 	}
 
-	return query.DeleteWithDeleteQueryBuilder2(t.Database.Connection, tqb.DeleteQueryBuilder)
+	return query.DeleteWithDeleteQueryBuilder2(ctx, t.Database.Connection, tqb.DeleteQueryBuilder)
 }
 
 // TxDeleteWithBuilder executes a DELETE within a transaction using TableDeleteQueryBuilder.
@@ -44,14 +45,14 @@ func (t *DXRawTable) TxDeleteWithBuilder(dtx *databases.DXDatabaseTx, tqb *table
 	}
 
 	tqb.SourceName = t.GetFullTableName()
-	return query.TxDeleteWithDeleteQueryBuilder2(dtx, tqb.DeleteQueryBuilder)
+	return query.TxDeleteWithDeleteQueryBuilder2(dtx.Ctx, dtx, tqb.DeleteQueryBuilder)
 }
 
 // DeleteByIdWithBuilder executes a DELETE by ID using TableDeleteQueryBuilder.
-func (t *DXRawTable) DeleteByIdWithBuilder(l *log.DXLog, id int64, tqb *tableQueryBuilder.TableDeleteQueryBuilder) (sql.Result, []utils.JSON, error) {
+func (t *DXRawTable) DeleteByIdWithBuilder(ctx context.Context, l *log.DXLog, id int64, tqb *tableQueryBuilder.TableDeleteQueryBuilder) (sql.Result, []utils.JSON, error) {
 	tqb.Conditions = append(tqb.Conditions, t.FieldNameForRowId+" = :__delete_id__")
 	tqb.Args["__delete_id__"] = id
-	return t.DeleteWithBuilder(l, tqb)
+	return t.DeleteWithBuilder(ctx, l, tqb)
 }
 
 // TxDeleteByIdWithBuilder executes a DELETE by ID within a transaction using TableDeleteQueryBuilder.

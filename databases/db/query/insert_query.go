@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -70,7 +71,7 @@ func buildInsertSQL(driverName string, qb *builder.InsertQueryBuilder) (string, 
 // InsertWithInsertQueryBuilder2 executes an INSERT using InsertQueryBuilder.
 // If RETURNING fields are specified, returns the inserted row.
 // Otherwise returns sql.Result info.
-func InsertWithInsertQueryBuilder2(db *sqlx.DB, qb *builder.InsertQueryBuilder) (result sql.Result, returningRow utils.JSON, err error) {
+func InsertWithInsertQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder.InsertQueryBuilder) (result sql.Result, returningRow utils.JSON, err error) {
 	if qb.Error != nil {
 		return nil, nil, qb.Error
 	}
@@ -82,14 +83,14 @@ func InsertWithInsertQueryBuilder2(db *sqlx.DB, qb *builder.InsertQueryBuilder) 
 	}
 
 	if len(qb.OutFields) > 0 {
-		_, row, err := named.NamedQueryRow2(db, query, args, nil)
+		_, row, err := named.NamedQueryRow2(ctx, db, query, args, nil)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "INSERT_WITH_RETURNING_ERROR")
 		}
 		return nil, row, nil
 	}
 
-	result, err = named.NamedExec2(db, query, args)
+	result, err = named.NamedExec2(ctx, db, query, args)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "INSERT_ERROR")
 	}

@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -43,6 +44,7 @@ func (t *DXRawTable) TxUpdateWithEncryption(
 // UpdateWithEncryption updates with encrypted columns (creates transaction internally)
 // Automatically sets session keys from secure memory before update
 func (t *DXRawTable) UpdateWithEncryption(
+	ctx context.Context,
 	l *log.DXLog,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
@@ -53,7 +55,7 @@ func (t *DXRawTable) UpdateWithEncryption(
 		return nil, nil, err
 	}
 
-	dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+	dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 	if txErr != nil {
 		return nil, nil, txErr
 	}
@@ -75,12 +77,13 @@ func (t *DXRawTable) TxUpdateByIdWithEncryption(
 
 // UpdateByIdWithEncryption updates by ID with encrypted columns
 func (t *DXRawTable) UpdateByIdWithEncryption(
+	ctx context.Context,
 	l *log.DXLog,
 	id int64,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 ) (sql.Result, error) {
-	result, _, err := t.UpdateWithEncryption(l, data, encryptionColumns, utils.JSON{t.FieldNameForRowId: id}, nil)
+	result, _, err := t.UpdateWithEncryption(ctx, l, data, encryptionColumns, utils.JSON{t.FieldNameForRowId: id}, nil)
 	return result, err
 }
 
@@ -100,6 +103,7 @@ func (t *DXTable) TxUpdateWithEncryption(
 
 // UpdateWithEncryption updates with encrypted columns and audit fields
 func (t *DXTable) UpdateWithEncryption(
+	ctx context.Context,
 	l *log.DXLog,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
@@ -107,7 +111,7 @@ func (t *DXTable) UpdateWithEncryption(
 	returningFieldNames []string,
 ) (sql.Result, []utils.JSON, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable.UpdateWithEncryption(l, data, encryptionColumns, where, returningFieldNames)
+	return t.DXRawTable.UpdateWithEncryption(ctx, l, data, encryptionColumns, where, returningFieldNames)
 }
 
 // TxUpdateByIdWithEncryption updates by ID with encrypted columns and audit fields
@@ -123,13 +127,14 @@ func (t *DXTable) TxUpdateByIdWithEncryption(
 
 // UpdateByIdWithEncryption updates by ID with encrypted columns and audit fields
 func (t *DXTable) UpdateByIdWithEncryption(
+	ctx context.Context,
 	l *log.DXLog,
 	id int64,
 	data utils.JSON,
 	encryptionColumns []EncryptionColumn,
 ) (sql.Result, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable.UpdateByIdWithEncryption(l, id, data, encryptionColumns)
+	return t.DXRawTable.UpdateByIdWithEncryption(ctx, l, id, data, encryptionColumns)
 }
 
 // Internal Update Helper Function

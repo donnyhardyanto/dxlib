@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -47,7 +48,7 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 // Returns:
 //   - returningFieldValues: Map of field names to their values after insert
 //   - err: Error if any occurred
-func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
+func Insert(ctx context.Context, db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
 	defer func() {
 		if err != nil {
 			err = NewDBOperationError("INSERT", tableName, setFieldValues, err)
@@ -109,7 +110,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 
 	// If no returning keys requested, simply execute the insert
 	if len(returningFieldNames) == 0 {
-		result, err := Exec(db, baseSQL, convertedFieldValues)
+		result, err := Exec(ctx, db, baseSQL, convertedFieldValues)
 		return result, returningFieldValues, err
 	}
 
@@ -118,7 +119,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 	case "postgres", "mariadb":
 		// Both PostgreSQL and MariaDB 10.5.0+ support RETURNING clause with the same syntax
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
-		_, rows, err := QueryRows(db, nil, sqlStatement, convertedFieldValues)
+		_, rows, err := QueryRows(ctx, db, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing insert with RETURNING clause")
 		}
@@ -146,7 +147,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 			fmt.Sprintf("(%s)", fieldValues),
 		}, " ")
 
-		_, rows, err := QueryRows(db, nil, sqlStatement, convertedFieldValues)
+		_, rows, err := QueryRows(ctx, db, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing insert with OUTPUT clause")
 		}
@@ -185,7 +186,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 			strings.Join(returningIntoFields, ", "))
 
 		// Execute directly for Oracle with output parameters
-		result, err = db.Exec(sqlStatement, namedArgs...)
+		result, err = db.ExecContext(ctx, sqlStatement, namedArgs...)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing oracle insert with RETURNING INTO")
 		}
@@ -213,7 +214,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 
 	case "mysql":
 		// MySQL doesn't support RETURNING, so we need to do a separate query
-		result, err := Exec(db, baseSQL, convertedFieldValues)
+		result, err := Exec(ctx, db, baseSQL, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing mysql insert")
 		}
@@ -276,7 +277,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 				idField: result.LastInsertId,
 			}
 
-			_, rows, err := QueryRows(db, nil, selectSQL, selectArgs)
+			_, rows, err := QueryRows(ctx, db, nil, selectSQL, selectArgs)
 			if err == nil && len(rows) > 0 {
 				// Merge additional values
 				for k, v := range rows[0] {
@@ -293,7 +294,7 @@ func Insert(db *sqlx.DB, tableName string, setFieldValues utils.JSON, returningF
 	return result, returningFieldValues, nil
 }
 
-func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
+func TxInsert(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
 	defer func() {
 		if err != nil {
 			err = NewDBOperationError("INSERT", tableName, setFieldValues, err)
@@ -356,7 +357,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 
 	// If no returning keys requested, simply execute the insert
 	if len(returningFieldNames) == 0 {
-		result, err := TxExec(tx, baseSQL, convertedFieldValues)
+		result, err := TxExec(ctx, tx, baseSQL, convertedFieldValues)
 		return result, returningFieldValues, err
 	}
 
@@ -365,7 +366,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 	case "postgres", "mariadb":
 		// Both PostgreSQL and MariaDB 10.5.0+ support RETURNING clause with the same syntax
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, convertedFieldValues)
+		_, rows, err := TxQueryRows(ctx, tx, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing insert with RETURNING clause")
 		}
@@ -393,7 +394,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 			fmt.Sprintf("(%s)", fieldValues),
 		}, " ")
 
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, convertedFieldValues)
+		_, rows, err := TxQueryRows(ctx, tx, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing insert with OUTPUT clause")
 		}
@@ -432,7 +433,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 			strings.Join(returningIntoFields, ", "))
 
 		// Execute directly for Oracle with output parameters
-		_, err = tx.Exec(sqlStatement, namedArgs...)
+		_, err = tx.ExecContext(ctx, sqlStatement, namedArgs...)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing oracle insert with RETURNING INTO")
 		}
@@ -460,7 +461,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 
 	case "mysql":
 		// MySQL doesn't support RETURNING, so we need to do a separate query
-		result, err := TxExec(tx, baseSQL, convertedFieldValues)
+		result, err := TxExec(ctx, tx, baseSQL, convertedFieldValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing mysql insert")
 		}
@@ -523,7 +524,7 @@ func TxInsert(tx *sqlx.Tx, tableName string, setFieldValues utils.JSON, returnin
 				idField: result.LastInsertId,
 			}
 
-			_, rows, err := TxQueryRows(tx, nil, selectSQL, selectArgs)
+			_, rows, err := TxQueryRows(ctx, tx, nil, selectSQL, selectArgs)
 			if err == nil && len(rows) > 0 {
 				// Merge additional values
 				for k, v := range rows[0] {

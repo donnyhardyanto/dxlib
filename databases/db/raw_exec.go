@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/base"
@@ -10,14 +11,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {
+func RawExec(ctx context.Context, db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {
 	// dbt := base.StringToDXDatabaseType(db.DriverName())
 	/*	err = CheckAll(dbt, query, arg)
 		if err != nil {
 			return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
 		}
 	*/
-	result, err = db.Exec(query, arg...)
+	result, err = db.ExecContext(ctx, query, arg...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "DB_EXEC_ERROR sql=%s", query)
 	}
@@ -26,7 +27,7 @@ func RawExec(db *sqlx.DB, query string, arg []any) (result sql.Result, err error
 	return result, nil
 }
 
-func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err error) {
+func RawTxExec(ctx context.Context, tx *sqlx.Tx, query string, arg []any) (result sql.Result, err error) {
 	// dbt := base.StringToDXDatabaseType(tx.DriverName())
 	/*	err = CheckAll(dbt, query, arg)
 		if err != nil {
@@ -34,7 +35,7 @@ func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err err
 		}
 	*/
 
-	result, err = tx.Exec(query, arg...)
+	result, err = tx.ExecContext(ctx, query, arg...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "DB_TX_EXEC_ERROR sql=%s", query)
 	}
@@ -43,7 +44,7 @@ func RawTxExec(tx *sqlx.Tx, query string, arg []any) (result sql.Result, err err
 	return result, nil
 }
 
-func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql.Result, err error) {
+func Exec(ctx context.Context, db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql.Result, err error) {
 	var (
 		modifiedSQL string
 		args        []interface{}
@@ -91,10 +92,11 @@ func Exec(db *sqlx.DB, sqlStatement string, sqlArguments utils.JSON) (result sql
 	}
 
 	// Call the RawExec function with the modified SQL and arguments
-	return RawExec(db, modifiedSQL, args)
+	return RawExec(ctx, db, modifiedSQL, args)
 }
 
 func TxExec(
+	ctx context.Context,
 	tx *sqlx.Tx,
 	sqlStatement string,
 	sqlArguments utils.JSON,
@@ -146,5 +148,5 @@ func TxExec(
 	}
 
 	// Call the RawTxExec function with the modified SQL and arguments
-	return RawTxExec(tx, modifiedSQL, args)
+	return RawTxExec(ctx, tx, modifiedSQL, args)
 }

@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 
@@ -14,9 +15,9 @@ import (
 // Insert Operations (with audit fields)
 
 // Insert inserts with audit fields
-func (t *DXTable) Insert(l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+func (t *DXTable) Insert(ctx context.Context, l *log.DXLog, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
 	t.SetInsertAuditFields(nil, data)
-	return t.DXRawTable.Insert(l, data, returningFieldNames)
+	return t.DXRawTable.Insert(ctx, l, data, returningFieldNames)
 }
 
 // TxInsert inserts within a transaction with audit fields
@@ -34,7 +35,7 @@ func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int
 // DoCreate inserts a row with audit fields and writes API response
 func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
-	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
+	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 	if err != nil {
 		return 0, err
 	}
@@ -52,7 +53,7 @@ func (t *DXTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int
 // DoCreate inserts a row with audit fields and writes API response
 func (t *DXTable) DoCreateReturnId(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
-	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
+	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 	if err != nil {
 		return 0, err
 	}
@@ -86,7 +87,7 @@ func (t *DXTable) RequestCreateReturnId(aepr *api.DXAPIEndPointRequest) error {
 // DoCreateReturnUid inserts a row with audit fields and writes API response with uid (not id)
 func (t *DXTable) DoCreateReturnUid(aepr *api.DXAPIEndPointRequest, data utils.JSON) (string, error) {
 	t.SetInsertAuditFields(aepr, data)
-	_, returningValues, err := t.DXRawTable.Insert(&aepr.Log, data, []string{t.FieldNameForRowUid})
+	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowUid})
 	if err != nil {
 		return "", err
 	}

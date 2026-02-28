@@ -30,7 +30,7 @@ func (t *DXRawTable) TxSelectWithEncryption(dtx *databases.DXDatabaseTx, fieldNa
 		return nil, nil, err
 	}
 
-	return executeEncryptedSelect(dtx, tableName, t.FieldTypeMapping, dbType, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	return executeEncryptedSelect(dtx.Ctx, dtx, tableName, t.FieldTypeMapping, dbType, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
 // TxSelectOneWithEncryption selects one row with decrypted columns within a transaction
@@ -52,7 +52,7 @@ func (t *DXRawTable) TxSelectOneWithEncryption(dtx *databases.DXDatabaseTx, fiel
 		return nil, nil, err
 	}
 
-	rowsInfo, rows, err := executeEncryptedSelect(dtx, tableName, t.FieldTypeMapping, dbType, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, 1, forUpdatePart)
+	rowsInfo, rows, err := executeEncryptedSelect(dtx.Ctx, dtx, tableName, t.FieldTypeMapping, dbType, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, 1, forUpdatePart)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -163,7 +163,7 @@ func (t *DXRawTable) TxPagingWithEncryption(
 		return nil, err
 	}
 
-	return executeEncryptedPaging(dtx, t.ListViewNameId, dbType, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
+	return executeEncryptedPaging(dtx.Ctx, dtx, t.ListViewNameId, dbType, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
 }
 
 // TxPagingWithEncryptionAndBuilder executes paging with TableSelectQueryBuilder and decrypted columns

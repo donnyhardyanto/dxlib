@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -29,7 +30,7 @@ import (
 //   - SQL Server: OUTPUT clause
 //   - Oracle: RETURNING INTO clause
 //   - MySQL: Not supported for DELETE err if requested)
-func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+func Delete(ctx context.Context, db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	defer func() {
 		if err != nil {
 			err = NewDBOperationErrorWithWhere("DELETE", tableName, whereAndFieldNameValues, err)
@@ -113,7 +114,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err := Exec(db, baseSQL, convertedWhereValues)
+			result, err := Exec(ctx, db, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -128,7 +129,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 			returningClause,
 		}, " ")
 
-		_, rows, err := QueryRows(db, nil, sqlStatement, convertedWhereValues)
+		_, rows, err := QueryRows(ctx, db, nil, sqlStatement, convertedWhereValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with RETURNING clause")
 		}
@@ -144,7 +145,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 				tableName,
 				effectiveWhere,
 			}, " ")
-			result, err := Exec(db, baseSQL, convertedWhereValues)
+			result, err := Exec(ctx, db, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -166,7 +167,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := QueryRows(db, nil, sqlStatement, convertedWhereValues)
+		_, rows, err := QueryRows(ctx, db, nil, sqlStatement, convertedWhereValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with OUTPUT clause")
 		}
@@ -183,7 +184,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err := Exec(db, baseSQL, convertedWhereValues)
+			result, err := Exec(ctx, db, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle delete")
 			}
@@ -225,7 +226,7 @@ func Delete(db *sqlx.DB, tableName string, whereAndFieldNameValues utils.JSON, r
 }
 
 // TxDelete executes an SQL DELETE statement within a transaction with support for returning values
-func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
+func TxDelete(ctx context.Context, tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	defer func() {
 		if err != nil {
 			err = NewDBOperationErrorWithWhere("DELETE", tableName, whereAndFieldNameValues, err)
@@ -310,7 +311,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err = TxExec(tx, baseSQL, convertedWhereValues)
+			result, err = TxExec(ctx, tx, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -325,7 +326,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 			returningClause,
 		}, " ")
 
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, convertedWhereValues)
+		_, rows, err := TxQueryRows(ctx, tx, nil, sqlStatement, convertedWhereValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with RETURNING clause")
 		}
@@ -341,7 +342,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 				tableName,
 				effectiveWhere,
 			}, " ")
-			result, err := TxExec(tx, baseSQL, convertedWhereValues)
+			result, err := TxExec(ctx, tx, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing delete")
 			}
@@ -363,7 +364,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 			effectiveWhere,
 		}, " ")
 
-		_, rows, err := TxQueryRows(tx, nil, sqlStatement, convertedWhereValues)
+		_, rows, err := TxQueryRows(ctx, tx, nil, sqlStatement, convertedWhereValues)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing delete with OUTPUT clause")
 		}
@@ -380,7 +381,7 @@ func TxDelete(tx *sqlx.Tx, tableName string, whereAndFieldNameValues utils.JSON,
 
 		if len(returningFieldNames) == 0 {
 			// Simple delete without returning
-			result, err = TxExec(tx, baseSQL, convertedWhereValues)
+			result, err = TxExec(ctx, tx, baseSQL, convertedWhereValues)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "error executing oracle delete")
 			}

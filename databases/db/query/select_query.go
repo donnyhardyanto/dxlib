@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 
 // SelectWithSelectQueryBuilder2 executes a query using SelectQueryBuilder and returns all matching rows.
 // Builds SELECT query from SelectQueryBuilder (SourceName, OutFields, WHERE, JOIN, GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET) and calls NamedQueryRows2.
-func SelectWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func SelectWithSelectQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 
 	// Check for errors accumulated in SelectQueryBuilder
 	if qb.Error != nil {
@@ -126,13 +127,13 @@ func SelectWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilder, 
 		}
 	}
 
-	return named.NamedQueryRows2(db, query, args, fieldTypeMapping)
+	return named.NamedQueryRows2(ctx, db, query, args, fieldTypeMapping)
 }
 
 // ShouldSelectWithSelectQueryBuilder2 executes a query using SelectQueryBuilder and returns all matching rows,
 // erroring if no rows found.
-func ShouldSelectWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	rowsInfo, r, err = SelectWithSelectQueryBuilder2(db, qb, fieldTypeMapping)
+func ShouldSelectWithSelectQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	rowsInfo, r, err = SelectWithSelectQueryBuilder2(ctx, db, qb, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, r, err
 	}
@@ -145,9 +146,9 @@ func ShouldSelectWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBui
 
 // SelectOneWithSelectQueryBuilder2 executes a query using SelectQueryBuilder and returns a single row.
 // Sets LimitValue to 1 automatically.
-func SelectOneWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func SelectOneWithSelectQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 	qb.LimitValue = 1
-	rowsInfo, rows, err := SelectWithSelectQueryBuilder2(db, qb, fieldTypeMapping)
+	rowsInfo, rows, err := SelectWithSelectQueryBuilder2(ctx, db, qb, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}
@@ -159,9 +160,9 @@ func SelectOneWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilde
 
 // ShouldSelectOneWithSelectQueryBuilder2 executes a query using SelectQueryBuilder and returns a single row,
 // erroring if no row found.
-func ShouldSelectOneWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+func ShouldSelectOneWithSelectQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder.SelectQueryBuilder, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
 
-	rowsInfo, r, err = SelectOneWithSelectQueryBuilder2(db, qb, fieldTypeMapping)
+	rowsInfo, r, err = SelectOneWithSelectQueryBuilder2(ctx, db, qb, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, r, err
 	}
@@ -174,7 +175,7 @@ func ShouldSelectOneWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQuery
 
 // CountWithSelectQueryBuilder2 executes a COUNT query using SelectQueryBuilder and returns the count.
 // Builds SELECT COUNT(*) query from SelectQueryBuilder (SourceName, WHERE, JOIN, GROUP BY, HAVING).
-func CountWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilder) (count int64, err error) {
+func CountWithSelectQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder.SelectQueryBuilder) (count int64, err error) {
 
 	// Check for errors accumulated in SelectQueryBuilder
 	if qb.Error != nil {
@@ -229,7 +230,7 @@ func CountWithSelectQueryBuilder2(db *sqlx.DB, qb *builder.SelectQueryBuilder) (
 		query += " " + havingClause
 	}
 
-	_, row, err := named.NamedQueryRow2(db, query, args, nil)
+	_, row, err := named.NamedQueryRow2(ctx, db, query, args, nil)
 	if err != nil {
 		return 0, err
 	}

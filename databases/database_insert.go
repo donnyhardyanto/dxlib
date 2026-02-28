@@ -1,20 +1,21 @@
 package databases
 
 import (
+	"context"
 	"database/sql"
 	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-func (d *DXDatabase) Insert(tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
+func (d *DXDatabase) Insert(ctx context.Context, tableName string, setFieldValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues utils.JSON, err error) {
 	err = d.EnsureConnection()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	for tryCount := 0; tryCount < 4; tryCount++ {
-		result, returningFieldValues, err = db.Insert(d.Connection, tableName, setFieldValues, returningFieldNames)
+		result, returningFieldValues, err = db.Insert(ctx, d.Connection, tableName, setFieldValues, returningFieldNames)
 		if err == nil {
 			return result, returningFieldValues, nil
 		}

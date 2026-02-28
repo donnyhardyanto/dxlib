@@ -1,6 +1,8 @@
 package base
 
 import (
+	"context"
+
 	databaseDb "github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -10,7 +12,7 @@ import (
 // BaseQueryRows2 executes a named query and returns all matching rows
 // It supports both named parameters (map/struct) and positional parameters (slice)
 // If fieldTypeMapping is provided, applies type conversion to the results
-func BaseQueryRows2(db *sqlx.DB, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+func BaseQueryRows2(ctx context.Context, db *sqlx.DB, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}
@@ -26,15 +28,15 @@ func BaseQueryRows2(db *sqlx.DB, query string, arg any, fieldTypeMapping databas
 	var rows *sqlx.Rows
 	switch v := arg.(type) {
 	case []any:
-		// Positional parameters - use Queryx
+		// Positional parameters - use QueryxContext
 		if len(v) == 0 {
-			rows, err = db.Queryx(query)
+			rows, err = db.QueryxContext(ctx, query)
 		} else {
-			rows, err = db.Queryx(query, v...)
+			rows, err = db.QueryxContext(ctx, query, v...)
 		}
 	default:
-		// Named parameters - use NamedQuery
-		rows, err = db.NamedQuery(query, arg)
+		// Named parameters - use NamedQueryContext
+		rows, err = sqlx.NamedQueryContext(ctx, db, query, arg)
 	}
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "NAMED_QUERY_ROWS_ERROR:QUERY=%s", query)
@@ -73,8 +75,8 @@ func BaseQueryRows2(db *sqlx.DB, query string, arg any, fieldTypeMapping databas
 }
 
 // BaseQueryRow2 executes a named query and returns a single row
-func BaseQueryRow2(db *sqlx.DB, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
-	rowsInfo, rows, err := BaseQueryRows2(db, query, arg, fieldTypeMapping)
+func BaseQueryRow2(ctx context.Context, db *sqlx.DB, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r utils.JSON, err error) {
+	rowsInfo, rows, err := BaseQueryRows2(ctx, db, query, arg, fieldTypeMapping)
 	if err != nil {
 		return rowsInfo, nil, err
 	}

@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"time"
@@ -60,12 +61,12 @@ func (t *DXTable) SetUpdateAuditFields(aepr *api.DXAPIEndPointRequest, data util
 // Soft Delete Operations
 
 // SoftDelete marks rows as deleted
-func (t *DXTable) SoftDelete(l *log.DXLog, where utils.JSON) (sql.Result, error) {
+func (t *DXTable) SoftDelete(ctx context.Context, l *log.DXLog, where utils.JSON) (sql.Result, error) {
 	data := utils.JSON{
 		"is_deleted": true,
 	}
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := t.DXRawTable.Update(l, data, where, nil)
+	result, _, err := t.DXRawTable.Update(ctx, l, data, where, nil)
 	return result, err
 }
 
@@ -80,8 +81,8 @@ func (t *DXTable) TxSoftDelete(dtx *databases.DXDatabaseTx, where utils.JSON) (s
 }
 
 // SoftDeleteById marks a row as deleted by ID
-func (t *DXTable) SoftDeleteById(l *log.DXLog, id int64) (sql.Result, error) {
-	return t.SoftDelete(l, utils.JSON{t.FieldNameForRowId: id})
+func (t *DXTable) SoftDeleteById(ctx context.Context, l *log.DXLog, id int64) (sql.Result, error) {
+	return t.SoftDelete(ctx, l, utils.JSON{t.FieldNameForRowId: id})
 }
 
 // TxSoftDeleteById marks a row as deleted by ID within a transaction
@@ -91,7 +92,7 @@ func (t *DXTable) TxSoftDeleteById(dtx *databases.DXDatabaseTx, id int64) (sql.R
 
 // DoSoftDelete is an API helper for soft delete
 func (t *DXTable) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
-	_, row, err := t.GetByIdNotDeletedAuto(&aepr.Log, id)
+	_, row, err := t.GetByIdNotDeletedAuto(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -104,7 +105,7 @@ func (t *DXTable) DoSoftDelete(aepr *api.DXAPIEndPointRequest, id int64) error {
 	}
 	t.SetUpdateAuditFields(aepr, data)
 
-	_, err = t.DXRawTable.UpdateById(&aepr.Log, id, data)
+	_, err = t.DXRawTable.UpdateById(aepr.Context, &aepr.Log, id, data)
 	if err != nil {
 		return err
 	}
@@ -122,12 +123,12 @@ func (t *DXTable) TxHardDelete(dtx *databases.DXDatabaseTx, where utils.JSON) (s
 // Upsert Operations (with audit fields)
 
 // Upsert inserts or updates with audit fields
-func (t *DXTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+func (t *DXTable) Upsert(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
 	if err := t.EnsureDatabase(); err != nil {
 		return nil, 0, err
 	}
 
-	_, existing, err := t.DXRawTable.SelectOne(l, nil, where, nil, nil)
+	_, existing, err := t.DXRawTable.SelectOne(ctx, l, nil, where, nil, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -135,7 +136,7 @@ func (t *DXTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.R
 	if existing == nil {
 		t.SetInsertAuditFields(nil, data)
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := t.Database.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := t.Database.Insert(ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -144,7 +145,7 @@ func (t *DXTable) Upsert(l *log.DXLog, data utils.JSON, where utils.JSON) (sql.R
 	}
 
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := t.Database.Update(t.GetFullTableName(), data, where, nil)
+	result, _, err := t.Database.Update(ctx, t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -158,7 +159,7 @@ func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where u
 	if existing == nil {
 		t.SetInsertAuditFields(nil, data)
 		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := dtx.Insert(t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
+		_, returningValues, err := dtx.Insert(dtx.Ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -167,7 +168,7 @@ func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where u
 	}
 
 	t.SetUpdateAuditFields(nil, data)
-	result, _, err := dtx.Update(t.GetFullTableName(), data, where, nil)
+	result, _, err := dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, nil)
 	return result, 0, err
 }
 
@@ -190,7 +191,7 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByIdNotDeletedAuto(&aepr.Log, id)
+	_, row, err := t.GetByIdNotDeletedAuto(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -198,7 +199,7 @@ func (t *DXTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%d", id)
 	}
 
-	_, err = t.DXRawTable.DeleteById(&aepr.Log, id)
+	_, err = t.DXRawTable.DeleteById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -279,7 +280,7 @@ func (t *DXTable) RequestSoftDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByUidNotDeletedAuto(&aepr.Log, uid)
+	_, row, err := t.GetByUidNotDeletedAuto(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -302,7 +303,7 @@ func (t *DXTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByUidNotDeletedAuto(&aepr.Log, uid)
+	_, row, err := t.GetByUidNotDeletedAuto(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -315,7 +316,7 @@ func (t *DXTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
 		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "CANNOT_GET_ID_FROM_ROW")
 	}
 
-	_, err = t.DXRawTable.DeleteById(&aepr.Log, id)
+	_, err = t.DXRawTable.DeleteById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}

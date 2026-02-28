@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/databases"
@@ -12,7 +13,7 @@ import (
 
 // InsertWithBuilder executes an INSERT using TableInsertQueryBuilder for safe SQL construction.
 // SetFields and RETURNING are read from tqb.
-func (t *DXRawTable) InsertWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.TableInsertQueryBuilder) (result sql.Result, returning utils.JSON, err error) {
+func (t *DXRawTable) InsertWithBuilder(ctx context.Context, l *log.DXLog, tqb *tableQueryBuilder.TableInsertQueryBuilder) (result sql.Result, returning utils.JSON, err error) {
 	if err = t.EnsureDatabase(); err != nil {
 		return nil, nil, err
 	}
@@ -23,7 +24,7 @@ func (t *DXRawTable) InsertWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 	tqb.SourceName = t.GetFullTableName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -31,10 +32,10 @@ func (t *DXRawTable) InsertWithBuilder(l *log.DXLog, tqb *tableQueryBuilder.Tabl
 		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
-		return query.TxInsertWithInsertQueryBuilder2(dtx, tqb.InsertQueryBuilder)
+		return query.TxInsertWithInsertQueryBuilder2(ctx, dtx, tqb.InsertQueryBuilder)
 	}
 
-	return query.InsertWithInsertQueryBuilder2(t.Database.Connection, tqb.InsertQueryBuilder)
+	return query.InsertWithInsertQueryBuilder2(ctx, t.Database.Connection, tqb.InsertQueryBuilder)
 }
 
 // TxInsertWithBuilder executes an INSERT within a transaction using TableInsertQueryBuilder.
@@ -44,5 +45,5 @@ func (t *DXRawTable) TxInsertWithBuilder(dtx *databases.DXDatabaseTx, tqb *table
 	}
 
 	tqb.SourceName = t.GetFullTableName()
-	return query.TxInsertWithInsertQueryBuilder2(dtx, tqb.InsertQueryBuilder)
+	return query.TxInsertWithInsertQueryBuilder2(dtx.Ctx, dtx, tqb.InsertQueryBuilder)
 }

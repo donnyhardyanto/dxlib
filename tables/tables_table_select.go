@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/donnyhardyanto/dxlib/api"
@@ -24,43 +25,43 @@ func (t *DXTable) addNotDeletedFilter(where utils.JSON) utils.JSON {
 }
 
 // Select returns non-deleted rows
-func (t *DXTable) Select(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable) Select(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy, limit any, forUpdatePart any) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return t.DXRawTable.Select(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
+	return t.DXRawTable.Select(ctx, l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy, limit, forUpdatePart)
 }
 
 // SelectOne returns a single non-deleted row
-func (t *DXTable) SelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable) SelectOne(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable.SelectOne(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
+	return t.DXRawTable.SelectOne(ctx, l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
 }
 
 // ShouldSelectOne returns a single non-deleted row or error if not found
-func (t *DXTable) ShouldSelectOne(l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
+func (t *DXTable) ShouldSelectOne(ctx context.Context, l *log.DXLog, fieldNames []string, where utils.JSON, joinSQLPart any,
 	orderBy db.DXDatabaseTableFieldsOrderBy) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	return t.DXRawTable.ShouldSelectOne(l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
+	return t.DXRawTable.ShouldSelectOne(ctx, l, fieldNames, t.addNotDeletedFilter(where), joinSQLPart, orderBy)
 }
 
 // GetByIdNotDeleted returns a non-deleted row by ID
-func (t *DXTable) GetByIdNotDeleted(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) GetByIdNotDeleted(ctx context.Context, l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+	return t.SelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // ShouldGetByIdNotDeleted returns a non-deleted row by ID or error if not found
-func (t *DXTable) ShouldGetByIdNotDeleted(l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) ShouldGetByIdNotDeleted(ctx context.Context, l *log.DXLog, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	var fn []string
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
+	return t.ShouldSelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil)
 }
 
 // GetByUidNotDeleted returns a non-deleted row by UID
-func (t *DXTable) GetByUidNotDeleted(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) GetByUidNotDeleted(ctx context.Context, l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -68,11 +69,11 @@ func (t *DXTable) GetByUidNotDeleted(l *log.DXLog, uid string, fieldNames ...str
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+	return t.SelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
 // ShouldGetByUidNotDeleted returns a non-deleted row by UID or error if not found
-func (t *DXTable) ShouldGetByUidNotDeleted(l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) ShouldGetByUidNotDeleted(ctx context.Context, l *log.DXLog, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -80,11 +81,11 @@ func (t *DXTable) ShouldGetByUidNotDeleted(l *log.DXLog, uid string, fieldNames 
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
+	return t.ShouldSelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil)
 }
 
 // GetByNameIdNotDeleted returns a non-deleted row by NameId
-func (t *DXTable) GetByNameIdNotDeleted(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) GetByNameIdNotDeleted(ctx context.Context, l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -92,11 +93,11 @@ func (t *DXTable) GetByNameIdNotDeleted(l *log.DXLog, nameId string, fieldNames 
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.SelectOne(l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+	return t.SelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
 // ShouldGetByNameIdNotDeleted returns a non-deleted row by NameId or error if not found
-func (t *DXTable) ShouldGetByNameIdNotDeleted(l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
+func (t *DXTable) ShouldGetByNameIdNotDeleted(ctx context.Context, l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowNameId == "" {
 		return nil, nil, errors.New("FieldNameForRowNameId not configured")
 	}
@@ -104,7 +105,7 @@ func (t *DXTable) ShouldGetByNameIdNotDeleted(l *log.DXLog, nameId string, field
 	if len(fieldNames) > 0 {
 		fn = fieldNames
 	}
-	return t.ShouldSelectOne(l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
+	return t.ShouldSelectOne(ctx, l, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil)
 }
 
 // Transaction Select Operations (with is_deleted = false filter)
@@ -165,13 +166,13 @@ func (t *DXTable) TxShouldGetByNameId(dtx *databases.DXDatabaseTx, nameId string
 // Count Operations (with is_deleted = false filter)
 
 // Count returns total non-deleted row count
-func (t *DXTable) Count(l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
-	return t.DXRawTable.Count(l, t.addNotDeletedFilter(where), joinSQLPart)
+func (t *DXTable) Count(ctx context.Context, l *log.DXLog, where utils.JSON, joinSQLPart any) (int64, error) {
+	return t.DXRawTable.Count(ctx, l, t.addNotDeletedFilter(where), joinSQLPart)
 }
 
 // SelectAll returns all non-deleted rows from the table
-func (t *DXTable) SelectAll(l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
-	return t.Select(l, nil, nil, nil, nil, nil, nil)
+func (t *DXTable) SelectAll(ctx context.Context, l *log.DXLog) (*db.DXDatabaseTableRowsInfo, []utils.JSON, error) {
+	return t.Select(ctx, l, nil, nil, nil, nil, nil, nil)
 }
 
 // API Select Helpers
@@ -183,7 +184,7 @@ func (t *DXTable) RequestRead(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByIdNotDeletedAuto(&aepr.Log, id)
+	_, row, err := t.GetByIdNotDeletedAuto(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -205,7 +206,7 @@ func (t *DXTable) RequestReadByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByUidNotDeletedAuto(&aepr.Log, uid)
+	_, row, err := t.GetByUidNotDeletedAuto(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -227,7 +228,7 @@ func (t *DXTable) RequestReadByNameId(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByNameIdNotDeletedAuto(&aepr.Log, nameId)
+	_, row, err := t.GetByNameIdNotDeletedAuto(aepr.Context, &aepr.Log, nameId)
 	if err != nil {
 		return err
 	}

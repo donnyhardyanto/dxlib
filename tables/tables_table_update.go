@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 
@@ -14,9 +15,9 @@ import (
 // Update Operations (with audit fields)
 
 // Update updates with audit fields
-func (t *DXTable) Update(l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
+func (t *DXTable) Update(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON, returningFieldNames []string) (sql.Result, []utils.JSON, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable.Update(l, data, where, returningFieldNames)
+	return t.DXRawTable.Update(ctx, l, data, where, returningFieldNames)
 }
 
 // TxUpdate updates within a transaction with audit fields
@@ -26,9 +27,9 @@ func (t *DXTable) TxUpdate(dtx *databases.DXDatabaseTx, data utils.JSON, where u
 }
 
 // UpdateById updates with audit fields
-func (t *DXTable) UpdateById(l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
+func (t *DXTable) UpdateById(ctx context.Context, l *log.DXLog, id int64, data utils.JSON) (sql.Result, error) {
 	t.SetUpdateAuditFields(nil, data)
-	return t.DXRawTable.UpdateById(l, id, data)
+	return t.DXRawTable.UpdateById(ctx, l, id, data)
 }
 
 // TxUpdateById updates within a transaction with audit fields
@@ -39,7 +40,7 @@ func (t *DXTable) TxUpdateById(dtx *databases.DXDatabaseTx, id int64, data utils
 
 // DoUpdate is an API helper with audit fields
 func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
-	_, row, err := t.GetByIdNotDeletedAuto(&aepr.Log, id)
+	_, row, err := t.GetByIdNotDeletedAuto(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -55,13 +56,13 @@ func (t *DXTable) DoUpdate(aepr *api.DXAPIEndPointRequest, id int64, data utils.
 
 	t.SetUpdateAuditFields(aepr, data)
 
-	_, err = t.DXRawTable.UpdateByIdAuto(&aepr.Log, id, data)
+	_, err = t.DXRawTable.UpdateByIdAuto(aepr.Context, &aepr.Log, id, data)
 	if err != nil {
 		return err
 	}
 
 	// Re-fetch and return the updated row
-	_, updatedRow, err := t.ShouldGetByIdNotDeletedAuto(&aepr.Log, id)
+	_, updatedRow, err := t.ShouldGetByIdNotDeletedAuto(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -107,7 +108,7 @@ func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
 		return err
 	}
 
-	_, row, err := t.GetByUidNotDeletedAuto(&aepr.Log, uid)
+	_, row, err := t.GetByUidNotDeletedAuto(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
@@ -130,7 +131,7 @@ func (t *DXTable) RequestEditByUid(aepr *api.DXAPIEndPointRequest) error {
 
 // DoUpdateWithValidation updates with unique field validation, merging current row data with new data for validation
 func (t *DXTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int64, data utils.JSON) error {
-	_, row, err := t.DirectGetById(&aepr.Log, id)
+	_, row, err := t.DirectGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -177,7 +178,7 @@ func (t *DXTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int6
 	}
 
 	// Re-fetch and return the updated row
-	_, updatedRow, err := t.DirectShouldGetById(&aepr.Log, id)
+	_, updatedRow, err := t.DirectShouldGetById(aepr.Context, &aepr.Log, id)
 	if err != nil {
 		return err
 	}
@@ -218,7 +219,7 @@ func (t *DXTable) RequestEditByUidWithValidation(aepr *api.DXAPIEndPointRequest)
 	}
 
 	// Use Direct to just get the id
-	_, row, err := t.DirectGetByUid(&aepr.Log, uid)
+	_, row, err := t.DirectGetByUid(aepr.Context, &aepr.Log, uid)
 	if err != nil {
 		return err
 	}
