@@ -4,21 +4,38 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/donnyhardyanto/dxlib/base"
+	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/errors"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func RawQueryRows(ctx context.Context, db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	if core.IsOtelEnabled {
+		var span trace.Span
+		ctx, span = otel.Tracer("dxlib.db").Start(ctx, "db.SELECT")
+		start := time.Now()
+		defer func() {
+			attrs := metric.WithAttributes(attribute.String("db.system", "postgresql"), attribute.String("db.operation", "SELECT"))
+			dxlibOtel.DBQueryDuration.Record(ctx, time.Since(start).Seconds(), attrs)
+			dxlibOtel.DBQueryCount.Add(ctx, 1, attrs)
+			if err != nil {
+				span.SetStatus(codes.Error, err.Error())
+			}
+			span.End()
+		}()
+	}
+
 	r = []utils.JSON{}
-	// dbt := base.StringToDXDatabaseType(db.DriverName())
-	/*	err = CheckAll(dbt, query, arg)
-		if err != nil {
-			return nil, r, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
-		}
-	*/
 	rows, err := db.QueryxContext(ctx, query, arg...)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "DB_QUERY_ERROR sql=%s", query)
@@ -51,14 +68,22 @@ func RawQueryRows(ctx context.Context, db *sqlx.DB, fieldTypeMapping DXDatabaseT
 }
 
 func RawTxQueryRows(ctx context.Context, tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	r = []utils.JSON{}
+	if core.IsOtelEnabled {
+		var span trace.Span
+		ctx, span = otel.Tracer("dxlib.db").Start(ctx, "db.TX_SELECT")
+		start := time.Now()
+		defer func() {
+			attrs := metric.WithAttributes(attribute.String("db.system", "postgresql"), attribute.String("db.operation", "TX_SELECT"))
+			dxlibOtel.DBQueryDuration.Record(ctx, time.Since(start).Seconds(), attrs)
+			dxlibOtel.DBQueryCount.Add(ctx, 1, attrs)
+			if err != nil {
+				span.SetStatus(codes.Error, err.Error())
+			}
+			span.End()
+		}()
+	}
 
-	// dbt := base.StringToDXDatabaseType(tx.DriverName())
-	/*	err = CheckAll(dbt, query, arg)
-		if err != nil {
-			return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
-		}
-	*/
+	r = []utils.JSON{}
 	rows, err := tx.QueryxContext(ctx, query, arg...)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "DB_TX_QUERY_ERROR sql=%s", query)

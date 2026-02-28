@@ -91,7 +91,7 @@ type DXAPIAuditLogEntry struct {
 	ErrorMessage string    `json:"error_message,omitempty"`
 }
 
-type DXAuditLogHandler func(oldAuditLogId int64, parameters *DXAPIAuditLogEntry) (newAuditLogId int64, err error)
+type DXAuditLogHandler func(ctx context.Context, oldAuditLogId int64, parameters *DXAPIAuditLogEntry) (newAuditLogId int64, err error)
 
 type DXAPI struct {
 	Version                  string
@@ -325,7 +325,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	auditLogStartTime := time.Now()
 
 	if a.OnAuditLogStart != nil {
-		auditLogId, err = a.OnAuditLogStart(auditLogId, &DXAPIAuditLogEntry{
+		auditLogId, err = a.OnAuditLogStart(requestContext, auditLogId, &DXAPIAuditLogEntry{
 			StartTime: auditLogStartTime,
 			IPAddress: GetIPAddress(r),
 			APIURL:    r.URL.Path,
@@ -336,7 +336,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	defer func() {
 		if a.OnAuditLogEnd != nil {
-			_, err = a.OnAuditLogEnd(auditLogId, &DXAPIAuditLogEntry{
+			_, err = a.OnAuditLogEnd(requestContext, auditLogId, &DXAPIAuditLogEntry{
 				StartTime:  auditLogStartTime,
 				EndTime:    time.Now(),
 				StatusCode: aepr.ResponseStatusCode,
@@ -513,7 +513,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	if aepr.CurrentUser.Id != "" {
 		if a.OnAuditLogUserIdentified != nil {
-			_, err = a.OnAuditLogUserIdentified(auditLogId, &DXAPIAuditLogEntry{
+			_, err = a.OnAuditLogUserIdentified(requestContext, auditLogId, &DXAPIAuditLogEntry{
 				StartTime:    auditLogStartTime,
 				IPAddress:    GetIPAddress(r),
 				APIURL:       r.URL.Path,
