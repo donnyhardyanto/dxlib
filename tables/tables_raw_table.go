@@ -172,6 +172,31 @@ func (t *DXRawTable) RequestHardDelete(aepr *api.DXAPIEndPointRequest) error {
 	return t.DoDelete(aepr, id)
 }
 
+func (t *DXRawTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) error {
+	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
+	if err != nil {
+		return err
+	}
+
+	_, row, err := t.ShouldGetByUidAuto(aepr.Context, &aepr.Log, uid)
+	if err != nil {
+		return err
+	}
+
+	id, ok := row[t.FieldNameForRowId].(int64)
+	if !ok {
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "CANNOT_GET_ID_FROM_ROW")
+	}
+
+	_, err = t.DeleteById(aepr.Context, &aepr.Log, id)
+	if err != nil {
+		return err
+	}
+
+	aepr.WriteResponseAsJSON(http.StatusOK, nil, nil)
+	return nil
+}
+
 // Upsert Operations
 
 // Upsert inserts or updates a row based on where condition
