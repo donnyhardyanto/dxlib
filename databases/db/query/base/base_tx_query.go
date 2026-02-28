@@ -2,18 +2,41 @@ package base
 
 import (
 	"context"
+	"time"
 
+	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/databases"
 	databaseDb "github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TxBaseQueryRows2 executes a query within a transaction and returns all matching rows
 // It supports both named parameters (map/struct) and positional parameters (slice)
 // If fieldTypeMapping is provided, applies type conversion to the results
 func TxBaseQueryRows2(ctx context.Context, dtx *databases.DXDatabaseTx, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
+	if core.IsOtelEnabled {
+		var span trace.Span
+		ctx, span = otel.Tracer("dxlib.db").Start(ctx, "db.TX_SELECT")
+		start := time.Now()
+		defer func() {
+			attrs := metric.WithAttributes(attribute.String("db.system", "postgresql"), attribute.String("db.operation", "TX_SELECT"))
+			dxlibOtel.DBQueryDuration.Record(ctx, time.Since(start).Seconds(), attrs)
+			dxlibOtel.DBQueryCount.Add(ctx, 1, attrs)
+			if err != nil {
+				span.SetStatus(codes.Error, err.Error())
+			}
+			span.End()
+		}()
+	}
+
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}

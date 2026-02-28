@@ -2,13 +2,21 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
+	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/errors"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type HTTPHeader = map[string]string
@@ -32,7 +40,36 @@ func (hr *HTTPResponse) BodyAsJSON() (map[string]any, error) {
 	return v, nil
 }
 
+func httpClientOtelStart(method string, url string) (ctx context.Context, endFunc func(err error, statusCode int)) {
+	ctx = context.Background()
+	if !core.IsOtelEnabled {
+		return ctx, func(error, int) {}
+	}
+	ctx, span := otel.Tracer("dxlib.http.client").Start(ctx, "HTTP "+method)
+	span.SetAttributes(
+		attribute.String("http.method", method),
+		attribute.String("http.url", url),
+	)
+	start := time.Now()
+	return ctx, func(err error, statusCode int) {
+		attrs := metric.WithAttributes(
+			attribute.String("http.method", method),
+			attribute.Int("http.status_code", statusCode),
+		)
+		dxlibOtel.HTTPClientDuration.Record(ctx, time.Since(start).Seconds(), attrs)
+		dxlibOtel.HTTPClientCount.Add(ctx, 1, attrs)
+		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}
+}
+
 func HTTPClient(method string, url string, headers map[string]string, body any) (request *http.Request, response *http.Response, err error) {
+	_, endOtel := httpClientOtelStart(method, url)
+	statusCode := 0
+	defer func() { endOtel(err, statusCode) }()
+
 	var bodyAsBytes []byte
 	contentType := ""
 
@@ -76,6 +113,7 @@ func HTTPClient(method string, url string, headers map[string]string, body any) 
 	if err != nil {
 		return nil, nil, err
 	}
+	statusCode = resp.StatusCode
 	return request, resp, nil
 }
 

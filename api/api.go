@@ -17,12 +17,16 @@ import (
 	_ "time/tzdata"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
 	dxlibConfiguration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/log"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
@@ -299,6 +303,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "routeHandler|"+p.Uri)
 	defer span.End()
 
+	if core.IsOtelEnabled {
+		span.SetAttributes(
+			attribute.String("http.method", r.Method),
+			attribute.String("http.url", r.URL.Path),
+			attribute.String("http.route", p.Uri),
+		)
+	}
+
 	var aepr *DXAPIEndPointRequest
 	var err error
 	routeStartTime := time.Now()
@@ -395,6 +407,20 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			}
 		} else {
 			aepr.Log.Infof("%d %s", aepr.ResponseStatusCode, r.URL.Path)
+		}
+
+		if core.IsOtelEnabled {
+			elapsed := time.Since(routeStartTime).Seconds()
+			attrs := metric.WithAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.route", p.Uri),
+				attribute.Int("http.status_code", aepr.ResponseStatusCode),
+			)
+			dxlibOtel.HTTPRequestDuration.Record(requestContext, elapsed, attrs)
+			dxlibOtel.HTTPRequestCount.Add(requestContext, 1, attrs)
+			if aepr.ResponseStatusCode >= 500 {
+				span.SetStatus(codes.Error, "HTTP 5xx")
+			}
 		}
 	}()
 

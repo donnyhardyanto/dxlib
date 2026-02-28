@@ -3,21 +3,44 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/donnyhardyanto/dxlib/base"
+	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
-func RawExec(ctx context.Context, db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {
-	// dbt := base.StringToDXDatabaseType(db.DriverName())
-	/*	err = CheckAll(dbt, query, arg)
+func dbOtelExecStart(ctx context.Context, opName string) (context.Context, func(error)) {
+	if !core.IsOtelEnabled {
+		return ctx, func(error) {}
+	}
+	var span trace.Span
+	ctx, span = otel.Tracer("dxlib.db").Start(ctx, "db."+opName)
+	start := time.Now()
+	attrs := metric.WithAttributes(attribute.String("db.system", "postgresql"), attribute.String("db.operation", opName))
+	return ctx, func(err error) {
+		dxlibOtel.DBQueryDuration.Record(ctx, time.Since(start).Seconds(), attrs)
+		dxlibOtel.DBQueryCount.Add(ctx, 1, attrs)
 		if err != nil {
-			return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
+			span.SetStatus(codes.Error, err.Error())
 		}
-	*/
+		span.End()
+	}
+}
+
+func RawExec(ctx context.Context, db *sqlx.DB, query string, arg []any) (result sql.Result, err error) {
+	ctx, endOtel := dbOtelExecStart(ctx, "EXEC")
+	defer func() { endOtel(err) }()
+
 	result, err = db.ExecContext(ctx, query, arg...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "DB_EXEC_ERROR sql=%s", query)
@@ -28,12 +51,8 @@ func RawExec(ctx context.Context, db *sqlx.DB, query string, arg []any) (result 
 }
 
 func RawTxExec(ctx context.Context, tx *sqlx.Tx, query string, arg []any) (result sql.Result, err error) {
-	// dbt := base.StringToDXDatabaseType(tx.DriverName())
-	/*	err = CheckAll(dbt, query, arg)
-		if err != nil {
-			return nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v", err)
-		}
-	*/
+	ctx, endOtel := dbOtelExecStart(ctx, "TX_EXEC")
+	defer func() { endOtel(err) }()
 
 	result, err = tx.ExecContext(ctx, query, arg...)
 	if err != nil {

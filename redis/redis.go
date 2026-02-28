@@ -8,11 +8,16 @@ import (
 
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/core"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
 	"github.com/go-redis/redis/v8"
-	"github.com/donnyhardyanto/dxlib/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type DXRedis struct {
@@ -203,7 +208,33 @@ func (r *DXRedis) Connect() (err error) {
 	return nil
 }
 
+func (r *DXRedis) redisOtelStart(opName string) (ctx context.Context, endFunc func(err error)) {
+	ctx = r.Context
+	if !core.IsOtelEnabled {
+		return ctx, func(error) {}
+	}
+	ctx, s := otel.Tracer("dxlib.redis").Start(ctx, "redis."+opName)
+	start := time.Now()
+	attrs := metric.WithAttributes(
+		attribute.String("db.system", "redis"),
+		attribute.String("db.operation", opName),
+		attribute.String("server.address", r.Address),
+	)
+	return ctx, func(err error) {
+		dxlibOtel.RedisOpDuration.Record(ctx, time.Since(start).Seconds(), attrs)
+		dxlibOtel.RedisOpCount.Add(ctx, 1, attrs)
+		if err != nil {
+			s.SetStatus(codes.Error, err.Error())
+		}
+		s.End()
+	}
+}
+
 func (r *DXRedis) Ping() (err error) {
+	ctx, endOtel := r.redisOtelStart("PING")
+	defer func() { endOtel(err) }()
+	_ = ctx
+
 	err = r.Connection.Ping(r.Context).Err()
 	if err != nil {
 		return errors.Wrap(err, "ERROR_IN_REDIS_PING")
@@ -213,6 +244,9 @@ func (r *DXRedis) Ping() (err error) {
 }
 
 func (r *DXRedis) Set(key string, value utils.JSON, expirationDuration time.Duration) (err error) {
+	_, endOtel := r.redisOtelStart("SET")
+	defer func() { endOtel(err) }()
+
 	valueAsBytes, err := json.Marshal(value)
 	if err != nil {
 		return errors.Wrapf(err, "Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
@@ -226,6 +260,9 @@ func (r *DXRedis) Set(key string, value utils.JSON, expirationDuration time.Dura
 }
 
 func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
+	_, endOtel := r.redisOtelStart("GET")
+	defer func() { endOtel(err) }()
+
 	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -241,6 +278,9 @@ func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
 }
 
 func (r *DXRedis) GetEx(key string, duration time.Duration) (value utils.JSON, err error) {
+	_, endOtel := r.redisOtelStart("GETEX")
+	defer func() { endOtel(err) }()
+
 	valueAsBytes, err := r.Connection.GetEx(r.Context, key, duration).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -254,7 +294,11 @@ func (r *DXRedis) GetEx(key string, duration time.Duration) (value utils.JSON, e
 	}
 	return value, nil
 }
+
 func (r *DXRedis) MustGet(key string) (value utils.JSON, err error) {
+	_, endOtel := r.redisOtelStart("GET")
+	defer func() { endOtel(err) }()
+
 	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -271,6 +315,9 @@ func (r *DXRedis) MustGet(key string) (value utils.JSON, err error) {
 }
 
 func (r *DXRedis) Delete(key string) (err error) {
+	_, endOtel := r.redisOtelStart("DEL")
+	defer func() { endOtel(err) }()
+
 	_, err = r.Connection.Del(r.Context, key).Result()
 	if err != nil {
 		return errors.Wrapf(err, "Error in deleting key Redis %s k/v (%v) %s", r.NameId, err, key)
