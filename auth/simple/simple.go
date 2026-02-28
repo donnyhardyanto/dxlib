@@ -1,14 +1,16 @@
 package simple
 
 import (
+	"context"
+	"strings"
+	"time"
+
 	"github.com/donnyhardyanto/dxlib/redis"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/google/uuid"
-	"strings"
-	"time"
 )
 
-func Login(redis *redis.DXRedis, credentials []utils.JSON, key string, secret string, data utils.JSON, ttlSecond int) (isSuccess bool, sessionKey string, err error) {
+func Login(ctx context.Context, redis *redis.DXRedis, credentials []utils.JSON, key string, secret string, data utils.JSON, ttlSecond int) (isSuccess bool, sessionKey string, err error) {
 	for _, credential := range credentials {
 		cKey, ok := credential["key"].(string)
 		if !ok {
@@ -33,7 +35,7 @@ func Login(redis *redis.DXRedis, credentials []utils.JSON, key string, secret st
 					"key":  key,
 					"data": data,
 				}
-				err = redis.Set(sessionKey, sessionObject, sessionKeyTTLAsDuration)
+				err = redis.Set(ctx, sessionKey, sessionObject, sessionKeyTTLAsDuration)
 				if err != nil {
 					return false, "", err
 				}
@@ -46,10 +48,10 @@ func Login(redis *redis.DXRedis, credentials []utils.JSON, key string, secret st
 	return false, "", nil
 }
 
-func Authenticate(redis *redis.DXRedis, session string, ttlSecond int) (isSuccess bool, data utils.JSON, err error) {
+func Authenticate(ctx context.Context, redis *redis.DXRedis, session string, ttlSecond int) (isSuccess bool, data utils.JSON, err error) {
 	sessionKeyTTLAsDuration := time.Duration(ttlSecond) * time.Second
 
-	sessionObject, err := redis.GetEx(session, sessionKeyTTLAsDuration)
+	sessionObject, err := redis.GetEx(ctx, session, sessionKeyTTLAsDuration)
 	if err != nil {
 		return false, nil, err
 	}
