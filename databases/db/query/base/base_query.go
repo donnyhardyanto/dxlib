@@ -2,51 +2,25 @@ package base
 
 import (
 	"context"
-	"time"
 
-	"github.com/donnyhardyanto/dxlib/core"
 	databaseDb "github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
-	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // BaseQueryRows2 executes a named query and returns all matching rows
 // It supports both named parameters (map/struct) and positional parameters (slice)
 // If fieldTypeMapping is provided, applies type conversion to the results
 func BaseQueryRows2(ctx context.Context, db *sqlx.DB, query string, arg any, fieldTypeMapping databaseDb.DXDatabaseTableFieldTypeMapping) (rowsInfo *databaseDb.DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	if core.IsOtelEnabled {
-		var span trace.Span
-		ctx, span = otel.Tracer("dxlib.db").Start(ctx, "db.SELECT")
-		start := time.Now()
-		defer func() {
-			attrs := metric.WithAttributes(attribute.String("db.system", "postgresql"), attribute.String("db.operation", "SELECT"))
-			dxlibOtel.DBQueryDuration.Record(ctx, time.Since(start).Seconds(), attrs)
-			dxlibOtel.DBQueryCount.Add(ctx, 1, attrs)
-			if err != nil {
-				span.SetStatus(codes.Error, err.Error())
-			}
-			span.End()
-		}()
-	}
+	ctx, endOtel := databaseDb.DbOtelStart(ctx, "db.SELECT", query, 3)
+	defer func() { endOtel(err, int64(len(r))) }()
 
 	r = []utils.JSON{}
 	if arg == nil {
 		arg = utils.JSON{}
 	}
 
-	//dbt := base.StringToDXDatabaseType(db.DriverName())
-	/*	err = databaseDb.CheckAll(dbt, query, arg)
-		if err != nil {
-			return nil, nil, errors.Errorf("SQL_INJECTION_DETECTED:QUERY_VALIDATION_FAILED: %+v=%s +%v", err, query, arg)
-		}
-	*/
 	// Check if arg is a slice (positional parameters) or map/struct (named parameters)
 	var rows *sqlx.Rows
 	switch v := arg.(type) {

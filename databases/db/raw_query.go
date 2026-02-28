@@ -4,36 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/donnyhardyanto/dxlib/base"
-	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/errors"
-	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func RawQueryRows(ctx context.Context, db *sqlx.DB, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	if core.IsOtelEnabled {
-		var span trace.Span
-		ctx, span = otel.Tracer("dxlib.db").Start(ctx, "db.SELECT")
-		start := time.Now()
-		defer func() {
-			attrs := metric.WithAttributes(attribute.String("db.system", "postgresql"), attribute.String("db.operation", "SELECT"))
-			dxlibOtel.DBQueryDuration.Record(ctx, time.Since(start).Seconds(), attrs)
-			dxlibOtel.DBQueryCount.Add(ctx, 1, attrs)
-			if err != nil {
-				span.SetStatus(codes.Error, err.Error())
-			}
-			span.End()
-		}()
-	}
+	ctx, endOtel := DbOtelStart(ctx, "db.SELECT", query, 3)
+	defer func() { endOtel(err, int64(len(r))) }()
 
 	r = []utils.JSON{}
 	rows, err := db.QueryxContext(ctx, query, arg...)
@@ -48,10 +28,6 @@ func RawQueryRows(ctx context.Context, db *sqlx.DB, fieldTypeMapping DXDatabaseT
 	if err != nil {
 		return rowsInfo, r, errors.Wrap(err, "failed to get columns")
 	}
-	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	/*	if err != nil {
-		return rowsInfo, r, err
-	}*/
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
@@ -68,20 +44,8 @@ func RawQueryRows(ctx context.Context, db *sqlx.DB, fieldTypeMapping DXDatabaseT
 }
 
 func RawTxQueryRows(ctx context.Context, tx *sqlx.Tx, fieldTypeMapping DXDatabaseTableFieldTypeMapping, query string, arg []any) (rowsInfo *DXDatabaseTableRowsInfo, r []utils.JSON, err error) {
-	if core.IsOtelEnabled {
-		var span trace.Span
-		ctx, span = otel.Tracer("dxlib.db").Start(ctx, "db.TX_SELECT")
-		start := time.Now()
-		defer func() {
-			attrs := metric.WithAttributes(attribute.String("db.system", "postgresql"), attribute.String("db.operation", "TX_SELECT"))
-			dxlibOtel.DBQueryDuration.Record(ctx, time.Since(start).Seconds(), attrs)
-			dxlibOtel.DBQueryCount.Add(ctx, 1, attrs)
-			if err != nil {
-				span.SetStatus(codes.Error, err.Error())
-			}
-			span.End()
-		}()
-	}
+	ctx, endOtel := DbOtelStart(ctx, "db.TX_SELECT", query, 3)
+	defer func() { endOtel(err, int64(len(r))) }()
 
 	r = []utils.JSON{}
 	rows, err := tx.QueryxContext(ctx, query, arg...)
@@ -96,10 +60,6 @@ func RawTxQueryRows(ctx context.Context, tx *sqlx.Tx, fieldTypeMapping DXDatabas
 	if err != nil {
 		return rowsInfo, r, errors.Wrap(err, "failed to get columns")
 	}
-	//rowsInfo.ColumnTypes, err = rows.ColumnTypes()
-	/*	if err != nil {
-		return rowsInfo, r, err
-	}*/
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
