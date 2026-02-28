@@ -300,7 +300,7 @@ type dbContextCarrier interface {
 }
 
 func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEndPoint) {
-	requestContext, span := otel.Tracer(a.Log.Prefix).Start(a.Context, "routeHandler|"+p.Uri)
+	requestContext, span := otel.Tracer(a.Log.Prefix).Start(r.Context(), "routeHandler|"+p.Uri)
 	defer span.End()
 
 	if core.IsOtelEnabled {

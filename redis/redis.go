@@ -208,8 +208,7 @@ func (r *DXRedis) Connect() (err error) {
 	return nil
 }
 
-func (r *DXRedis) redisOtelStart(opName string) (ctx context.Context, endFunc func(err error)) {
-	ctx = r.Context
+func (r *DXRedis) redisOtelStart(ctx context.Context, opName string) (context.Context, func(err error)) {
 	if !core.IsOtelEnabled {
 		return ctx, func(error) {}
 	}
@@ -230,12 +229,11 @@ func (r *DXRedis) redisOtelStart(opName string) (ctx context.Context, endFunc fu
 	}
 }
 
-func (r *DXRedis) Ping() (err error) {
-	ctx, endOtel := r.redisOtelStart("PING")
+func (r *DXRedis) Ping(ctx context.Context) (err error) {
+	ctx, endOtel := r.redisOtelStart(ctx, "PING")
 	defer func() { endOtel(err) }()
-	_ = ctx
 
-	err = r.Connection.Ping(r.Context).Err()
+	err = r.Connection.Ping(ctx).Err()
 	if err != nil {
 		return errors.Wrap(err, "ERROR_IN_REDIS_PING")
 	}
@@ -243,8 +241,8 @@ func (r *DXRedis) Ping() (err error) {
 	return nil
 }
 
-func (r *DXRedis) Set(key string, value utils.JSON, expirationDuration time.Duration) (err error) {
-	_, endOtel := r.redisOtelStart("SET")
+func (r *DXRedis) Set(ctx context.Context, key string, value utils.JSON, expirationDuration time.Duration) (err error) {
+	ctx, endOtel := r.redisOtelStart(ctx, "SET")
 	defer func() { endOtel(err) }()
 
 	valueAsBytes, err := json.Marshal(value)
@@ -252,18 +250,18 @@ func (r *DXRedis) Set(key string, value utils.JSON, expirationDuration time.Dura
 		return errors.Wrapf(err, "Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
 	}
 
-	err = r.Connection.Set(r.Context, key, valueAsBytes, expirationDuration).Err()
+	err = r.Connection.Set(ctx, key, valueAsBytes, expirationDuration).Err()
 	if err != nil {
 		return errors.Wrapf(err, "Cannot save to Redis %s k/v (%v) %s/%v", r.NameId, err, key, value)
 	}
 	return nil
 }
 
-func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
-	_, endOtel := r.redisOtelStart("GET")
+func (r *DXRedis) Get(ctx context.Context, key string) (value utils.JSON, err error) {
+	ctx, endOtel := r.redisOtelStart(ctx, "GET")
 	defer func() { endOtel(err) }()
 
-	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
+	valueAsBytes, err := r.Connection.Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, nil
@@ -277,11 +275,11 @@ func (r *DXRedis) Get(key string) (value utils.JSON, err error) {
 	return value, nil
 }
 
-func (r *DXRedis) GetEx(key string, duration time.Duration) (value utils.JSON, err error) {
-	_, endOtel := r.redisOtelStart("GETEX")
+func (r *DXRedis) GetEx(ctx context.Context, key string, duration time.Duration) (value utils.JSON, err error) {
+	ctx, endOtel := r.redisOtelStart(ctx, "GETEX")
 	defer func() { endOtel(err) }()
 
-	valueAsBytes, err := r.Connection.GetEx(r.Context, key, duration).Bytes()
+	valueAsBytes, err := r.Connection.GetEx(ctx, key, duration).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, nil
@@ -295,11 +293,11 @@ func (r *DXRedis) GetEx(key string, duration time.Duration) (value utils.JSON, e
 	return value, nil
 }
 
-func (r *DXRedis) MustGet(key string) (value utils.JSON, err error) {
-	_, endOtel := r.redisOtelStart("GET")
+func (r *DXRedis) MustGet(ctx context.Context, key string) (value utils.JSON, err error) {
+	ctx, endOtel := r.redisOtelStart(ctx, "GET")
 	defer func() { endOtel(err) }()
 
-	valueAsBytes, err := r.Connection.Get(r.Context, key).Bytes()
+	valueAsBytes, err := r.Connection.Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, errors.Wrapf(err, "Cannot find keyin Redis %s (%s) %s", r.NameId, err.Error(), key)
@@ -314,11 +312,11 @@ func (r *DXRedis) MustGet(key string) (value utils.JSON, err error) {
 	return value, nil
 }
 
-func (r *DXRedis) Delete(key string) (err error) {
-	_, endOtel := r.redisOtelStart("DEL")
+func (r *DXRedis) Delete(ctx context.Context, key string) (err error) {
+	ctx, endOtel := r.redisOtelStart(ctx, "DEL")
 	defer func() { endOtel(err) }()
 
-	_, err = r.Connection.Del(r.Context, key).Result()
+	_, err = r.Connection.Del(ctx, key).Result()
 	if err != nil {
 		return errors.Wrapf(err, "Error in deleting key Redis %s k/v (%v) %s", r.NameId, err, key)
 	}
