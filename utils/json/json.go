@@ -156,6 +156,14 @@ func GetBool(kv utils.JSON, k string) (bool, error) {
 	return false, errors.Errorf("cannot convert %T value %v to bool", val, val)
 }
 
+func GetBoolWithDefault(kv utils.JSON, k string, defaultValue bool) bool {
+	v, err := GetBool(kv, k)
+	if err != nil {
+		return defaultValue
+	}
+	return v
+}
+
 func GetString(kv utils.JSON, k string) (v string, err error) {
 	var z string
 	switch kv[k].(type) {

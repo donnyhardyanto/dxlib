@@ -99,7 +99,9 @@ type DXAPI struct {
 	Address                  string
 	WriteTimeoutSec          int
 	ReadTimeoutSec           int
-	EndPoints                []DXAPIEndPoint
+	CORSAllowedOrigins           string // comma-separated allowed origins; empty or "*" = allow all
+	EnableBrowserSecurityHeaders bool   // when true, adds X-Content-Type-Options, HSTS, X-Frame-Options
+	EndPoints                    []DXAPIEndPoint
 	RuntimeIsActive          bool
 	HTTPServer               *http.Server
 	Log                      log.DXLog
@@ -233,6 +235,14 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	}
 	a.WriteTimeoutSec = utilsJSON.GetNumberWithDefault(c1, "writetimeout-sec", DXAPIDefaultWriteTimeoutSec)
 	a.ReadTimeoutSec = utilsJSON.GetNumberWithDefault(c1, "readtimeout-sec", DXAPIDefaultReadTimeoutSec)
+
+	corsOrigins, err := utilsJSON.GetString(c1, "cors-allowed-origins")
+	if err == nil {
+		a.CORSAllowedOrigins = corsOrigins
+	}
+
+	a.EnableBrowserSecurityHeaders = utilsJSON.GetBoolWithDefault(c1, "enable-browser-security-headers", false)
+
 	return nil
 }
 
@@ -605,14 +615,36 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 	}
 
-	// CORS middleware
+	// CORS middleware — parse allowed origins once before the closure
+	var allowedOriginsMap map[string]bool
+	if a.CORSAllowedOrigins != "" && a.CORSAllowedOrigins != "*" {
+		origins := strings.Split(a.CORSAllowedOrigins, ",")
+		allowedOriginsMap = make(map[string]bool, len(origins))
+		for _, o := range origins {
+			allowedOriginsMap[strings.TrimSpace(o)] = true
+		}
+	}
+
 	corsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Consider restricting this to specific origins in production
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			origin := r.Header.Get("Origin")
+			if allowedOriginsMap != nil {
+				if origin != "" && allowedOriginsMap[origin] {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Vary", "Origin")
+				}
+			} else {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,HEAD,PUT,DELETE,PATCH,OPTION")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization,X-Var,*")
 			w.Header().Set("Access-Control-Expose-Headers", "X-Var")
+
+			if a.EnableBrowserSecurityHeaders {
+				w.Header().Set("X-Content-Type-Options", "nosniff")
+				w.Header().Set("X-Frame-Options", "DENY")
+				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			}
 
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
