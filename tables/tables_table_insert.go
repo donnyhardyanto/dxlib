@@ -121,7 +121,7 @@ func (t *DXTable) DoCreateReturnUidWithValidation(aepr *api.DXAPIEndPointRequest
 	}
 
 	newUid := ""
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+	txErr := t.Database.Tx(aepr.Context, &aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
 		if err != nil {
 			return err
@@ -166,7 +166,7 @@ func (t *DXTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data ut
 
 	var newId int64
 	var newUid string
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+	txErr := t.Database.Tx(aepr.Context, &aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
 		if err != nil {
 			return err

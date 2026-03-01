@@ -285,7 +285,7 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(ctx context.Context, l *log.
 	// Set source to list view name
 	qb.SourceName = t.GetListViewName()
 
-	dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+	dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 	if txErr != nil {
 		return nil, txErr
 	}

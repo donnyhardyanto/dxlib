@@ -90,8 +90,7 @@ func (hv *DXHashicorpVault) Start() (err error) {
 	return nil
 }
 
-func (hv *DXHashicorpVault) vaultOtelStart(opName string) (context.Context, func(err error)) {
-	ctx := context.Background()
+func (hv *DXHashicorpVault) vaultOtelStart(ctx context.Context, opName string) (context.Context, func(err error)) {
 	if !core.IsOtelEnabled {
 		return ctx, func(error) {}
 	}
@@ -177,8 +176,8 @@ func (hv *DXHashicorpVault) ResolveAsString(v string) (string, error) {
 }
 */
 
-func (hv *DXHashicorpVault) GetString(key string) (string, error) {
-	data, err := hv.VaultGetData(&log.Log)
+func (hv *DXHashicorpVault) GetString(ctx context.Context, key string) (string, error) {
+	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		return "", err
 	}
@@ -191,8 +190,8 @@ func (hv *DXHashicorpVault) GetString(key string) (string, error) {
 	return dvv, nil
 }
 
-func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
-	data, err := hv.VaultGetData(&log.Log)
+func (hv *DXHashicorpVault) GetStringOrDefault(ctx context.Context, v string, d string) string {
+	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		maskedDefault := d
 		if utils.IsSensitiveField(v) {
@@ -228,8 +227,8 @@ func (hv *DXHashicorpVault) GetStringOrDefault(v string, d string) string {
 	return dvv
 }
 
-func (hv *DXHashicorpVault) GetIntOrDefault(v string, d int) int {
-	data, err := hv.VaultGetData(&log.Log)
+func (hv *DXHashicorpVault) GetIntOrDefault(ctx context.Context, v string, d int) int {
+	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
 		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
@@ -246,8 +245,8 @@ func (hv *DXHashicorpVault) GetIntOrDefault(v string, d int) int {
 	return dvv
 }
 
-func (hv *DXHashicorpVault) GetInt64OrDefault(v string, d int64) int64 {
-	data, err := hv.VaultGetData(&log.Log)
+func (hv *DXHashicorpVault) GetInt64OrDefault(ctx context.Context, v string, d int64) int64 {
+	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
 		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
@@ -264,8 +263,8 @@ func (hv *DXHashicorpVault) GetInt64OrDefault(v string, d int64) int64 {
 	return dvv
 }
 
-func (hv *DXHashicorpVault) GetBoolOrDefault(v string, d bool) bool {
-	data, err := hv.VaultGetData(&log.Log)
+func (hv *DXHashicorpVault) GetBoolOrDefault(ctx context.Context, v string, d bool) bool {
+	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
 		log.Log.Infof("Vault key not found: %s, using default: %t", v, d)
@@ -282,7 +281,7 @@ func (hv *DXHashicorpVault) GetBoolOrDefault(v string, d bool) bool {
 	return dvv
 }
 
-func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []string, err error) {
+func (hv *DXHashicorpVault) VaultMapping(ctx context.Context, log *log.DXLog, texts ...string) (r []string, err error) {
 	check := false
 	for _, text := range texts {
 		if strings.Contains(text, hv.Prefix) {
@@ -291,7 +290,7 @@ func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []s
 		}
 	}
 	if check {
-		_, endOtel := hv.vaultOtelStart("READ")
+		_, endOtel := hv.vaultOtelStart(ctx, "READ")
 		secret, err := hv.Client.Logical().Read(hv.Path)
 		endOtel(err)
 		if err != nil {
@@ -322,10 +321,10 @@ func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []s
 	return texts, nil
 }
 
-func (hv *DXHashicorpVault) VaultMapString(log *log.DXLog, text string) (string, error) {
+func (hv *DXHashicorpVault) VaultMapString(ctx context.Context, log *log.DXLog, text string) (string, error) {
 	if strings.Contains(text, hv.Prefix) {
 		mapString := text
-		_, endOtel := hv.vaultOtelStart("READ")
+		_, endOtel := hv.vaultOtelStart(ctx, "READ")
 		secret, err := hv.Client.Logical().Read(hv.Path)
 		endOtel(err)
 		if err != nil {
@@ -349,8 +348,8 @@ func (hv *DXHashicorpVault) VaultMapString(log *log.DXLog, text string) (string,
 	return text, nil
 }
 
-func (hv *DXHashicorpVault) VaultGetData(log *log.DXLog) (r utils.JSON, err error) {
-	_, endOtel := hv.vaultOtelStart("READ")
+func (hv *DXHashicorpVault) VaultGetData(ctx context.Context, log *log.DXLog) (r utils.JSON, err error) {
+	_, endOtel := hv.vaultOtelStart(ctx, "READ")
 	secret, err := hv.Client.Logical().Read(hv.Path)
 	endOtel(err)
 	if err != nil {

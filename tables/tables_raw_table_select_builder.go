@@ -60,7 +60,7 @@ func (t *DXRawTable) SelectWithBuilder(ctx context.Context, l *log.DXLog, tqb *t
 	needsEncryptionTx := t.prepareBuilderForSelect(tqb)
 
 	if needsEncryptionTx {
-		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -154,7 +154,7 @@ func (t *DXRawTable) CountWithBuilder(ctx context.Context, l *log.DXLog, tqb *ta
 	tqb.SourceName = t.GetListViewName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return 0, txErr
 		}

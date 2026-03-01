@@ -309,7 +309,7 @@ func (r *DXObjectStorage) Disconnect() (err error) {
 	return nil
 }
 
-func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, originalFilename string, contentType string, disableMultipart bool, objectSize int64) (uploadInfo *minio.UploadInfo, err error) {
+func (r *DXObjectStorage) UploadStream(ctx context.Context, reader io.Reader, objectName string, originalFilename string, contentType string, disableMultipart bool, objectSize int64) (uploadInfo *minio.UploadInfo, err error) {
 	if r.Client == nil {
 		return nil, log.Log.ErrorAndCreateErrorf("CLIENT_IS_NIL")
 	}
@@ -318,7 +318,7 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 		fullPathObjectName += "/"
 	}
 	fullPathObjectName = fullPathObjectName + objectName
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	ctx, endOtel := r.minioOtelStart(ctx, "PutObject")
@@ -378,7 +378,7 @@ func (r *DXObjectStorage) ReceiveStreamObject(aepr *api.DXAPIEndPointRequest, fi
 
 	s := aepr.Request.Body
 
-	uploadInfo, err := r.UploadStream(s, filename, filename, "application/octet-stream", false, bodyLen)
+	uploadInfo, err := r.UploadStream(aepr.Context, s, filename, filename, "application/octet-stream", false, bodyLen)
 	if err != nil {
 		return err
 	}
@@ -386,7 +386,7 @@ func (r *DXObjectStorage) ReceiveStreamObject(aepr *api.DXAPIEndPointRequest, fi
 	return nil
 }
 
-func (r *DXObjectStorage) DownloadStream(objectName string) (*minio.Object, error) {
+func (r *DXObjectStorage) DownloadStream(ctx context.Context, objectName string) (*minio.Object, error) {
 	if r.Client == nil {
 		return nil, log.Log.ErrorAndCreateErrorf("CLIENT_IS_NIL")
 	}
@@ -396,8 +396,6 @@ func (r *DXObjectStorage) DownloadStream(objectName string) (*minio.Object, erro
 		fullPathObjectName += "/"
 	}
 	fullPathObjectName = fullPathObjectName + objectName
-
-	ctx := context.Background()
 	ctx, endOtel := r.minioOtelStart(ctx, "GetObject")
 
 	// Get the object from the bucket
@@ -413,7 +411,7 @@ func (r *DXObjectStorage) DownloadStream(objectName string) (*minio.Object, erro
 
 func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filename string) (err error) {
 	// Get the object storage bucket using the bucket_name
-	object, err := r.DownloadStream(filename)
+	object, err := r.DownloadStream(aepr.Context, filename)
 	if err != nil {
 		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "ERROR_IN_DOWNLOAD_STREAM:%s", err.Error())
 	}

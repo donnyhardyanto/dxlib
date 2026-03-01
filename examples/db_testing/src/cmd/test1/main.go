@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/donnyhardyanto/dxlib/app"
@@ -102,7 +103,7 @@ func doOnDefineConfiguration() (err error) {
 
 func testTableFunction(db *databases.DXDatabase) (err error) {
 	var dtx *databases.DXDatabaseTx
-	dtx, err = db.TransactionBegin(sql.LevelReadCommitted)
+	dtx, err = db.TransactionBegin(context.Background(), sql.LevelReadCommitted)
 	if err != nil {
 		return err
 	}

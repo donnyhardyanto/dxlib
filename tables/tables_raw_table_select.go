@@ -24,7 +24,7 @@ func (t *DXRawTable) Select(ctx context.Context, l *log.DXLog, fieldNames []stri
 		return t.SelectWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -48,7 +48,7 @@ func (t *DXRawTable) SelectOne(ctx context.Context, l *log.DXLog, fieldNames []s
 		return t.SelectOneWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -72,7 +72,7 @@ func (t *DXRawTable) ShouldSelectOne(ctx context.Context, l *log.DXLog, fieldNam
 		return t.ShouldSelectOneWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}
@@ -320,7 +320,7 @@ func (t *DXRawTable) Count(ctx context.Context, l *log.DXLog, where utils.JSON, 
 		return 0, err
 	}
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return 0, txErr
 		}

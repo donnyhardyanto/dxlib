@@ -128,7 +128,7 @@ func (t *DXRawTable) DoCreateWithValidation(aepr *api.DXAPIEndPointRequest, data
 
 	var newId int64
 	var response utils.JSON
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+	txErr := t.Database.Tx(aepr.Context, &aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		err := t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
 		if err != nil {
 			return err

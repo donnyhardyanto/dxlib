@@ -25,9 +25,9 @@ func (t *DXRawTable) TxUpdate(dtx *databases.DXDatabaseTx, data utils.JSON, wher
 	return dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, returningFieldNames)
 }
 
-// UpdateSimple is a simplified update that just takes data and where (backward compatible)
-func (t *DXRawTable) UpdateSimple(data utils.JSON, where utils.JSON) (sql.Result, error) {
-	result, _, err := t.Update(context.Background(), nil, data, where, nil)
+// UpdateSimple is a simplified update that just takes data and where
+func (t *DXRawTable) UpdateSimple(ctx context.Context, data utils.JSON, where utils.JSON) (sql.Result, error) {
+	result, _, err := t.Update(ctx, nil, data, where, nil)
 	return result, err
 }
 
@@ -131,7 +131,7 @@ func (t *DXRawTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id i
 		return err
 	}
 
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+	txErr := t.Database.Tx(aepr.Context, &aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		// Merge current row with new data for validation
 		mergedData := utils.JSON{}
 		for k, v := range row {

@@ -117,7 +117,7 @@ func (d *DXDatabase) EnsureConnection() (err error) {
 	return nil
 }
 
-func (d *DXDatabase) TransactionBeginCtx(ctx context.Context, isolationLevel DXDatabaseTxIsolationLevel) (dtx *DXDatabaseTx, err error) {
+func (d *DXDatabase) TransactionBegin(ctx context.Context, isolationLevel DXDatabaseTxIsolationLevel) (dtx *DXDatabaseTx, err error) {
 	err = d.EnsureConnection()
 	if err != nil {
 		return nil, err
@@ -156,10 +156,6 @@ func (d *DXDatabase) TransactionBeginCtx(ctx context.Context, isolationLevel DXD
 		Ctx:      ctx,
 	}
 	return dtx, nil
-}
-
-func (d *DXDatabase) TransactionBegin(isolationLevel DXDatabaseTxIsolationLevel) (dtx *DXDatabaseTx, err error) {
-	return d.TransactionBeginCtx(context.Background(), isolationLevel)
 }
 
 // Finish commits if no error, rollbacks if error
@@ -670,11 +666,7 @@ func (d *DXDatabase) ExecuteCreateScriptsFromEmbedded(contentProvider SQLContent
 	return rs, nil
 }
 
-func (d *DXDatabase) Tx(log *log.DXLog, isolationLevel sql.IsolationLevel, callback DXDatabaseTxCallback) (err error) {
-	return d.TxCtx(context.Background(), log, isolationLevel, callback)
-}
-
-func (d *DXDatabase) TxCtx(ctx context.Context, log *log.DXLog, isolationLevel sql.IsolationLevel, callback DXDatabaseTxCallback) (err error) {
+func (d *DXDatabase) Tx(ctx context.Context, log *log.DXLog, isolationLevel sql.IsolationLevel, callback DXDatabaseTxCallback) (err error) {
 	err = d.EnsureConnection()
 	if err != nil {
 		return err
@@ -683,7 +675,7 @@ func (d *DXDatabase) TxCtx(ctx context.Context, log *log.DXLog, isolationLevel s
 	driverName := d.Connection.DriverName()
 	switch driverName {
 	case "oracle":
-		tx, err := d.TransactionBeginCtx(ctx, isolationLevel)
+		tx, err := d.TransactionBegin(ctx, isolationLevel)
 		if err != nil {
 			return err
 		}

@@ -50,7 +50,7 @@ func (t *DXRawTable) UpdateAuto(
 	}
 
 	// Encryption configured, need transaction
-	dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+	dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 	if txErr != nil {
 		return nil, nil, txErr
 	}

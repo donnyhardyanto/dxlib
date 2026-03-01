@@ -42,8 +42,7 @@ func (hr *HTTPResponse) BodyAsJSON() (map[string]any, error) {
 	return v, nil
 }
 
-func httpClientOtelStart(method string, url string) (ctx context.Context, endFunc func(err error, statusCode int)) {
-	ctx = context.Background()
+func httpClientOtelStart(ctx context.Context, method string, url string) (context.Context, func(err error, statusCode int)) {
 	if !core.IsOtelEnabled {
 		return ctx, func(error, int) {}
 	}
@@ -73,8 +72,8 @@ func httpClientOtelStart(method string, url string) (ctx context.Context, endFun
 	}
 }
 
-func HTTPClient(method string, url string, headers map[string]string, body any) (request *http.Request, response *http.Response, err error) {
-	_, endOtel := httpClientOtelStart(method, url)
+func HTTPClient(ctx context.Context, method string, url string, headers map[string]string, body any) (request *http.Request, response *http.Response, err error) {
+	ctx, endOtel := httpClientOtelStart(ctx, method, url)
 	statusCode := 0
 	defer func() { endOtel(err, statusCode) }()
 
@@ -100,7 +99,7 @@ func HTTPClient(method string, url string, headers map[string]string, body any) 
 		return nil, nil, err
 	}
 
-	request, err = http.NewRequest(method, url, bytes.NewBuffer(bodyAsBytes))
+	request, err = http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(bodyAsBytes))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,8 +124,8 @@ func HTTPClient(method string, url string, headers map[string]string, body any) 
 	return request, resp, nil
 }
 
-func HTTPClientReadAll(method string, url string, headers map[string]string, body any) (request *http.Request, response *HTTPResponse, err error) {
-	request, resp, err := HTTPClient(method, url, headers, body)
+func HTTPClientReadAll(ctx context.Context, method string, url string, headers map[string]string, body any) (request *http.Request, response *HTTPResponse, err error) {
+	request, resp, err := HTTPClient(ctx, method, url, headers, body)
 	if err != nil {
 		return nil, nil, err
 	}

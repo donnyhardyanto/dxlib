@@ -155,7 +155,7 @@ func (t *DXTable) DoUpdateWithValidation(aepr *api.DXAPIEndPointRequest, id int6
 		return err
 	}
 
-	txErr := t.Database.Tx(&aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+	txErr := t.Database.Tx(aepr.Context, &aepr.Log, sql.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
 		// Merge the current row with new data for validation
 		mergedData := utils.JSON{}
 		for k, v := range row {

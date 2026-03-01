@@ -24,7 +24,7 @@ func (t *DXRawTable) UpdateWithBuilder(ctx context.Context, l *log.DXLog, tqb *t
 	tqb.SourceName = t.GetFullTableName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBeginCtx(ctx, databases.LevelReadCommitted)
+		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
 		if txErr != nil {
 			return nil, nil, txErr
 		}

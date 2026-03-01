@@ -1,6 +1,7 @@
 package testing
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -23,7 +24,7 @@ func DoHTTPClientTest(t *testing.T, mustSuccess bool, testName, method, url, con
 
 	t.Logf("== Testing %s\n START ==", testName)
 
-	request, response, err := dxlibv3HttpClient.HTTPClient(method, url, dxlibv3HttpClient.HTTPHeader{
+	request, response, err := dxlibv3HttpClient.HTTPClient(context.Background(), method, url, dxlibv3HttpClient.HTTPHeader{
 		"Content-Type":  contentType,
 		"Cache-Control": "no-cache",
 	}, body)
@@ -169,7 +170,7 @@ func THTTPClient(t *testing.T, mustStatusCode int, method string, url string, co
 	Counter++
 	v := Counter
 	t.Logf("%d: ==== TEST START ====\nREQUEST ===\n%s %s\nContentType: %s\nBody:\n%s\n==\n\n", v, method, url, contentType, body)
-	_, response, err := dxlibv3HttpClient.HTTPClientReadAll(method, url, map[string]string{"Content-Type": contentType}, body)
+	_, response, err := dxlibv3HttpClient.HTTPClientReadAll(context.Background(), method, url, map[string]string{"Content-Type": contentType}, body)
 	if err != nil {
 		t.Logf("EXECUTE ERROR === Error in making HTTP request %v\n", err.Error())
 		t.FailNow()
