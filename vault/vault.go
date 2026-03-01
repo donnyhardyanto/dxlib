@@ -1,12 +1,21 @@
 package vault
 
 import (
+	"context"
 	"strings"
+	"time"
 
+	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	vault "github.com/hashicorp/vault/api"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 /*
@@ -79,6 +88,35 @@ func (hv *DXHashicorpVault) Start() (err error) {
 	}
 	hv.Client.SetToken(hv.Token)
 	return nil
+}
+
+func (hv *DXHashicorpVault) vaultOtelStart(opName string) (context.Context, func(err error)) {
+	ctx := context.Background()
+	if !core.IsOtelEnabled {
+		return ctx, func(error) {}
+	}
+	ctx, s := otel.Tracer("dxlib.vault").Start(ctx, "vault."+opName,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("peer.service", "vault"),
+			attribute.String("vault.operation", opName),
+			attribute.String("vault.path", hv.Path),
+			attribute.String("server.address", hv.Address),
+		),
+	)
+	start := time.Now()
+	attrs := metric.WithAttributes(
+		attribute.String("peer.service", "vault"),
+		attribute.String("vault.operation", opName),
+	)
+	return ctx, func(err error) {
+		dxlibOtel.HTTPClientDuration.Record(ctx, time.Since(start).Seconds(), attrs)
+		dxlibOtel.HTTPClientCount.Add(ctx, 1, attrs)
+		if err != nil {
+			s.SetStatus(codes.Error, err.Error())
+		}
+		s.End()
+	}
 }
 
 /*func (hv *DXHashicorpVault) ResolveAsInt64(v string) (int64, error) {
@@ -253,7 +291,9 @@ func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []s
 		}
 	}
 	if check {
+		_, endOtel := hv.vaultOtelStart("READ")
 		secret, err := hv.Client.Logical().Read(hv.Path)
+		endOtel(err)
 		if err != nil {
 			log.Errorf(err, "Unable to read credentials from Vault")
 			return nil, err
@@ -285,7 +325,9 @@ func (hv *DXHashicorpVault) VaultMapping(log *log.DXLog, texts ...string) (r []s
 func (hv *DXHashicorpVault) VaultMapString(log *log.DXLog, text string) (string, error) {
 	if strings.Contains(text, hv.Prefix) {
 		mapString := text
+		_, endOtel := hv.vaultOtelStart("READ")
 		secret, err := hv.Client.Logical().Read(hv.Path)
+		endOtel(err)
 		if err != nil {
 			return "", errors.Wrapf(err, "unable to read credentials from Vault")
 		}
@@ -308,7 +350,9 @@ func (hv *DXHashicorpVault) VaultMapString(log *log.DXLog, text string) (string,
 }
 
 func (hv *DXHashicorpVault) VaultGetData(log *log.DXLog) (r utils.JSON, err error) {
+	_, endOtel := hv.vaultOtelStart("READ")
 	secret, err := hv.Client.Logical().Read(hv.Path)
+	endOtel(err)
 	if err != nil {
 		log.Fatalf("Unable to read credentials from Vault: %v", err.Error())
 		return nil, err

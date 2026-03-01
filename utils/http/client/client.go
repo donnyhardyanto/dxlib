@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	neturl "net/url"
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/core"
@@ -17,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type HTTPHeader = map[string]string
@@ -45,10 +47,16 @@ func httpClientOtelStart(method string, url string) (ctx context.Context, endFun
 	if !core.IsOtelEnabled {
 		return ctx, func(error, int) {}
 	}
-	ctx, span := otel.Tracer("dxlib.http.client").Start(ctx, "HTTP "+method)
-	span.SetAttributes(
+	spanAttrs := []attribute.KeyValue{
 		attribute.String("http.method", method),
 		attribute.String("http.url", url),
+	}
+	if parsed, parseErr := neturl.Parse(url); parseErr == nil && parsed.Hostname() != "" {
+		spanAttrs = append(spanAttrs, attribute.String("peer.service", parsed.Hostname()))
+	}
+	ctx, span := otel.Tracer("dxlib.http.client").Start(ctx, "HTTP "+method,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(spanAttrs...),
 	)
 	start := time.Now()
 	return ctx, func(err error, statusCode int) {

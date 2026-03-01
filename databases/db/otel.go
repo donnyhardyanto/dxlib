@@ -89,6 +89,7 @@ func DbOtelStart(ctx context.Context, spanName string, query string, callerSkip 
 		attribute.String("db.system", "postgresql"),
 		attribute.String("db.operation", op),
 		attribute.String("db.statement", dbOtelTruncate(query, dbOtelMaxStatementLen)),
+		attribute.String("peer.service", "postgresql"),
 	}
 	if tableName != "" {
 		spanAttrs = append(spanAttrs, attribute.String("db.sql.table", tableName))
@@ -103,6 +104,7 @@ func DbOtelStart(ctx context.Context, spanName string, query string, callerSkip 
 
 	var span trace.Span
 	ctx, span = otel.Tracer("dxlib.db").Start(ctx, spanName,
+		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(spanAttrs...),
 	)
 	start := time.Now()

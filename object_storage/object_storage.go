@@ -14,9 +14,15 @@ import (
 	"github.com/donnyhardyanto/dxlib/core"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
+	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DXObjectStorageType int64
@@ -235,6 +241,34 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 	return nil
 }
 
+func (r *DXObjectStorage) minioOtelStart(ctx context.Context, opName string) (context.Context, func(err error)) {
+	if !core.IsOtelEnabled {
+		return ctx, func(error) {}
+	}
+	ctx, s := otel.Tracer("dxlib.minio").Start(ctx, "minio."+opName,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("peer.service", "minio"),
+			attribute.String("minio.operation", opName),
+			attribute.String("minio.bucket", r.BucketName),
+			attribute.String("server.address", r.Address),
+		),
+	)
+	start := time.Now()
+	attrs := metric.WithAttributes(
+		attribute.String("peer.service", "minio"),
+		attribute.String("minio.operation", opName),
+	)
+	return ctx, func(err error) {
+		dxlibOtel.HTTPClientDuration.Record(ctx, time.Since(start).Seconds(), attrs)
+		dxlibOtel.HTTPClientCount.Add(ctx, 1, attrs)
+		if err != nil {
+			s.SetStatus(codes.Error, err.Error())
+		}
+		s.End()
+	}
+}
+
 var ObjectStorageMaxFileSizeBytes = 31 << 26
 
 func (r *DXObjectStorage) Connect() (err error) {
@@ -286,6 +320,9 @@ func (r *DXObjectStorage) UploadStream(reader io.Reader, objectName string, orig
 	fullPathObjectName = fullPathObjectName + objectName
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
+
+	ctx, endOtel := r.minioOtelStart(ctx, "PutObject")
+	defer func() { endOtel(err) }()
 
 	// 1. Check if the bucket exists and create it if it doesn't
 	exists, err := r.Client.BucketExists(ctx, r.BucketName)
@@ -360,8 +397,12 @@ func (r *DXObjectStorage) DownloadStream(objectName string) (*minio.Object, erro
 	}
 	fullPathObjectName = fullPathObjectName + objectName
 
+	ctx := context.Background()
+	ctx, endOtel := r.minioOtelStart(ctx, "GetObject")
+
 	// Get the object from the bucket
-	object, err := r.Client.GetObject(context.Background(), r.BucketName, fullPathObjectName, minio.GetObjectOptions{})
+	object, err := r.Client.GetObject(ctx, r.BucketName, fullPathObjectName, minio.GetObjectOptions{})
+	endOtel(err)
 	if err != nil {
 		return nil, errors.Wrapf(err, "DOWNLOAD_STEAM_ERROR:%s/%s", r.BucketName, fullPathObjectName)
 	}

@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DXRedis struct {
@@ -212,7 +213,10 @@ func (r *DXRedis) redisOtelStart(ctx context.Context, opName string) (context.Co
 	if !core.IsOtelEnabled {
 		return ctx, func(error) {}
 	}
-	ctx, s := otel.Tracer("dxlib.redis").Start(ctx, "redis."+opName)
+	ctx, s := otel.Tracer("dxlib.redis").Start(ctx, "redis."+opName,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(attribute.String("peer.service", "redis")),
+	)
 	start := time.Now()
 	attrs := metric.WithAttributes(
 		attribute.String("db.system", "redis"),
