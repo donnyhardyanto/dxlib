@@ -45,6 +45,12 @@ type ModelDBField struct {
 	HashFieldName       string           // e.g., "fullname_hashed" - companion hash field name
 	HashSaltKeySource   ModelDBKeySource // "config", "literal", "env"
 	HashSaltKeyValue    string           // salt value or config name
+
+	// for generated/computed columns
+	IsGenerated                 bool                           // true = this column is generated/computed
+	GeneratedExpression         string                         // default SQL expression (used when GeneratedExpressionByDBType not specified)
+	GeneratedExpressionByDBType map[base.DXDatabaseType]string // database-specific expressions (syntax varies across engines)
+	IsStored                    bool                           // true = STORED/PERSISTED, false = VIRTUAL
 }
 
 func (f *ModelDBField) GetName() string {
@@ -191,6 +197,11 @@ func (t *ModelDBTable) buildTDEClause(dbType base.DXDatabaseType) string {
 
 func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType base.DXDatabaseType) string {
 
+	// Generated/computed column — completely different DDL syntax
+	if field.IsGenerated {
+		return t.generatedColumnDDL(fieldName, field, dbType)
+	}
+
 	var sb strings.Builder
 
 	// Get the SQL data type for this databases type
@@ -236,6 +247,55 @@ func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType b
 	}
 
 	return sb.String()
+}
+
+// generatedColumnDDL generates DDL for a generated/computed column per database engine
+func (t *ModelDBTable) generatedColumnDDL(fieldName string, field ModelDBField, dbType base.DXDatabaseType) string {
+	// Resolve expression: per-DB first, then generic fallback
+	expr := field.GeneratedExpression
+	if field.GeneratedExpressionByDBType != nil {
+		if dbExpr, ok := field.GeneratedExpressionByDBType[dbType]; ok && dbExpr != "" {
+			expr = dbExpr
+		}
+	}
+
+	sqlType := ""
+	if field.Type.TypeByDatabaseType != nil {
+		sqlType = field.Type.TypeByDatabaseType[dbType]
+	}
+	if sqlType == "" {
+		sqlType = "TEXT"
+	}
+
+	switch dbType {
+	case base.DXDatabaseTypePostgreSQL, base.DXDatabaseTypePostgresSQLV2:
+		// PostgreSQL: only STORED supported
+		return fmt.Sprintf("%s %s GENERATED ALWAYS AS (%s) STORED", fieldName, sqlType, expr)
+
+	case base.DXDatabaseTypeMariaDB:
+		// MySQL/MariaDB: STORED or VIRTUAL
+		storage := "VIRTUAL"
+		if field.IsStored {
+			storage = "STORED"
+		}
+		return fmt.Sprintf("%s %s GENERATED ALWAYS AS (%s) %s", fieldName, sqlType, expr, storage)
+
+	case base.DXDatabaseTypeSQLServer:
+		// SQL Server: computed column — no data type declaration
+		persisted := ""
+		if field.IsStored {
+			persisted = " PERSISTED"
+		}
+		return fmt.Sprintf("%s AS (%s)%s", fieldName, expr, persisted)
+
+	case base.DXDatabaseTypeOracle:
+		// Oracle 12c+: only VIRTUAL supported
+		return fmt.Sprintf("%s %s GENERATED ALWAYS AS (%s) VIRTUAL", fieldName, sqlType, expr)
+
+	default:
+		// Fallback: PostgreSQL syntax
+		return fmt.Sprintf("%s %s GENERATED ALWAYS AS (%s) STORED", fieldName, sqlType, expr)
+	}
 }
 
 // isStringFieldType checks if the field type is a string type that should be quoted in SQL
@@ -422,6 +482,11 @@ func (t *ModelDBTable) buildInsertData(dbType base.DXDatabaseType, data utils.JS
 	for _, fieldName := range t.getOrderedFields() {
 		field := t.Fields[fieldName]
 
+		// Skip generated/computed columns — DB calculates these
+		if field.IsGenerated {
+			continue
+		}
+
 		// Check if this is an encrypted field with DecryptedFieldName
 		if field.DecryptedFieldName != "" && field.EncryptionKeyValue != "" {
 			// Look for value using DecryptedFieldName (e.g., "fullname")
@@ -603,6 +668,11 @@ func (t *ModelDBTable) buildUpdateData(dbType base.DXDatabaseType, data utils.JS
 
 	for _, fieldName := range t.getOrderedFields() {
 		field := t.Fields[fieldName]
+
+		// Skip generated/computed columns — DB calculates these
+		if field.IsGenerated {
+			continue
+		}
 
 		// Check if this is an encrypted field with DecryptedFieldName
 		if field.DecryptedFieldName != "" && field.EncryptionKeyValue != "" {

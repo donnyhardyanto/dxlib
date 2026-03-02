@@ -346,7 +346,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	defer func() {
 		if a.OnAuditLogEnd != nil {
-			_, err = a.OnAuditLogEnd(requestContext, auditLogId, &DXAPIAuditLogEntry{
+			auditCtx, auditCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer auditCancel()
+			_, err = a.OnAuditLogEnd(auditCtx, auditLogId, &DXAPIAuditLogEntry{
 				StartTime:  auditLogStartTime,
 				EndTime:    time.Now(),
 				StatusCode: aepr.ResponseStatusCode,
