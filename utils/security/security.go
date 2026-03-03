@@ -19,7 +19,15 @@ func IsDDL(statement string) bool {
 }
 
 func StringCheckPossibleSQLInjection(s string) bool {
-	if strings.ContainsAny(s, " ')-#/*!;+|") {
+	// Single characters that are dangerous on their own
+	if strings.ContainsAny(s, "';#") {
+		return true
+	}
+	// Multi-character SQL injection patterns
+	if strings.Contains(s, "--") ||
+		strings.Contains(s, "/*") ||
+		strings.Contains(s, "*/") ||
+		strings.Contains(s, "||") {
 		return true
 	}
 	return false
