@@ -50,13 +50,14 @@ func (t *DXRawTable) UpdateAuto(
 	}
 
 	// Encryption configured, need transaction
-	dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+	txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+		result, rows, err = t.TxUpdateAuto(dtx, data, where, returningFieldNames)
+		return err
+	})
 	if txErr != nil {
 		return nil, nil, txErr
 	}
-	defer func() { dtx.Finish(l, err) }()
-
-	return t.TxUpdateAuto(dtx, data, where, returningFieldNames)
+	return result, rows, nil
 }
 
 // TxUpdateByIdAuto updates by ID using table's EncryptionColumnDefs

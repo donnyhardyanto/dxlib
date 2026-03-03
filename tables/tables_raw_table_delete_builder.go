@@ -24,15 +24,17 @@ func (t *DXRawTable) DeleteWithBuilder(ctx context.Context, l *log.DXLog, tqb *t
 	tqb.SourceName = t.GetFullTableName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+		txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+			if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+			result, rows, err = query.TxDeleteWithDeleteQueryBuilder2(ctx, dtx, tqb.DeleteQueryBuilder)
+			return err
+		})
 		if txErr != nil {
 			return nil, nil, txErr
 		}
-		defer func() { dtx.Finish(l, err) }()
-		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return nil, nil, err
-		}
-		return query.TxDeleteWithDeleteQueryBuilder2(ctx, dtx, tqb.DeleteQueryBuilder)
+		return result, rows, nil
 	}
 
 	return query.DeleteWithDeleteQueryBuilder2(ctx, t.Database.Connection, tqb.DeleteQueryBuilder)

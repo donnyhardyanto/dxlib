@@ -285,78 +285,79 @@ func (t *DXRawTable) DoPagingWithSelectQueryBuilder(ctx context.Context, l *log.
 	// Set source to list view name
 	qb.SourceName = t.GetListViewName()
 
-	dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+	txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+		// Set encryption session keys if needed
+		if len(t.EncryptionColumnDefs) > 0 || len(t.EncryptionKeyDefs) > 0 {
+			if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+		}
+
+		// Count
+		totalRows, err := query.TxCountWithSelectQueryBuilder2(ctx, dtx, qb.SelectQueryBuilder)
+		if err != nil {
+			return err
+		}
+
+		rowPerPage := qb.LimitValue
+		totalPages := int64(0)
+		if rowPerPage > 0 {
+			totalPages = (totalRows + rowPerPage - 1) / rowPerPage
+		}
+
+		// Only set OutFields if not already pre-set by caller (e.g. DoRequestSearchPagingDownload)
+		if len(qb.OutFields) == 0 {
+			// Use OrderByFieldNames to control which columns are returned
+			var outFields []string
+
+			if len(t.EncryptionColumnDefs) > 0 {
+				dbType := base.StringToDXDatabaseType(dtx.Tx.DriverName())
+				encryptionColumns := t.convertEncryptionColumnDefsForSelect()
+
+				// Process each field in OrderByFieldNames
+				for _, fieldName := range t.OrderByFieldNames {
+					added := false
+					// Check if this field needs runtime decryption
+					for _, col := range encryptionColumns {
+						if col.AliasName == fieldName && !col.ViewHasDecrypt {
+							// Field needs runtime decryption - add decryption expression
+							expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
+							outFields = append(outFields, fmt.Sprintf("%s AS %s", expr, fieldName))
+							added = true
+							break
+						}
+					}
+					if !added {
+						// Field doesn't need runtime decryption - add as-is
+						outFields = append(outFields, fieldName)
+					}
+				}
+			} else {
+				// No encryption - use OrderByFieldNames directly
+				outFields = t.OrderByFieldNames
+			}
+
+			qb.OutFields = outFields
+		}
+
+		// Select
+		rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(ctx, dtx, qb.SelectQueryBuilder, t.FieldTypeMapping)
+		if err != nil {
+			return err
+		}
+
+		pagingResult = &PagingResult{
+			RowsInfo:   rowsInfo,
+			Rows:       rows,
+			TotalRows:  totalRows,
+			TotalPages: totalPages,
+		}
+		return nil
+	})
 	if txErr != nil {
 		return nil, txErr
 	}
-	defer func() { dtx.Finish(l, err) }()
-
-	// Set encryption session keys if needed
-	if len(t.EncryptionColumnDefs) > 0 || len(t.EncryptionKeyDefs) > 0 {
-		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return nil, err
-		}
-	}
-
-	// Count
-	totalRows, err := query.TxCountWithSelectQueryBuilder2(ctx, dtx, qb.SelectQueryBuilder)
-	if err != nil {
-		return nil, err
-	}
-
-	rowPerPage := qb.LimitValue
-	totalPages := int64(0)
-	if rowPerPage > 0 {
-		totalPages = (totalRows + rowPerPage - 1) / rowPerPage
-	}
-
-	// Only set OutFields if not already pre-set by caller (e.g. DoRequestSearchPagingDownload)
-	if len(qb.OutFields) == 0 {
-		// Use OrderByFieldNames to control which columns are returned
-		var outFields []string
-
-		if len(t.EncryptionColumnDefs) > 0 {
-			dbType := base.StringToDXDatabaseType(dtx.Tx.DriverName())
-			encryptionColumns := t.convertEncryptionColumnDefsForSelect()
-
-			// Process each field in OrderByFieldNames
-			for _, fieldName := range t.OrderByFieldNames {
-				added := false
-				// Check if this field needs runtime decryption
-				for _, col := range encryptionColumns {
-					if col.AliasName == fieldName && !col.ViewHasDecrypt {
-						// Field needs runtime decryption - add decryption expression
-						expr := db.DecryptExpression(dbType, col.FieldName, col.EncryptionKeyDef.SessionKey)
-						outFields = append(outFields, fmt.Sprintf("%s AS %s", expr, fieldName))
-						added = true
-						break
-					}
-				}
-				if !added {
-					// Field doesn't need runtime decryption - add as-is
-					outFields = append(outFields, fieldName)
-				}
-			}
-		} else {
-			// No encryption - use OrderByFieldNames directly
-			outFields = t.OrderByFieldNames
-		}
-
-		qb.OutFields = outFields
-	}
-
-	// Select
-	rowsInfo, rows, err := query.TxSelectWithSelectQueryBuilder2(ctx, dtx, qb.SelectQueryBuilder, t.FieldTypeMapping)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PagingResult{
-		RowsInfo:   rowsInfo,
-		Rows:       rows,
-		TotalRows:  totalRows,
-		TotalPages: totalPages,
-	}, nil
+	return pagingResult, nil
 }
 
 // PagingWithSelectQueryBuilder executes a paging query using TableSelectQueryBuilder.

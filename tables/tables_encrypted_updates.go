@@ -55,13 +55,14 @@ func (t *DXRawTable) UpdateWithEncryption(
 		return nil, nil, err
 	}
 
-	dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+	txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+		result, rows, err = t.TxUpdateWithEncryption(dtx, data, encryptionColumns, where, returningFieldNames)
+		return err
+	})
 	if txErr != nil {
 		return nil, nil, txErr
 	}
-	defer func() { dtx.Finish(l, err) }()
-
-	return t.TxUpdateWithEncryption(dtx, data, encryptionColumns, where, returningFieldNames)
+	return result, rows, nil
 }
 
 // TxUpdateByIdWithEncryption updates by ID with encrypted columns

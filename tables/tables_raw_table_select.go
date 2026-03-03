@@ -24,15 +24,17 @@ func (t *DXRawTable) Select(ctx context.Context, l *log.DXLog, fieldNames []stri
 		return t.SelectWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+		txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+			if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+			rowsInfo, rows, err = t.TxSelect(dtx, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
+			return err
+		})
 		if txErr != nil {
 			return nil, nil, txErr
 		}
-		defer func() { dtx.Finish(l, err) }()
-		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return nil, nil, err
-		}
-		return t.TxSelect(dtx, fieldNames, where, joinSQLPart, orderBy, limit, forUpdatePart)
+		return rowsInfo, rows, nil
 	}
 	return t.Database.Select(ctx, t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, limit, nil, forUpdatePart)
 }
@@ -48,15 +50,17 @@ func (t *DXRawTable) SelectOne(ctx context.Context, l *log.DXLog, fieldNames []s
 		return t.SelectOneWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+		txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+			if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+			rowsInfo, row, err = t.TxSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
+			return err
+		})
 		if txErr != nil {
 			return nil, nil, txErr
 		}
-		defer func() { dtx.Finish(l, err) }()
-		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return nil, nil, err
-		}
-		return t.TxSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
+		return rowsInfo, row, nil
 	}
 	return t.Database.SelectOne(ctx, t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
@@ -72,15 +76,17 @@ func (t *DXRawTable) ShouldSelectOne(ctx context.Context, l *log.DXLog, fieldNam
 		return t.ShouldSelectOneWithEncryption(ctx, l, fieldNames, encryptionColumns, where, joinSQLPart, orderBy)
 	}
 	if len(t.EncryptionKeyDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+		txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+			if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+			rowsInfo, row, err = t.TxShouldSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
+			return err
+		})
 		if txErr != nil {
 			return nil, nil, txErr
 		}
-		defer func() { dtx.Finish(l, err) }()
-		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return nil, nil, err
-		}
-		return t.TxShouldSelectOne(dtx, fieldNames, where, joinSQLPart, orderBy, nil)
+		return rowsInfo, row, nil
 	}
 	return t.Database.ShouldSelectOne(ctx, t.GetListViewName(), t.FieldTypeMapping, fieldNames, where, joinSQLPart, nil, nil, orderBy, nil, nil)
 }
@@ -320,15 +326,17 @@ func (t *DXRawTable) Count(ctx context.Context, l *log.DXLog, where utils.JSON, 
 		return 0, err
 	}
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+		txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+			if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+			count, err = dtx.Count(dtx.Ctx, t.GetListViewName(), where, joinSQLPart, nil, nil)
+			return err
+		})
 		if txErr != nil {
 			return 0, txErr
 		}
-		defer func() { dtx.Finish(l, err) }()
-		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return 0, err
-		}
-		return dtx.Count(dtx.Ctx, t.GetListViewName(), where, joinSQLPart, nil, nil)
+		return count, nil
 	}
 	return t.Database.Count(ctx, t.GetListViewName(), where, joinSQLPart)
 }

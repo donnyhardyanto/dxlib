@@ -27,13 +27,14 @@ func (t *DXRawTable) SelectWithEncryption(ctx context.Context, l *log.DXLog, fie
 		return nil, nil, err
 	}
 
-	dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+	txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+		rowsInfo, rows, err = t.TxSelectWithEncryption(dtx, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
+		return err
+	})
 	if txErr != nil {
 		return nil, nil, txErr
 	}
-	defer func() { dtx.Finish(l, err) }()
-
-	return t.TxSelectWithEncryption(dtx, fieldNames, encryptionColumns, where, joinSQLPart, orderBy, limit, forUpdatePart)
+	return rowsInfo, rows, nil
 }
 
 // SelectOneWithEncryption selects one row with decrypted columns
@@ -144,13 +145,14 @@ func (t *DXRawTable) PagingWithEncryption(
 		return nil, err
 	}
 
-	dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+	txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+		pagingResult, err = t.TxPagingWithEncryption(dtx, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
+		return err
+	})
 	if txErr != nil {
 		return nil, txErr
 	}
-	defer func() { dtx.Finish(l, err) }()
-
-	return t.TxPagingWithEncryption(dtx, columns, encryptionColumns, whereClause, whereArgs, orderBy, rowPerPage, pageIndex)
+	return pagingResult, nil
 }
 
 // PagingWithEncryptionAndBuilder executes paging with TableSelectQueryBuilder and decrypted columns

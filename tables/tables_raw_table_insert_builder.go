@@ -24,15 +24,17 @@ func (t *DXRawTable) InsertWithBuilder(ctx context.Context, l *log.DXLog, tqb *t
 	tqb.SourceName = t.GetFullTableName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+		txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+			if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+			result, returning, err = query.TxInsertWithInsertQueryBuilder2(ctx, dtx, tqb.InsertQueryBuilder)
+			return err
+		})
 		if txErr != nil {
 			return nil, nil, txErr
 		}
-		defer func() { dtx.Finish(l, err) }()
-		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return nil, nil, err
-		}
-		return query.TxInsertWithInsertQueryBuilder2(ctx, dtx, tqb.InsertQueryBuilder)
+		return result, returning, nil
 	}
 
 	return query.InsertWithInsertQueryBuilder2(ctx, t.Database.Connection, tqb.InsertQueryBuilder)

@@ -125,18 +125,19 @@ func (t *DXRawTable) InsertAuto(
 	}
 
 	// Encryption configured, need transaction
-	dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+	txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+		err = t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
+		if err != nil {
+			return err
+		}
+
+		result, returning, err = t.TxInsertAuto(dtx, data, returningFieldNames)
+		return err
+	})
 	if txErr != nil {
 		return nil, nil, txErr
 	}
-	defer func() { dtx.Finish(l, err) }()
-
-	err = t.TxCheckValidationUniqueFieldNameGroupsForInsert(dtx, data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return t.TxInsertAuto(dtx, data, returningFieldNames)
+	return result, returning, nil
 }
 
 // TxInsertAutoReturningId inserts and returns the new ID

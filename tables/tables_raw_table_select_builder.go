@@ -60,15 +60,17 @@ func (t *DXRawTable) SelectWithBuilder(ctx context.Context, l *log.DXLog, tqb *t
 	needsEncryptionTx := t.prepareBuilderForSelect(tqb)
 
 	if needsEncryptionTx {
-		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+		txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+			if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+			rowsInfo, rows, err = query.TxSelectWithSelectQueryBuilder2(ctx, dtx, tqb.SelectQueryBuilder, t.FieldTypeMapping)
+			return err
+		})
 		if txErr != nil {
 			return nil, nil, txErr
 		}
-		defer func() { dtx.Finish(l, err) }()
-		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return nil, nil, err
-		}
-		return query.TxSelectWithSelectQueryBuilder2(ctx, dtx, tqb.SelectQueryBuilder, t.FieldTypeMapping)
+		return rowsInfo, rows, nil
 	}
 
 	return query.SelectWithSelectQueryBuilder2(ctx, t.Database.Connection, tqb.SelectQueryBuilder, t.FieldTypeMapping)
@@ -154,15 +156,17 @@ func (t *DXRawTable) CountWithBuilder(ctx context.Context, l *log.DXLog, tqb *ta
 	tqb.SourceName = t.GetListViewName()
 
 	if len(t.EncryptionKeyDefs) > 0 || len(t.EncryptionColumnDefs) > 0 {
-		dtx, txErr := t.Database.TransactionBegin(ctx, databases.LevelReadCommitted)
+		txErr := t.Database.Tx(ctx, l, databases.LevelReadCommitted, func(dtx *databases.DXDatabaseTx) error {
+			if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
+				return err
+			}
+			count, err = query.TxCountWithSelectQueryBuilder2(ctx, dtx, tqb.SelectQueryBuilder)
+			return err
+		})
 		if txErr != nil {
 			return 0, txErr
 		}
-		defer func() { dtx.Finish(l, err) }()
-		if err = t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
-			return 0, err
-		}
-		return query.TxCountWithSelectQueryBuilder2(ctx, dtx, tqb.SelectQueryBuilder)
+		return count, nil
 	}
 
 	return query.CountWithSelectQueryBuilder2(ctx, t.Database.Connection, tqb.SelectQueryBuilder)
