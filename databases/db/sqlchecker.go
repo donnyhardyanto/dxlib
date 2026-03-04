@@ -278,10 +278,9 @@ func CheckValue(dialect base.DXDatabaseType, value any) error {
 
 	switch v := value.(type) {
 	case *string:
-		vv := *v
-		return checkStringValue(vv)
+		return nil
 	case string:
-		return checkStringValue(v)
+		return nil
 	case []any:
 		for _, item := range v {
 			if err := CheckValue(dialect, item); err != nil {
@@ -363,11 +362,6 @@ func CheckLikePattern(query string) error {
 
 		// Extract the pattern between quotes
 		pattern := remainingQuery[quotePos+1 : quotePos+1+endQuotePos]
-
-		// Check the actual pattern
-		if err := checkStringValue(pattern); err != nil {
-			return err
-		}
 
 		// Check wildcard count
 		if strings.Count(pattern, "%") > 5 {
@@ -469,20 +463,6 @@ func CheckBaseQuery(dialect base.DXDatabaseType, query string) error {
 		return errors.Errorf("query validation failed: %+v", err)
 	}
 
-	return nil
-}
-
-// Internal helper functions
-
-func checkStringValue(value string) error {
-	/*lowered := strings.ToLower(value)
-
-	  // Check for suspicious patterns
-	  for _, pattern := range suspiciousValuePatterns {
-	  	if strings.Contains(lowered, pattern) {
-	  		return errors.Errorf("suspicious pattern (%s) detected in value: %s", pattern, value)
-	  	}
-	  }*/
 	return nil
 }
 
