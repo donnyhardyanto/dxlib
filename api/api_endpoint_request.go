@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -51,6 +52,7 @@ type DXAPIEndPointRequest struct {
 	SuppressLogDump        bool
 	EncryptionParameters   utils.JSON
 	EffectiveRequestHeader map[string]string
+	DecryptedRequestBody   utils.JSON // E2E decrypted body for debug logging
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
@@ -227,10 +229,15 @@ func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
 	}
 
 	// Dump decrypted body parameters
+	// Prefer full DecryptedRequestBody (E2E) over partially-processed ParameterValues
 	b.WriteString("\nDecrypted Body Parameters:\n")
-	params := aepr.GetParameterValues()
+	var params utils.JSON
+	if len(aepr.DecryptedRequestBody) > 0 {
+		params = aepr.DecryptedRequestBody
+	} else {
+		params = aepr.GetParameterValues()
+	}
 	if len(params) > 0 {
-		// Mask sensitive fields before marshaling
 		maskedParams := utils.JSON{}
 		for k, v := range params {
 			maskedParams[k] = utils.MaskSensitiveValue(k, v)
@@ -872,6 +879,7 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		if err != nil {
 			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_UNMARSHAL_PAYLOAD_BODY_BYTES")
 		}
+		aepr.DecryptedRequestBody = payloadBodyAsJSON
 		err = aepr.processEndPointRequestParameterValues(payloadBodyAsJSON)
 		if err != nil {
 			return err
@@ -883,6 +891,20 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 
 }
 
+// receivedBodyKeysForLog returns a sorted list of keys from the request body for debug logging.
+// Only includes key names (not values) to avoid leaking sensitive data.
+func (aepr *DXAPIEndPointRequest) receivedBodyKeysForLog(bodyAsJSON utils.JSON) string {
+	if len(bodyAsJSON) == 0 {
+		return "(empty)"
+	}
+	keys := make([]string, 0, len(bodyAsJSON))
+	for k := range bodyAsJSON {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, ", ")
+}
+
 func (aepr *DXAPIEndPointRequest) processEndPointRequestParameterValues(bodyAsJSON utils.JSON) (err error) {
 	for _, v := range aepr.EndPoint.Parameters {
 		rpv := aepr.NewAPIEndPointRequestParameter(v)
@@ -890,11 +912,13 @@ func (aepr *DXAPIEndPointRequest) processEndPointRequestParameterValues(bodyAsJS
 		variablePath := v.NameId
 		err := rpv.SetRawValue(bodyAsJSON[v.NameId], variablePath)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", err.Error())
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "",
+				"%s (received_keys: [%s])", err.Error(), aepr.receivedBodyKeysForLog(bodyAsJSON))
 		}
 		if (rpv.Metadata.IsMustExist) && (rpv.RawValue == nil) && (!rpv.Metadata.IsNullable) {
 			s := fmt.Sprintf("MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, s, s)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, s,
+				"%s (received_keys: [%s])", s, aepr.receivedBodyKeysForLog(bodyAsJSON))
 		}
 		if rpv.RawValue != nil {
 			err = rpv.Validate()

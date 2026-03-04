@@ -17,6 +17,7 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"github.com/donnyhardyanto/dxlib"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 )
@@ -1358,8 +1359,10 @@ func IsSensitiveField(fieldName string) bool {
 
 // MaskSensitiveValue masks a value if the field name is determined to be sensitive.
 // Uses "********" as the standard mask across the codebase.
+// Requires BOTH dxlib.IsDebug AND OverrideShowPasswordOnLog to show raw sensitive values.
+// This prevents accidental password exposure in production from a single env var flip.
 func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
-	if OverrideShowPasswordOnLog {
+	if dxlib.IsDebug && OverrideShowPasswordOnLog {
 		return value
 	}
 	if IsSensitiveField(fieldName) {
