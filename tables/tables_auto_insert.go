@@ -34,16 +34,17 @@ func (t *DXRawTable) TxInsertAuto(
 	data utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, utils.JSON, error) {
-	if len(t.EncryptionColumnDefs) > 0 {
-		// Has column-specific encryption, use encrypted insert path
-		encryptionColumns := t.convertEncryptionColumnDefsForWrite(data)
-		return t.TxInsertWithEncryption(dtx, data, encryptionColumns, returningFieldNames)
-	}
-	if len(t.EncryptionKeyDefs) > 0 {
-		// Only session keys needed, set them then regular insert
+	// Always set ALL encryption session keys upfront when any encryption config exists.
+	// This ensures DB triggers/functions that check session keys (e.g. app.encryption_key)
+	// work correctly, even if the current data doesn't contain all encrypted fields.
+	if t.HasEncryptionConfig() {
 		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
+	}
+	if len(t.EncryptionColumnDefs) > 0 {
+		encryptionColumns := t.convertEncryptionColumnDefsForWrite(data)
+		return t.TxInsertWithEncryption(dtx, data, encryptionColumns, returningFieldNames)
 	}
 	return dtx.Insert(dtx.Ctx, t.GetFullTableName(), data, returningFieldNames)
 }

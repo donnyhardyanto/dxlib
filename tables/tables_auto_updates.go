@@ -18,16 +18,17 @@ func (t *DXRawTable) TxUpdateAuto(
 	where utils.JSON,
 	returningFieldNames []string,
 ) (sql.Result, []utils.JSON, error) {
-	if len(t.EncryptionColumnDefs) > 0 {
-		// Has column-specific encryption, use encrypted update path
-		encryptionColumns := t.convertEncryptionColumnDefsForWrite(data)
-		return t.TxUpdateWithEncryption(dtx, data, encryptionColumns, where, returningFieldNames)
-	}
-	if len(t.EncryptionKeyDefs) > 0 {
-		// Only session keys needed, set them then regular update
+	// Always set ALL encryption session keys upfront when any encryption config exists.
+	// This ensures DB triggers/functions that check session keys work correctly,
+	// even if the current data doesn't contain all encrypted fields.
+	if t.HasEncryptionConfig() {
 		if err := t.TxSetAllEncryptionSessionKeys(dtx); err != nil {
 			return nil, nil, err
 		}
+	}
+	if len(t.EncryptionColumnDefs) > 0 {
+		encryptionColumns := t.convertEncryptionColumnDefsForWrite(data)
+		return t.TxUpdateWithEncryption(dtx, data, encryptionColumns, where, returningFieldNames)
 	}
 	return dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, returningFieldNames)
 }
