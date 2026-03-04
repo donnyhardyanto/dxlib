@@ -262,9 +262,6 @@ func (aepr *DXAPIEndPointRequest) GetResponseWriter() *http.ResponseWriter {
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, responseMessage string, msg string, data ...any) (err error) {
-	if responseMessage == "" {
-		responseMessage = strings.ToUpper(http.StatusText(statusCode))
-	}
 	if msg == "" {
 		msg = responseMessage
 	} else {
@@ -272,7 +269,25 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 			msg = fmt.Sprintf(msg, data...)
 		}
 	}
-	err = aepr.Log.ErrorAndCreateErrorf(msg)
+
+	if responseMessage == "" {
+		responseMessage = strings.ToUpper(http.StatusText(statusCode))
+	}
+
+	requestDump, err2 := aepr.RequestDumpAsString()
+	if err2 != nil {
+		requestDump = "DUMP REQUEST FAIL"
+	}
+
+	// Add decrypted request dump if parameters are available
+	decryptedDump := ""
+	if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
+		decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
+	}
+
+	err = errors.New(msg)
+	fullDump := requestDump + decryptedDump
+	aepr.Log.LogText(err, log.DXLogLevelError, "", fullDump)
 	aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, msg)
 	return err
 }
