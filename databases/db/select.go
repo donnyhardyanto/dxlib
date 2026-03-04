@@ -257,6 +257,52 @@ func BaseSelect(ctx context.Context, db *sqlx.DB, tableName string, fieldTypeMap
 
 	driverName := db.DriverName()
 
+	dbType := base.StringToDXDatabaseType(driverName)
+
+	// Validate table name
+	if err := CheckIdentifier(dbType, tableName); err != nil {
+		return nil, nil, errors.Wrap(err, "invalid table name")
+	}
+
+	// Validate field names (except for "*" which is handled specially)
+	for _, fieldName := range fieldNames {
+		if fieldName != "*" {
+			// Skip validation for expressions (functions, etc.)
+			if strings.Contains(fieldName, "(") || strings.Contains(fieldName, " ") {
+				continue
+			}
+			if err := CheckIdentifier(dbType, fieldName); err != nil {
+				return nil, nil, errors.Wrapf(err, "invalid field name: %s", fieldName)
+			}
+		}
+	}
+
+	// Validate WHERE field names
+	for fieldName := range whereAndFieldNameValues {
+		if _, ok := whereAndFieldNameValues[fieldName].(SQLExpression); ok {
+			continue
+		}
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
+			return nil, nil, errors.Wrapf(err, "invalid WHERE field name: %s", fieldName)
+		}
+	}
+
+	// Validate ORDER BY field names
+	for fieldName := range orderByFieldNameDirections {
+		if err := CheckIdentifier(dbType, fieldName); err != nil {
+			return nil, nil, errors.Wrapf(err, "invalid ORDER BY field name: %s", fieldName)
+		}
+	}
+
+	// Validate GROUP BY field names
+	if groupByFields != nil {
+		for _, fieldName := range groupByFields {
+			if err := CheckIdentifier(dbType, fieldName); err != nil {
+				return nil, nil, errors.Wrapf(err, "invalid GROUP BY field name: %s", fieldName)
+			}
+		}
+	}
+
 	s, err := SQLPartConstructSelect(driverName, tableName, fieldNames, whereAndFieldNameValues,
 		joinSQLPart, orderByFieldNameDirections, limit, offset, forUpdatePart,
 		groupByFields, havingClause, withCTE)
