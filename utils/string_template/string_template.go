@@ -16,8 +16,8 @@ func ReplaceTagWithValue(originalString string, prefixTag string, kv map[string]
 		// Strip the "<prefix." and ">" to get the key
 		key := strings.TrimSuffix(strings.TrimPrefix(match, "<"+prefixTag+"."), ">")
 
-		if val, ok := kv[key].(string); ok {
-			return val
+		if val, ok := kv[key]; ok {
+			return fmt.Sprintf("%v", val)
 		}
 		return match
 	})
