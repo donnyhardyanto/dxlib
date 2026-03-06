@@ -1,10 +1,12 @@
-package sql
+package security
 
 import (
 	"crypto/sha512"
-	"encoding/hex"
-	"golang.org/x/crypto/bcrypt"
+	"crypto/subtle"
 	"strings"
+
+	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func IsDDL(statement string) bool {
@@ -80,22 +82,25 @@ func PartSQLStringCheckPossibleSQLInjection(s string) bool {
 	return false
 }
 
-func HashPassword(password string) []byte {
-	hashed := sha512.Sum512([]byte(password))
-	return hashed[:]
-}
-
-func HashPasswordToHexString(password string) string {
-	hashed := HashPassword(password)
-	return hex.EncodeToString(hashed)
-}
-
 func HashSHA512(data []byte) []byte {
 	hashed := sha512.Sum512(data)
 	return hashed[:]
 }
 
 func HashBcrypt(data []byte) ([]byte, error) {
-	hashed, err := bcrypt.GenerateFromPassword(data, bcrypt.MaxCost)
+	hashed, err := bcrypt.GenerateFromPassword(data, bcrypt.DefaultCost)
 	return hashed, err
+}
+
+func HashBcryptVerify(hashedPassword, password []byte) error {
+	return bcrypt.CompareHashAndPassword(hashedPassword, password)
+}
+
+func HashArgon2id(password, salt []byte) []byte {
+	return argon2.IDKey(password, salt, 1, 64*1024, 4, 32)
+}
+
+func HashArgon2idVerify(password, salt, expectedHash []byte) bool {
+	computedHash := HashArgon2id(password, salt)
+	return subtle.ConstantTimeCompare(computedHash, expectedHash) == 1
 }
