@@ -186,3 +186,31 @@ func (t *DXRawTable) RequestEditWithValidation(aepr *api.DXAPIEndPointRequest) e
 
 	return t.DoUpdateWithValidation(aepr, id, newKeyValues)
 }
+
+// RequestEditByUidWithValidation handles edit by UID API requests with unique field validation
+func (t *DXRawTable) RequestEditByUidWithValidation(aepr *api.DXAPIEndPointRequest) error {
+	_, uid, err := aepr.GetParameterValueAsString(t.FieldNameForRowUid)
+	if err != nil {
+		return err
+	}
+
+	_, row, err := t.DirectGetByUid(aepr.Context, &aepr.Log, uid)
+	if err != nil {
+		return err
+	}
+	if row == nil {
+		return aepr.WriteResponseAndNewErrorf(http.StatusNotFound, "", "RECORD_NOT_FOUND:%s", uid)
+	}
+
+	id, ok := row[t.FieldNameForRowId].(int64)
+	if !ok {
+		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "CANNOT_GET_ID_FROM_ROW")
+	}
+
+	_, data, err := aepr.GetParameterValueAsJSON("new")
+	if err != nil {
+		return err
+	}
+
+	return t.DoUpdateWithValidation(aepr, id, data)
+}
