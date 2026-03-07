@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/secure_memory"
 	"gopkg.in/yaml.v3"
 
 	"github.com/donnyhardyanto/dxlib/log"
@@ -77,6 +78,9 @@ func (c *DXConfiguration) ByteArrayYAMLToJSON(v []byte) (r utils.JSON, err error
 func (c *DXConfiguration) FilterSensitiveData() (r utils.JSON) {
 	r = json2.Copy(*c.Data)
 
+	// Mask any *SecureValue entries that survived the shallow copy
+	maskSecureValuesInMap(r)
+
 	// Apply automatic pattern-based masking first
 	r = utils.MaskSensitiveDataInJSON(r)
 
@@ -87,6 +91,17 @@ func (c *DXConfiguration) FilterSensitiveData() (r utils.JSON) {
 	}
 
 	return r
+}
+
+func maskSecureValuesInMap(m map[string]any) {
+	for k, v := range m {
+		switch val := v.(type) {
+		case *secure_memory.SecureValue:
+			m[k] = "********[SECURE]"
+		case map[string]any:
+			maskSecureValuesInMap(val)
+		}
+	}
 }
 
 func (c *DXConfiguration) ShowToLog() {
@@ -117,6 +132,85 @@ func (c *DXConfiguration) AsNonSensitiveString() string {
 	}
 	return c.NameId + ": " + string(dataAsString)
 }
+// GetString retrieves a string, transparently resolving *SecureValue.
+// This is the primary getter — replaces GetSecureString as the canonical method.
+func (c *DXConfiguration) GetString(dotPath string) (string, error) {
+	value, err := utils.GetValueFromNestedMap(*c.Data, dotPath)
+	if err != nil {
+		return "", errors.Wrapf(err, "CONFIGURATION_GET_STRING_NOT_FOUND:%s:%s", c.NameId, dotPath)
+	}
+	if sv, ok := value.(*secure_memory.SecureValue); ok {
+		return sv.Resolve()
+	}
+	s, ok := value.(string)
+	if !ok {
+		return "", errors.Errorf("CONFIGURATION_GET_STRING_TYPE_ERROR:%s:%s:got_%T", c.NameId, dotPath, value)
+	}
+	return s, nil
+}
+
+// GetSecureString is an alias for GetString (backward compatibility).
+func (c *DXConfiguration) GetSecureString(dotPath string) (string, error) {
+	return c.GetString(dotPath)
+}
+
+// GetInt retrieves an int value by dot-path.
+func (c *DXConfiguration) GetInt(dotPath string) (int, error) {
+	value, err := utils.GetValueFromNestedMap(*c.Data, dotPath)
+	if err != nil {
+		return 0, errors.Wrapf(err, "CONFIGURATION_GET_INT_NOT_FOUND:%s:%s", c.NameId, dotPath)
+	}
+	v, ok := value.(int)
+	if !ok {
+		return 0, errors.Errorf("CONFIGURATION_GET_INT_TYPE_ERROR:%s:%s:got_%T", c.NameId, dotPath, value)
+	}
+	return v, nil
+}
+
+// GetInt64 retrieves an int64 value by dot-path.
+func (c *DXConfiguration) GetInt64(dotPath string) (int64, error) {
+	value, err := utils.GetValueFromNestedMap(*c.Data, dotPath)
+	if err != nil {
+		return 0, errors.Wrapf(err, "CONFIGURATION_GET_INT64_NOT_FOUND:%s:%s", c.NameId, dotPath)
+	}
+	v, ok := value.(int64)
+	if !ok {
+		return 0, errors.Errorf("CONFIGURATION_GET_INT64_TYPE_ERROR:%s:%s:got_%T", c.NameId, dotPath, value)
+	}
+	return v, nil
+}
+
+// GetBool retrieves a bool value by dot-path.
+func (c *DXConfiguration) GetBool(dotPath string) (bool, error) {
+	value, err := utils.GetValueFromNestedMap(*c.Data, dotPath)
+	if err != nil {
+		return false, errors.Wrapf(err, "CONFIGURATION_GET_BOOL_NOT_FOUND:%s:%s", c.NameId, dotPath)
+	}
+	v, ok := value.(bool)
+	if !ok {
+		return false, errors.Errorf("CONFIGURATION_GET_BOOL_TYPE_ERROR:%s:%s:got_%T", c.NameId, dotPath, value)
+	}
+	return v, nil
+}
+
+// GetFloat64 retrieves a float64 value by dot-path.
+func (c *DXConfiguration) GetFloat64(dotPath string) (float64, error) {
+	value, err := utils.GetValueFromNestedMap(*c.Data, dotPath)
+	if err != nil {
+		return 0, errors.Wrapf(err, "CONFIGURATION_GET_FLOAT64_NOT_FOUND:%s:%s", c.NameId, dotPath)
+	}
+	v, ok := value.(float64)
+	if !ok {
+		return 0, errors.Errorf("CONFIGURATION_GET_FLOAT64_TYPE_ERROR:%s:%s:got_%T", c.NameId, dotPath, value)
+	}
+	return v, nil
+}
+
+// GetStringFromSubMap is a convenience for GetSecureString(subMapKey + "." + fieldKey).
+func (c *DXConfiguration) GetStringFromSubMap(subMapKey, fieldKey string) (string, error) {
+	return c.GetSecureString(subMapKey + "." + fieldKey)
+}
+
 func (c *DXConfiguration) LoadFromFile() (err error) {
 	log.Log.Infof("Reading file %s... start", c.Filename)
 	content, err := os.ReadFile(c.Filename)

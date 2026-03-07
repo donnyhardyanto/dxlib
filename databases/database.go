@@ -325,20 +325,26 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 				return errors.Errorf("configuration is unusable, mandatory address field in databases %s configuration not exist", d.NameId)
 			}
 		}
-		d.UserName, ok = databaseConfiguration["user_name"].(string)
-		if !ok {
-			if d.MustConnected {
-				return errors.Errorf("mandatory user_name field in Database %s configuration not exist", d.NameId)
-			} else {
-				return errors.Errorf("configuration is unusable, mandatory user_name field in Database %s configuration not exist", d.NameId)
+		d.UserName, err = configurationData.GetStringFromSubMap(d.NameId, "user_name")
+		if err != nil {
+			d.UserName, ok = databaseConfiguration["user_name"].(string)
+			if !ok {
+				if d.MustConnected {
+					return errors.Errorf("mandatory user_name field in Database %s configuration not exist", d.NameId)
+				} else {
+					return errors.Errorf("configuration is unusable, mandatory user_name field in Database %s configuration not exist", d.NameId)
+				}
 			}
 		}
-		d.UserPassword, ok = databaseConfiguration["user_password"].(string)
-		if !ok {
-			if d.MustConnected {
-				return errors.Errorf("mandatory user_password field in Database %s configuration not exist", d.NameId)
-			} else {
-				return errors.Errorf("configuration is unusable, mandatory user_password field in Database %s configuration not exist", d.NameId)
+		d.UserPassword, err = configurationData.GetStringFromSubMap(d.NameId, "user_password")
+		if err != nil {
+			d.UserPassword, ok = databaseConfiguration["user_password"].(string)
+			if !ok {
+				if d.MustConnected {
+					return errors.Errorf("mandatory user_password field in Database %s configuration not exist", d.NameId)
+				} else {
+					return errors.Errorf("configuration is unusable, mandatory user_password field in Database %s configuration not exist", d.NameId)
+				}
 			}
 		}
 		d.DatabaseName, ok = databaseConfiguration["database_name"].(string)

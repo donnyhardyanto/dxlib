@@ -155,8 +155,16 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 				return err
 			}
 		}
-		r.UserName, r.HasUserName = redisConfiguration["user_name"].(string)
-		r.Password, r.HasPassword = redisConfiguration["password"].(string)
+		r.UserName, err = configurationData.GetStringFromSubMap(r.NameId, "user_name")
+		r.HasUserName = (err == nil && r.UserName != "")
+		if err != nil {
+			r.UserName, r.HasUserName = redisConfiguration["user_name"].(string)
+		}
+		r.Password, err = configurationData.GetStringFromSubMap(r.NameId, "password")
+		r.HasPassword = (err == nil && r.Password != "")
+		if err != nil {
+			r.Password, r.HasPassword = redisConfiguration["password"].(string)
+		}
 		r.DatabaseIndex, err = json2.GetInt(redisConfiguration, "database_index")
 		if err != nil {
 			if r.MustConnected {

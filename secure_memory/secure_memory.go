@@ -2,7 +2,10 @@ package secure_memory
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/awnumar/memguard"
 	"github.com/donnyhardyanto/dxlib/errors"
@@ -253,6 +256,40 @@ func (m *DXSecureMemoryManager) Keys() []string {
 		keys = append(keys, key)
 	}
 	return keys
+}
+
+// secureValueCounter is an atomic counter for generating unique SecureValue keys
+var secureValueCounter int64
+
+// SecureValue is a token stored in configuration maps in place of plaintext secrets.
+// The actual secret is encrypted in a memguard Enclave via the global Manager.
+type SecureValue struct {
+	Key string
+}
+
+// Secure stores a plaintext value into the global SecureMemory Manager as an Enclave
+// and returns a *SecureValue token. The original string is no longer referenced by this package.
+func Secure(value string) *SecureValue {
+	key := fmt.Sprintf("cfg_s_%d", atomic.AddInt64(&secureValueCounter, 1))
+	err := Manager.StoreEnclave(key, []byte(value))
+	if err != nil {
+		log.Log.Fatalf("SECURE_VALUE_STORE_ERROR:%s:%v", key, err)
+	}
+	return &SecureValue{Key: key}
+}
+
+// Resolve decrypts the secret from the Enclave and returns it as a string.
+func (sv *SecureValue) Resolve() (string, error) {
+	data, err := Manager.Get(sv.Key)
+	if err != nil {
+		return "", errors.Wrapf(err, "SECURE_VALUE_RESOLVE_ERROR:%s", sv.Key)
+	}
+	return string(data), nil
+}
+
+// MarshalJSON ensures that SecureValue never leaks plaintext in JSON output.
+func (sv *SecureValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal("********[SECURE]")
 }
 
 // Manager is the global secure memory manager instance

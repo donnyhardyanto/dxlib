@@ -226,8 +226,16 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 				return err
 			}
 		}
-		r.UserName, r.HasUserName = ObjectStorageConfiguration["user_name"].(string)
-		r.Password, r.HasPassword = ObjectStorageConfiguration["password"].(string)
+		r.UserName, err = configurationData.GetStringFromSubMap(r.NameId, "user_name")
+		r.HasUserName = (err == nil && r.UserName != "")
+		if err != nil {
+			r.UserName, r.HasUserName = ObjectStorageConfiguration["user_name"].(string)
+		}
+		r.Password, err = configurationData.GetStringFromSubMap(r.NameId, "password")
+		r.HasPassword = (err == nil && r.Password != "")
+		if err != nil {
+			r.Password, r.HasPassword = ObjectStorageConfiguration["password"].(string)
+		}
 		r.BucketName, ok = ObjectStorageConfiguration["bucket_name"].(string)
 		if !ok {
 			err := log.Log.ErrorAndCreateErrorf("Mandatory bucket_name field in object storage ObjectStorage %s configuration not exist.", r.NameId)
