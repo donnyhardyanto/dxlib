@@ -325,9 +325,20 @@ func (h *simpleHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *simpleHandler) Handle(ctx context.Context, r slog.Record) error {
-	// Format: "2026-02-15 18:16:58 Message"
 	timestamp := r.Time.Format("2006-01-02 15:04:05")
-	fmt.Fprintf(os.Stdout, "%s %s\n", timestamp, r.Message)
+	var b strings.Builder
+	b.WriteString(timestamp)
+	b.WriteByte(' ')
+	b.WriteString(r.Message)
+	r.Attrs(func(a slog.Attr) bool {
+		b.WriteByte(' ')
+		b.WriteString(a.Key)
+		b.WriteByte('=')
+		b.WriteString(a.Value.String())
+		return true
+	})
+	b.WriteByte('\n')
+	fmt.Fprint(os.Stdout, b.String())
 	return nil
 }
 
