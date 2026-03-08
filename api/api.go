@@ -554,8 +554,14 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if errors.As(err, &domainErr) {
 				// TRACE: execute_end (domain validation)
 				LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, domainErr.DomainErrorHTTPStatusCode(), domainErr.DomainErrorCode())
-				// Log as warning (not error) -- this is expected validation, not a bug
-				aepr.Log.Warnf("DOMAIN_VALIDATION:%s:%s", domainErr.DomainErrorCode(), domainErr.DomainErrorLogDetails())
+				// Log as warning with full request context for debugging
+				requestDump, err2 := aepr.RequestDumpAsString()
+				if err2 != nil {
+					requestDump = "REQUEST_DUMP_ERROR"
+				}
+				decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
+				domainErrWrapped := errors.Errorf("DOMAIN_VALIDATION:%s:%s", domainErr.DomainErrorCode(), domainErr.DomainErrorLogDetails())
+				aepr.Log.LogText(domainErrWrapped, log.DXLogLevelWarn, "", fmt.Sprintf("Raw Request:\n%s%s", requestDump, decryptedDump))
 				// Send a sanitized response (no DB structure exposed)
 				if !aepr.ResponseHeaderSent {
 					aepr.WriteResponseAsJSON(domainErr.DomainErrorHTTPStatusCode(), nil, domainErr.DomainErrorResponseBody())
