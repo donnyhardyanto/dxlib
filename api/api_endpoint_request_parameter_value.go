@@ -144,7 +144,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 		default:
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 		}
-	case dxlibTypes.APIParameterTypeProtectedString, dxlibTypes.APIParameterTypeProtectedSQLString, dxlibTypes.APIParameterTypeNullableString, dxlibTypes.APIParameterTypeNonEmptyString, dxlibTypes.APIParameterTypeISO8601, dxlibTypes.APIParameterTypeDate, dxlibTypes.APIParameterTypeTime, dxlibTypes.APIParameterTypeEmail, dxlibTypes.APIParameterTypePhoneNumber, dxlibTypes.APIParameterTypeNPWP:
+	case dxlibTypes.APIParameterTypeProtectedString, dxlibTypes.APIParameterTypeProtectedSQLString, dxlibTypes.APIParameterTypeProtectedNonEmptyString, dxlibTypes.APIParameterTypeNullableString, dxlibTypes.APIParameterTypeNonEmptyString, dxlibTypes.APIParameterTypeISO8601, dxlibTypes.APIParameterTypeDate, dxlibTypes.APIParameterTypeTime, dxlibTypes.APIParameterTypeEmail, dxlibTypes.APIParameterTypePhoneNumber, dxlibTypes.APIParameterTypeNPWP:
 		if rawValueType != "string" {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 		}
@@ -360,6 +360,20 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 	case dxlibTypes.APIParameterTypeProtectedString:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		if security.StringCheckPossibleSQLInjection(s) {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf("Possible SQL injection found [%s]", s)
+		}
+		aeprpv.Value = s
+		return nil
+	case dxlibTypes.APIParameterTypeProtectedNonEmptyString:
+		s, ok := aeprpv.RawValue.(string)
+		if !ok {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		}
+		s = strings.Trim(s, " ")
+		if len(s) == 0 {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
 		if security.StringCheckPossibleSQLInjection(s) {

@@ -46,8 +46,9 @@ const (
 	// String types
 	APIParameterTypeString             APIParameterType = "string"
 	APIParameterTypeProtectedString    APIParameterType = "protected-string"
-	APIParameterTypeProtectedSQLString APIParameterType = "protected-sql-string"
-	APIParameterTypeNullableString     APIParameterType = "nullable-string"
+	APIParameterTypeProtectedSQLString      APIParameterType = "protected-sql-string"
+	APIParameterTypeProtectedNonEmptyString APIParameterType = "protected-non-empty-string"
+	APIParameterTypeNullableString          APIParameterType = "nullable-string"
 	APIParameterTypeNonEmptyString     APIParameterType = "non-empty-string"
 	APIParameterTypeEmail              APIParameterType = "email"
 	APIParameterTypePhoneNumber        APIParameterType = "phonenumber"
@@ -152,6 +153,13 @@ var (
 
 	DataTypeProtectedSQLString = DataType{
 		APIParameterType:   APIParameterTypeProtectedSQLString,
+		JSONType:           JSONTypeString,
+		GoType:             GoTypeString,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR(1024)"},
+	}
+
+	DataTypeProtectedNonEmptyString = DataType{
+		APIParameterType:   APIParameterTypeProtectedNonEmptyString,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
 		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(1024)", base.DXDatabaseTypeSQLServer: "VARCHAR(1024)", base.DXDatabaseTypeMariaDB: "VARCHAR(1024)", base.DXDatabaseTypeOracle: "VARCHAR(1024)"},
@@ -472,6 +480,7 @@ var (
 		DataTypeString,
 		DataTypeProtectedString,
 		DataTypeProtectedSQLString,
+		DataTypeProtectedNonEmptyString,
 		DataTypeNullableString,
 		DataTypeNonEmptyString,
 		DataTypeEmail,
@@ -517,8 +526,9 @@ var (
 		// String types
 		APIParameterTypeString:             DataTypeString,
 		APIParameterTypeProtectedString:    DataTypeProtectedString,
-		APIParameterTypeProtectedSQLString: DataTypeProtectedSQLString,
-		APIParameterTypeNullableString:     DataTypeNullableString,
+		APIParameterTypeProtectedSQLString:      DataTypeProtectedSQLString,
+		APIParameterTypeProtectedNonEmptyString: DataTypeProtectedNonEmptyString,
+		APIParameterTypeNullableString:          DataTypeNullableString,
 		APIParameterTypeNonEmptyString:     DataTypeNonEmptyString,
 		APIParameterTypeEmail:              DataTypeEmail,
 		APIParameterTypePhoneNumber:        DataTypePhoneNumber,
