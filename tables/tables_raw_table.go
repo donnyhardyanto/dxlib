@@ -718,6 +718,12 @@ func (t *DXRawTable) applyOperatorFilter(
 	return nil
 }
 
+// ProcessFilterKeyValues validates field names and applies filter conditions to the query builder.
+// Exported wrapper for processFilterKeyValues.
+func (t *DXRawTable) ProcessFilterKeyValues(qb *tableQueryBuilder.TableSelectQueryBuilder, filterKeyValues map[string]any) error {
+	return t.processFilterKeyValues(qb, filterKeyValues)
+}
+
 // processFilterKeyValues processes filter_key_values with operator support
 func (t *DXRawTable) processFilterKeyValues(
 	qb *tableQueryBuilder.TableSelectQueryBuilder,
