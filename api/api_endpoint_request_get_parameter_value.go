@@ -116,6 +116,7 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsString(k string, defaultVal
 					err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "PARAMETER_DEFAULT_VALUE_IS_NOT_STRING:%s=%v", k, v1)
 					return false, "", err
 				}
+				return false, v1, nil
 			}
 		} else {
 			return isExist, "", nil
