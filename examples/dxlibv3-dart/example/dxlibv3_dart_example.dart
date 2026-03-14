@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dxlibv3_dart/dxlibv3_dart.dart';
@@ -99,8 +100,12 @@ Future<void> login() async {
   final sharedKey1AsBytes = X25519.computeSharedSecret(ecdhA1PrivateKeyAsBytes, ecdhB1PublicKeyAsBytes);
   final sharedKey2AsBytes = X25519.computeSharedSecret(ecdhA2PrivateKeyAsBytes, ecdhB2PublicKeyAsBytes);
 
-  const userLogin = dotenv.env['TEST_USER_NAME'];
-  const password = dotenv.env['TEST_USER_PASSWORD'];
+  final userLogin = Platform.environment['TEST_USER_NAME'] ?? '';
+  final password = Platform.environment['TEST_USER_PASSWORD'] ?? '';
+
+  if (userLogin.isEmpty || password.isEmpty) {
+    throw Exception('TEST_USER_NAME and TEST_USER_PASSWORD environment variables must be set');
+  }
 
   final lvUserLogin = LV.fromString(userLogin);
   final lvPassword = LV.fromString(password);
