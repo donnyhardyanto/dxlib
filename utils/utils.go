@@ -314,7 +314,12 @@ func ConvertToInterfaceBoolFromAny(v any) (r any, err error) {
 		r = v
 		break
 	case string:
-		v, err := strconv.ParseBool(v.(string))
+		s := v.(string)
+		if s == "" {
+			r = false
+			break
+		}
+		v, err := strconv.ParseBool(s)
 		if err != nil {
 			return nil, err
 		}
@@ -346,7 +351,12 @@ func ConvertToInterfaceIntFromAny(v any) (r any, err error) {
 		r = nil
 		break
 	case string:
-		v, err := strconv.Atoi(v.(string))
+		s := v.(string)
+		if s == "" {
+			r = int(0)
+			break
+		}
+		v, err := strconv.Atoi(s)
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +398,12 @@ func ConvertToInterfaceInt64FromAny(v any) (r any, err error) {
 		r = nil
 		break
 	case string:
-		v, err := strconv.ParseInt(v.(string), 10, 64)
+		s := v.(string)
+		if s == "" {
+			r = int64(0)
+			break
+		}
+		v, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -1155,6 +1170,9 @@ func ConvertToInt64(value interface{}) (int64, error) {
 	case float64:
 		return int64(v), nil
 	case string:
+		if v == "" {
+			return int64(0), nil
+		}
 		parsed, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
 			return 0, errors.Wrap(err, "failed to convert string count to int64")
@@ -1185,6 +1203,9 @@ func ConvertToInt(value interface{}) (int, error) {
 	case float32:
 		return int(v), nil
 	case string:
+		if v == "" {
+			return int(0), nil
+		}
 		parsed, err := strconv.Atoi(v)
 		if err != nil {
 			return 0, errors.Wrap(err, "failed to convert string to int")
@@ -1423,6 +1444,9 @@ func ConvertToBoolFromKV(kv map[string]any, key string) (bool, error) {
 	case int64:
 		return v != 0, nil
 	case string:
+		if v == "" {
+			return false, nil
+		}
 		parsed, err := strconv.ParseBool(v)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to convert string to bool")
