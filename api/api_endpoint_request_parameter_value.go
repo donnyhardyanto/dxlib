@@ -282,6 +282,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToFloat64XXX(nameIdPath
 			aeprpv.Value = v
 			return nil
 		}
+	default:
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	}
 	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 }
@@ -305,6 +307,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToFloat32XXX(nameIdPath
 			aeprpv.Value = float32(v)
 			return nil
 		}
+	default:
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	}
 	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 }
@@ -410,8 +414,10 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 		}
 		aeprpv.Value = s
 		return nil
+	default:
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	}
-	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+	return nil
 }
 
 func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string) (err error) {
