@@ -157,8 +157,8 @@ func Update(ctx context.Context, db *sqlx.DB, tableName string, setFieldNameValu
 
 	// Handle databases-specific UPDATE with RETURNING
 	switch driverName {
-	case "postgres", "mariadb":
-		// PostgreSQL and MariaDB support RETURNING clause
+	case "postgres", "mysql":
+		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause
 		baseSQL := strings.Join([]string{
 			"UPDATE",
 			tableName,
@@ -257,52 +257,6 @@ func Update(ctx context.Context, db *sqlx.DB, tableName string, setFieldNameValu
 		// For brevity, this implementation returns a not supported error
 		return nil, nil, errors.New("Oracle RETURNING INTO for UPDATE not implemented in this version")
 
-	case "mysql":
-		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
-
-		/*// MySQL doesn't support RETURNING directly
-		baseSQL := strings.Join([]string{
-			"UPDATE",
-			tableName,
-			"SET",
-			setClause,
-			effectiveWhere,
-		}, " ")
-
-		// Execute the update
-		result, err := raw.Exec(db, baseSQL, combinedParams)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error executing mysql update")
-		}
-
-		// If no returning fields requested, return just the rows affected
-		if len(returningFieldNames) == 0 {
-			return result, returningFieldValues, nil
-		}
-
-		// For MySQL, we need to run a separate SELECT query to get the updated values
-		// This will only work if we have a WHERE clause that can uniquely identify the updated rows
-		if whereClause == "" {
-			return result, nil, errors.New("cannot use RETURNING with MySQL unless WHERE clause uniquely identifies rows")
-		}
-
-		// Query the updated rows
-		selectSQL := strings.Join([]string{
-			"SELECT",
-			strings.Join(returningFieldNames, ", "),
-			"FROM",
-			tableName,
-			effectiveWhere,
-		}, " ")
-
-		_, rows, err := raw.QueryRows(db, nil, selectSQL, whereAndFieldNameValues)
-		if err != nil {
-			// Log the error but don't fail - we've already done the update
-			return result, nil, errors.Wrap(err, "error fetching updated rows")
-		}
-
-		return result, rows, nil
-		*/
 	default:
 		// Unsupported databases type
 		return nil, nil, errors.Errorf("unsupported databases driver: %s", driverName)
@@ -404,8 +358,8 @@ func TxUpdate(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 
 	// Handle databases-specific UPDATE with RETURNING
 	switch driverName {
-	case "postgres", "mariadb":
-		// PostgreSQL and MariaDB support RETURNING clause
+	case "postgres", "mysql":
+		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause
 		baseSQL := strings.Join([]string{
 			"UPDATE",
 			tableName,
@@ -503,9 +457,6 @@ func TxUpdate(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 		// This would require building RETURNING INTO parameters similar to the Insert function
 		// For brevity, this implementation returns a not supported error
 		return nil, nil, errors.New("Oracle RETURNING INTO for UPDATE not implemented in this version")
-
-	case "mysql":
-		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
 
 	default:
 		// Unsupported databases type

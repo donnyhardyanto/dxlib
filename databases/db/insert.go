@@ -116,8 +116,8 @@ func Insert(ctx context.Context, db *sqlx.DB, tableName string, setFieldValues u
 
 	// Handle databases-specific RETURNING clauses
 	switch driverName {
-	case "postgres", "mariadb":
-		// Both PostgreSQL and MariaDB 10.5.0+ support RETURNING clause with the same syntax
+	case "postgres", "mysql":
+		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause with the same syntax
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
 		_, rows, err := QueryRows(ctx, db, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
@@ -212,80 +212,6 @@ func Insert(ctx context.Context, db *sqlx.DB, tableName string, setFieldValues u
 			}
 		}
 
-	case "mysql":
-		// MySQL doesn't support RETURNING, so we need to do a separate query
-		result, err := Exec(ctx, db, baseSQL, convertedFieldValues)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error executing mysql insert")
-		}
-
-		lastInsertId, err := result.LastInsertId()
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error getting last insert ID")
-		}
-		// Get the last insert ID and check if it's valid
-		if lastInsertId <= 0 {
-			// Some tables might not have auto-increment IDs, so this isn't always an error
-			// Just return an empty map if that's what the user wants
-			return result, returningFieldValues, nil
-		}
-
-		// Use the first common ID field name
-		idFieldNames := []string{"id", "ID", "Id"}
-		idField := ""
-
-		// Find which ID field name was requested
-		for _, fieldName := range idFieldNames {
-			for _, key := range returningFieldNames {
-				if strings.EqualFold(key, fieldName) {
-					returningFieldValues[key] = result.LastInsertId
-					idField = key
-					break
-				}
-			}
-			if idField != "" {
-				break
-			}
-		}
-
-		// If we didn't find a matching ID field but got an ID, use the first ID field name
-		if idField == "" && len(idFieldNames) > 0 {
-			idField = idFieldNames[0]
-			returningFieldValues[idField] = result.LastInsertId
-		}
-
-		// Build fields to select, excluding the id field we already have
-		var selectFields []string
-		for _, key := range returningFieldNames {
-			if !strings.EqualFold(key, idField) {
-				selectFields = append(selectFields, key)
-			}
-		}
-
-		if len(selectFields) > 0 {
-			// Query for additional fields
-			selectSQL := strings.Join([]string{
-				"SELECT",
-				strings.Join(selectFields, ", "),
-				"FROM",
-				tableName,
-				"WHERE",
-				fmt.Sprintf("%s = :%s", idField, idField),
-			}, " ")
-
-			selectArgs := utils.JSON{
-				idField: result.LastInsertId,
-			}
-
-			_, rows, err := QueryRows(ctx, db, nil, selectSQL, selectArgs)
-			if err == nil && len(rows) > 0 {
-				// Merge additional values
-				for k, v := range rows[0] {
-					returningFieldValues[k] = v
-				}
-			}
-		}
-
 	default:
 		// Unsupported databases type
 		return nil, nil, errors.Errorf("unsupported databases driver: %s", driverName)
@@ -363,8 +289,8 @@ func TxInsert(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 
 	// Handle databases-specific RETURNING clauses
 	switch driverName {
-	case "postgres", "mariadb":
-		// Both PostgreSQL and MariaDB 10.5.0+ support RETURNING clause with the same syntax
+	case "postgres", "mysql":
+		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause with the same syntax
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
 		_, rows, err := TxQueryRows(ctx, tx, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
@@ -455,80 +381,6 @@ func TxInsert(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 				if outArg.Dest != nil {
 					dest := outArg.Dest.(*interface{})
 					returningFieldValues[originalKey] = *dest
-				}
-			}
-		}
-
-	case "mysql":
-		// MySQL doesn't support RETURNING, so we need to do a separate query
-		result, err := TxExec(ctx, tx, baseSQL, convertedFieldValues)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error executing mysql insert")
-		}
-
-		lastInsertId, err := result.LastInsertId()
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error getting last insert ID")
-		}
-		// Get the last insert ID and check if it's valid
-		if lastInsertId <= 0 {
-			// Some tables might not have auto-increment IDs, so this isn't always an error
-			// Just return an empty map if that's what the user wants
-			return result, returningFieldValues, nil
-		}
-
-		// Use the first common I D field name
-		idFieldNames := []string{"id", "ID", "Id"}
-		idField := ""
-
-		// Find which ID field name was requested
-		for _, fieldName := range idFieldNames {
-			for _, key := range returningFieldNames {
-				if strings.EqualFold(key, fieldName) {
-					returningFieldValues[key] = result.LastInsertId
-					idField = key
-					break
-				}
-			}
-			if idField != "" {
-				break
-			}
-		}
-
-		// If we didn't find a matching ID field but got an ID, use the first ID field name
-		if idField == "" && len(idFieldNames) > 0 {
-			idField = idFieldNames[0]
-			returningFieldValues[idField] = result.LastInsertId
-		}
-
-		// Build fields to select, excluding the id field we already have
-		var selectFields []string
-		for _, key := range returningFieldNames {
-			if !strings.EqualFold(key, idField) {
-				selectFields = append(selectFields, key)
-			}
-		}
-
-		if len(selectFields) > 0 {
-			// Query for additional fields
-			selectSQL := strings.Join([]string{
-				"SELECT",
-				strings.Join(selectFields, ", "),
-				"FROM",
-				tableName,
-				"WHERE",
-				fmt.Sprintf("%s = :%s", idField, idField),
-			}, " ")
-
-			selectArgs := utils.JSON{
-				idField: result.LastInsertId,
-			}
-
-			_, rows, err := TxQueryRows(ctx, tx, nil, selectSQL, selectArgs)
-			if err == nil && len(rows) > 0 {
-				// Merge additional values
-				for k, v := range rows[0] {
-					returningFieldValues[k] = v
 				}
 			}
 		}

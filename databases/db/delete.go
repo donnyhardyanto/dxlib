@@ -104,8 +104,8 @@ func Delete(ctx context.Context, db *sqlx.DB, tableName string, whereAndFieldNam
 
 	// Handle databases-specific DELETE with RETURNING
 	switch driverName {
-	case "postgres", "mariadb":
-		// PostgreSQL and MariaDB support RETURNING clause
+	case "postgres", "mysql":
+		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause
 		baseSQL := strings.Join([]string{
 			"DELETE FROM",
 			tableName,
@@ -195,30 +195,6 @@ func Delete(ctx context.Context, db *sqlx.DB, tableName string, whereAndFieldNam
 		// For brevity, this implementation returns a not supported error
 		return nil, nil, errors.New("Oracle RETURNING INTO for DELETE not implemented in this version")
 
-	case "mysql":
-		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
-
-		/*// MySQL doesn't support RETURNING directly for DELETE
-		baseSQL := strings.Join([]string{
-			"DELETE FROM",
-			tableName,
-			effectiveWhere,
-		}, " ")
-
-		// Execute the delete
-		result, err := raw.Exec(db, baseSQL, whereAndFieldNameValues)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error executing mysql delete")
-		}
-
-		// If no returning fields requested, return just the rows affected
-		if len(returningFieldNames) == 0 {
-			return result, returningFieldValues, nil
-		}
-
-		// MySQL doesn't allow getting values from deleted rows
-		return nil, nil, errors.New("RETURNING not supported for DELETE with mysql")*/
-
 	default:
 		// Unsupported databases type
 		return nil, nil, errors.Errorf("unsupported databases driver: %s", driverName)
@@ -301,8 +277,8 @@ func TxDelete(ctx context.Context, tx *sqlx.Tx, tableName string, whereAndFieldN
 
 	// Handle databases-specific DELETE with RETURNING
 	switch driverName {
-	case "postgres", "mariadb":
-		// PostgreSQL and MariaDB support RETURNING clause
+	case "postgres", "mysql":
+		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause
 		baseSQL := strings.Join([]string{
 			"DELETE FROM",
 			tableName,
@@ -391,30 +367,6 @@ func TxDelete(ctx context.Context, tx *sqlx.Tx, tableName string, whereAndFieldN
 		// For returning values in Oracle, use a specialized approach
 		// For brevity, this implementation returns a not supported error
 		return nil, nil, errors.New("Oracle RETURNING INTO for DELETE not implemented in this version")
-
-	case "mysql":
-		return nil, nil, errors.New("MySQL support has been dropped, change to MariaDB")
-
-		/*// MySQL doesn't support RETURNING directly for DELETE
-		baseSQL := strings.Join([]string{
-			"DELETE FROM",
-			tableName,
-			effectiveWhere,
-		}, " ")
-
-		// Execute the delete
-		result, err := raw.TxExec(tx, baseSQL, whereAndFieldNameValues)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error executing mysql delete")
-		}
-
-		// If no returning fields requested, return just the rows affected
-		if len(returningFieldNames) == 0 {
-			return result, returningFieldValues, nil
-		}
-
-		// MySQL doesn't allow getting values from deleted rows
-		return nil, nil, errors.New("RETURNING not supported for DELETE with MySQL")*/
 
 	default:
 		// Unsupported databases type
