@@ -21,7 +21,7 @@ import (
 // DbDriverFormatIdentifier formats an identifier (column/table name) according to databases requirements
 func DbDriverFormatIdentifier(driverName string, identifier string) string {
 	switch driverName {
-	case "oracle", "db2", "sqlserver", "mysql", "mariadb":
+	case "oracle", "db2", "sqlserver", "mariadb":
 		// Use uppercase for all case-insensitive databases for consistency
 		return strings.ToUpper(identifier)
 	case "postgres":
@@ -76,8 +76,8 @@ func DbDriverFormatOrderByFieldName(driverName string, fieldName string, directi
 		// or just need standard ORDER BY syntax
 		return fieldName + " " + validDirection, nil
 
-	case "sqlserver", "mysql":
-		// SQL Server and MySQL need special handling for NULLS FIRST/LAST
+	case "sqlserver":
+		// SQL Server needs special handling for NULLS FIRST/LAST
 		// Since fieldName is now in uppercase (due to DbDriverFormatIdentifier),
 		// we need to check for "NULLS FIRST" and "NULLS LAST" in uppercase
 
@@ -88,11 +88,7 @@ func DbDriverFormatOrderByFieldName(driverName string, fieldName string, directi
 				// Default behavior: NULLS FIRST for ASC
 				return cleanField + " " + validDirection, nil
 			} else { // DESC with NULLS FIRST
-				if driverName == "sqlserver" {
-					return fmt.Sprintf("CASE WHEN %s IS NULL THEN 0 ELSE 1 END, %s %s", cleanField, cleanField, validDirection), nil
-				} else { // mysql
-					return fmt.Sprintf("%s IS NULL DESC, %s %s", cleanField, cleanField, validDirection), nil
-				}
+				return fmt.Sprintf("CASE WHEN %s IS NULL THEN 0 ELSE 1 END, %s %s", cleanField, cleanField, validDirection), nil
 			}
 		} else if strings.Contains(fieldName, "NULLS LAST") {
 			cleanField := strings.TrimSpace(strings.Replace(fieldName, "NULLS LAST", "", -1))
@@ -101,11 +97,7 @@ func DbDriverFormatOrderByFieldName(driverName string, fieldName string, directi
 				// Default behavior: NULLS LAST for DESC
 				return cleanField + " " + validDirection, nil
 			} else { // ASC with NULLS LAST
-				if driverName == "sqlserver" {
-					return fmt.Sprintf("CASE WHEN %s IS NULL THEN 1 ELSE 0 END, %s %s", cleanField, cleanField, validDirection), nil
-				} else { // mysql
-					return fmt.Sprintf("%s IS NULL, %s %s", cleanField, cleanField, validDirection), nil
-				}
+				return fmt.Sprintf("CASE WHEN %s IS NULL THEN 1 ELSE 0 END, %s %s", cleanField, cleanField, validDirection), nil
 			}
 		}
 
@@ -204,7 +196,7 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 		case "postgres", "postgresql":
 			// PostgreSQL has native UUID support
 			return v, nil
-		case "oracle", "sqlserver", "mysql", "mariadb":
+		case "oracle", "sqlserver", "mariadb":
 			// For databases without native UUID support, convert to string
 			return v.(uuid.UUID).String(), nil
 		default:
@@ -217,8 +209,8 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 		case "postgres", "postgresql":
 			// PostgreSQL has native JSON support
 			return v, nil
-		case "mysql", "mariadb":
-			// MySQL 5.7+ and MariaDB 10.2+ have JSON support
+		case "mariadb":
+			// MariaDB 10.2+ has JSON support
 			return v, nil
 		case "sqlserver":
 			// SQL Server 2016+ has JSON support but as NVARCHAR
@@ -295,13 +287,13 @@ func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAs
 			effectiveLimitOffsetClause += " fetch next " + strconv.FormatInt(limitAsInt64, 10) + " rows only"
 		}
 
-	case "mysql", "mariadb":
-		// MySQL/MariaDB use LIMIT clause with optional OFFSET
+	case "mariadb":
+		// MariaDB uses LIMIT clause with optional OFFSET
 		if hasLimit && limitAsInt64 > 0 {
 			effectiveLimitOffsetClause = " limit " + strconv.FormatInt(limitAsInt64, 10)
 		} else {
-			// MySQL/MariaDB require a limit when using offset
-			effectiveLimitOffsetClause = " limit 18446744073709551615" // Max value for MySQL
+			// MariaDB requires a limit when using offset
+			effectiveLimitOffsetClause = " limit 18446744073709551615" // Max value for MariaDB
 		}
 
 		// Always include OFFSET clause

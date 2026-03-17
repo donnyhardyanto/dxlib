@@ -123,7 +123,7 @@ func (d *DXDatabase) TransactionBegin(ctx context.Context, isolationLevel DXData
 		return nil, err
 	}
 
-	driverName := d.Connection.DriverName()
+	driverName := base.NormalizeDriverName(d.Connection.DriverName())
 	switch driverName {
 	case "oracle":
 		tx, err := d.Connection.BeginTxx(ctx, &sql.TxOptions{
@@ -546,7 +546,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 		}
 	}()
 
-	driverName := d.Connection.DriverName()
+	driverName := base.NormalizeDriverName(d.Connection.DriverName())
 	switch driverName {
 	case "sqlserver", "postgres", "oracle":
 		log.Log.Infof("Executing SQL file %s... start", filename)
@@ -587,7 +587,7 @@ func (d *DXDatabase) ExecuteSQLContent(content string) (r sql.Result, err error)
 		}
 	}()
 
-	driverName := d.Connection.DriverName()
+	driverName := base.NormalizeDriverName(d.Connection.DriverName())
 	switch driverName {
 	case "sqlserver", "postgres", "oracle":
 		log.Log.Info("Executing SQL content... start")
@@ -678,7 +678,7 @@ func (d *DXDatabase) Tx(ctx context.Context, log *log.DXLog, isolationLevel sql.
 		return err
 	}
 
-	driverName := d.Connection.DriverName()
+	driverName := base.NormalizeDriverName(d.Connection.DriverName())
 	switch driverName {
 	case "oracle":
 		tx, err := d.TransactionBegin(ctx, isolationLevel)

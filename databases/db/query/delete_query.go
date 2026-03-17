@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases/db/query/builder"
 	"github.com/donnyhardyanto/dxlib/databases/db/query/named"
 	"github.com/donnyhardyanto/dxlib/errors"
@@ -39,7 +40,7 @@ func buildDeleteSQL(driverName string, qb *builder.DeleteQueryBuilder) (string, 
 	// Handle RETURNING/OUTPUT
 	if len(qb.OutFields) > 0 {
 		switch driverName {
-		case "postgres", "mysql":
+		case "postgres", "mariadb":
 			returningClause, err := qb.BuildReturningClause()
 			if err != nil {
 				return "", nil, err
@@ -76,7 +77,7 @@ func DeleteWithDeleteQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder
 		return nil, nil, qb.Error
 	}
 
-	driverName := db.DriverName()
+	driverName := base.NormalizeDriverName(db.DriverName())
 
 	// Oracle: two-step SELECT-then-DELETE for RETURNING support
 	if driverName == "oracle" && len(qb.OutFields) > 0 {

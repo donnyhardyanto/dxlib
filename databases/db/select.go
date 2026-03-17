@@ -255,7 +255,7 @@ func BaseSelect(ctx context.Context, db *sqlx.DB, tableName string, fieldTypeMap
 		whereAndFieldNameValues = utils.JSON{}
 	}
 
-	driverName := db.DriverName()
+	driverName := base.NormalizeDriverName(db.DriverName())
 
 	dbType := base.StringToDXDatabaseType(driverName)
 
@@ -359,7 +359,7 @@ func BaseTxSelect(ctx context.Context, tx *sqlx.Tx, tableName string, fieldTypeM
 		whereAndFieldNameValues = utils.JSON{}
 	}
 
-	driverName := tx.DriverName()
+	driverName := base.NormalizeDriverName(tx.DriverName())
 
 	dbType := base.StringToDXDatabaseType(driverName)
 

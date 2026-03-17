@@ -47,7 +47,7 @@ func Delete(ctx context.Context, db *sqlx.DB, tableName string, whereAndFieldNam
 	}
 
 	// Get the databases driver name
-	driverName := strings.ToLower(db.DriverName())
+	driverName := base.NormalizeDriverName(strings.ToLower(db.DriverName()))
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
@@ -104,8 +104,8 @@ func Delete(ctx context.Context, db *sqlx.DB, tableName string, whereAndFieldNam
 
 	// Handle databases-specific DELETE with RETURNING
 	switch driverName {
-	case "postgres", "mysql":
-		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause
+	case "postgres", "mariadb":
+		// PostgreSQL and MariaDB support RETURNING clause
 		baseSQL := strings.Join([]string{
 			"DELETE FROM",
 			tableName,
@@ -220,7 +220,7 @@ func TxDelete(ctx context.Context, tx *sqlx.Tx, tableName string, whereAndFieldN
 	}
 
 	// Get the databases driver name
-	driverName := strings.ToLower(tx.DriverName())
+	driverName := base.NormalizeDriverName(strings.ToLower(tx.DriverName()))
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
@@ -277,8 +277,8 @@ func TxDelete(ctx context.Context, tx *sqlx.Tx, tableName string, whereAndFieldN
 
 	// Handle databases-specific DELETE with RETURNING
 	switch driverName {
-	case "postgres", "mysql":
-		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause
+	case "postgres", "mariadb":
+		// PostgreSQL and MariaDB support RETURNING clause
 		baseSQL := strings.Join([]string{
 			"DELETE FROM",
 			tableName,

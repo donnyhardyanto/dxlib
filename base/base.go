@@ -73,6 +73,17 @@ func StringToDXDatabaseType(v string) DXDatabaseType {
 	}
 }
 
+// NormalizeDriverName maps the Go MySQL driver name "mysql" to "mariadb"
+// so all switch cases can use a single canonical name.
+// Keep Driver() returning "mysql" (actual Go driver) and
+// StringToDXDatabaseType() accepting both "mysql" and "mariadb".
+func NormalizeDriverName(driverName string) string {
+	if driverName == "mysql" {
+		return "mariadb"
+	}
+	return driverName
+}
+
 /*func Database1DXDatabaseTypeToDXDatabaseType(dbType database1Type.DXDatabaseType) DXDatabaseType {
 	switch dbType {
 	case database1Type.PostgreSQL:

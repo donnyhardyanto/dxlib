@@ -65,7 +65,7 @@ func Insert(ctx context.Context, db *sqlx.DB, tableName string, setFieldValues u
 	}
 
 	// Get the databases driver name
-	driverName := strings.ToLower(db.DriverName())
+	driverName := base.NormalizeDriverName(strings.ToLower(db.DriverName()))
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name explicitly
@@ -116,8 +116,8 @@ func Insert(ctx context.Context, db *sqlx.DB, tableName string, setFieldValues u
 
 	// Handle databases-specific RETURNING clauses
 	switch driverName {
-	case "postgres", "mysql":
-		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause with the same syntax
+	case "postgres", "mariadb":
+		// PostgreSQL and MariaDB support RETURNING clause with the same syntax
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
 		_, rows, err := QueryRows(ctx, db, nil, sqlStatement, convertedFieldValues)
 		if err != nil {
@@ -238,7 +238,7 @@ func TxInsert(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 	}
 
 	// Get the databases driver name
-	driverName := strings.ToLower(tx.DriverName())
+	driverName := base.NormalizeDriverName(strings.ToLower(tx.DriverName()))
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name explicitly
@@ -289,8 +289,8 @@ func TxInsert(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 
 	// Handle databases-specific RETURNING clauses
 	switch driverName {
-	case "postgres", "mysql":
-		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause with the same syntax
+	case "postgres", "mariadb":
+		// PostgreSQL and MariaDB support RETURNING clause with the same syntax
 		sqlStatement := fmt.Sprintf("%s RETURNING %s", baseSQL, strings.Join(returningFieldNames, ", "))
 		_, rows, err := TxQueryRows(ctx, tx, nil, sqlStatement, convertedFieldValues)
 		if err != nil {

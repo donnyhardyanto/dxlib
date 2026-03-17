@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/databases/db/query/builder"
 	"github.com/donnyhardyanto/dxlib/databases/db/query/named"
@@ -19,7 +20,7 @@ func TxUpdateWithUpdateQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 		return nil, nil, qb.Error
 	}
 
-	driverName := dtx.Tx.DriverName()
+	driverName := base.NormalizeDriverName(dtx.Tx.DriverName())
 
 	// Oracle: two-step SELECT-then-UPDATE for RETURNING support
 	if driverName == "oracle" && len(qb.OutFields) > 0 {

@@ -3,10 +3,12 @@ package utils
 import (
 	"database/sql"
 	"fmt"
+	"strings"
+
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/jmoiron/sqlx"
-	"strings"
 )
 
 func FormatIdentifier(identifier string, driverName string) string {
@@ -63,7 +65,7 @@ func PrepareArrayArgs(keyValues map[string]any, driverName string) (fieldNames s
 // Function to kill all connections to a specific databases
 
 func KillConnections(db *sqlx.DB, dbName string) (err error) {
-	driverName := db.DriverName()
+	driverName := base.NormalizeDriverName(db.DriverName())
 	switch driverName {
 	case "postgres":
 		query := fmt.Sprintf(`
@@ -104,7 +106,7 @@ func KillConnections(db *sqlx.DB, dbName string) (err error) {
 		if err != nil {
 			return errors.Errorf("failed to kill connections: %+v", err)
 		}
-	case "mysql":
+	case "mariadb":
 		query := fmt.Sprintf(`
             SELECT CONCAT('KILL ', id, ';')
             FROM information_schema.processlist
@@ -137,7 +139,7 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 		}
 	}()
 
-	driverName := db.DriverName()
+	driverName := base.NormalizeDriverName(db.DriverName())
 
 	// Kill all connections to the target databases
 	err = KillConnections(db, dbName)
@@ -172,7 +174,7 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
                 END LOOP;
             END;
         `, dbName, dbName, dbName)
-	case "mysql":
+	case "mariadb":
 		query = fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", dbName)
 	default:
 		return errors.Errorf("unsupported databases driver: %s", driverName)
@@ -187,7 +189,7 @@ func DropDatabase(db *sqlx.DB, dbName string) (err error) {
 }
 
 func CreateDatabase(db *sqlx.DB, dbName string) error {
-	driverName := db.DriverName()
+	driverName := base.NormalizeDriverName(db.DriverName())
 
 	var query string
 	switch driverName {
@@ -205,7 +207,7 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
                 EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO %s';
             END;
         `, dbName, dbName, dbName)
-	case "mysql":
+	case "mariadb":
 		query = fmt.Sprintf("CREATE DATABASE `%s`", dbName)
 	default:
 		return errors.Errorf("unsupported databases driver: %s", driverName)

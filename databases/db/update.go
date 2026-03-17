@@ -83,7 +83,7 @@ func Update(ctx context.Context, db *sqlx.DB, tableName string, setFieldNameValu
 	}
 
 	// Get the databases driver name
-	driverName := strings.ToLower(db.DriverName())
+	driverName := base.NormalizeDriverName(strings.ToLower(db.DriverName()))
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
@@ -157,8 +157,8 @@ func Update(ctx context.Context, db *sqlx.DB, tableName string, setFieldNameValu
 
 	// Handle databases-specific UPDATE with RETURNING
 	switch driverName {
-	case "postgres", "mysql":
-		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause
+	case "postgres", "mariadb":
+		// PostgreSQL and MariaDB support RETURNING clause
 		baseSQL := strings.Join([]string{
 			"UPDATE",
 			tableName,
@@ -284,7 +284,7 @@ func TxUpdate(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 	}
 
 	// Get the databases driver name
-	driverName := strings.ToLower(tx.DriverName())
+	driverName := base.NormalizeDriverName(strings.ToLower(tx.DriverName()))
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
@@ -358,8 +358,8 @@ func TxUpdate(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 
 	// Handle databases-specific UPDATE with RETURNING
 	switch driverName {
-	case "postgres", "mysql":
-		// PostgreSQL and MariaDB (driver="mysql") support RETURNING clause
+	case "postgres", "mariadb":
+		// PostgreSQL and MariaDB support RETURNING clause
 		baseSQL := strings.Join([]string{
 			"UPDATE",
 			tableName,

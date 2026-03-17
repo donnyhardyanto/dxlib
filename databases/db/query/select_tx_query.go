@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
 	databaseDb "github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/databases/db/query/builder"
@@ -33,7 +34,7 @@ func TxSelectWithSelectQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 		selectFieldsPart = strings.Join(qb.OutFields, ", ")
 	}
 
-	driverName := dtx.Tx.DriverName()
+	driverName := base.NormalizeDriverName(dtx.Tx.DriverName())
 
 	// Build WHERE clause
 	whereClause, args, err := qb.Build()
@@ -90,7 +91,7 @@ func TxSelectWithSelectQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 	// Add LIMIT/OFFSET clause if specified (database-specific)
 	if qb.LimitValue > 0 || qb.OffsetValue > 0 {
 		switch driverName {
-		case "postgres", "mysql", "mariadb":
+		case "postgres", "mariadb":
 			if qb.LimitValue > 0 {
 				query += " LIMIT " + strconv.FormatInt(qb.LimitValue, 10)
 			}

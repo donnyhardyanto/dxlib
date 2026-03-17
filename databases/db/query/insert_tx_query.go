@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
 	"github.com/donnyhardyanto/dxlib/databases/db/query/builder"
 	"github.com/donnyhardyanto/dxlib/databases/db/query/named"
@@ -19,7 +20,7 @@ func TxInsertWithInsertQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 		return nil, nil, qb.Error
 	}
 
-	driverName := dtx.Tx.DriverName()
+	driverName := base.NormalizeDriverName(dtx.Tx.DriverName())
 
 	// Oracle: use RETURNING INTO with sql.Out binds
 	if driverName == "oracle" && len(qb.OutFields) > 0 {
