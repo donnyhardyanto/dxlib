@@ -261,7 +261,8 @@ func (tqb *TableSelectQueryBuilder) SearchLike(value string, fieldNames ...strin
 		}
 		argName := fmt.Sprintf("search_%d", i)
 		parts = append(parts, fmt.Sprintf("%s ILIKE :%s", tqb.QuoteIdentifier(fieldName), argName))
-		tqb.Args[argName] = "%" + value + "%"
+		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+		tqb.Args[argName] = "%" + escaped + "%"
 	}
 	tqb.Conditions = append(tqb.Conditions, "("+strings.Join(parts, " OR ")+")")
 	return tqb

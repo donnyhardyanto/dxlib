@@ -97,7 +97,8 @@ func (cg *ConditionGroup) SearchLike(value string, fields ...string) *ConditionG
 		parts = append(parts, fmt.Sprintf("LOWER(%s) LIKE LOWER(:%s)", f, param))
 	}
 	cg.Conditions = append(cg.Conditions, "("+strings.Join(parts, " OR ")+")")
-	cg.Args[param] = "%" + value + "%"
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+	cg.Args[param] = "%" + escaped + "%"
 	return cg
 }
 
