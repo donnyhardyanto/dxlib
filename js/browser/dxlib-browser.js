@@ -11,7 +11,7 @@ const dxlib = {};
                 const clonedResponse = response.clone();
                 responseBody = await clonedResponse.json();
             } catch (e) {
-                // Response body is not JSON, ignore
+                responseBody = {reason: 'RESPONSE_BODY_NOT_JSON', reason_message: e.message};
             }
             console.error('=== API Error Response ===');
             console.error('URL:', response.url);

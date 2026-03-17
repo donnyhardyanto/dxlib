@@ -365,7 +365,5 @@ const dxlib = {};
         dxlib.b64ToHex = b64ToHex;
         dxlib.postJSON = postJSON;
     }
-
-)
-(dxlib);
+)(dxlib);
 export default dxlib;

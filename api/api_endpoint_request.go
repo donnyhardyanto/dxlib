@@ -317,38 +317,6 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 	return
 }
 
-func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsErrorf(statusCode int, responseMessage string, msg string, data ...any) (err error) {
-	if msg == "" {
-		msg = responseMessage
-	} else {
-		if data != nil {
-			msg = fmt.Sprintf(msg, data...)
-		}
-	}
-
-	if responseMessage == "" {
-		responseMessage = strings.ToUpper(http.StatusText(statusCode))
-	}
-
-	requestDump, err2 := aepr.RequestDumpAsString()
-	if err2 != nil {
-		requestDump = "DUMP REQUEST FAIL"
-	}
-
-	// Add decrypted request dump if parameters are available
-	decryptedDump := ""
-	if aepr.EffectiveRequestHeader != nil || len(aepr.ParameterValues) > 0 {
-		decryptedDump = "\n\n" + aepr.DecryptedRequestDumpAsString()
-	}
-
-	err = errors.New(msg)
-	fullDump := requestDump + decryptedDump
-	aepr.Log.LogText(err, log.DXLogLevelError, "", fullDump)
-	aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, msg)
-
-	return err
-}
-
 func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend error) {
 	if aepr.ResponseHeaderSent {
 		return
@@ -846,20 +814,20 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 	case EndPointTypeHTTPEndToEndEncryptionV2, EndPointTypeHTTPDownloadStreamV2:
 		preKeyIndex, err := utils.GetStringFromKV(bodyAsJSON, "i")
 		if err != nil {
-			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "INVALID_REQUEST_FORMAT", "INVALID_REQUEST_FORMAT:%v", err)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "INVALID_REQUEST_FORMAT", "INVALID_REQUEST_FORMAT:%v", err)
 		}
 		dataAsHexString, err := utils.GetStringFromKV(bodyAsJSON, "d")
 		if err != nil {
-			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "INVALID_REQUEST_FORMAT", "INVALID_REQUEST_FORMAT:%v", err)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "INVALID_REQUEST_FORMAT", "INVALID_REQUEST_FORMAT:%v", err)
 		}
 
 		if OnE2EEPrekeyUnPack == nil {
-			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "NOT_IMPLEMENTED", "NOT_IMPLEMENTED:OnE2EEPrekeyUnPack_IS_NIL:%v", aepr.EndPoint.EndPointType)
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "NOT_IMPLEMENTED", "NOT_IMPLEMENTED:OnE2EEPrekeyUnPack_IS_NIL:%v", aepr.EndPoint.EndPointType)
 		}
 
 		lvPayloadElements, sharedKey2AsBytes, edB0PrivateKeyAsBytes, preKeyData, err := OnE2EEPrekeyUnPack(aepr, preKeyIndex, dataAsHexString)
 		if err != nil {
-			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "INVALID_PREKEY", "NOT_ERROR:UNPACK_ERROR:%v", err.Error())
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "INVALID_PREKEY", "NOT_ERROR:UNPACK_ERROR:%v", err.Error())
 		}
 
 		lvPayloadHeader := lvPayloadElements[0]
@@ -868,12 +836,12 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		payLoadHeaderAsBase64 := lvPayloadHeader.Value
 		payLoadHeaderAsBytes, err := base64.StdEncoding.DecodeString(string(payLoadHeaderAsBase64))
 		if err != nil {
-			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_DECODED_PAYLOAD_HEADER_FROM_BASE64")
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_DECODED_PAYLOAD_HEADER_FROM_BASE64")
 		}
 		payloadHeader := map[string]string{}
 		err = json.Unmarshal(payLoadHeaderAsBytes, &payloadHeader)
 		if err != nil {
-			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_UNMARSHAL_PAYLOAD_HEADER_BYTES")
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_UNMARSHAL_PAYLOAD_HEADER_BYTES")
 		}
 
 		aepr.EncryptionParameters = utils.JSON{
@@ -887,12 +855,12 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		payLoadBodyAsBase64 := lvPayloadBody.Value
 		payLoadBodyAsBytes, err := base64.StdEncoding.DecodeString(string(payLoadBodyAsBase64))
 		if err != nil {
-			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_DECODED_PAYLOAD_BODY_FROM_BASE64")
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_DECODED_PAYLOAD_BODY_FROM_BASE64")
 		}
 		payloadBodyAsJSON := utils.JSON{}
 		err = json.Unmarshal(payLoadBodyAsBytes, &payloadBodyAsJSON)
 		if err != nil {
-			return aepr.WriteResponseAndLogAsErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_UNMARSHAL_PAYLOAD_BODY_BYTES")
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:INVALID_UNMARSHAL_PAYLOAD_BODY_BYTES")
 		}
 		aepr.DecryptedRequestBody = payloadBodyAsJSON
 		err = aepr.processEndPointRequestParameterValues(payloadBodyAsJSON)

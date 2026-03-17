@@ -61,8 +61,8 @@ func TestValidateOrderByDirection(t *testing.T) {
 	}
 }
 
-// TestConvertJoinToQueryBuilder_Structured tests structured JoinDef conversion
-func TestConvertJoinToQueryBuilder_Structured(t *testing.T) {
+// TestConvertJoinToQueryBuilderStructured tests structured JoinDef conversion
+func TestConvertJoinToQueryBuilderStructured(t *testing.T) {
 	qb := builder.NewSelectQueryBuilder(base.DXDatabaseTypePostgreSQL)
 
 	joins := []builder.JoinDef{
@@ -85,8 +85,8 @@ func TestConvertJoinToQueryBuilder_Structured(t *testing.T) {
 	}
 }
 
-// TestConvertJoinToQueryBuilder_String tests string JOIN parsing
-func TestConvertJoinToQueryBuilder_String(t *testing.T) {
+// TestConvertJoinToQueryBuilderString tests string JOIN parsing
+func TestConvertJoinToQueryBuilderString(t *testing.T) {
 	tests := []struct {
 		name    string
 		joinStr string
@@ -140,8 +140,8 @@ func TestConvertJoinToQueryBuilder_String(t *testing.T) {
 	}
 }
 
-// TestExecuteEncryptedSelect_OrderByInjection tests SQL injection via ORDER BY
-func TestExecuteEncryptedSelect_OrderByInjection(t *testing.T) {
+// TestExecuteEncryptedSelectOrderByInjection tests SQL injection via ORDER BY
+func TestExecuteEncryptedSelectOrderByInjection(t *testing.T) {
 	// This is a conceptual test - in real usage, we'd need a live database
 	// Here we test the validation layer only
 
@@ -158,8 +158,8 @@ func TestExecuteEncryptedSelect_OrderByInjection(t *testing.T) {
 	}
 }
 
-// TestExecuteEncryptedSelect_WhereInjection tests SQL injection via WHERE
-func TestExecuteEncryptedSelect_WhereInjection(t *testing.T) {
+// TestExecuteEncryptedSelectWhereInjection tests SQL injection via WHERE
+func TestExecuteEncryptedSelectWhereInjection(t *testing.T) {
 	// Test that invalid field names in WHERE are rejected
 	invalidFieldName := "org_id; DROP TABLE users--"
 
@@ -169,8 +169,8 @@ func TestExecuteEncryptedSelect_WhereInjection(t *testing.T) {
 	}
 }
 
-// TestExecuteEncryptedPaging_OrderByParsing tests ORDER BY string parsing
-func TestExecuteEncryptedPaging_OrderByParsing(t *testing.T) {
+// TestExecuteEncryptedPagingOrderByParsing tests ORDER BY string parsing
+func TestExecuteEncryptedPagingOrderByParsing(t *testing.T) {
 	// Test that malicious ORDER BY strings are rejected
 	// Parse the order by string (simulating what executeEncryptedPaging does)
 	tokens := []string{"created_at;", "DROP", "TABLE", "users--"}
