@@ -45,7 +45,7 @@ func buildInsertSQL(driverName string, qb *builder.InsertQueryBuilder) (string, 
 	// Handle RETURNING/OUTPUT
 	if len(qb.OutFields) > 0 {
 		switch driverName {
-		case "postgres", "mariadb":
+		case "postgres", "mysql":
 			returningClause, err := qb.BuildReturningClause()
 			if err != nil {
 				return "", nil, err
@@ -62,6 +62,10 @@ func buildInsertSQL(driverName string, qb *builder.InsertQueryBuilder) (string, 
 			if valuesIdx >= 0 {
 				query = query[:valuesIdx] + " " + outputClause + query[valuesIdx:]
 			}
+		case "oracle":
+			// Oracle RETURNING INTO is handled in the execution function, not in SQL build
+		default:
+			return "", nil, errors.Errorf("RETURNING_NOT_SUPPORTED_FOR_DRIVER:%s", driverName)
 		}
 	}
 
@@ -77,6 +81,12 @@ func InsertWithInsertQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder
 	}
 
 	driverName := db.DriverName()
+
+	// Oracle: use RETURNING INTO with sql.Out binds
+	if driverName == "oracle" && len(qb.OutFields) > 0 {
+		return oracleInsertWithReturningInto(ctx, db, qb)
+	}
+
 	query, args, err := buildInsertSQL(driverName, qb)
 	if err != nil {
 		return nil, nil, err

@@ -20,6 +20,12 @@ func TxInsertWithInsertQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 	}
 
 	driverName := dtx.Tx.DriverName()
+
+	// Oracle: use RETURNING INTO with sql.Out binds
+	if driverName == "oracle" && len(qb.OutFields) > 0 {
+		return oracleTxInsertWithReturningInto(ctx, dtx, qb)
+	}
+
 	query, args, err := buildInsertSQL(driverName, qb)
 	if err != nil {
 		return nil, nil, err

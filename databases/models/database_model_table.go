@@ -773,6 +773,7 @@ func (t *ModelDBTable) validateFieldValue(fieldName string, field *ModelDBField,
 		if _, ok := val.(bool); !ok {
 			return fmt.Errorf("field %s expects bool, got %T", fieldName, val)
 		}
+	default:
 	}
 	return nil
 }

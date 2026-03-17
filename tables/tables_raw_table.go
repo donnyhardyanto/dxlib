@@ -577,6 +577,7 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	case DXTableExportFormatCSV:
 		contentType = "application/octet-stream"
+	default:
 	}
 
 	// Set response headers

@@ -20,6 +20,12 @@ func TxUpdateWithUpdateQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 	}
 
 	driverName := dtx.Tx.DriverName()
+
+	// Oracle: two-step SELECT-then-UPDATE for RETURNING support
+	if driverName == "oracle" && len(qb.OutFields) > 0 {
+		return oracleTxUpdateWithReturning(ctx, dtx, qb)
+	}
+
 	query, args, err := buildUpdateSQL(driverName, qb)
 	if err != nil {
 		return nil, nil, err

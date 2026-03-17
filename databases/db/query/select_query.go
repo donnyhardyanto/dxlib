@@ -117,6 +117,8 @@ func SelectWithSelectQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder
 			if qb.LimitValue > 0 {
 				query += " FETCH NEXT " + strconv.FormatInt(qb.LimitValue, 10) + " ROWS ONLY"
 			}
+		default:
+			return nil, nil, errors.Errorf("LIMIT_OFFSET_NOT_SUPPORTED_FOR_DRIVER:%s", driverName)
 		}
 	}
 

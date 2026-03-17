@@ -55,7 +55,7 @@ func buildUpdateSQL(driverName string, qb *builder.UpdateQueryBuilder) (string, 
 	// Handle RETURNING/OUTPUT
 	if len(qb.OutFields) > 0 {
 		switch driverName {
-		case "postgres", "mariadb":
+		case "postgres", "mysql":
 			returningClause, err := qb.BuildReturningClause()
 			if err != nil {
 				return "", nil, err
@@ -74,6 +74,10 @@ func buildUpdateSQL(driverName string, qb *builder.UpdateQueryBuilder) (string, 
 			} else {
 				query += " " + outputClause
 			}
+		case "oracle":
+			// Oracle RETURNING INTO is handled in the execution function, not in SQL build
+		default:
+			return "", nil, errors.Errorf("RETURNING_NOT_SUPPORTED_FOR_DRIVER:%s", driverName)
 		}
 	}
 
@@ -89,6 +93,12 @@ func UpdateWithUpdateQueryBuilder2(ctx context.Context, db *sqlx.DB, qb *builder
 	}
 
 	driverName := db.DriverName()
+
+	// Oracle: two-step SELECT-then-UPDATE for RETURNING support
+	if driverName == "oracle" && len(qb.OutFields) > 0 {
+		return oracleUpdateWithReturning(ctx, db, qb)
+	}
+
 	query, args, err := buildUpdateSQL(driverName, qb)
 	if err != nil {
 		return nil, nil, err

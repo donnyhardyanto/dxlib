@@ -291,25 +291,6 @@ func setSessionKeysForDecryption(dtx *databases.DXDatabaseTx, encryptionColumns 
 	return nil
 }
 
-// limitToInt converts limit any to int
-func limitToInt(limit any) int {
-	if limit == nil {
-		return 0
-	}
-	switch v := limit.(type) {
-	case int:
-		return v
-	case int64:
-		return int(v)
-	case int32:
-		return int(v)
-	case float64:
-		return int(v)
-	default:
-		return 0
-	}
-}
-
 // validateFieldName checks if a field name is safe for SQL
 func validateFieldName(fieldName string) error {
 	if !utils2.IsValidIdentifier(fieldName) {
@@ -540,8 +521,14 @@ func executeEncryptedSelect(
 		switch v := limit.(type) {
 		case int:
 			qb.Limit(int64(v))
+		case int16:
+			qb.Limit(int64(v))
+		case int32:
+			qb.Limit(int64(v))
 		case int64:
 			qb.Limit(v)
+		default:
+			return nil, nil, fmt.Errorf("SHOULD_NOT_HAPPEN:CANT_CONVERT_LIMIT_TO_INT64")
 		}
 	}
 

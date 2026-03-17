@@ -20,6 +20,12 @@ func TxDeleteWithDeleteQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 	}
 
 	driverName := dtx.Tx.DriverName()
+
+	// Oracle: two-step SELECT-then-DELETE for RETURNING support
+	if driverName == "oracle" && len(qb.OutFields) > 0 {
+		return oracleTxDeleteWithReturning(ctx, dtx, qb)
+	}
+
 	query, args, err := buildDeleteSQL(driverName, qb)
 	if err != nil {
 		return nil, nil, err

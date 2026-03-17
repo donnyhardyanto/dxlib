@@ -1486,6 +1486,7 @@ func ConvertToFloat(v any) (float64, bool) {
 		return t, true
 	case float32:
 		return float64(t), true
+	default:
 	}
 	return 0, false
 }

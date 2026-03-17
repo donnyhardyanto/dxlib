@@ -158,11 +158,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 				return err
 			}
 		}
-	case dxlibTypes.APIParameterTypeJSONPassthrough:
-		if rawValueType != "map[string]interface {}" {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
-		}
-	case dxlibTypes.APIParameterTypeMapStringString:
+	case dxlibTypes.APIParameterTypeJSONPassthrough, dxlibTypes.APIParameterTypeMapStringString:
 		if rawValueType != "map[string]interface {}" {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 		}

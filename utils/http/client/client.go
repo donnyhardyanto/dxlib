@@ -44,7 +44,7 @@ func (hr *HTTPResponse) BodyAsJSON() (map[string]any, error) {
 
 func httpClientOtelStart(ctx context.Context, method string, url string) (context.Context, func(err error, statusCode int)) {
 	if !core.IsOtelEnabled {
-		return ctx, func(error, int) {}
+		return ctx, func(error, int) { /* no-op: OTel disabled */ }
 	}
 	spanAttrs := []attribute.KeyValue{
 		attribute.String("http.method", method),

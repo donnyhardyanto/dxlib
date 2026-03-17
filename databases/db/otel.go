@@ -78,7 +78,7 @@ func dbOtelCallerInfo(skip int) (string, string, int) {
 // callerSkip controls how many stack frames to skip for code.* attributes (use 2 from raw functions, 3+ from wrappers).
 func DbOtelStart(ctx context.Context, spanName string, query string, callerSkip int) (context.Context, func(err error, rowsAffected int64)) {
 	if !core.IsOtelEnabled {
-		return ctx, func(error, int64) {}
+		return ctx, func(error, int64) { /* no-op: OTel disabled */ }
 	}
 
 	op := dbOtelParseOperation(query)

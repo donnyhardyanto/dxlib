@@ -73,6 +73,7 @@ func (f Frame) Format(s fmt.State, verb rune) {
 		f.Format(s, 's')
 		io.WriteString(s, ":")
 		f.Format(s, 'd')
+	default:
 	}
 }
 
@@ -103,6 +104,7 @@ func (st StackTrace) Format(s fmt.State, verb rune) {
 		}
 	case 's':
 		st.formatSlice(s, verb)
+	default:
 	}
 }
 
@@ -206,6 +208,7 @@ func (e *stackError) Format(s fmt.State, verb rune) {
 		io.WriteString(s, e.Error())
 	case 'q':
 		fmt.Fprintf(s, "%q", e.Error())
+	default:
 	}
 }
 
@@ -236,6 +239,7 @@ func (w *withMessage) Format(s fmt.State, verb rune) {
 		io.WriteString(s, w.Error())
 	case 'q':
 		fmt.Fprintf(s, "%q", w.Error())
+	default:
 	}
 }
 

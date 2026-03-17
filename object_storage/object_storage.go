@@ -251,7 +251,7 @@ func (r *DXObjectStorage) ApplyFromConfiguration() (err error) {
 
 func (r *DXObjectStorage) minioOtelStart(ctx context.Context, opName string) (context.Context, func(err error)) {
 	if !core.IsOtelEnabled {
-		return ctx, func(error) {}
+		return ctx, func(error) { /* no-op: OTel disabled */ }
 	}
 	ctx, s := otel.Tracer("dxlib.minio").Start(ctx, "minio."+opName,
 		trace.WithSpanKind(trace.SpanKindClient),

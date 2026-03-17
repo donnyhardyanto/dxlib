@@ -188,24 +188,6 @@ func (t *DXTable) TxShouldGetByIdAuto(dtx *databases.DXDatabaseTx, id int64, fie
 	return t.TxShouldSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
 }
 
-// TxGetByIdNotDeletedAuto returns a non-deleted row by ID using table's EncryptionColumnDefs within a transaction
-func (t *DXTable) TxGetByIdNotDeletedAuto(dtx *databases.DXDatabaseTx, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	var fn []string
-	if len(fieldNames) > 0 {
-		fn = fieldNames
-	}
-	return t.TxSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
-}
-
-// TxShouldGetByIdNotDeletedAuto returns a non-deleted row by ID or error if not found within a transaction
-func (t *DXTable) TxShouldGetByIdNotDeletedAuto(dtx *databases.DXDatabaseTx, id int64, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	var fn []string
-	if len(fieldNames) > 0 {
-		fn = fieldNames
-	}
-	return t.TxShouldSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowId: id}, nil, nil, nil)
-}
-
 // TxGetByUidAuto returns a row by UID using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxGetByUidAuto(dtx *databases.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
@@ -220,30 +202,6 @@ func (t *DXTable) TxGetByUidAuto(dtx *databases.DXDatabaseTx, uid string, fieldN
 
 // TxShouldGetByUidAuto returns a row by UID or error if not found, using table's EncryptionColumnDefs within a transaction
 func (t *DXTable) TxShouldGetByUidAuto(dtx *databases.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	if t.FieldNameForRowUid == "" {
-		return nil, nil, errors.New("FieldNameForRowUid not configured")
-	}
-	var fn []string
-	if len(fieldNames) > 0 {
-		fn = fieldNames
-	}
-	return t.TxShouldSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
-}
-
-// TxGetByUidNotDeletedAuto returns a non-deleted row by UID using table's EncryptionColumnDefs within a transaction
-func (t *DXTable) TxGetByUidNotDeletedAuto(dtx *databases.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	if t.FieldNameForRowUid == "" {
-		return nil, nil, errors.New("FieldNameForRowUid not configured")
-	}
-	var fn []string
-	if len(fieldNames) > 0 {
-		fn = fieldNames
-	}
-	return t.TxSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowUid: uid}, nil, nil, nil)
-}
-
-// TxShouldGetByUidNotDeletedAuto returns a non-deleted row by UID or error if not found within a transaction
-func (t *DXTable) TxShouldGetByUidNotDeletedAuto(dtx *databases.DXDatabaseTx, uid string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	if t.FieldNameForRowUid == "" {
 		return nil, nil, errors.New("FieldNameForRowUid not configured")
 	}
@@ -302,26 +260,3 @@ func (t *DXTable) TxShouldGetByNameIdAuto(dtx *databases.DXDatabaseTx, nameId st
 	return t.TxShouldSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
 
-// TxGetByNameIdNotDeletedAuto returns a non-deleted row by NameId using table's EncryptionColumnDefs within a transaction
-func (t *DXTable) TxGetByNameIdNotDeletedAuto(dtx *databases.DXDatabaseTx, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	if t.FieldNameForRowNameId == "" {
-		return nil, nil, errors.New("FieldNameForRowNameId not configured")
-	}
-	var fn []string
-	if len(fieldNames) > 0 {
-		fn = fieldNames
-	}
-	return t.TxSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
-}
-
-// TxShouldGetByNameIdNotDeletedAuto returns a non-deleted row by NameId or error if not found within a transaction
-func (t *DXTable) TxShouldGetByNameIdNotDeletedAuto(dtx *databases.DXDatabaseTx, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
-	if t.FieldNameForRowNameId == "" {
-		return nil, nil, errors.New("FieldNameForRowNameId not configured")
-	}
-	var fn []string
-	if len(fieldNames) > 0 {
-		fn = fieldNames
-	}
-	return t.TxShouldSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
-}

@@ -100,6 +100,7 @@ func maskSecureValuesInMap(m map[string]any) {
 			m[k] = "********[SECURE]"
 		case map[string]any:
 			maskSecureValuesInMap(val)
+		default:
 		}
 	}
 }
