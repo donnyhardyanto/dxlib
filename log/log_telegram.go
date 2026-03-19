@@ -10,16 +10,19 @@ import (
 // Messages are sent on WARN/ERROR/FATAL/PANIC severity via raw HTTP POST (zero new dependencies).
 // token: Telegram bot token, chatIDs: list of chat IDs to send to.
 func SetTelegramBot(token string, chatIDs []string) {
+	prevHandler := OnError // preserve existing handler (e.g. file logger) for chaining
 	OnError = func(l *DXLog, errPrev error, severity DXLogLevel, location string, text string, stack string) error {
-		if severity > DXLogLevelWarn {
-			return nil
+		if severity <= DXLogLevelWarn {
+			msg := fmt.Sprintf("[%s] %s: %s", DXLogLevelAsString[severity], l.Prefix, text)
+			if len(msg) > 4096 {
+				msg = msg[:4096]
+			}
+			for _, chatID := range chatIDs {
+				sendTelegramMessage(token, chatID, msg)
+			}
 		}
-		msg := fmt.Sprintf("[%s] %s: %s", DXLogLevelAsString[severity], l.Prefix, text)
-		if len(msg) > 4096 {
-			msg = msg[:4096]
-		}
-		for _, chatID := range chatIDs {
-			sendTelegramMessage(token, chatID, msg)
+		if prevHandler != nil {
+			return prevHandler(l, errPrev, severity, location, text, stack)
 		}
 		return nil
 	}

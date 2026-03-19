@@ -94,22 +94,22 @@ type DXAPIAuditLogEntry struct {
 type DXAuditLogHandler func(ctx context.Context, oldAuditLogId int64, parameters *DXAPIAuditLogEntry) (newAuditLogId int64, err error)
 
 type DXAPI struct {
-	Version                  string
-	NameId                   string
-	Address                  string
-	WriteTimeoutSec          int
-	ReadTimeoutSec           int
+	Version                      string
+	NameId                       string
+	Address                      string
+	WriteTimeoutSec              int
+	ReadTimeoutSec               int
 	CORSAllowedOrigins           string // comma-separated allowed origins; empty or "*" = allow all
 	EnableBrowserSecurityHeaders bool   // when true, adds X-Content-Type-Options, HSTS, X-Frame-Options
 	EndPoints                    []DXAPIEndPoint
-	RuntimeIsActive          bool
-	HTTPServer               *http.Server
-	Log                      log.DXLog
-	Context                  context.Context
-	Cancel                   context.CancelFunc
-	OnAuditLogStart          DXAuditLogHandler
-	OnAuditLogUserIdentified DXAuditLogHandler
-	OnAuditLogEnd            DXAuditLogHandler
+	RuntimeIsActive              bool
+	HTTPServer                   *http.Server
+	Log                          log.DXLog
+	Context                      context.Context
+	Cancel                       context.CancelFunc
+	OnAuditLogStart              DXAuditLogHandler
+	OnAuditLogUserIdentified     DXAuditLogHandler
+	OnAuditLogEnd                DXAuditLogHandler
 }
 
 var SpecFormat = "MarkDown"
@@ -435,6 +435,12 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			}
 		}
 	}()
+
+	// WebSocket endpoints bypass PreProcessRequest entirely
+	if p.EndPointType == EndPointTypeWS {
+		a.handleWebSocket(w, r, aepr)
+		return
+	}
 
 	// TRACE: preprocess_start
 	preprocessStartTime := time.Now()

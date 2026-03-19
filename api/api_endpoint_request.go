@@ -53,6 +53,7 @@ type DXAPIEndPointRequest struct {
 	EncryptionParameters   utils.JSON
 	EffectiveRequestHeader map[string]string
 	DecryptedRequestBody   utils.JSON // E2E decrypted body for debug logging
+	WSClient               *DXAPIEndPointWebSocketClient
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
