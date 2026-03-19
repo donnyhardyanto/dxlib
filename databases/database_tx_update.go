@@ -9,7 +9,7 @@ import (
 
 func (dtx *DXDatabaseTx) Update(ctx context.Context, tableName string, setFieldValues utils.JSON, whereAndFieldNameValues utils.JSON, returningFieldNames []string) (result sql.Result, returningFieldValues []utils.JSON, err error) {
 	result, returningFieldValues, err = db.TxUpdate(ctx, dtx.Tx, tableName, setFieldValues, whereAndFieldNameValues, returningFieldNames)
-	if err == nil {
+	if err != nil {
 		return nil, nil, err
 	}
 

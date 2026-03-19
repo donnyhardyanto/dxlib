@@ -18,7 +18,7 @@ func (d *DXDatabase) Update(ctx context.Context, tableName string, setFieldValue
 	for tryCount := 0; tryCount < 4; tryCount++ {
 		result, returningFieldValues, err = db.Update(ctx, d.Connection, tableName, setFieldValues, whereAndFieldNameValues, returningFieldNames)
 		if err == nil {
-			return nil, nil, err
+			return result, returningFieldValues, nil
 		}
 		log.Log.Warnf("UPDATE_ERROR:%s=%v", tableName, err.Error())
 		if !db.IsConnectionError(err) {

@@ -99,7 +99,7 @@ func (d *DXDatabase) SelectPaging(ctx context.Context, pageIndex int64, rowsPerP
 		totalRowCount, rowsInfo, resultDataRows, err = db.SelectPaging(ctx, d.Connection, pageIndex, rowsPerPage, tableName, fieldTypeMapping, fieldNames, whereAndFieldNameValues, joinSQLPart,
 			groupBy, havingClause, orderByFieldNameDirections)
 		if err == nil {
-			return 0, nil, nil, err
+			return totalRowCount, rowsInfo, resultDataRows, nil
 		}
 		log.Log.Warnf("PAGING_ERROR:%s=%+v", tableName, err)
 		if !IsConnectionError(err) {
