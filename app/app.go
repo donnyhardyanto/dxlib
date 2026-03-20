@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
+	"time"
 
 	"github.com/donnyhardyanto/dxlib"
 	"github.com/donnyhardyanto/dxlib/databases"
@@ -56,6 +58,7 @@ type DXApp struct {
 	Version                  string
 	Args                     DXAppArgs
 	IsLoop                   bool
+	LoopInterval             time.Duration
 	RuntimeErrorGroup        *errgroup.Group
 	RuntimeErrorGroupContext context.Context
 	LocalData                map[string]any
@@ -299,10 +302,16 @@ func (a *DXApp) execute() (err error) {
 
 	if a.OnExecute != nil {
 		log.Log.Info("Starting")
-		err = a.OnExecute()
-		if err != nil {
-			log.Log.Infof("onExecute error %+v", err)
-			return err
+		if a.IsLoop && a.LoopInterval > 0 {
+			// Framework-managed polling loop: ctx.Done check + panic recovery + sleep per iteration.
+			// OnExecute is called once per iteration as "do one cycle of work".
+			a.executeLoop()
+		} else {
+			err = a.OnExecute()
+			if err != nil {
+				log.Log.Infof("onExecute error %+v", err)
+				return err
+			}
 		}
 	}
 
@@ -315,6 +324,39 @@ func (a *DXApp) execute() (err error) {
 		}
 	}
 	return nil
+}
+
+// executeLoop runs OnExecute in a loop until ctx is canceled.
+// Per iteration: check ctx.Done → recover(OnExecute()) → interruptible sleep.
+func (a *DXApp) executeLoop() {
+	for {
+		select {
+		case <-core.RootContext.Done():
+			log.Log.Info("Loop shutting down (signal received)")
+			return
+		default:
+		}
+
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Log.Errorf(fmt.Errorf("OnExecute panic (recovered): %v", r), "%s", debug.Stack())
+				}
+			}()
+			err := a.OnExecute()
+			if err != nil {
+				log.Log.Error("OnExecute error", err)
+			}
+		}()
+
+		// Interruptible sleep — wakes immediately on shutdown signal.
+		select {
+		case <-core.RootContext.Done():
+			log.Log.Info("Loop shutting down (signal received)")
+			return
+		case <-time.After(a.LoopInterval):
+		}
+	}
 }
 
 func (a *DXApp) SetupNewRelicApplication() {
