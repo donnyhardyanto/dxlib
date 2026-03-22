@@ -102,14 +102,18 @@ type DXAPI struct {
 	CORSAllowedOrigins           string // comma-separated allowed origins; empty or "*" = allow all
 	EnableBrowserSecurityHeaders bool   // when true, adds X-Content-Type-Options, HSTS, X-Frame-Options
 	EndPoints                    []DXAPIEndPoint
-	RuntimeIsActive              bool
-	HTTPServer                   *http.Server
-	Log                          log.DXLog
-	Context                      context.Context
-	Cancel                       context.CancelFunc
-	OnAuditLogStart              DXAuditLogHandler
-	OnAuditLogUserIdentified     DXAuditLogHandler
-	OnAuditLogEnd                DXAuditLogHandler
+	RawHandlers                  []struct {
+		Pattern string
+		Handler http.Handler
+	}
+	RuntimeIsActive          bool
+	HTTPServer               *http.Server
+	Log                      log.DXLog
+	Context                  context.Context
+	Cancel                   context.CancelFunc
+	OnAuditLogStart          DXAuditLogHandler
+	OnAuditLogUserIdentified DXAuditLogHandler
+	OnAuditLogEnd            DXAuditLogHandler
 }
 
 var SpecFormat = "MarkDown"
@@ -697,6 +701,11 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		mux.Handle(p.Uri, corsMiddleware(http.HandlerFunc(wrappedHandler)))
 	}
 
+	// Register raw handlers (static files, redirects, etc.)
+	for _, rh := range a.RawHandlers {
+		mux.Handle(rh.Pattern, corsMiddleware(rh.Handler))
+	}
+
 	errorGroup.Go(func() error {
 		a.RuntimeIsActive = true
 		log.Log.Infof("Listening at %s... start", a.Address)
@@ -722,6 +731,16 @@ func (a *DXAPI) StartShutdown() (err error) {
 		return nil
 	}
 	return nil
+}
+
+// RegisterRawHandler registers a raw http.Handler on the API mux.
+// Use this for static file serving, redirects, or other handlers that bypass
+// the DXAPIEndPoint middleware pipeline.
+func (a *DXAPI) RegisterRawHandler(pattern string, handler http.Handler) {
+	a.RawHandlers = append(a.RawHandlers, struct {
+		Pattern string
+		Handler http.Handler
+	}{Pattern: pattern, Handler: handler})
 }
 
 var Manager DXAPIManager
