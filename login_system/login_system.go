@@ -502,7 +502,7 @@ func (l *LoginSystem) redisOnlyInstanceGet(sessionKey string) (map[string]any, e
 	}
 
 	// Fix JSON number → int64 for user_id
-	l.fixJsonUserId(sessionData)
+	l.fixJsonNumbers(sessionData)
 	return sessionData, nil
 }
 
@@ -523,7 +523,7 @@ func (l *LoginSystem) redisOnlyInstanceUnregister(sessionKey string, reason Toke
 	if val != nil && l.OnSessionUnregistered != nil {
 		var sessionData map[string]any
 		if err := json.Unmarshal(val, &sessionData); err == nil {
-			l.fixJsonUserId(sessionData)
+			l.fixJsonNumbers(sessionData)
 			l.OnSessionUnregistered(sessionKey, reason, reasonData, sessionData)
 		}
 	}
@@ -570,7 +570,7 @@ func (l *LoginSystem) redisOnlyInstanceGetDevicesByUserId(userId int64) []map[st
 		if err := json.Unmarshal([]byte(val), &sessionData); err != nil {
 			continue
 		}
-		l.fixJsonUserId(sessionData)
+		l.fixJsonNumbers(sessionData)
 		if uid, ok := sessionData["usermanagement_user_id"].(int64); ok && uid == userId {
 			result = append(result, sessionData)
 		}
@@ -592,7 +592,7 @@ func (l *LoginSystem) redisOnlyFindSessionsToKick(userId int64, deviceId string)
 		if err := json.Unmarshal([]byte(val), &sessionData); err != nil {
 			continue
 		}
-		l.fixJsonUserId(sessionData)
+		l.fixJsonNumbers(sessionData)
 		uid, ok := sessionData["usermanagement_user_id"].(int64)
 		if !ok || uid != userId {
 			continue
@@ -628,7 +628,7 @@ func (l *LoginSystem) redisOnlyExpirationCallback(sessionKey string, reason Toke
 	if l.OnSessionUnregistered != nil {
 		var sessionData map[string]any
 		if err := json.Unmarshal(val, &sessionData); err == nil {
-			l.fixJsonUserId(sessionData)
+			l.fixJsonNumbers(sessionData)
 			l.OnSessionUnregistered(sessionKey, reason, nil, sessionData)
 		}
 	}
@@ -750,7 +750,7 @@ func (l *LoginSystem) redisWithDBInstanceGet(sessionKey string) (map[string]any,
 		return nil, fmt.Errorf("redisWithDBInstanceGet:unmarshal: %w", err)
 	}
 
-	l.fixJsonUserId(sessionData)
+	l.fixJsonNumbers(sessionData)
 	return sessionData, nil
 }
 
@@ -1077,17 +1077,25 @@ func (l *LoginSystem) dbOnlyCleanupExpired() {
 // ====================== Shared Helpers ======================
 
 // txFireUnregister deletes the PG session row and fires OnSessionUnregistered within a transaction.
+// BUG-BE-076 fix: only fires callback if TxDelete actually deleted a row (RowsAffected > 0),
+// preventing double-fire when another goroutine already deleted the same session.
 func (l *LoginSystem) txFireUnregister(dtx *databases.DXDatabaseTx, session map[string]any, reason TokenRemoveReasonType, reasonData any) error {
 	sessionKey, ok := session["session_key"].(string)
 	if !ok {
 		return errors.New("txFireUnregister:session_key_missing_or_wrong_type")
 	}
 
-	_, _, err := dtx.TxDelete(context.Background(), SessionStoreName, map[string]any{
+	result, _, err := dtx.TxDelete(context.Background(), SessionStoreName, map[string]any{
 		"session_key": sessionKey,
 	}, nil)
 	if err != nil {
 		return err
+	}
+
+	// Only fire callback if we actually deleted a row
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return nil
 	}
 
 	if l.OnSessionUnregistered != nil {
@@ -1185,17 +1193,21 @@ func (l *LoginSystem) extractSessionData(row map[string]any) map[string]any {
 		l.Log.Error("extractSessionData:unexpected_type", fmt.Errorf("%T", v))
 		return nil
 	}
-	l.fixJsonUserId(sessionData)
+	l.fixJsonNumbers(sessionData)
 	return sessionData
 }
 
-// fixJsonUserId converts float64 user_id back to int64 (JSON numbers unmarshal as float64).
-func (l *LoginSystem) fixJsonUserId(sessionData map[string]any) {
-	if f, ok := sessionData["usermanagement_user_id"].(float64); ok {
-		sessionData["usermanagement_user_id"] = int64(f)
-	}
-	if f, ok := sessionData["user_id"].(float64); ok {
-		sessionData["user_id"] = int64(f)
+// fixJsonNumbers converts ALL whole-number float64 values back to int64.
+// encoding/json.Unmarshal into map[string]any always produces float64 for JSON numbers.
+// After Redis HASH or PG JSON round-trip, int64 fields like appmanagement_appinstance_id,
+// usermanagement_user_id, si_login become float64 — breaking dxutils.GetInt64FromKV.
+func (l *LoginSystem) fixJsonNumbers(sessionData map[string]any) {
+	for k, v := range sessionData {
+		if f, ok := v.(float64); ok {
+			if f == float64(int64(f)) {
+				sessionData[k] = int64(f)
+			}
+		}
 	}
 }
 
