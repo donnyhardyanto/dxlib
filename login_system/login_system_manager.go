@@ -1,6 +1,8 @@
 package login_system
 
 import (
+	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -277,6 +279,35 @@ func (m *LoginSystemManager) InstanceGetDevicesByUserId(tenantId int64, userId i
 		return nil
 	}
 	return ls.InstanceGetDevicesByUserId(userId)
+}
+
+// ====================== Raw Redis Operations ======================
+
+// InstanceRedisGetRaw performs a raw Redis GET, routed to the tenant's LoginSystem.
+func (m *LoginSystemManager) InstanceRedisGetRaw(tenantId int64, ctx context.Context, key string) (string, error) {
+	ls := m.GetInstance(tenantId)
+	if ls == nil {
+		return "", fmt.Errorf("no_login_system_for_tenant_%d", tenantId)
+	}
+	return ls.RedisGetRaw(ctx, key)
+}
+
+// InstanceRedisSetRaw performs a raw Redis SET, routed to the tenant's LoginSystem.
+func (m *LoginSystemManager) InstanceRedisSetRaw(tenantId int64, ctx context.Context, key string, value any, expiration time.Duration) error {
+	ls := m.GetInstance(tenantId)
+	if ls == nil {
+		return fmt.Errorf("no_login_system_for_tenant_%d", tenantId)
+	}
+	return ls.RedisSetRaw(ctx, key, value, expiration)
+}
+
+// InstanceRedisIncr performs an atomic Redis INCR, routed to the tenant's LoginSystem.
+func (m *LoginSystemManager) InstanceRedisIncr(tenantId int64, ctx context.Context, key string) (int64, error) {
+	ls := m.GetInstance(tenantId)
+	if ls == nil {
+		return 0, fmt.Errorf("no_login_system_for_tenant_%d", tenantId)
+	}
+	return ls.RedisIncr(ctx, key)
 }
 
 // ====================== Lifecycle ======================
