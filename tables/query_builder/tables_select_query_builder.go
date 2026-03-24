@@ -227,24 +227,28 @@ func (tqb *TableSelectQueryBuilder) OrEq(fieldValuePairs ...any) *TableSelectQue
 }
 
 // Like adds field LIKE value condition (case-sensitive) with field validation
+// Escapes LIKE special characters (\, %, _) to prevent wildcard injection
 func (tqb *TableSelectQueryBuilder) Like(fieldName string, value string) *TableSelectQueryBuilder {
 	tqb.CheckFieldExist(fieldName)
 	if tqb.Error != nil {
 		return tqb
 	}
 	tqb.Conditions = append(tqb.Conditions, fmt.Sprintf("%s LIKE :%s", tqb.QuoteIdentifier(fieldName), fieldName))
-	tqb.Args[fieldName] = "%" + value + "%"
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+	tqb.Args[fieldName] = "%" + escaped + "%"
 	return tqb
 }
 
 // ILike adds field ILIKE value condition (case-insensitive, PostgreSQL) with field validation
+// Escapes LIKE special characters (\, %, _) to prevent wildcard injection
 func (tqb *TableSelectQueryBuilder) ILike(fieldName string, value string) *TableSelectQueryBuilder {
 	tqb.CheckFieldExist(fieldName)
 	if tqb.Error != nil {
 		return tqb
 	}
 	tqb.Conditions = append(tqb.Conditions, fmt.Sprintf("%s ILIKE :%s", tqb.QuoteIdentifier(fieldName), fieldName))
-	tqb.Args[fieldName] = "%" + value + "%"
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+	tqb.Args[fieldName] = "%" + escaped + "%"
 	return tqb
 }
 
