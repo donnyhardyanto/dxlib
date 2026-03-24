@@ -385,11 +385,15 @@ func (a *DXApp) SetupOpenTelemetry() {
 }
 
 var App DXApp
+var BuildTime string // injectable via -ldflags="-X 'github.com/donnyhardyanto/dxlib/app.BuildTime=...'"
 
 func Set(nameId, title, description string, isLoop bool, debugKey string, debugValue string) {
 	App.NameId = nameId
 	App.Title = title
 	App.Description = description
+	if BuildTime != "" {
+		App.Version = App.Version + " Built " + BuildTime
+	}
 	App.IsLoop = isLoop
 	App.DebugKey = debugKey
 	App.DebugValue = debugValue
