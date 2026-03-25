@@ -19,7 +19,7 @@ type DXAPIDomainError interface {
 }
 
 // ErrUniqueFieldViolation is returned when a unique field constraint would be violated.
-// TableName, Fields, and Values are logged server-side only (never sent in API response for security).
+// TableName and Values are logged server-side only. Fields are included in the API response.
 type ErrUniqueFieldViolation struct {
 	TableName string
 	Fields    []string
@@ -42,6 +42,7 @@ func (e *ErrUniqueFieldViolation) DomainErrorResponseBody() utils.JSON {
 	return utils.JSON{
 		"reason":         "UNIQUE_FIELD_VIOLATION",
 		"reason_message": "UNIQUE_FIELD_VIOLATION",
+		"fields":         e.Fields,
 	}
 }
 
