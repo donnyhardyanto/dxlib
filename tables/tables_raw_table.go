@@ -554,11 +554,18 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 		}
 	}
 
-	// Set export options with language
+	// Resolve timezone from request, default to Asia/Jakarta (WIB)
+	_, timezone, _ := aepr.GetParameterValueAsString("timezone")
+	if timezone == "" {
+		timezone = "Asia/Jakarta"
+	}
+
+	// Set export options with language and timezone
 	opts := export.ExportOptions{
 		Format:            export.ExportFormat(format),
 		SheetName:         "Sheet1",
 		DateFormat:        "2006-01-02 15:04:05",
+		Timezone:          timezone,
 		Language:          lang,
 		TranslateFallback: fallback,
 	}

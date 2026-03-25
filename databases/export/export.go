@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 	_ "time/tzdata"
 
@@ -28,8 +29,20 @@ type ExportOptions struct {
 	FilePath          string
 	SheetName         string
 	DateFormat        string
+	Timezone          string                           // Target timezone for timestamp display (e.g. "Asia/Jakarta"); empty = use original
 	Language          language.DXLanguage              // Language for header translation
 	TranslateFallback language.DXTranslateFallbackMode // Fallback mode for missing translations
+}
+
+func resolveTimezone(tz string) *time.Location {
+	if tz == "" {
+		return nil
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return nil
+	}
+	return loc
 }
 
 func ExportQueryResults(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts ExportOptions) error {
@@ -82,6 +95,8 @@ func exportToCSV(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts E
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
+	loc := resolveTimezone(opts.Timezone)
+
 	// Translate headers
 	headers := make([]string, len(rowsInfo.Columns))
 	for i, col := range rowsInfo.Columns {
@@ -94,7 +109,7 @@ func exportToCSV(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts E
 	for _, row := range rows {
 		record := make([]string, len(rowsInfo.Columns))
 		for i, col := range rowsInfo.Columns {
-			record[i] = formatValue(row[col], opts.DateFormat)
+			record[i] = formatValue(row[col], opts.DateFormat, loc)
 		}
 		if err := writer.Write(record); err != nil {
 			return errors.Errorf("failed to write CSV record: %+v", err)
@@ -108,6 +123,8 @@ func exportToCSVStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, 
 	buf := new(bytes.Buffer)
 	writer := csv.NewWriter(buf)
 
+	loc := resolveTimezone(opts.Timezone)
+
 	// Translate headers
 	headers := make([]string, len(rowsInfo.Columns))
 	for i, col := range rowsInfo.Columns {
@@ -120,7 +137,7 @@ func exportToCSVStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, 
 	for _, row := range rows {
 		record := make([]string, len(rowsInfo.Columns))
 		for i, col := range rowsInfo.Columns {
-			record[i] = formatValue(row[col], opts.DateFormat)
+			record[i] = formatValue(row[col], opts.DateFormat, loc)
 		}
 		if err := writer.Write(record); err != nil {
 			return nil, errors.Errorf("failed to write CSV record: %+v", err)
@@ -167,6 +184,8 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, row
 		sheetName = "Sheet1"
 	}
 
+	loc := resolveTimezone(opts.Timezone)
+
 	// Write headers
 	for i, col := range rowsInfo.Columns {
 		cellName, err := excelize.CoordinatesToCellName(i+1, 1)
@@ -186,7 +205,7 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, row
 			if err != nil {
 				return errors.Errorf("invalid cell coordinates: %+v", err)
 			}
-			if err := f.SetCellValue(sheetName, cellName, formatValue(row[col], opts.DateFormat)); err != nil {
+			if err := f.SetCellValue(sheetName, cellName, formatValue(row[col], opts.DateFormat, loc)); err != nil {
 				return errors.Errorf("failed to write cell value: %+v", err)
 			}
 		}
@@ -218,16 +237,33 @@ func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, row
 	return nil
 }
 
-func formatValue(v interface{}, dateFormat string) string {
+func formatValue(v interface{}, dateFormat string, loc *time.Location) string {
 	if v == nil {
 		return ""
 	}
 
 	switch val := v.(type) {
 	case time.Time:
+		if loc != nil {
+			val = val.In(loc)
+		}
 		return val.Format(dateFormat)
 	case []byte:
 		return string(val)
+	case []any:
+		if len(val) == 0 {
+			return "All"
+		}
+		parts := make([]string, len(val))
+		for i, item := range val {
+			parts[i] = fmt.Sprintf("%v", item)
+		}
+		return strings.Join(parts, ", ")
+	case []string:
+		if len(val) == 0 {
+			return "All"
+		}
+		return strings.Join(val, ", ")
 	default:
 		return fmt.Sprintf("%v", val)
 	}
