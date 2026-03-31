@@ -233,7 +233,7 @@ func (tqb *TableSelectQueryBuilder) Like(fieldName string, value string) *TableS
 	if tqb.Error != nil {
 		return tqb
 	}
-	tqb.Conditions = append(tqb.Conditions, fmt.Sprintf("%s LIKE :%s", tqb.QuoteIdentifier(fieldName), fieldName))
+	tqb.Conditions = append(tqb.Conditions, fmt.Sprintf(`%s LIKE :%s ESCAPE '\'`, tqb.QuoteIdentifier(fieldName), fieldName))
 	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
 	tqb.Args[fieldName] = "%" + escaped + "%"
 	return tqb
@@ -246,7 +246,7 @@ func (tqb *TableSelectQueryBuilder) ILike(fieldName string, value string) *Table
 	if tqb.Error != nil {
 		return tqb
 	}
-	tqb.Conditions = append(tqb.Conditions, fmt.Sprintf("%s ILIKE :%s", tqb.QuoteIdentifier(fieldName), fieldName))
+	tqb.Conditions = append(tqb.Conditions, fmt.Sprintf(`%s ILIKE :%s ESCAPE '\'`, tqb.QuoteIdentifier(fieldName), fieldName))
 	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
 	tqb.Args[fieldName] = "%" + escaped + "%"
 	return tqb
@@ -264,7 +264,7 @@ func (tqb *TableSelectQueryBuilder) SearchLike(value string, fieldNames ...strin
 			return tqb
 		}
 		argName := fmt.Sprintf("search_%d", i)
-		parts = append(parts, fmt.Sprintf("%s ILIKE :%s", tqb.QuoteIdentifier(fieldName), argName))
+		parts = append(parts, fmt.Sprintf(`%s ILIKE :%s ESCAPE '\'`, tqb.QuoteIdentifier(fieldName), argName))
 		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
 		tqb.Args[argName] = "%" + escaped + "%"
 	}
