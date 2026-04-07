@@ -52,10 +52,10 @@ type DXRawTable struct {
 	EncryptionColumnDefs []databases.EncryptionColumnDef // for INSERT/UPDATE/SELECT encryption/decryption
 
 	ValidationUniqueFieldNameGroups [][]string
-	SearchTextFieldNames             []string
-	OrderByFieldNames                []string
-	FilterableFieldNames             []string // Whitelist of fields that can be filtered via filter_key_values
-	DownloadableOrderByFieldNames    []string // If set, used for SELECT in download. Falls back to OrderByFieldNames if nil.
+	SearchTextFieldNames            []string
+	OrderByFieldNames               []string
+	FilterableFieldNames            []string // Whitelist of fields that can be filtered via filter_key_values
+	DownloadableOrderByFieldNames   []string // If set, used for SELECT in download. Falls back to OrderByFieldNames if nil.
 }
 
 // EnsureDatabase ensures databases connection is initialized
@@ -487,8 +487,32 @@ func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest)
 
 // DoRequestSearchPagingDownload executes paging with a pre-built TableSelectQueryBuilder and writes file download response.
 // Parses row_per_page, page_index, format, language, header_translate_fallback from the request.
-// The caller is responsible for building the query builder with all WHERE and ORDER BY conditions.
+// Also processes search_text, filter_key_values, order_by, and is_include_deleted like DoRequestSearchPagingList.
 func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest, qb *tableQueryBuilder.TableSelectQueryBuilder) error {
+	// Get search_text and apply search filter
+	_, searchText, err := aepr.GetParameterValueAsString("search_text")
+	if err != nil {
+		return err
+	}
+
+	// Get filter_key_values and apply filters
+	isFilterKeyValuesExist, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
+	if err != nil {
+		return err
+	}
+
+	// Get order_by
+	_, orderByArray, err := aepr.GetParameterValueAsArrayOfAny("order_by")
+	if err != nil {
+		return err
+	}
+
+	// Get is_include_deleted
+	isIncludeDeletedExist, isIncludeDeleted, err := aepr.GetParameterValueAsBool("is_include_deleted")
+	if err != nil {
+		return err
+	}
+
 	_, rowPerPage, err := aepr.GetParameterValueAsInt64("row_per_page")
 	if err != nil {
 		return err
@@ -517,6 +541,29 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 	if headerTranslateFallbackStr == "" {
 		fallback = language.DXTranslateFallbackModeOriginal
 	}
+
+	// Apply search text filter
+	if searchText != "" {
+		qb.SearchLike(searchText, t.SearchTextFieldNames...)
+	}
+
+	// Apply filter_key_values
+	if isFilterKeyValuesExist && filterKeyValues != nil {
+		err := t.processFilterKeyValues(qb, filterKeyValues)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Apply "not deleted" filter by default, unless explicitly told to include deleted
+	if !isIncludeDeletedExist || !isIncludeDeleted {
+		if qb.IsFieldExist("is_deleted") {
+			qb.Eq("is_deleted", false)
+		}
+	}
+
+	// Parse order_by into OrderBy calls with validation
+	qb.ParseOrderByFromArray(orderByArray)
 
 	qb.Limit(rowPerPage)
 	if pageIndex > 0 {
