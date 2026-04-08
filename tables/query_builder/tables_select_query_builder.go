@@ -535,3 +535,50 @@ func (tqb *TableSelectQueryBuilder) NotIn(fieldName string, values any) *TableSe
 	tqb.SelectQueryBuilder.NotIn(fieldName, values)
 	return tqb
 }
+
+// ArrayContainsAnyInt64 adds a condition that checks whether an array-typed column
+// contains any of the given int64 values.
+//
+// PostgreSQL: uses native array operators (= ANY or &&)
+// MariaDB / MySQL: uses JSON_CONTAINS with a JSON array literal
+// SQL Server / Oracle: falls back to LIKE-based membership check on the serialised JSON string
+func (tqb *TableSelectQueryBuilder) ArrayContainsAnyInt64(fieldName string, values []int64) *TableSelectQueryBuilder {
+	if len(values) == 0 {
+		return tqb
+	}
+	tqb.CheckFieldExist(fieldName)
+	if tqb.Error != nil {
+		return tqb
+	}
+	var strVals []string
+	for _, v := range values {
+		strVals = append(strVals, fmt.Sprintf("%d", v))
+	}
+	switch tqb.DbType {
+	case base.DXDatabaseTypePostgreSQL, base.DXDatabaseTypePostgresSQLV2:
+		if len(values) == 1 {
+			tqb.Conditions = append(tqb.Conditions, fmt.Sprintf("%d = ANY(%s)", values[0], tqb.QuoteIdentifier(fieldName)))
+		} else {
+			tqb.Conditions = append(tqb.Conditions, fmt.Sprintf("%s && ARRAY[%s]::BIGINT[]", tqb.QuoteIdentifier(fieldName), strings.Join(strVals, ", ")))
+		}
+	case base.DXDatabaseTypeMariaDB:
+		var jsonChecks []string
+		for _, v := range strVals {
+			jsonChecks = append(jsonChecks, fmt.Sprintf("JSON_CONTAINS(%s, CAST(%s AS JSON))", tqb.QuoteIdentifier(fieldName), v))
+		}
+		tqb.Conditions = append(tqb.Conditions, "("+strings.Join(jsonChecks, " OR ")+")")
+	default:
+		// SQL Server / Oracle store serialised JSON — fall back to LIKE membership
+		var likeParts []string
+		for _, v := range strVals {
+			likeParts = append(likeParts, fmt.Sprintf("%s LIKE '%%[%s,%%' OR %s LIKE '%%,%s,%%' OR %s LIKE '%%,%s]' OR %s = '[%s]'",
+				tqb.QuoteIdentifier(fieldName), v,
+				tqb.QuoteIdentifier(fieldName), v,
+				tqb.QuoteIdentifier(fieldName), v,
+				tqb.QuoteIdentifier(fieldName), v,
+			))
+		}
+		tqb.Conditions = append(tqb.Conditions, "("+strings.Join(likeParts, " OR ")+")")
+	}
+	return tqb
+}

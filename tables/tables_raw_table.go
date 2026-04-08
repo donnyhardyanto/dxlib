@@ -18,6 +18,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/language"
 	"github.com/donnyhardyanto/dxlib/log"
 	tableQueryBuilder "github.com/donnyhardyanto/dxlib/tables/query_builder"
+	"github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 )
@@ -674,6 +675,45 @@ func (t *DXRawTable) isFieldFilterable(fieldName string) bool {
 	return false
 }
 
+func (t *DXRawTable) isArrayInt64Field(fieldName string) bool {
+	if t.FieldTypeMapping == nil {
+		return false
+	}
+	return t.FieldTypeMapping[fieldName] == types.APIParameterTypeArrayInt64
+}
+
+func (t *DXRawTable) applyArrayContainsFilter(qb *tableQueryBuilder.TableSelectQueryBuilder, fieldName string, filterValue any) {
+	var int64Vals []int64
+	switch v := filterValue.(type) {
+	case []any:
+		for _, item := range v {
+			switch iv := item.(type) {
+			case float64:
+				int64Vals = append(int64Vals, int64(iv))
+			case int64:
+				int64Vals = append(int64Vals, iv)
+			case int:
+				int64Vals = append(int64Vals, int64(iv))
+			}
+		}
+	case []int64:
+		int64Vals = v
+	case []float64:
+		for _, f := range v {
+			int64Vals = append(int64Vals, int64(f))
+		}
+	case float64:
+		int64Vals = []int64{int64(v)}
+	case int64:
+		int64Vals = []int64{v}
+	case int:
+		int64Vals = []int64{int64(v)}
+	}
+	if len(int64Vals) > 0 {
+		qb.ArrayContainsAnyInt64(fieldName, int64Vals)
+	}
+}
+
 // isOperatorFormat checks if a value is in operator format {"op": "...", "value": ...}
 func isOperatorFormat(value any) bool {
 	if valueMap, ok := value.(map[string]any); ok {
@@ -796,6 +836,9 @@ func (t *DXRawTable) processFilterKeyValues(
 			if err != nil {
 				return err
 			}
+		} else if t.isArrayInt64Field(fieldName) {
+			// Array-typed column: use membership operator instead of equality/IN
+			t.applyArrayContainsFilter(qb, fieldName, filterValue)
 		} else {
 			// Backwards compatible: simple equality or IN
 			qb.EqOrIn(fieldName, filterValue)
