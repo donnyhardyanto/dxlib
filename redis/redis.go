@@ -36,6 +36,12 @@ type DXRedis struct {
 	Connection       *redis.Ring
 	Connected        bool
 	Context          context.Context
+
+	// Pool configuration
+	PoolSize           int // Maximum number of socket connections (0 = go-redis default: 10 * runtime.NumCPU)
+	MinIdleConns       int // Minimum number of idle connections to keep ready
+	MaxConnAgeMinutes  int // Maximum connection lifetime in minutes before recycling (0 = no limit)
+	IdleTimeoutMinutes int // Close idle connections after this many minutes (0 = go-redis default: 5 minutes)
 }
 
 type DXRedisManager struct {
@@ -175,6 +181,29 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 				return err
 			}
 		}
+
+		// Pool configuration with defaults
+		if v, ok := redisConfiguration["pool_size"].(int); ok {
+			r.PoolSize = v
+		} else {
+			r.PoolSize = 0 // Default: 0 means go-redis default (10 * runtime.NumCPU)
+		}
+		if v, ok := redisConfiguration["min_idle_conns"].(int); ok {
+			r.MinIdleConns = v
+		} else {
+			r.MinIdleConns = 0 // Default: 0 means go-redis default
+		}
+		if v, ok := redisConfiguration["max_conn_age_minutes"].(int); ok {
+			r.MaxConnAgeMinutes = v
+		} else {
+			r.MaxConnAgeMinutes = 0 // Default: 0 means no max age
+		}
+		if v, ok := redisConfiguration["idle_timeout_minutes"].(int); ok {
+			r.IdleTimeoutMinutes = v
+		} else {
+			r.IdleTimeoutMinutes = 0 // Default: 0 means go-redis default (5 minutes)
+		}
+
 		r.IsConfigured = true
 		log.Log.Infof("Configuring to Redis %s... done", r.NameId)
 	}
@@ -200,6 +229,21 @@ func (r *DXRedis) Connect() (err error) {
 		if r.HasPassword {
 			redisRingOptions.Password = r.Password
 		}
+		// Apply pool configuration
+		if r.PoolSize > 0 {
+			redisRingOptions.PoolSize = r.PoolSize
+		}
+		if r.MinIdleConns > 0 {
+			redisRingOptions.MinIdleConns = r.MinIdleConns
+		}
+		if r.MaxConnAgeMinutes > 0 {
+			redisRingOptions.MaxConnAge = time.Duration(r.MaxConnAgeMinutes) * time.Minute
+		}
+		if r.IdleTimeoutMinutes > 0 {
+			redisRingOptions.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
+		}
+		log.Log.Infof("Pool config for Redis %s: PoolSize=%d, MinIdleConns=%d, MaxConnAge=%dm, IdleTimeout=%dm",
+			r.NameId, r.PoolSize, r.MinIdleConns, r.MaxConnAgeMinutes, r.IdleTimeoutMinutes)
 		connection := redis.NewRing(redisRingOptions)
 		err = connection.Ping(r.Context).Err()
 		if err != nil {
