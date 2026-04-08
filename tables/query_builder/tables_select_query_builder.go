@@ -567,8 +567,20 @@ func (tqb *TableSelectQueryBuilder) ArrayContainsAnyInt64(fieldName string, valu
 			jsonChecks = append(jsonChecks, fmt.Sprintf("JSON_CONTAINS(%s, CAST(%s AS JSON))", tqb.QuoteIdentifier(fieldName), v))
 		}
 		tqb.Conditions = append(tqb.Conditions, "("+strings.Join(jsonChecks, " OR ")+")")
+	case base.DXDatabaseTypeSQLServer:
+		// SQL Server: [ is a special character in LIKE patterns (character class).
+		// Use CHARINDEX on the stripped inner content to avoid unclosed-bracket errors.
+		// REPLACE removes [ and ] so '[1,42,3]' becomes '1,42,3', then wrap with
+		// commas so every element is surrounded by commas for exact matching.
+		var charindexParts []string
+		for _, v := range strVals {
+			charindexParts = append(charindexParts,
+				fmt.Sprintf("CHARINDEX(',%s,', ',' + REPLACE(REPLACE(%s, '[', ''), ']', '') + ',') > 0",
+					v, tqb.QuoteIdentifier(fieldName)))
+		}
+		tqb.Conditions = append(tqb.Conditions, "("+strings.Join(charindexParts, " OR ")+")")
 	default:
-		// SQL Server / Oracle store serialised JSON — fall back to LIKE membership
+		// Oracle: [ is not special in LIKE — four-pattern approach covers all positions.
 		var likeParts []string
 		for _, v := range strVals {
 			likeParts = append(likeParts, fmt.Sprintf("%s LIKE '%%[%s,%%' OR %s LIKE '%%,%s,%%' OR %s LIKE '%%,%s]' OR %s = '[%s]'",

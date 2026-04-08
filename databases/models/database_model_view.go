@@ -182,8 +182,10 @@ type ModelDBView struct {
 	GroupBy       []string            // GROUP BY columns (field names or expressions)
 	Having        string              // HAVING clause (without the "HAVING" keyword)
 	OrderBy       []ModelDBOrderBy    // ORDER BY clause
-	Distinct      bool                // SELECT DISTINCT
-	RawSQL        string              // Raw SQL for complex views (bypasses builder when set)
+	Distinct      bool                               // SELECT DISTINCT
+	RawSQL          string                             // Raw SQL for complex views (bypasses builder when set)
+	RawSQLFunc      func(base.DXDatabaseType) string   // DB-specific raw SQL generator (overrides RawSQL and builder when set)
+	ViewBuilderFunc func(base.DXDatabaseType) *ModelDBView // DB-specific structured view builder (overrides builder when set)
 }
 
 // NewDBView creates a new databases view and registers it with the schema
@@ -207,6 +209,24 @@ func NewModelDBView(schema *ModelDBSchema, name string, fromTable *ModelDBTable)
 	return view
 }
 
+// NewModelDBViewRawSQLFunc creates a view whose body SQL is generated per DB type.
+// Use this for views that use DB-specific syntax (array aggregation, string aggregation, etc.).
+func NewModelDBViewRawSQLFunc(schema *ModelDBSchema, name string, fn func(base.DXDatabaseType) string) *ModelDBView {
+	view := &ModelDBView{
+		ModelDBEntity: ModelDBEntity{
+			Name:   name,
+			Type:   ModelDBEntityTypeView,
+			Order:  0,
+			Schema: schema,
+		},
+		RawSQLFunc: fn,
+	}
+	if schema != nil {
+		schema.Views = append(schema.Views, view)
+	}
+	return view
+}
+
 // NewDBViewRawSQL creates a databases view with raw SQL definition
 // Use this for complex views that are difficult to express with the builder pattern
 func NewModelDBViewRawSQL(schema *ModelDBSchema, name string, rawSQL string) *ModelDBView {
@@ -218,6 +238,24 @@ func NewModelDBViewRawSQL(schema *ModelDBSchema, name string, rawSQL string) *Mo
 			Schema: schema,
 		},
 		RawSQL: rawSQL,
+	}
+	if schema != nil {
+		schema.Views = append(schema.Views, view)
+	}
+	return view
+}
+
+// NewModelDBViewBuilderFunc creates a view whose structure is built per DB type using the structured ModelDBView builder.
+// Use this for views that need DB-specific expressions (e.g. array aggregation) but want to keep the structured style.
+func NewModelDBViewBuilderFunc(schema *ModelDBSchema, name string, fn func(base.DXDatabaseType) *ModelDBView) *ModelDBView {
+	view := &ModelDBView{
+		ModelDBEntity: ModelDBEntity{
+			Name:   name,
+			Type:   ModelDBEntityTypeView,
+			Order:  0,
+			Schema: schema,
+		},
+		ViewBuilderFunc: fn,
 	}
 	if schema != nil {
 		schema.Views = append(schema.Views, view)
@@ -332,6 +370,16 @@ func (v *ModelDBView) FullViewName() string {
 
 // CreateDDL generates the CREATE VIEW DDL statement
 func (v *ModelDBView) CreateDDL(dbType base.DXDatabaseType) (string, error) {
+	// ViewBuilderFunc takes priority — builds a structured ModelDBView per DB type
+	if v.ViewBuilderFunc != nil {
+		built := v.ViewBuilderFunc(dbType)
+		built.ModelDBEntity = v.ModelDBEntity
+		return built.CreateDDL(dbType)
+	}
+	// RawSQLFunc — DB-specific raw SQL generator
+	if v.RawSQLFunc != nil {
+		return fmt.Sprintf("CREATE VIEW %s AS\n%s;\n", v.FullViewName(), v.RawSQLFunc(dbType)), nil
+	}
 	// If RawSQL is set, use it directly
 	if v.RawSQL != "" {
 		return fmt.Sprintf("CREATE VIEW %s AS\n%s;\n", v.FullViewName(), v.RawSQL), nil
