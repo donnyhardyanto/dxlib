@@ -18,6 +18,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/databases/sqlfile"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -445,6 +446,7 @@ func (d *DXDatabase) Connect() (err error) {
 				poolConfig.MaxConnIdleTime = time.Duration(d.PoolConnMaxIdleTimeMinutes) * time.Minute
 			}
 			poolConfig.HealthCheckPeriod = 1 * time.Minute
+			poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeDescribeExec
 
 			log.Log.Infof("pgxpool config for %s: MaxConns=%d, MinConns=%d, MaxLifetime=%dm, MaxIdleTime=%dm",
 				d.NameId, poolConfig.MaxConns, poolConfig.MinConns, d.PoolConnMaxLifetimeMinutes, d.PoolConnMaxIdleTimeMinutes)
