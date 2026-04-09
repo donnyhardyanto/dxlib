@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/api"
@@ -794,6 +795,26 @@ func (t *DXRawTable) applyOperatorFilter(
 			return errors.New("ILIKE_VALUE_MUST_BE_STRING")
 		}
 		qb.ILike(fieldName, valueStr)
+
+	case "like_any":
+		values, ok := value.([]any)
+		if !ok || len(values) == 0 {
+			return errors.New("LIKE_ANY_REQUIRES_ARRAY_OF_STRINGS")
+		}
+		likeEscaper := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+		var conditions []string
+		params := map[string]any{}
+		for i, v := range values {
+			valueStr, ok := v.(string)
+			if !ok {
+				return errors.New("LIKE_ANY_VALUES_MUST_BE_STRINGS")
+			}
+			p := fmt.Sprintf("%s_%d", paramName, i)
+			escaped := likeEscaper.Replace(valueStr)
+			conditions = append(conditions, fmt.Sprintf("%s LIKE :%s ESCAPE '\\'", quotedField, p))
+			params[p] = "%" + escaped + "%"
+		}
+		qb.AndWithParams("("+strings.Join(conditions, " OR ")+")", params)
 
 	case "between":
 		values, ok := value.([]any)
