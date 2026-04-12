@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/donnyhardyanto/dxlib/errors"
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	security "github.com/donnyhardyanto/dxlib/utils/security"
-	"github.com/donnyhardyanto/dxlib/errors"
 
 	_ "time/tzdata"
 
@@ -56,20 +56,19 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, variablePath, aeprpv.Metadata.Type, utils.TypeAsString(rv), rv)
 		}
 		for _, v := range aeprpv.Metadata.Children {
-			childValue := aeprpv.NewChild(v)
 			aVariablePath := variablePath + "." + v.NameId
 			jv, ok := jsonValue[v.NameId]
 			if !ok {
 				if v.IsMustExist {
 					return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", aVariablePath)
 				}
-			} else {
-				err = childValue.SetRawValue(jv, aVariablePath)
-				if err != nil {
-					return errors.Wrap(err, "error at DXAPIEndPointRequestParameterValue.SetRawValue")
-				}
+				continue
 			}
-
+			childValue := aeprpv.NewChild(v)
+			err = childValue.SetRawValue(jv, aVariablePath)
+			if err != nil {
+				return errors.Wrap(err, "error at DXAPIEndPointRequestParameterValue.SetRawValue")
+			}
 		}
 	}
 	if aeprpv.Metadata.Type == dxlibTypes.APIParameterTypeArrayJSONTemplate {
@@ -96,19 +95,18 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 			containerObj.Metadata.NameId = aVariablePath
 
 			for _, v := range containerObj.Metadata.Children {
-				childValue := containerObj.NewChild(v)
 				aVariablePath := fmt.Sprintf("%s[%d].%s", variablePath, i, v.NameId)
-
 				jv, ok := jj[v.NameId]
 				if !ok {
 					if v.IsMustExist {
 						return aeprpv.Owner.Log.WarnAndCreateErrorf("MISSING_MANDATORY_FIELD:%s", aVariablePath)
 					}
-				} else {
-					err = childValue.SetRawValue(jv, aVariablePath)
-					if err != nil {
-						return errors.Wrap(err, "error at DXAPIEndPointRequestParameterValue.SetRawValue")
-					}
+					continue
+				}
+				childValue := containerObj.NewChild(v)
+				err = childValue.SetRawValue(jv, aVariablePath)
+				if err != nil {
+					return errors.Wrap(err, "error at DXAPIEndPointRequestParameterValue.SetRawValue")
 				}
 			}
 
