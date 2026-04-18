@@ -201,50 +201,21 @@ func (t *DXRawTable) RequestHardDeleteByUid(aepr *api.DXAPIEndPointRequest) erro
 
 // Upsert Operations
 
-// Upsert inserts or updates a row based on where condition
-func (t *DXRawTable) Upsert(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+// Upsert atomically inserts or updates a row identified by where.
+// whereKeys columns MUST have a UNIQUE/PK constraint; see db.Upsert godoc for full contract.
+// Returns: (result, id, isInsert, error) — id is the new row id on insert or existing row id on update.
+func (t *DXRawTable) Upsert(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, bool, error) {
 	if err := t.EnsureDatabase(); err != nil {
-		return nil, 0, err
+		return nil, 0, false, err
 	}
-
-	_, existing, err := t.SelectOne(ctx, l, nil, where, nil, nil)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	if existing == nil {
-		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := t.Database.Insert(ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
-		if err != nil {
-			return nil, 0, err
-		}
-		newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
-		return nil, newId, nil
-	}
-
-	result, _, err := t.Database.Update(ctx, t.GetFullTableName(), data, where, nil)
-	return result, 0, err
+	insertData := utilsJson.DeepMerge2(data, where)
+	return db.Upsert(ctx, t.Database.Connection, t.GetFullTableName(), insertData, data, where, t.FieldNameForRowId)
 }
 
-// TxUpsert inserts or updates within a transaction
-func (t *DXRawTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
-	_, existing, err := t.TxSelectOne(dtx, nil, where, nil, nil, nil)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	if existing == nil {
-		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := dtx.Insert(dtx.Ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
-		if err != nil {
-			return nil, 0, err
-		}
-		newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
-		return nil, newId, nil
-	}
-
-	result, _, err := dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, nil)
-	return result, 0, err
+// TxUpsert is the transactional variant of Upsert. Same contract.
+func (t *DXRawTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, bool, error) {
+	insertData := utilsJson.DeepMerge2(data, where)
+	return db.TxUpsert(dtx.Ctx, dtx.Tx, t.GetFullTableName(), insertData, data, where, t.FieldNameForRowId)
 }
 
 // Paging Operations

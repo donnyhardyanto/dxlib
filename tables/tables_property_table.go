@@ -80,7 +80,7 @@ func (pt *DXPropertyTable) SetAsString(ctx context.Context, l *log.DXLog, proper
 	if err != nil {
 		return err
 	}
-	_, _, err = pt.Upsert(ctx, l, utils.JSON{
+	_, _, _, err = pt.Upsert(ctx, l, utils.JSON{
 		"type":  "STRING",
 		"value": string(v),
 	}, utils.JSON{
@@ -128,7 +128,7 @@ func (pt *DXPropertyTable) SetAsInt(ctx context.Context, l *log.DXLog, propertyI
 	if err != nil {
 		return err
 	}
-	_, _, err = pt.Upsert(ctx, l, utils.JSON{
+	_, _, _, err = pt.Upsert(ctx, l, utils.JSON{
 		"type":  "INT",
 		"value": string(v),
 	}, utils.JSON{
@@ -143,7 +143,7 @@ func (pt *DXPropertyTable) TxSetAsInt(dtx *databases.DXDatabaseTx, propertyId st
 	if err != nil {
 		return err
 	}
-	_, _, err = pt.TxUpsert(dtx, utils.JSON{
+	_, _, _, err = pt.TxUpsert(dtx, utils.JSON{
 		"type":  "INT",
 		"value": string(v),
 	}, utils.JSON{
@@ -171,7 +171,7 @@ func (pt *DXPropertyTable) SetAsInt64(ctx context.Context, l *log.DXLog, propert
 	if err != nil {
 		return err
 	}
-	_, _, err = pt.Upsert(ctx, l, utils.JSON{
+	_, _, _, err = pt.Upsert(ctx, l, utils.JSON{
 		"type":  "INT64",
 		"value": string(v),
 	}, utils.JSON{
@@ -195,7 +195,7 @@ func (pt *DXPropertyTable) SetAsJSON(ctx context.Context, l *log.DXLog, property
 	if err != nil {
 		return errors.Wrap(err, "SetAsJSON.Marshal")
 	}
-	_, _, err = pt.Upsert(ctx, l, utils.JSON{
+	_, _, _, err = pt.Upsert(ctx, l, utils.JSON{
 		"type":  "JSON",
 		"value": string(v),
 	}, utils.JSON{
@@ -210,7 +210,7 @@ func (pt *DXPropertyTable) TxSetAsJSON(dtx *databases.DXDatabaseTx, propertyId s
 	if err != nil {
 		return errors.Wrap(err, "TxSetAsJSON.Marshal")
 	}
-	_, _, err = pt.TxUpsert(dtx, utils.JSON{
+	_, _, _, err = pt.TxUpsert(dtx, utils.JSON{
 		"type":  "JSON",
 		"value": string(v),
 	}, utils.JSON{

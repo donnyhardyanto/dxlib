@@ -8,6 +8,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -122,54 +123,39 @@ func (t *DXTable) TxHardDelete(dtx *databases.DXDatabaseTx, where utils.JSON) (s
 
 // Upsert Operations (with audit fields)
 
-// Upsert inserts or updates with audit fields
-func (t *DXTable) Upsert(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
+// Upsert atomically inserts or updates a row identified by where, setting audit fields per path.
+// On INSERT path: created_* + last_modified_* are set. On UPDATE path: only last_modified_* changes.
+// whereKeys columns MUST have a UNIQUE/PK constraint; see db.Upsert godoc for full contract.
+// Returns: (result, id, isInsert, error).
+func (t *DXTable) Upsert(ctx context.Context, l *log.DXLog, data utils.JSON, where utils.JSON) (sql.Result, int64, bool, error) {
 	if err := t.EnsureDatabase(); err != nil {
-		return nil, 0, err
+		return nil, 0, false, err
 	}
 
-	_, existing, err := t.DXRawTable.SelectOne(ctx, l, nil, where, nil, nil)
-	if err != nil {
-		return nil, 0, err
-	}
+	insertData := utilsJson.DeepMerge2(data, where)
+	t.SetInsertAuditFields(nil, insertData)
 
-	if existing == nil {
-		t.SetInsertAuditFields(nil, data)
-		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := t.Database.Insert(ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
-		if err != nil {
-			return nil, 0, err
-		}
-		newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
-		return nil, newId, nil
+	updateData := utils.JSON{}
+	for k, v := range data {
+		updateData[k] = v
 	}
+	t.SetUpdateAuditFields(nil, updateData)
 
-	t.SetUpdateAuditFields(nil, data)
-	result, _, err := t.Database.Update(ctx, t.GetFullTableName(), data, where, nil)
-	return result, 0, err
+	return db.Upsert(ctx, t.Database.Connection, t.GetFullTableName(), insertData, updateData, where, t.FieldNameForRowId)
 }
 
-// TxUpsert inserts or updates within a transaction with audit fields
-func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, error) {
-	_, existing, err := t.DXRawTable.TxSelectOne(dtx, nil, where, nil, nil, nil)
-	if err != nil {
-		return nil, 0, err
-	}
+// TxUpsert is the transactional variant of Upsert. Same audit semantics.
+func (t *DXTable) TxUpsert(dtx *databases.DXDatabaseTx, data utils.JSON, where utils.JSON) (sql.Result, int64, bool, error) {
+	insertData := utilsJson.DeepMerge2(data, where)
+	t.SetInsertAuditFields(nil, insertData)
 
-	if existing == nil {
-		t.SetInsertAuditFields(nil, data)
-		insertData := utilsJson.DeepMerge2(data, where)
-		_, returningValues, err := dtx.Insert(dtx.Ctx, t.GetFullTableName(), insertData, []string{t.FieldNameForRowId})
-		if err != nil {
-			return nil, 0, err
-		}
-		newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
-		return nil, newId, nil
+	updateData := utils.JSON{}
+	for k, v := range data {
+		updateData[k] = v
 	}
+	t.SetUpdateAuditFields(nil, updateData)
 
-	t.SetUpdateAuditFields(nil, data)
-	result, _, err := dtx.Update(dtx.Ctx, t.GetFullTableName(), data, where, nil)
-	return result, 0, err
+	return db.TxUpsert(dtx.Ctx, dtx.Tx, t.GetFullTableName(), insertData, updateData, where, t.FieldNameForRowId)
 }
 
 // API Request Helpers
