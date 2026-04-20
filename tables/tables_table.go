@@ -25,23 +25,27 @@ type DXTable struct {
 
 // SetInsertAuditFields sets created_at, created_by_user_id, etc. for insert.
 //
-// Double-call safety: this helper is invoked twice on the same data map when a
-// handler pre-sets audit fields (with a real aepr) and then calls a library
-// insert that also calls this helper (with nil aepr). In that case the second
-// call must NOT clobber the real user with "SYSTEM". The aepr==nil branch only
-// fills fields that aren't already set.
+// Two design rules:
+//
+//  1. Library-controlled fields (`is_deleted`, `created_at`, `last_modified_at`)
+//     are ALWAYS overwritten in both branches. Never defer to caller input —
+//     that would let a client smuggle `is_deleted=true` or a forged `created_at`
+//     via parameter pass-through and bypass the soft-delete/timestamp invariant.
+//
+//  2. Identity fields (`created_by_user_id`, `created_by_user_nameid`,
+//     `last_modified_by_*`). When aepr carries a real user, it ALWAYS wins
+//     (overwrite). When aepr is nil, only fill in "0"/"SYSTEM" if the caller
+//     hasn't already set the identity. This preserves the pattern where a
+//     handler pre-populates audit fields via SetInsertAuditFields(aepr, data)
+//     and then calls a library insert path that internally re-invokes this
+//     helper with nil aepr — without that guard, the legacy internal call
+//     would clobber the real user with "SYSTEM".
 func (t *DXTable) SetInsertAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
 	now := time.Now().UTC()
 
-	if _, ok := data["is_deleted"]; !ok {
-		data["is_deleted"] = false
-	}
-	if _, ok := data["created_at"]; !ok {
-		data["created_at"] = now
-	}
-	if _, ok := data["last_modified_at"]; !ok {
-		data["last_modified_at"] = now
-	}
+	data["is_deleted"] = false
+	data["created_at"] = now
+	data["last_modified_at"] = now
 
 	if aepr != nil && aepr.CurrentUser.Id != "" {
 		data["created_by_user_id"] = aepr.CurrentUser.Id
@@ -66,13 +70,11 @@ func (t *DXTable) SetInsertAuditFields(aepr *api.DXAPIEndPointRequest, data util
 }
 
 // SetUpdateAuditFields sets last_modified_at, last_modified_by_user_id, etc. for update.
-// Same double-call safety as SetInsertAuditFields.
+// Same design rules as SetInsertAuditFields.
 func (t *DXTable) SetUpdateAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
 	now := time.Now().UTC()
 
-	if _, ok := data["last_modified_at"]; !ok {
-		data["last_modified_at"] = now
-	}
+	data["last_modified_at"] = now
 
 	if aepr != nil && aepr.CurrentUser.Id != "" {
 		data["last_modified_by_user_id"] = aepr.CurrentUser.Id
