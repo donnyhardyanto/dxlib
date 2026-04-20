@@ -26,6 +26,20 @@ func (t *DXTable) TxInsert(dtx *databases.DXDatabaseTx, data utils.JSON, returni
 	return t.DXRawTable.TxInsert(dtx, data, returningFieldNames)
 }
 
+// TxInsertWithAudit inserts within a transaction and records the caller as the
+// auditing user. Use this from authenticated handlers that open their own Tx
+// closure (where DoInsert/DoCreate aren't usable because they own the Tx).
+func (t *DXTable) TxInsertWithAudit(aepr *api.DXAPIEndPointRequest, dtx *databases.DXDatabaseTx, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+	t.SetInsertAuditFields(aepr, data)
+	return t.DXRawTable.TxInsert(dtx, data, returningFieldNames)
+}
+
+// InsertWithAudit is the non-transactional variant of TxInsertWithAudit.
+func (t *DXTable) InsertWithAudit(aepr *api.DXAPIEndPointRequest, data utils.JSON, returningFieldNames []string) (sql.Result, utils.JSON, error) {
+	t.SetInsertAuditFields(aepr, data)
+	return t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, returningFieldNames)
+}
+
 // DoInsert is an API helper with audit fields
 func (t *DXTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)

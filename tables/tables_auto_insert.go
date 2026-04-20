@@ -180,6 +180,18 @@ func (t *DXTable) TxInsertAuto(
 	return t.DXRawTable.TxInsertAuto(dtx, data, returningFieldNames)
 }
 
+// TxInsertAutoWithAudit is TxInsertAuto that records the caller as the auditing user.
+// Use from authenticated handlers that own their Tx.
+func (t *DXTable) TxInsertAutoWithAudit(
+	aepr *api.DXAPIEndPointRequest,
+	dtx *databases.DXDatabaseTx,
+	data utils.JSON,
+	returningFieldNames []string,
+) (sql.Result, utils.JSON, error) {
+	t.SetInsertAuditFields(aepr, data)
+	return t.DXRawTable.TxInsertAuto(dtx, data, returningFieldNames)
+}
+
 // InsertAuto inserts with audit fields using table's EncryptionColumnDefs
 func (t *DXTable) InsertAuto(
 	ctx context.Context,
@@ -191,12 +203,33 @@ func (t *DXTable) InsertAuto(
 	return t.DXRawTable.InsertAuto(ctx, l, data, returningFieldNames)
 }
 
+// InsertAutoWithAudit is InsertAuto with the caller recorded as the auditing user.
+func (t *DXTable) InsertAutoWithAudit(
+	aepr *api.DXAPIEndPointRequest,
+	data utils.JSON,
+	returningFieldNames []string,
+) (sql.Result, utils.JSON, error) {
+	t.SetInsertAuditFields(aepr, data)
+	return t.DXRawTable.InsertAuto(aepr.Context, &aepr.Log, data, returningFieldNames)
+}
+
 // TxInsertAutoReturningId inserts with audit fields and returns the new ID
 func (t *DXTable) TxInsertAutoReturningId(
 	dtx *databases.DXDatabaseTx,
 	data utils.JSON,
 ) (int64, error) {
 	t.SetInsertAuditFields(nil, data)
+	return t.DXRawTable.TxInsertAutoReturningId(dtx, data)
+}
+
+// TxInsertAutoReturningIdWithAudit is TxInsertAutoReturningId with the caller
+// recorded as the auditing user.
+func (t *DXTable) TxInsertAutoReturningIdWithAudit(
+	aepr *api.DXAPIEndPointRequest,
+	dtx *databases.DXDatabaseTx,
+	data utils.JSON,
+) (int64, error) {
+	t.SetInsertAuditFields(aepr, data)
 	return t.DXRawTable.TxInsertAutoReturningId(dtx, data)
 }
 
@@ -208,4 +241,14 @@ func (t *DXTable) InsertAutoReturningId(
 ) (int64, error) {
 	t.SetInsertAuditFields(nil, data)
 	return t.DXRawTable.InsertAutoReturningId(ctx, l, data)
+}
+
+// InsertAutoReturningIdWithAudit is InsertAutoReturningId with the caller
+// recorded as the auditing user.
+func (t *DXTable) InsertAutoReturningIdWithAudit(
+	aepr *api.DXAPIEndPointRequest,
+	data utils.JSON,
+) (int64, error) {
+	t.SetInsertAuditFields(aepr, data)
+	return t.DXRawTable.InsertAutoReturningId(aepr.Context, &aepr.Log, data)
 }

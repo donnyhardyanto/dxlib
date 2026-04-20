@@ -23,38 +23,67 @@ type DXTable struct {
 
 // Audit ModelDBField Helpers
 
-// SetInsertAuditFields sets created_at, created_by_user_id, etc. for insert
+// SetInsertAuditFields sets created_at, created_by_user_id, etc. for insert.
+//
+// Double-call safety: this helper is invoked twice on the same data map when a
+// handler pre-sets audit fields (with a real aepr) and then calls a library
+// insert that also calls this helper (with nil aepr). In that case the second
+// call must NOT clobber the real user with "SYSTEM". The aepr==nil branch only
+// fills fields that aren't already set.
 func (t *DXTable) SetInsertAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
 	now := time.Now().UTC()
 
-	data["is_deleted"] = false
-	data["created_at"] = now
-	data["last_modified_at"] = now
+	if _, ok := data["is_deleted"]; !ok {
+		data["is_deleted"] = false
+	}
+	if _, ok := data["created_at"]; !ok {
+		data["created_at"] = now
+	}
+	if _, ok := data["last_modified_at"]; !ok {
+		data["last_modified_at"] = now
+	}
 
 	if aepr != nil && aepr.CurrentUser.Id != "" {
 		data["created_by_user_id"] = aepr.CurrentUser.Id
 		data["created_by_user_nameid"] = aepr.CurrentUser.LoginId
 		data["last_modified_by_user_id"] = aepr.CurrentUser.Id
 		data["last_modified_by_user_nameid"] = aepr.CurrentUser.LoginId
-	} else {
+		return
+	}
+
+	if _, ok := data["created_by_user_id"]; !ok {
 		data["created_by_user_id"] = "0"
+	}
+	if _, ok := data["created_by_user_nameid"]; !ok {
 		data["created_by_user_nameid"] = "SYSTEM"
+	}
+	if _, ok := data["last_modified_by_user_id"]; !ok {
 		data["last_modified_by_user_id"] = "0"
+	}
+	if _, ok := data["last_modified_by_user_nameid"]; !ok {
 		data["last_modified_by_user_nameid"] = "SYSTEM"
 	}
 }
 
-// SetUpdateAuditFields sets last_modified_at, last_modified_by_user_id, etc. for update
+// SetUpdateAuditFields sets last_modified_at, last_modified_by_user_id, etc. for update.
+// Same double-call safety as SetInsertAuditFields.
 func (t *DXTable) SetUpdateAuditFields(aepr *api.DXAPIEndPointRequest, data utils.JSON) {
 	now := time.Now().UTC()
 
-	data["last_modified_at"] = now
+	if _, ok := data["last_modified_at"]; !ok {
+		data["last_modified_at"] = now
+	}
 
 	if aepr != nil && aepr.CurrentUser.Id != "" {
 		data["last_modified_by_user_id"] = aepr.CurrentUser.Id
 		data["last_modified_by_user_nameid"] = aepr.CurrentUser.LoginId
-	} else {
+		return
+	}
+
+	if _, ok := data["last_modified_by_user_id"]; !ok {
 		data["last_modified_by_user_id"] = "0"
+	}
+	if _, ok := data["last_modified_by_user_nameid"]; !ok {
 		data["last_modified_by_user_nameid"] = "SYSTEM"
 	}
 }
