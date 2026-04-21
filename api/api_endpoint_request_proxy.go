@@ -161,7 +161,9 @@ func (aepr *DXAPIEndPointRequest) HTTPClient(method, url string, parameters util
 func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters utils.JSON, headers map[string]string) (_responseStatusCode int, responseAsJSON utils.JSON, err error) {
 	r, err := aepr.HTTPClientDo(method, url, parameters, headers)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "HTTPCLIENT2-0:DIAL_ERROR:%v", err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway,
+			"DIAL_ERROR",
+			"HTTPCLIENT2-0:DIAL_ERROR:ERROR=%v", err.Error())
 		if r != nil {
 			return r.StatusCode, nil, err
 		} else {
