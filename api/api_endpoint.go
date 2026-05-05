@@ -24,6 +24,11 @@ const (
 	EndPointTypeWS
 	EndPointTypeHTTPEndToEndEncryptionV1
 	EndPointTypeHTTPEndToEndEncryptionV2
+	// EndPointTypeHTTPEndToEndEncryptionV3 — persistent-session inner envelope.
+	// Bootstrap at /v1/startup_1 establishes a global connection_id and a
+	// per-session AES key in Redis. Bulk requests carry { connection_id, data }.
+	// See OnE2EEV3Unpack / OnE2EEV3Pack hooks in api/e2ee_v3.go.
+	EndPointTypeHTTPEndToEndEncryptionV3
 )
 
 func (d DXAPIEndPointType) String() string {
@@ -42,6 +47,8 @@ func (d DXAPIEndPointType) String() string {
 		return "EndPointTypeHTTPEndToEndEncryptionV1"
 	case EndPointTypeHTTPEndToEndEncryptionV2:
 		return "EndPointTypeHTTPEndToEndEncryptionV2"
+	case EndPointTypeHTTPEndToEndEncryptionV3:
+		return "EndPointTypeHTTPEndToEndEncryptionV3"
 	default:
 		return fmt.Sprintf("DXAPIEndPointType(%d)", d)
 	}

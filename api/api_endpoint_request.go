@@ -627,6 +627,112 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 		// TRACE: response_write_end (E2EE success)
 		aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "")
 
+	case EndPointTypeHTTPEndToEndEncryptionV3:
+		// V3 (persistent-session inner envelope) response.
+		//
+		// EncryptionParameters carries opaque host state set by OnE2EEV3Unpack
+		// (connection_id, mode flag for legacy/bootstrap/bulk, etc.). If it is
+		// nil, request preprocessing failed before the unpack hook could
+		// populate it; reply with a plain JSON REFRESH_SESSION so the mobile
+		// can re-bootstrap, mirroring the V2 REFRESH_PREKEY pattern.
+		if aepr.EncryptionParameters == nil {
+			errMsg := fmt.Sprintf("V3_ENCRYPTION_PARAMETERS_NIL:SESSION_MISSING_OR_USED:status=%d", statusCode)
+			err := errors.New(errMsg)
+
+			requestDump, err2 := aepr.RequestDumpAsString()
+			if err2 != nil {
+				requestDump = "DUMP REQUEST FAIL"
+			}
+			aepr.Log.LogText(err, log.DXLogLevelError, "", requestDump)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "V3_SESSION_MISSING_FALLBACK_TO_PLAIN")
+
+			errorResponse := utils.JSON{
+				"status":         http.StatusText(statusCode),
+				"status_code":    statusCode,
+				"reason":         "REFRESH_SESSION",
+				"reason_message": "Session not found or expired. Please call /v1/startup_1 to bootstrap a new session.",
+			}
+			errorBytes, _ := json.Marshal(errorResponse)
+			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.WriteHeader(statusCode)
+			aepr.ResponseHeaderSent = true
+			aepr.ResponseStatusCode = statusCode
+			_, _ = responseWriter.Write(errorBytes)
+			aepr.ResponseBodySent = true
+			return
+		}
+
+		if OnE2EEV3Pack == nil {
+			aepr.Log.Errorf(nil, "NOT_IMPLEMENTED:OnE2EEV3Pack_IS_NIL:%v", aepr.EndPoint.EndPointType)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusUnprocessableEntity, "OnE2EEV3Pack_IS_NIL")
+			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+
+		// Pack the response payload (status, header, body) as LVs in the same
+		// order V2 uses, so host implementations can share helpers.
+		payLoadStatusCodeAsBytesV3 := make([]byte, 8)
+		binary.BigEndian.PutUint64(payLoadStatusCodeAsBytesV3, uint64(statusCode))
+		payLoadStatusCodeAsBase64V3 := base64.StdEncoding.EncodeToString(payLoadStatusCodeAsBytesV3)
+		lvPayLoadStatusCodeV3, err := lv.NewLV([]byte(payLoadStatusCodeAsBase64V3))
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:V3_ERROR_NEW_LV_PAYLOAD_STATUS_CODE:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "V3_ERROR_NEW_LV_PAYLOAD_STATUS_CODE")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		payLoadHeaderAsBytesV3, err := json.Marshal(header)
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:V3_ERROR_MARSHAL_PAYLOAD_HEADER_AS_BYTES:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "V3_ERROR_MARSHAL_PAYLOAD_HEADER_AS_BYTES")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		lvPayLoadHeaderV3, err := lv.NewLV([]byte(base64.StdEncoding.EncodeToString(payLoadHeaderAsBytesV3)))
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:V3_ERROR_NEW_LV_PAYLOAD_HEADER:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "V3_ERROR_NEW_LV_PAYLOAD_HEADER")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		lvPayLoadBodyV3, err := lv.NewLV([]byte(base64.StdEncoding.EncodeToString(bodyAsBytes)))
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:V3_ERROR_NEW_LV_PAYLOAD_BODY:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "V3_ERROR_NEW_LV_PAYLOAD_BODY")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		responseBytesV3, err := OnE2EEV3Pack(aepr, aepr.EncryptionParameters, lvPayLoadStatusCodeV3, lvPayLoadHeaderV3, lvPayLoadBodyV3)
+		if err != nil {
+			aepr.Log.Errorf(err, "SHOULD_NOT_HAPPEN:V3_ERROR_PACK:%+v\n", err)
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "V3_ERROR_PACK")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		responseWriter.Header().Set("Content-Type", "application/json")
+		responseWriter.WriteHeader(statusCode)
+		aepr.ResponseStatusCode = statusCode
+		aepr.ResponseHeaderSent = true
+
+		if aepr.ResponseBodySent {
+			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:V3_RESPONSE_BODY_ALREADY_SENT")
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "V3_RESPONSE_BODY_ALREADY_SENT")
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if _, err = responseWriter.Write(responseBytesV3); err != nil {
+			_ = aepr.Log.WarnAndCreateErrorf("SHOULD_NOT_HAPPEN:V3_ERROR_AT_WRITE_RESPONSE=%s", err.Error())
+			aepr.logResponseTrace("response_write_end", responseWriteStartTime, http.StatusBadRequest, "V3_ERROR_AT_WRITE_RESPONSE")
+			return
+		}
+		aepr.ResponseBodySent = true
+
+		// TRACE: response_write_end (V3 success)
+		aepr.logResponseTrace("response_write_end", responseWriteStartTime, statusCode, "")
+
 	default:
 		for k, v := range header {
 			responseWriter.Header().Set(k, v)
@@ -812,6 +918,71 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		}
 	case EndPointTypeHTTPEndToEndEncryptionV1:
 		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_JSON_ENDPOINT_TYPE_X_NOT_IMPLEMENTED_YET:%v", aepr.EndPoint.Method)
+	case EndPointTypeHTTPEndToEndEncryptionV3:
+		// V3 (persistent-session inner envelope).
+		// The host implementation in OnE2EEV3Unpack inspects bodyAsJSON to
+		// dispatch among bootstrap (/v1/startup_1), bulk (post-bootstrap), and
+		// legacy (already-shipped mobile builds), and returns enough state
+		// for OnE2EEV3Pack to produce the matching response on the way out.
+		if OnE2EEV3Unpack == nil {
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "NOT_IMPLEMENTED", "NOT_IMPLEMENTED:OnE2EEV3Unpack_IS_NIL:%v", aepr.EndPoint.EndPointType)
+		}
+
+		lvPayloadElementsV3, stateV3, err := OnE2EEV3Unpack(aepr, bodyAsJSON)
+		if err != nil {
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "INVALID_INNER_ENVELOPE", "NOT_ERROR:V3_UNPACK_ERROR:%v", err.Error())
+		}
+
+		// Stash state so WriteResponseAsBytes can hand it to OnE2EEV3Pack.
+		aepr.EncryptionParameters = stateV3
+
+		// Bootstrap requests carry no application-level header/body — the
+		// L32V client public keys are the entire payload. The hook signals
+		// this by returning an empty payload slice; we skip parameter-value
+		// processing in that case.
+		if len(lvPayloadElementsV3) == 0 {
+			return nil
+		}
+
+		// Bulk and legacy requests put the application header at index 0
+		// and body at index 1, matching the V2 layout so existing
+		// processEndPointRequestParameterValues can be reused.
+		lvPayloadHeaderV3 := lvPayloadElementsV3[0]
+		var lvPayloadBodyV3 *lv.LV
+		if len(lvPayloadElementsV3) > 1 {
+			lvPayloadBodyV3 = lvPayloadElementsV3[1]
+		}
+
+		payLoadHeaderAsBase64V3 := lvPayloadHeaderV3.Value
+		payLoadHeaderAsBytesV3, err := base64.StdEncoding.DecodeString(string(payLoadHeaderAsBase64V3))
+		if err != nil {
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:V3_INVALID_DECODED_PAYLOAD_HEADER_FROM_BASE64")
+		}
+		payloadHeaderV3 := map[string]string{}
+		err = json.Unmarshal(payLoadHeaderAsBytesV3, &payloadHeaderV3)
+		if err != nil {
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:V3_INVALID_UNMARSHAL_PAYLOAD_HEADER_BYTES")
+		}
+		aepr.EffectiveRequestHeader = payloadHeaderV3
+
+		if lvPayloadBodyV3 != nil {
+			payLoadBodyAsBase64V3 := lvPayloadBodyV3.Value
+			payLoadBodyAsBytesV3, err := base64.StdEncoding.DecodeString(string(payLoadBodyAsBase64V3))
+			if err != nil {
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:V3_INVALID_DECODED_PAYLOAD_BODY_FROM_BASE64")
+			}
+			payloadBodyAsJSONV3 := utils.JSON{}
+			err = json.Unmarshal(payLoadBodyAsBytesV3, &payloadBodyAsJSONV3)
+			if err != nil {
+				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:V3_INVALID_UNMARSHAL_PAYLOAD_BODY_BYTES")
+			}
+			aepr.DecryptedRequestBody = payloadBodyAsJSONV3
+			err = aepr.processEndPointRequestParameterValues(payloadBodyAsJSONV3)
+			if err != nil {
+				return err
+			}
+		}
+
 	case EndPointTypeHTTPEndToEndEncryptionV2, EndPointTypeHTTPDownloadStreamV2:
 		preKeyIndex, err := utils.GetStringFromKV(bodyAsJSON, "i")
 		if err != nil {
