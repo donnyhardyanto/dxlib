@@ -29,6 +29,10 @@ const (
 	// per-session AES key in Redis. Bulk requests carry { connection_id, data }.
 	// See OnE2EEV3Unpack / OnE2EEV3Pack hooks in api/e2ee_v3.go.
 	EndPointTypeHTTPEndToEndEncryptionV3
+	// EndPointTypeHTTPEndToEndEncryptionV4 — same as V3 but uses LVLE
+	// (4-byte little-endian length prefix) instead of LV (big-endian).
+	// See OnE2EEV4Unpack / OnE2EEV4Pack hooks in api/e2ee_v4.go.
+	EndPointTypeHTTPEndToEndEncryptionV4
 )
 
 func (d DXAPIEndPointType) String() string {
@@ -49,6 +53,8 @@ func (d DXAPIEndPointType) String() string {
 		return "EndPointTypeHTTPEndToEndEncryptionV2"
 	case EndPointTypeHTTPEndToEndEncryptionV3:
 		return "EndPointTypeHTTPEndToEndEncryptionV3"
+	case EndPointTypeHTTPEndToEndEncryptionV4:
+		return "EndPointTypeHTTPEndToEndEncryptionV4"
 	default:
 		return fmt.Sprintf("DXAPIEndPointType(%d)", d)
 	}
