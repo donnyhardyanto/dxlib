@@ -2,15 +2,17 @@ package x25519
 
 import (
 	"crypto/rand"
+	"io"
+
 	"golang.org/x/crypto/curve25519"
 )
 
-func GenerateKeyPair() (publicKey [32]byte, privateKey [32]byte, err error) {
-	_, err = rand.Read(privateKey[:])
-	if err != nil {
-		return publicKey, privateKey, err
+func GenerateKeyPair() (publicKey []byte, privateKey []byte, err error) {
+	privateKey = make([]byte, 32)
+	if _, err = io.ReadFull(rand.Reader, privateKey); err != nil {
+		return nil, nil, err
 	}
-	curve25519.ScalarBaseMult(&publicKey, &privateKey)
+	publicKey, err = curve25519.X25519(privateKey, curve25519.Basepoint)
 	return
 }
 
