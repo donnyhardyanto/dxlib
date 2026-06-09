@@ -653,6 +653,20 @@ func BytesToInt64(b []byte) int64 {
 	return int64(binary.BigEndian.Uint64(b))
 }
 
+// Int64ToBytes encodes v as an 8-byte big-endian slice.
+func Int64ToBytes(v int64) []byte {
+	out := make([]byte, 8)
+	binary.BigEndian.PutUint64(out, uint64(v))
+	return out
+}
+
+// Uint32ToBytes encodes v as a 4-byte big-endian slice.
+func Uint32ToBytes(v uint32) []byte {
+	out := make([]byte, 4)
+	binary.BigEndian.PutUint32(out, v)
+	return out
+}
+
 // AskForConfirmation prompts the user for two confirmation keys and returns an error if they don't match the provided keys.
 func AskForConfirmation(key1 string, key2 string) (err error) {
 	reader := bufio.NewReader(os.Stdin)
