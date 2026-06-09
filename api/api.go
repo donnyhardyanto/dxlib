@@ -16,6 +16,7 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -626,9 +627,13 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 	}
 
 	mux := http.NewServeMux()
+	var httpHandler http.Handler = mux
+	if core.IsOtelEnabled {
+		httpHandler = otelhttp.NewHandler(mux, a.NameId)
+	}
 	a.HTTPServer = &http.Server{
 		Addr:         a.Address,
-		Handler:      mux,
+		Handler:      httpHandler,
 		WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
 		ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 	}
