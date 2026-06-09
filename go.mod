@@ -1,6 +1,6 @@
 module github.com/donnyhardyanto/dxlib
 
-go 1.26.1
+go 1.26.4
 
 require (
 	firebase.google.com/go/v4 v4.20.0
