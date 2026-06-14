@@ -346,10 +346,12 @@ func (t *DXRawTable) RequestSearchPagingList(aepr *api.DXAPIEndPointRequest) err
 	return t.DoRequestSearchPagingList(aepr, qb, nil)
 }
 
-// DoRequestSearchPagingList executes paging with a pre-built TableSelectQueryBuilder and writes JSON response.
-// Parses row_per_page and page_index from the request. The caller is responsible for building the query builder
-// with all WHERE and ORDER BY conditions. Optional onResultList callback allows post-processing of rows.
-func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, qb *tableQueryBuilder.TableSelectQueryBuilder, onResultList OnResultList) error {
+// DoApplyRequestSearchFilter applies search_text, filter_key_values and the default
+// is_deleted filter from the request onto qb. It does NOT apply order_by, limit/offset,
+// or execute the query. Shared by DoRequestSearchPagingList and custom two-phase handlers
+// (e.g. PERF-F01 token-sort) so the meaning of filters (operators, array-contains, the
+// filterable-field whitelist, the default is_deleted=false) has a single source of truth.
+func (t *DXRawTable) DoApplyRequestSearchFilter(aepr *api.DXAPIEndPointRequest, qb *tableQueryBuilder.TableSelectQueryBuilder) error {
 	_, searchText, err := aepr.GetParameterValueAsString("search_text")
 	if err != nil {
 		return err
@@ -360,12 +362,40 @@ func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, q
 		return err
 	}
 
-	_, orderByArray, err := aepr.GetParameterValueAsArrayOfAny("order_by")
+	isIncludeDeletedExist, isIncludeDeleted, err := aepr.GetParameterValueAsBool("is_include_deleted")
 	if err != nil {
 		return err
 	}
 
-	isIncludeDeletedExist, isIncludeDeleted, err := aepr.GetParameterValueAsBool("is_include_deleted")
+	if searchText != "" {
+		qb.SearchLike(searchText, t.SearchTextFieldNames...)
+	}
+	if isFilterKeyValuesExist && filterKeyValues != nil {
+		if err := t.processFilterKeyValues(qb, filterKeyValues); err != nil {
+			return err
+		}
+	}
+
+	// Apply "not deleted" filter by default, unless explicitly told to include deleted
+	if !isIncludeDeletedExist || !isIncludeDeleted {
+		if qb.IsFieldExist("is_deleted") {
+			qb.Eq("is_deleted", false)
+		}
+	}
+
+	return nil
+}
+
+// DoRequestSearchPagingList executes paging with a pre-built TableSelectQueryBuilder and writes JSON response.
+// Parses row_per_page and page_index from the request. The caller is responsible for building the query builder
+// with all WHERE and ORDER BY conditions. Optional onResultList callback allows post-processing of rows.
+func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, qb *tableQueryBuilder.TableSelectQueryBuilder, onResultList OnResultList) error {
+	// Apply search_text, filter_key_values and the default is_deleted filter.
+	if err := t.DoApplyRequestSearchFilter(aepr, qb); err != nil {
+		return err
+	}
+
+	_, orderByArray, err := aepr.GetParameterValueAsArrayOfAny("order_by")
 	if err != nil {
 		return err
 	}
@@ -378,23 +408,6 @@ func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, q
 	_, pageIndex, err := aepr.GetParameterValueAsInt64("page_index")
 	if err != nil {
 		return err
-	}
-
-	if searchText != "" {
-		qb.SearchLike(searchText, t.SearchTextFieldNames...)
-	}
-	if isFilterKeyValuesExist && filterKeyValues != nil {
-		err := t.processFilterKeyValues(qb, filterKeyValues)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Apply "not deleted" filter by default, unless explicitly told to include deleted
-	if !isIncludeDeletedExist || !isIncludeDeleted {
-		if qb.IsFieldExist("is_deleted") {
-			qb.Eq("is_deleted", false)
-		}
 	}
 
 	// Parse order_by into OrderBy calls with validation
