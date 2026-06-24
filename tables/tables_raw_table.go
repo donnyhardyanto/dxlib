@@ -367,8 +367,21 @@ func (t *DXRawTable) DoApplyRequestSearchFilter(aepr *api.DXAPIEndPointRequest, 
 		return err
 	}
 
+	// Check for optional search_columns parameter to override default SearchTextFieldNames
+	isSearchColumnsExist, searchColumns, err := aepr.GetParameterValueAsStrings("search_columns")
+	if err != nil {
+		return err
+	}
+
 	if searchText != "" {
-		qb.SearchLike(searchText, t.SearchTextFieldNames...)
+		searchFields := t.SearchTextFieldNames
+
+		// If search_columns provided, use those instead of defaults
+		if isSearchColumnsExist && len(searchColumns) > 0 {
+			searchFields = searchColumns
+		}
+
+		qb.SearchLike(searchText, searchFields...)
 	}
 	if isFilterKeyValuesExist && filterKeyValues != nil {
 		if err := t.processFilterKeyValues(qb, filterKeyValues); err != nil {
