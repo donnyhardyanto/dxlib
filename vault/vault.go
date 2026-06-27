@@ -192,125 +192,100 @@ func (hv *DXHashicorpVault) GetString(ctx context.Context, key string) (string, 
 	return dvv, nil
 }
 
-// envFirst returns os.Getenv(key) when set (non-empty), else "" + false.
-// The Vault key name IS the env var name (e.g. DB_POSTGRES_ADDRESS), so config can
-// be sourced from EITHER the process env (docker run.env/key.env) OR Vault, with env
-// taking precedence. Lets INFRA connection config live with the deploy while secrets
-// stay in Vault (secrets are simply never set as env vars). Env vars are trusted.
-func envFirst(key string) (string, bool) {
+// envOrDefault is the FALLBACK used after a Vault miss: return os.Getenv(key) when set
+// (non-empty), else the literal default d. Precedence is VAULT-FIRST, env-fallback —
+// a key present in Vault always wins; the process env (docker run.env/key.env) only
+// fills what Vault lacks. The Vault key name IS the env var name (e.g. DB_POSTGRES_ADDRESS),
+// so infra connection config can live with the deploy while secrets stay in Vault.
+func envOrDefault(key, d string) string {
 	if e := os.Getenv(key); e != "" {
-		return e, true
-	}
-	return "", false
-}
-
-func (hv *DXHashicorpVault) GetStringOrDefault(ctx context.Context, v string, d string) string {
-	if e, ok := envFirst(v); ok {
 		return e
 	}
-	data, err := hv.VaultGetData(ctx, &log.Log)
-	if err != nil {
-		maskedDefault := d
-		if utils.IsSensitiveField(v) {
-			if d == "" {
-				maskedDefault = "(empty)"
-			} else {
-				maskedDefault = "********"
-			}
-		} else if d == "" {
-			maskedDefault = "(empty)"
-		}
-		log.Log.Infof("Vault key not found: %s, using default: %s", v, maskedDefault)
-		return d
-	}
-
-	// Use utils.GetStringFromKV for safe type conversion
-	dvv, err := utils.GetStringFromKV(data, v)
-	if err != nil {
-		// Key not found or type mismatch - return default
-		maskedDefault := d
-		if utils.IsSensitiveField(v) {
-			if d == "" {
-				maskedDefault = "(empty)"
-			} else {
-				maskedDefault = "********"
-			}
-		} else if d == "" {
-			maskedDefault = "(empty)"
-		}
-		log.Log.Infof("Vault key not found: %s, using default: %s", v, maskedDefault)
-		return d
-	}
-	return dvv
+	return d
 }
 
-func (hv *DXHashicorpVault) GetIntOrDefault(ctx context.Context, v string, d int) int {
-	if e, ok := envFirst(v); ok {
-		if n, cerr := strconv.Atoi(e); cerr == nil {
+func envIntOrDefault(key string, d int) int {
+	if e := os.Getenv(key); e != "" {
+		if n, err := strconv.Atoi(e); err == nil {
 			return n
 		}
 	}
-	data, err := hv.VaultGetData(ctx, &log.Log)
-	if err != nil {
-		// Key not found or type mismatch - return default
-		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
-		return d
-	}
-
-	// Use utils.GetIntFromKV for safe type conversion
-	dvv, err := utils.ConvertIntFromKV(data, v)
-	if err != nil {
-		// Key not found or type mismatch - return default
-		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
-		return d
-	}
-	return dvv
+	return d
 }
 
-func (hv *DXHashicorpVault) GetInt64OrDefault(ctx context.Context, v string, d int64) int64 {
-	if e, ok := envFirst(v); ok {
-		if n, cerr := strconv.ParseInt(e, 10, 64); cerr == nil {
+func envInt64OrDefault(key string, d int64) int64 {
+	if e := os.Getenv(key); e != "" {
+		if n, err := strconv.ParseInt(e, 10, 64); err == nil {
 			return n
 		}
 	}
-	data, err := hv.VaultGetData(ctx, &log.Log)
-	if err != nil {
-		// Key not found or type mismatch - return default
-		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
-		return d
-	}
-
-	// Use utils.GetInt64FromKV for safe type conversion
-	dvv, err := utils.ConvertInt64FromKV(data, v)
-	if err != nil {
-		// Key not found or type mismatch - return default
-		log.Log.Infof("Vault key not found: %s, using default: %d", v, d)
-		return d
-	}
-	return dvv
+	return d
 }
 
-func (hv *DXHashicorpVault) GetBoolOrDefault(ctx context.Context, v string, d bool) bool {
-	if e, ok := envFirst(v); ok {
-		if b, cerr := strconv.ParseBool(e); cerr == nil {
+func envBoolOrDefault(key string, d bool) bool {
+	if e := os.Getenv(key); e != "" {
+		if b, err := strconv.ParseBool(e); err == nil {
 			return b
 		}
 	}
-	data, err := hv.VaultGetData(ctx, &log.Log)
-	if err != nil {
-		// Key not found or type mismatch - return default
-		log.Log.Infof("Vault key not found: %s, using default: %t", v, d)
-		return d
-	}
+	return d
+}
 
-	// Use utils.ConvertToBoolFromKV for safe type conversion
-	dvv, err := utils.ConvertToBoolFromKV(data, v)
-	if err != nil {
-		// Key not found or type mismatch - return default
-		log.Log.Infof("Vault key not found: %s, using default: %t", v, d)
-		return d
+func (hv *DXHashicorpVault) GetStringOrDefault(ctx context.Context, v string, d string) string {
+	data, err := hv.VaultGetData(ctx, &log.Log)
+	if err == nil {
+		// Use utils.GetStringFromKV for safe type conversion
+		if dvv, err2 := utils.GetStringFromKV(data, v); err2 == nil {
+			return dvv // VAULT-FIRST: key present in Vault wins
+		}
 	}
-	return dvv
+	// Vault read failed OR key absent → env-fallback, then literal default.
+	fb := envOrDefault(v, d)
+	maskedFb := fb
+	if utils.IsSensitiveField(v) {
+		maskedFb = "********"
+	}
+	if fb == "" {
+		maskedFb = "(empty)"
+	}
+	log.Log.Infof("Vault key not found: %s, using env/default: %s", v, maskedFb)
+	return fb
+}
+
+func (hv *DXHashicorpVault) GetIntOrDefault(ctx context.Context, v string, d int) int {
+	data, err := hv.VaultGetData(ctx, &log.Log)
+	if err == nil {
+		if dvv, err2 := utils.ConvertIntFromKV(data, v); err2 == nil {
+			return dvv // VAULT-FIRST
+		}
+	}
+	fb := envIntOrDefault(v, d) // env-fallback, then literal default
+	log.Log.Infof("Vault key not found: %s, using env/default: %d", v, fb)
+	return fb
+}
+
+func (hv *DXHashicorpVault) GetInt64OrDefault(ctx context.Context, v string, d int64) int64 {
+	data, err := hv.VaultGetData(ctx, &log.Log)
+	if err == nil {
+		if dvv, err2 := utils.ConvertInt64FromKV(data, v); err2 == nil {
+			return dvv // VAULT-FIRST
+		}
+	}
+	fb := envInt64OrDefault(v, d) // env-fallback, then literal default
+	log.Log.Infof("Vault key not found: %s, using env/default: %d", v, fb)
+	return fb
+}
+
+func (hv *DXHashicorpVault) GetBoolOrDefault(ctx context.Context, v string, d bool) bool {
+	data, err := hv.VaultGetData(ctx, &log.Log)
+	if err == nil {
+		if dvv, err2 := utils.ConvertToBoolFromKV(data, v); err2 == nil {
+			return dvv // VAULT-FIRST
+		}
+	}
+	fb := envBoolOrDefault(v, d) // env-fallback, then literal default
+	log.Log.Infof("Vault key not found: %s, using env/default: %t", v, fb)
+	return fb
 }
 
 func (hv *DXHashicorpVault) VaultMapping(ctx context.Context, log *log.DXLog, texts ...string) (r []string, err error) {
