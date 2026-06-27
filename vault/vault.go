@@ -2,6 +2,8 @@ package vault
 
 import (
 	"context"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -190,7 +192,22 @@ func (hv *DXHashicorpVault) GetString(ctx context.Context, key string) (string, 
 	return dvv, nil
 }
 
+// envFirst returns os.Getenv(key) when set (non-empty), else "" + false.
+// The Vault key name IS the env var name (e.g. DB_POSTGRES_ADDRESS), so config can
+// be sourced from EITHER the process env (docker run.env/key.env) OR Vault, with env
+// taking precedence. Lets INFRA connection config live with the deploy while secrets
+// stay in Vault (secrets are simply never set as env vars). Env vars are trusted.
+func envFirst(key string) (string, bool) {
+	if e := os.Getenv(key); e != "" {
+		return e, true
+	}
+	return "", false
+}
+
 func (hv *DXHashicorpVault) GetStringOrDefault(ctx context.Context, v string, d string) string {
+	if e, ok := envFirst(v); ok {
+		return e
+	}
 	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		maskedDefault := d
@@ -228,6 +245,11 @@ func (hv *DXHashicorpVault) GetStringOrDefault(ctx context.Context, v string, d 
 }
 
 func (hv *DXHashicorpVault) GetIntOrDefault(ctx context.Context, v string, d int) int {
+	if e, ok := envFirst(v); ok {
+		if n, cerr := strconv.Atoi(e); cerr == nil {
+			return n
+		}
+	}
 	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
@@ -246,6 +268,11 @@ func (hv *DXHashicorpVault) GetIntOrDefault(ctx context.Context, v string, d int
 }
 
 func (hv *DXHashicorpVault) GetInt64OrDefault(ctx context.Context, v string, d int64) int64 {
+	if e, ok := envFirst(v); ok {
+		if n, cerr := strconv.ParseInt(e, 10, 64); cerr == nil {
+			return n
+		}
+	}
 	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
@@ -264,6 +291,11 @@ func (hv *DXHashicorpVault) GetInt64OrDefault(ctx context.Context, v string, d i
 }
 
 func (hv *DXHashicorpVault) GetBoolOrDefault(ctx context.Context, v string, d bool) bool {
+	if e, ok := envFirst(v); ok {
+		if b, cerr := strconv.ParseBool(e); cerr == nil {
+			return b
+		}
+	}
 	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err != nil {
 		// Key not found or type mismatch - return default
