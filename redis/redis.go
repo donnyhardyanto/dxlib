@@ -324,7 +324,11 @@ func (r *DXRedis) Connect() (err error) {
 		}
 		r.Connection = connection
 		r.Connected = true
-		log.Log.Infof("Connecting to Redis %s at %s/%d... done CONNECTED", r.NameId, r.Address, r.DatabaseIndex)
+		if r.HasSentinel {
+			log.Log.Infof("Connecting to Redis %s via Sentinel master=%q db=%d... done CONNECTED", r.NameId, r.SentinelMasterName, r.DatabaseIndex)
+		} else {
+			log.Log.Infof("Connecting to Redis %s at %s/%d... done CONNECTED", r.NameId, r.Address, r.DatabaseIndex)
+		}
 	}
 	return nil
 }
