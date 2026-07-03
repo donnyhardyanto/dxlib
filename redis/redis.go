@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 	_ "time/tzdata"
 
@@ -33,7 +34,7 @@ type DXRedis struct {
 	DatabaseIndex    int
 	IsConnectAtStart bool
 	MustConnected    bool
-	Connection       *redis.Ring
+	Connection       redis.UniversalClient // *Ring (single-node) or *Client (Sentinel) — both satisfy this
 	Connected        bool
 	Context          context.Context
 
@@ -42,6 +43,14 @@ type DXRedis struct {
 	MinIdleConns       int // Minimum number of idle connections to keep ready
 	MaxConnAgeMinutes  int // Maximum connection lifetime in minutes before recycling (0 = no limit)
 	IdleTimeoutMinutes int // Close idle connections after this many minutes (0 = go-redis default: 5 minutes)
+
+	// Sentinel (HA). When SentinelMasterName != "" AND SentinelAddresses is non-empty,
+	// Connect() builds NewFailoverClient (automatic master failover) instead of NewRing.
+	// Empty = single-node (unchanged). Password (above) doubles as the data-node AUTH.
+	SentinelMasterName string
+	SentinelAddresses  []string
+	SentinelPassword   string // AUTH to the sentinels themselves (optional)
+	HasSentinel        bool
 }
 
 type DXRedisManager struct {
@@ -204,6 +213,34 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 			r.IdleTimeoutMinutes = 0 // Default: 0 means go-redis default (5 minutes)
 		}
 
+		// Sentinel (HA) — optional. sentinel_addresses accepts a comma-separated string
+		// (env) OR a JSON array. Empty master name / addresses => single-node (Ring).
+		r.SentinelMasterName, _ = redisConfiguration["sentinel_master_name"].(string)
+		switch sa := redisConfiguration["sentinel_addresses"].(type) {
+		case string:
+			for _, s := range strings.Split(sa, ",") {
+				if s = strings.TrimSpace(s); s != "" {
+					r.SentinelAddresses = append(r.SentinelAddresses, s)
+				}
+			}
+		case []interface{}:
+			for _, a := range sa {
+				if s, ok := a.(string); ok {
+					if s = strings.TrimSpace(s); s != "" {
+						r.SentinelAddresses = append(r.SentinelAddresses, s)
+					}
+				}
+			}
+		case []string:
+			for _, s := range sa {
+				if s = strings.TrimSpace(s); s != "" {
+					r.SentinelAddresses = append(r.SentinelAddresses, s)
+				}
+			}
+		}
+		r.SentinelPassword, _ = redisConfiguration["sentinel_password"].(string)
+		r.HasSentinel = r.SentinelMasterName != "" && len(r.SentinelAddresses) > 0
+
 		r.IsConfigured = true
 		log.Log.Infof("Configuring to Redis %s... done", r.NameId)
 	}
@@ -216,35 +253,66 @@ func (r *DXRedis) Connect() (err error) {
 		if err != nil {
 			return errors.Wrapf(err, "Cannot configure to Redis %s to connect (%s)", r.NameId, err.Error())
 		}
-		log.Log.Infof("Connecting to Redis %s at %s/%d... start", r.NameId, r.Address, r.DatabaseIndex)
-		redisRingOptions := &redis.RingOptions{
-			Addrs: map[string]string{
-				"shard1": r.Address,
-			},
-			DB: r.DatabaseIndex,
-		}
-		if r.HasUserName {
-			redisRingOptions.Username = r.UserName
-		}
-		if r.HasPassword {
-			redisRingOptions.Password = r.Password
-		}
-		// Apply pool configuration
-		if r.PoolSize > 0 {
-			redisRingOptions.PoolSize = r.PoolSize
-		}
-		if r.MinIdleConns > 0 {
-			redisRingOptions.MinIdleConns = r.MinIdleConns
-		}
-		if r.MaxConnAgeMinutes > 0 {
-			redisRingOptions.MaxConnAge = time.Duration(r.MaxConnAgeMinutes) * time.Minute
-		}
-		if r.IdleTimeoutMinutes > 0 {
-			redisRingOptions.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
+		var connection redis.UniversalClient
+		if r.HasSentinel {
+			log.Log.Infof("Connecting to Redis %s via Sentinel master=%q sentinels=%v db=%d... start",
+				r.NameId, r.SentinelMasterName, r.SentinelAddresses, r.DatabaseIndex)
+			fo := &redis.FailoverOptions{
+				MasterName:    r.SentinelMasterName,
+				SentinelAddrs: r.SentinelAddresses,
+				DB:            r.DatabaseIndex,
+			}
+			if r.HasUserName {
+				fo.Username = r.UserName
+			}
+			if r.HasPassword {
+				fo.Password = r.Password // AUTH to the data nodes (master/replicas)
+			}
+			if r.SentinelPassword != "" {
+				fo.SentinelPassword = r.SentinelPassword // AUTH to the sentinels
+			}
+			if r.PoolSize > 0 {
+				fo.PoolSize = r.PoolSize
+			}
+			if r.MinIdleConns > 0 {
+				fo.MinIdleConns = r.MinIdleConns
+			}
+			if r.MaxConnAgeMinutes > 0 {
+				fo.MaxConnAge = time.Duration(r.MaxConnAgeMinutes) * time.Minute
+			}
+			if r.IdleTimeoutMinutes > 0 {
+				fo.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
+			}
+			connection = redis.NewFailoverClient(fo)
+		} else {
+			log.Log.Infof("Connecting to Redis %s at %s/%d... start", r.NameId, r.Address, r.DatabaseIndex)
+			redisRingOptions := &redis.RingOptions{
+				Addrs: map[string]string{"shard1": r.Address},
+				DB:    r.DatabaseIndex,
+			}
+			if r.HasUserName {
+				redisRingOptions.Username = r.UserName
+			}
+			if r.HasPassword {
+				redisRingOptions.Password = r.Password
+			}
+			// Apply pool configuration
+			if r.PoolSize > 0 {
+				redisRingOptions.PoolSize = r.PoolSize
+			}
+			if r.MinIdleConns > 0 {
+				redisRingOptions.MinIdleConns = r.MinIdleConns
+			}
+			if r.MaxConnAgeMinutes > 0 {
+				redisRingOptions.MaxConnAge = time.Duration(r.MaxConnAgeMinutes) * time.Minute
+			}
+			if r.IdleTimeoutMinutes > 0 {
+				redisRingOptions.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
+			}
+			connection = redis.NewRing(redisRingOptions)
 		}
 		log.Log.Infof("Pool config for Redis %s: PoolSize=%d, MinIdleConns=%d, MaxConnAge=%dm, IdleTimeout=%dm",
 			r.NameId, r.PoolSize, r.MinIdleConns, r.MaxConnAgeMinutes, r.IdleTimeoutMinutes)
-		connection := redis.NewRing(redisRingOptions)
 		err = connection.Ping(r.Context).Err()
 		if err != nil {
 			if r.MustConnected {
