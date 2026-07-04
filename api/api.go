@@ -451,6 +451,26 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	preprocessStartTime := time.Now()
 	LogExecutionTrace(requestContext, "preprocess_start", aepr.Id, p.Uri, r.Method, preprocessStartTime, 0, "")
 
+	// Transport authentication BEFORE any preprocessing (F-BE-02 / BUG-SEC-121). If a host wired
+	// OnBeforePreProcessRequest (e.g. bms-common → proxy-JWT validation), it runs here — BEFORE
+	// PreProcessRequest triggers the E2EE inner-decrypt / session-bootstrap / replay-check. A returned
+	// error rejects the request with 401 and PreProcessRequest is never called, so an unauthenticated
+	// caller can never reach the decrypt path. nil hook = no-op (backward compatible).
+	if OnBeforePreProcessRequest != nil {
+		if authErr := OnBeforePreProcessRequest(aepr); authErr != nil {
+			LogExecutionTrace(requestContext, "preprocess_end", aepr.Id, p.Uri, r.Method, preprocessStartTime, http.StatusUnauthorized, authErr.Error())
+			if !aepr.ResponseHeaderSent {
+				aepr.WriteResponseAsJSON(http.StatusUnauthorized, nil, utils.JSON{
+					"status":         "Unauthorized",
+					"status_code":    http.StatusUnauthorized,
+					"reason":         "PROXY_AUTH_REQUIRED",
+					"reason_message": "PROXY_AUTH_REQUIRED",
+				})
+			}
+			return
+		}
+	}
+
 	err = aepr.PreProcessRequest()
 
 	// TRACE: preprocess_end
