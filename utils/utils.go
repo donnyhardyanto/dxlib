@@ -1392,16 +1392,76 @@ func IsSensitiveField(fieldName string) bool {
 	return false
 }
 
-// MaskSensitiveValue masks a value if the field name is determined to be sensitive.
-// Uses "********" as the standard mask across the codebase.
-// Requires BOTH dxlib.IsDebug AND OverrideShowPasswordOnLog to show raw sensitive values.
-// This prevents accidental password exposure in production from a single env var flip.
+// ── PII partial-masking (BUG-SEC-122) ─────────────────────────────────────────
+// dxlib provides the MECHANISM (how to mask); the HOST (bms-common) injects the WHAT
+// (which fields, how many chars to reveal) via SetMaskRules, because PII field names are
+// domain-specific and dxlib must stay generic. Credentials (IsSensitiveField) are ALWAYS
+// fully masked and are NOT affected by these rules.
+
+// MaskRule reveals Front leading + Back trailing chars, masking the middle.
+// {0,0} (or MaskStrict) = full "********".
+type MaskRule struct{ Front, Back int }
+
+var (
+	maskRules  = map[string]MaskRule{} // lowercased field keyword → rule (host-populated)
+	maskStrict = false                 // true → ignore Front/Back, force full mask (prod/compliance)
+)
+
+// SetMaskRules replaces the PII field→rule map (called once by the host at init).
+func SetMaskRules(rules map[string]MaskRule) {
+	m := make(map[string]MaskRule, len(rules))
+	for k, v := range rules {
+		m[strings.ToLower(k)] = v
+	}
+	maskRules = m
+}
+
+// SetMaskStrict forces full masking of PII regardless of per-field rules (prod hardening).
+func SetMaskStrict(b bool) { maskStrict = b }
+
+// piiRuleFor returns the partial-mask rule for a field name (longest keyword match), if any.
+func piiRuleFor(fieldName string) (MaskRule, bool) {
+	lf := strings.ToLower(fieldName)
+	best, found := MaskRule{}, false
+	bestLen := 0
+	for kw, r := range maskRules {
+		if strings.Contains(lf, kw) && len(kw) > bestLen {
+			best, found, bestLen = r, true, len(kw)
+		}
+	}
+	return best, found
+}
+
+// partialMask keeps r.Front leading + r.Back trailing runes, masking the middle with "****".
+// Short-value guard: if the value can't hide at least 2 chars, it is FULLY masked.
+func partialMask(s string, r MaskRule) string {
+	runes := []rune(s)
+	if r.Front <= 0 && r.Back <= 0 {
+		return "********"
+	}
+	if len(runes) < r.Front+r.Back+2 { // not enough to hide ≥2 chars → full mask
+		return "********"
+	}
+	return string(runes[:r.Front]) + "****" + string(runes[len(runes)-r.Back:])
+}
+
+// MaskSensitiveValue masks a value for logging.
+//   - Credential fields (IsSensitiveField): ALWAYS full "********".
+//   - PII fields (SetMaskRules): partial (Front+Back) unless SetMaskStrict → full.
+//   - Requires BOTH dxlib.IsDebug AND OverrideShowPasswordOnLog to show raw values
+//     (prevents accidental exposure from a single env flip).
 func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
 	if dxlib.IsDebug && OverrideShowPasswordOnLog {
 		return value
 	}
 	if IsSensitiveField(fieldName) {
-		return "********"
+		return "********" // credentials: never partial
+	}
+	if r, ok := piiRuleFor(fieldName); ok {
+		if maskStrict {
+			return "********"
+		}
+		return partialMask(fmt.Sprintf("%v", value), r)
 	}
 	return value
 }

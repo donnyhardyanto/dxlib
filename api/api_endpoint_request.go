@@ -216,6 +216,12 @@ func (aepr *DXAPIEndPointRequest) RequestDumpAsString() (string, error) {
 // DecryptedRequestDumpAsString returns a formatted dump of decrypted request headers and body parameters
 // with sensitive fields masked. This is useful for debugging E2E encrypted requests.
 func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
+	// BUG-SEC-122: off by default — never write decrypted business data (KYC PII etc.) to logs
+	// unless a developer explicitly enables it for a debug session (DXLIB_LOG_DECRYPTED_BODY=true).
+	if !logDecryptedBody {
+		return "(decrypted body logging disabled; set DXLIB_LOG_DECRYPTED_BODY=true to enable)"
+	}
+
 	var b strings.Builder
 
 	// Dump effective (decrypted) headers
