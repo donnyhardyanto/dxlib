@@ -32,6 +32,16 @@ func TestMaskSensitiveValue_PII(t *testing.T) {
 		}
 	}
 
+	// BUG-SEC-129: the deadline date-time is a non-secret; it must NOT be masked despite
+	// containing "key" (exception list), so its value stays visible in logs.
+	if IsSensitiveField("KEY_V1_INNER_DEADLINE_DATE_TIME") {
+		t.Error("KEY_V1_INNER_DEADLINE_DATE_TIME must be exempt from masking (BUG-SEC-129)")
+	}
+	// sanity: a genuine key-bearing field is still sensitive
+	if !IsSensitiveField("api_key") {
+		t.Error("api_key must still be sensitive")
+	}
+
 	// strict mode → PII becomes full mask too (prod/compliance)
 	SetMaskStrict(true)
 	if got := MaskSensitiveValue("nik", "3175012345678901"); got != "********" {

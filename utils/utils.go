@@ -1358,6 +1358,9 @@ func IsSensitiveField(fieldName string) bool {
 
 	exceptions := []string{
 		"filter_key_values",
+		// BUG-SEC-129: a non-secret retirement DATE that only matches the "key" heuristic by its
+		// name. Exempt explicitly so its value is visible in logs (intentional, not heuristic accident).
+		"key_v1_inner_deadline_date_time",
 	}
 	for _, exception := range exceptions {
 		if lowerFieldName == exception {
