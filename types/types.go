@@ -59,6 +59,7 @@ const (
 	APIParameterTypeInt64P        APIParameterType = "int64p"
 	APIParameterTypeInt64ZP       APIParameterType = "int64zp"
 	APIParameterTypeNullableInt64 APIParameterType = "nullable-int64"
+	APIParameterTypeID            APIParameterType = "ID" // integer identifier / primary key (BIGINT / int64)
 
 	// Float32 types
 	APIParameterTypeFloat32   APIParameterType = "float32"
@@ -202,6 +203,16 @@ var (
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
 		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR255, base.DXDatabaseTypeSQLServer: VARCHAR255, base.DXDatabaseTypeMariaDB: VARCHAR255, base.DXDatabaseTypeOracle: VARCHAR255},
+	}
+
+	// DataTypeID is an integer identifier / primary key — same underlying type as
+	// Int64 (BIGINT / int64) but a distinct named type + APIParameterType so it reads
+	// as an identifier and is distinguishable by consumers (cf. UID vs String1024).
+	DataTypeID = DataType{
+		APIParameterType:   APIParameterTypeID,
+		JSONType:           JSONTypeNumber,
+		GoType:             GoTypeInt64,
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BIGINT", base.DXDatabaseTypeSQLServer: "BIGINT", base.DXDatabaseTypeMariaDB: "BIGINT", base.DXDatabaseTypeOracle: "NUMBER(19)"},
 	}
 
 	DataTypeInt64 = DataType{
@@ -543,6 +554,7 @@ var (
 		APIParameterTypeInt64P:        DataTypeInt64P,
 		APIParameterTypeInt64ZP:       DataTypeInt64ZP,
 		APIParameterTypeNullableInt64: DataTypeNullableInt64,
+		APIParameterTypeID:            DataTypeID,
 
 		// Float32 types
 		APIParameterTypeFloat32:   DataTypeFloat32,

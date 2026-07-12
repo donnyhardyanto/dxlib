@@ -120,7 +120,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValue(rawValueType, nameIdPath string) (err error) {
 	switch aeprpv.Metadata.Type {
 	case dxlibTypes.APIParameterTypeNullableInt64:
-	case dxlibTypes.APIParameterTypeInt64, dxlibTypes.APIParameterTypeInt64ZP, dxlibTypes.APIParameterTypeInt64P:
+	case dxlibTypes.APIParameterTypeInt64, dxlibTypes.APIParameterTypeInt64ZP, dxlibTypes.APIParameterTypeInt64P, dxlibTypes.APIParameterTypeID:
 		if rawValueType == "float64" {
 			if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
@@ -194,7 +194,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToInt64XXX(nameIdPath s
 		v := int64(t)
 		aeprpv.Value = v
 		return nil
-	case dxlibTypes.APIParameterTypeInt64:
+	case dxlibTypes.APIParameterTypeInt64, dxlibTypes.APIParameterTypeID:
 		t, ok := aeprpv.RawValue.(float64)
 		if !ok {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
@@ -424,7 +424,8 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		dxlibTypes.APIParameterTypeNullableInt64,
 		dxlibTypes.APIParameterTypeInt64,
 		dxlibTypes.APIParameterTypeInt64P,
-		dxlibTypes.APIParameterTypeInt64ZP:
+		dxlibTypes.APIParameterTypeInt64ZP,
+		dxlibTypes.APIParameterTypeID:
 		return aeprpv.resolveToInt64XXX(nameIdPath)
 	case
 		dxlibTypes.APIParameterTypeFloat64,
