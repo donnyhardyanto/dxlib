@@ -268,6 +268,16 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 			//	"SERVICE_NAME": d.DatabaseName,
 		}
 		s = goOra.BuildUrl(host, portInt, d.DatabaseName, d.UserName, d.UserPassword, urlOptions)
+	case base.DXDatabaseTypeMariaDB:
+		host, portAsString, err := net.SplitHostPort(d.Address)
+		if err != nil {
+			return "", err
+		}
+		// go-sql-driver/mysql DSN: user:pass@tcp(host:port)/dbname[?options]
+		s = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", d.UserName, d.UserPassword, host, portAsString, d.DatabaseName)
+		if d.ConnectionOptions != "" {
+			s += "?" + d.ConnectionOptions
+		}
 	default:
 		err = errors.Errorf("configuration is unusable, value of database_type field of databases %s configuration is not supported (%s)", d.NameId, s)
 	}
