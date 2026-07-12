@@ -751,6 +751,12 @@ func (t *ModelDBTable) validateFieldValue(fieldName string, field *ModelDBField,
 				return fmt.Errorf("field %s expects string, got %T", fieldName, val)
 			}
 		}
+	case types.GoTypeMoney:
+		// Money travels as a JSON string ("1250000.375") to preserve precision; a
+		// JSON number would already have lost it, so reject anything but a string.
+		if _, ok := val.(string); !ok {
+			return fmt.Errorf("field %s (money) expects a decimal string, got %T", fieldName, val)
+		}
 	case types.GoTypeInt64, types.GoTypeInt64Pointer:
 		switch val.(type) {
 		case int, int32, int64, float64:
