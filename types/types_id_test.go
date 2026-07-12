@@ -31,3 +31,30 @@ func TestDataTypeID(t *testing.T) {
 		t.Errorf("Types map missing APIParameterTypeID -> DataTypeID, got APIParameterType %q", got)
 	}
 }
+
+func TestDataTypeBigSerial(t *testing.T) {
+	if DataTypeBigSerial.GoType != GoTypeInt64 {
+		t.Errorf("GoType = %q, want int64", DataTypeBigSerial.GoType)
+	}
+	if got := DataTypeBigSerial.TypeByDatabaseType[base.DXDatabaseTypePostgreSQL]; got != "BIGSERIAL" {
+		t.Errorf("PostgreSQL = %q, want BIGSERIAL", got)
+	}
+	if got := DataTypeBigSerial.TypeByDatabaseType[base.DXDatabaseTypeMariaDB]; got != "BIGINT AUTO_INCREMENT" {
+		t.Errorf("MariaDB = %q, want BIGINT AUTO_INCREMENT", got)
+	}
+	if DataTypeBigSerial.APIParameterType == DataTypeSerial.APIParameterType {
+		t.Errorf("BigSerial must be distinguishable from Serial (distinct APIParameterType)")
+	}
+}
+
+func TestDataTypeString512(t *testing.T) {
+	if DataTypeString512.GoType != GoTypeString {
+		t.Errorf("GoType = %q, want string", DataTypeString512.GoType)
+	}
+	if got := DataTypeString512.TypeByDatabaseType[base.DXDatabaseTypePostgreSQL]; got != "VARCHAR(512)" {
+		t.Errorf("PostgreSQL = %q, want VARCHAR(512)", got)
+	}
+	if got := DataTypeString512.TypeByDatabaseType[base.DXDatabaseTypeOracle]; got != "VARCHAR2(512)" {
+		t.Errorf("Oracle = %q, want VARCHAR2(512)", got)
+	}
+}
