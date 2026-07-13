@@ -149,11 +149,14 @@ func Count(ctx context.Context, db *sqlx.DB, tableOrSubquery string, countExpres
 		return 0, errors.New("no results returned from count query")
 	}
 
-	// Extract the count value from the first column
-	firstColumn := rowsInfo.Columns[0]
-	countValue, ok := rows[0][firstColumn]
-	if !ok {
-		return 0, errors.Errorf("count column '%s' not found in result", firstColumn)
+	// Single-column count result: read the sole value regardless of the driver's
+	// reported column name. MariaDB reports the column as "COUNT(*)" (not the alias)
+	// and row keys may be case-folded, so a name lookup (rowsInfo.Columns[0]) misses.
+	// The count query always returns exactly one column.
+	var countValue any
+	for _, v := range rows[0] {
+		countValue = v
+		break
 	}
 
 	// Convert to int64
@@ -239,11 +242,14 @@ func TxCount(ctx context.Context, tx *sqlx.Tx, tableOrSubquery string, countExpr
 		return 0, errors.New("no results returned from count query")
 	}
 
-	// Extract the count value from the first column
-	firstColumn := rowsInfo.Columns[0]
-	countValue, ok := rows[0][firstColumn]
-	if !ok {
-		return 0, errors.Errorf("count column '%s' not found in result", firstColumn)
+	// Single-column count result: read the sole value regardless of the driver's
+	// reported column name. MariaDB reports the column as "COUNT(*)" (not the alias)
+	// and row keys may be case-folded, so a name lookup (rowsInfo.Columns[0]) misses.
+	// The count query always returns exactly one column.
+	var countValue any
+	for _, v := range rows[0] {
+		countValue = v
+		break
 	}
 
 	// Convert to int64
