@@ -101,8 +101,10 @@ func QueryRows(
 		modifiedSQL = db.Rebind(modifiedSQL)
 
 	case base.DXDatabaseTypeOracle:
-		// For go-ora, we need to use sql.Named for each parameter
-		// Keep the original SQL with :name parameters (no modification needed)
+		// go-ora binds by :name. sqlx.Named (above) rewrote the :name placeholders
+		// to `?` — reset to the ORIGINAL SQL so the :name placeholders survive to pair
+		// with the sql.Named args below (else `?` + named args -> ORA-00936).
+		modifiedSQL = sqlStatement
 
 		// Convert JSON arguments to sql.Named arguments
 		args = make([]interface{}, 0, len(sqlArguments))
@@ -159,8 +161,10 @@ func RawCount(
 		modifiedSQL = db.Rebind(modifiedSQL)
 
 	case base.DXDatabaseTypeOracle:
-		// For go-ora, we need to use sql.Named for each parameter
-		// Keep the original SQL with :name parameters (no modification needed)
+		// go-ora binds by :name. sqlx.Named (above) rewrote the :name placeholders
+		// to `?` — reset to the ORIGINAL SQL so the :name placeholders survive to pair
+		// with the sql.Named args below (else `?` + named args -> ORA-00936).
+		modifiedSQL = s
 
 		// Convert JSON arguments to sql.Named arguments
 		args = make([]interface{}, 0, len(sqlArguments))
@@ -236,8 +240,10 @@ func TxQueryRows(
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
 	case base.DXDatabaseTypeOracle:
-		// For go-ora, we need to use sql.Named for each parameter
-		// Keep the original SQL with :name parameters (no modification needed)
+		// go-ora binds by :name. sqlx.Named (above) rewrote the :name placeholders
+		// to `?` — reset to the ORIGINAL SQL so the :name placeholders survive to pair
+		// with the sql.Named args below (else `?` + named args -> ORA-00936).
+		modifiedSQL = sqlStatement
 
 		// Convert JSON arguments to sql.Named arguments
 		args = make([]interface{}, 0, len(sqlArguments))
