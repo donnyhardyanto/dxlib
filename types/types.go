@@ -2,9 +2,12 @@ package types
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/donnyhardyanto/dxlib/base"
+	"github.com/google/uuid"
 )
 
 type APIParameterType string
@@ -132,6 +135,18 @@ const UIDDefaultExprOracle = "LOWER(TO_CHAR(ROUND((CAST(SYS_EXTRACT_UTC(SYSTIMES
 
 // UIDDefaultExprMariaDB is the MariaDB/MySQL UID default expression
 const UIDDefaultExprMariaDB = "CONCAT(HEX(FLOOR(UNIX_TIMESTAMP(NOW(6)) * 1000000)), REPLACE(UUID(), '-', ''))"
+
+// GenerateUID returns a collision-resistant, roughly time-sortable opaque id,
+// generated in the application (no database round-trip). It is the Go equivalent
+// of UIDDefaultExprPostgreSQL: lowercase hex of the current Unix time in
+// microseconds, concatenated with a random UUIDv4 (dashed). ~52 chars — fits
+// VARCHAR(255). Prefer this over a bare uuid for stored uids: the microsecond
+// prefix makes a collision effectively impossible and keeps uids k-sortable
+// (better index locality). The internal integer id, not this, is the FK key;
+// this uid is the stable public handle (D-27) threaded across the async spine.
+func GenerateUID() string {
+	return strconv.FormatInt(time.Now().UTC().UnixMicro(), 16) + uuid.NewString()
+}
 
 var (
 	DataTypeEncryptedBlob = DataType{
