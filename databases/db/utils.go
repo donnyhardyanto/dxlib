@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -17,6 +18,23 @@ import (
 	"github.com/shopspring/decimal"
 	go_ora "github.com/sijms/go-ora/v2/network"
 )
+
+// QualifyTableNameForExec adapts a logical `schema.table` name to the target
+// engine for EXECUTED SQL. PostgreSQL/SQL Server/Oracle have real schemas, so
+// `schema.table` resolves natively — returned unchanged (byte-identical, no
+// behavior change). MariaDB has NO schema layer: the "schema" is virtual, carried
+// as a SINGLE quoted identifier `schema.table` (the dot is part of the table
+// name), so a dotted name is collapsed into one backtick-quoted identifier.
+// Idempotent (already-backtick-quoted or bare names pass through).
+func QualifyTableNameForExec(dbType base.DXDatabaseType, tableName string) string {
+	if dbType != base.DXDatabaseTypeMariaDB {
+		return tableName
+	}
+	if tableName == "" || strings.HasPrefix(tableName, "`") || !strings.Contains(tableName, ".") {
+		return tableName
+	}
+	return "`" + strings.ReplaceAll(tableName, "`", "``") + "`"
+}
 
 // DbDriverFormatIdentifier formats an identifier (column/table name) according to databases requirements
 func DbDriverFormatIdentifier(driverName string, identifier string) string {

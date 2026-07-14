@@ -51,6 +51,8 @@ func Delete(ctx context.Context, db *sqlx.DB, tableName string, whereAndFieldNam
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
+	// MariaDB virtual-schema: collapse schema.table to a single backtick id (no-op on other engines).
+	tableName = QualifyTableNameForExec(dbType, tableName)
 	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
@@ -224,6 +226,8 @@ func TxDelete(ctx context.Context, tx *sqlx.Tx, tableName string, whereAndFieldN
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
+	// MariaDB virtual-schema: collapse schema.table to a single backtick id (no-op on other engines).
+	tableName = QualifyTableNameForExec(dbType, tableName)
 	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}

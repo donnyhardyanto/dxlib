@@ -560,7 +560,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 
 	driverName := base.NormalizeDriverName(d.Connection.DriverName())
 	switch driverName {
-	case "sqlserver", "postgres", "oracle":
+	case "sqlserver", "postgres", "oracle", "mariadb":
 		log.Log.Infof("Executing SQL file %s... start", filename)
 
 		sqlFile := sqlfile.New()
@@ -578,8 +578,7 @@ func (d *DXDatabase) ExecuteFile(filename string) (r sql.Result, err error) {
 		}
 
 	default:
-		log.Log.Fatalf("Driver %s is not supported", driverName)
-		return nil, err
+		return nil, errors.Errorf("ExecuteFile: unsupported driver %q", driverName)
 	}
 	log.Log.Info("SQL script executed successfully!")
 	return r, nil
@@ -601,7 +600,7 @@ func (d *DXDatabase) ExecuteSQLContent(content string) (r sql.Result, err error)
 
 	driverName := base.NormalizeDriverName(d.Connection.DriverName())
 	switch driverName {
-	case "sqlserver", "postgres", "oracle":
+	case "sqlserver", "postgres", "oracle", "mariadb":
 		log.Log.Info("Executing SQL content... start")
 		sqlFile := sqlfile.New()
 
@@ -618,8 +617,7 @@ func (d *DXDatabase) ExecuteSQLContent(content string) (r sql.Result, err error)
 		}
 
 	default:
-		log.Log.Fatalf("Driver %s is not supported", driverName)
-		return nil, err
+		return nil, errors.Errorf("ExecuteSQLContent: unsupported driver %q", driverName)
 	}
 	log.Log.Info("SQL content executed successfully!")
 	return r, nil

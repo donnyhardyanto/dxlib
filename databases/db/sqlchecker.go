@@ -27,8 +27,10 @@ var (
 			End:   []rune{'"'},
 		},
 		base.DXDatabaseTypeMariaDB: {
-			Start: []rune{'"'},
-			End:   []rune{'"'},
+			// MariaDB/MySQL quote identifiers with backticks (double quotes are
+			// string literals unless ANSI_QUOTES is set).
+			Start: []rune{'`'},
+			End:   []rune{'`'},
 		},
 		base.DXDatabaseTypeSQLServer: {
 			Start: []rune{'[', '"'},
