@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -39,7 +40,17 @@ func QualifyTableNameForExec(dbType base.DXDatabaseType, tableName string) strin
 // DbDriverFormatIdentifier formats an identifier (column/table name) according to databases requirements
 func DbDriverFormatIdentifier(driverName string, identifier string) string {
 	switch driverName {
-	case "oracle", "db2", "sqlserver", "mariadb":
+	case "oracle":
+		// Oracle DDL creates quoted-UPPERCASE objects (see models.quoteIdent), so a
+		// plain identifier is emitted quoted-uppercase too — quoting keeps reserved
+		// words like UID (a built-in function) resolving to the COLUMN, not the
+		// function. Non-plain strings (e.g. "name NULLS FIRST") keep the legacy
+		// bare-uppercase behavior — quoting them whole would break the expression.
+		if identifierPatterns[base.DXDatabaseTypeOracle].MatchString(identifier) {
+			return `"` + strings.ToUpper(identifier) + `"`
+		}
+		return strings.ToUpper(identifier)
+	case "db2", "sqlserver", "mariadb":
 		// Use uppercase for all case-insensitive databases for consistency
 		return strings.ToUpper(identifier)
 	case "postgres":
@@ -48,6 +59,95 @@ func DbDriverFormatIdentifier(driverName string, identifier string) string {
 	default:
 		return identifier
 	}
+}
+
+// OracleSelectListField formats ONE select-list item for Oracle: a plain
+// identifier becomes quoted-UPPERCASE (matching the DDL — an unquoted reserved
+// word like uid silently resolves to the BUILT-IN FUNCTION, returning wrong
+// data with no error); anything else (expression, alias, star) is untouched.
+func OracleSelectListField(field string) string {
+	if identifierPatterns[base.DXDatabaseTypeOracle].MatchString(field) {
+		return `"` + strings.ToUpper(field) + `"`
+	}
+	return field
+}
+
+// OracleSafeBindNames prepares a ":name"-parameterized statement for go-ora.
+// Oracle bind-variable names share the identifier rules — a RESERVED WORD as a
+// bind name (":uid", ":level", ...) is ORA-01745 — and generated SQL derives
+// bind names from COLUMN names, so any reserved-word column breaks the bind.
+// Fix: every ":<argName>" placeholder is rewritten to ":p_<argName>" and the
+// sql.Named args are keyed "p_<argName>" to match. Only placeholders whose name
+// EXACTLY matches a provided arg key are rewritten, so out-binds like
+// ":uid_out" and caller-authored bind names not in the args stay untouched.
+// The SQL is scanned ONCE, token by token (never re-scanning rewritten output —
+// a progressive search-and-replace corrupts args whose name is "p_"+another
+// arg's name); string literals ('...'), casts (::) and PL/SQL assignments (:=)
+// are copied through verbatim.
+func OracleSafeBindNames(sqlStatement string, sqlArguments utils.JSON) (string, []any) {
+	isWordChar := func(c byte) bool {
+		return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+	}
+
+	var b strings.Builder
+	b.Grow(len(sqlStatement) + 8*len(sqlArguments))
+	i := 0
+	for i < len(sqlStatement) {
+		c := sqlStatement[i]
+
+		// Copy string literals verbatim ('' is the escaped quote).
+		if c == '\'' {
+			b.WriteByte(c)
+			i++
+			for i < len(sqlStatement) {
+				b.WriteByte(sqlStatement[i])
+				if sqlStatement[i] == '\'' {
+					if i+1 < len(sqlStatement) && sqlStatement[i+1] == '\'' {
+						b.WriteByte(sqlStatement[i+1])
+						i += 2
+						continue
+					}
+					i++
+					break
+				}
+				i++
+			}
+			continue
+		}
+
+		if c == ':' {
+			// "::" (cast) and ":=" (PL/SQL assignment) are not binds.
+			if i+1 < len(sqlStatement) && (sqlStatement[i+1] == ':' || sqlStatement[i+1] == '=') {
+				b.WriteByte(sqlStatement[i])
+				b.WriteByte(sqlStatement[i+1])
+				i += 2
+				continue
+			}
+			start := i + 1
+			end := start
+			for end < len(sqlStatement) && isWordChar(sqlStatement[end]) {
+				end++
+			}
+			name := sqlStatement[start:end]
+			if _, ok := sqlArguments[name]; ok && name != "" {
+				b.WriteString(":p_")
+				b.WriteString(name)
+			} else {
+				b.WriteString(sqlStatement[i:end])
+			}
+			i = end
+			continue
+		}
+
+		b.WriteByte(c)
+		i++
+	}
+
+	args := make([]any, 0, len(sqlArguments))
+	for name, value := range sqlArguments {
+		args = append(args, sql.Named("p_"+name, value))
+	}
+	return b.String(), args
 }
 
 func DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName string, kv utils.JSON) (r utils.JSON, err error) {
@@ -209,8 +309,10 @@ func DbDriverConvertValueTypeToDBCompatible(driverName string, v any) (any, erro
 			// Convert to string so it works for both timestamp and varchar columns.
 			return v.(time.Time).Format("2006-01-02 15:04:05.999999Z07:00"), nil
 		case "oracle":
-			// Oracle has specific datetime handling requirements
-			return v.(time.Time).Format("2006-01-02 15:04:05"), nil
+			// go-ora binds time.Time natively as TIMESTAMP. Formatting to a bare
+			// string here made Oracle implicitly parse it with NLS_TIMESTAMP_FORMAT
+			// (DD-MON-RR...) -> ORA-01843 "invalid month" on every timestamp column.
+			return v, nil
 		default:
 			// All the other major databases support standard time format
 			return v, nil
@@ -305,12 +407,16 @@ func DBDriverGenerateLimitOffsetClause(driverName string, limitAsInt64, offsetAs
 		effectiveLimitOffsetClause += " offset " + strconv.FormatInt(offsetAsInt64, 10)
 
 	case "oracle":
-		// Oracle 12c+ uses OFFSET n ROWS FETCH NEXT m ROWS ONLY
-		// Always include OFFSET clause
-		effectiveLimitOffsetClause = " offset " + strconv.FormatInt(offsetAsInt64, 10) + " rows"
+		// Oracle 12c+ uses OFFSET n ROWS FETCH NEXT m ROWS ONLY.
+		// Emit NOTHING for a zero offset with no limit: Oracle implements
+		// OFFSET/FETCH by wrapping the query in an inline view, which breaks
+		// SELECT ... FOR UPDATE (ORA-02014) — and "offset 0 rows" is a no-op.
+		if offsetAsInt64 > 0 || (hasLimit && limitAsInt64 > 0) {
+			effectiveLimitOffsetClause = " offset " + strconv.FormatInt(offsetAsInt64, 10) + " rows"
 
-		if hasLimit && limitAsInt64 > 0 {
-			effectiveLimitOffsetClause += " fetch next " + strconv.FormatInt(limitAsInt64, 10) + " rows only"
+			if hasLimit && limitAsInt64 > 0 {
+				effectiveLimitOffsetClause += " fetch next " + strconv.FormatInt(limitAsInt64, 10) + " rows only"
+			}
 		}
 
 	case "mariadb":

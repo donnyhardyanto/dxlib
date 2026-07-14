@@ -19,7 +19,13 @@ func quoteIdent(dbType base.DXDatabaseType, id string) string {
 		return "[" + strings.ReplaceAll(id, "]", "]]") + "]"
 	case base.DXDatabaseTypeMariaDB:
 		return "`" + strings.ReplaceAll(id, "`", "``") + "`"
-	default: // PostgreSQL, Oracle
+	case base.DXDatabaseTypeOracle:
+		// Oracle: quoted identifiers are case-SENSITIVE, and runtime SQL references
+		// them UNQUOTED (folded to uppercase by the engine) — so DDL must create
+		// UPPERCASE objects or nothing resolves. Quoting (vs bare) keeps reserved
+		// words like UID usable as column names.
+		return `"` + strings.ReplaceAll(strings.ToUpper(id), `"`, `""`) + `"`
+	default: // PostgreSQL
 		return `"` + strings.ReplaceAll(id, `"`, `""`) + `"`
 	}
 }

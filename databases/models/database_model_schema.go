@@ -58,8 +58,10 @@ func (s *ModelDBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		// the script on ';' would glue a dangling comment onto the next statement).
 		// Tables land in the connection's current database.
 	case base.DXDatabaseTypeOracle:
-		// Oracle uses users as schemas, typically created by DBA
-		sb.WriteString(fmt.Sprintf("-- Oracle: Schema %s should be created by DBA\n\n", s.Name))
+		// Oracle: schema == USER, provisioned by the admin (reset-databases
+		// CreateOracleUser) BEFORE this DDL runs — no schema-creation DDL emitted.
+		// Like MariaDB above, no SQL comment either: callers that split the script
+		// on ';' would glue a dangling comment onto the next statement.
 	default:
 		panic("unhandled default case")
 	}

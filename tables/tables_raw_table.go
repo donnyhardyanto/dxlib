@@ -71,8 +71,18 @@ func (t *DXRawTable) EnsureDatabase() error {
 	return t.Database.EnsureConnection()
 }
 
-// GetDbType returns the databases type
+// GetDbType returns the databases type. Resolves the ALREADY-REGISTERED
+// database by nameid first (lookup only — GetOrCreate would register an
+// unconfigured stub): callers build query builders BEFORE the first
+// Select/EnsureDatabase touches this handle, and defaulting to PostgreSQL then
+// mis-quotes identifiers on other engines (e.g. Oracle ORDER BY "created_at").
+// PostgreSQL stays the fallback for a nameid that is not registered (yet).
 func (t *DXRawTable) GetDbType() base.DXDatabaseType {
+	if t.Database == nil {
+		if d, ok := databases.Manager.Databases[t.DatabaseNameId]; ok && d != nil {
+			t.Database = d
+		}
+	}
 	if t.Database == nil {
 		return base.DXDatabaseTypePostgreSQL
 	}

@@ -28,13 +28,22 @@ func TxSelectWithSelectQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 		return nil, nil, errors.New("QUERY_BUILDER_SOURCE_NAME_NOT_SET")
 	}
 
-	// Build SELECT fields from qb.OutFields, default to "*"
+	driverName := base.NormalizeDriverName(dtx.Tx.DriverName())
+
+	// Build SELECT fields from qb.OutFields, default to "*". Oracle: plain
+	// identifiers are quoted-uppercase (an unquoted reserved word like uid
+	// resolves to the built-in function — wrong data, no error).
 	selectFieldsPart := "*"
 	if len(qb.OutFields) > 0 {
-		selectFieldsPart = strings.Join(qb.OutFields, ", ")
+		outFields := qb.OutFields
+		if driverName == "oracle" {
+			outFields = make([]string, len(qb.OutFields))
+			for i, f := range qb.OutFields {
+				outFields[i] = databaseDb.OracleSelectListField(f)
+			}
+		}
+		selectFieldsPart = strings.Join(outFields, ", ")
 	}
-
-	driverName := base.NormalizeDriverName(dtx.Tx.DriverName())
 
 	// Build WHERE clause
 	whereClause, args, err := qb.Build()
@@ -69,8 +78,11 @@ func TxSelectWithSelectQueryBuilder2(ctx context.Context, dtx *databases.DXDatab
 		return nil, nil, err
 	}
 
-	// Build full query
-	query := "SELECT " + selectFieldsPart + " FROM " + qb.SourceName
+	// Build full query. The source name is adapted per engine: MariaDB's virtual
+	// schema carries `schema.table` as ONE backtick identifier (raw `s.t` parses
+	// as database s, table t -> "table doesn't exist"); no-op elsewhere.
+	sourceName := databaseDb.QualifyTableNameForExec(base.StringToDXDatabaseType(driverName), qb.SourceName)
+	query := "SELECT " + selectFieldsPart + " FROM " + sourceName
 
 	if joinClause != "" {
 		query += " " + joinClause
@@ -216,8 +228,10 @@ func TxCountWithSelectQueryBuilder2(ctx context.Context, dtx *databases.DXDataba
 		args[k] = v
 	}
 
-	// Build full COUNT query
-	query := "SELECT COUNT(*) AS count FROM " + qb.SourceName
+	// Build full COUNT query. MariaDB virtual-schema source-name collapse, as in
+	// TxSelectWithSelectQueryBuilder2; no-op on other engines.
+	query := "SELECT COUNT(*) AS count FROM " +
+		databaseDb.QualifyTableNameForExec(base.StringToDXDatabaseType(base.NormalizeDriverName(dtx.Tx.DriverName())), qb.SourceName)
 
 	if joinClause != "" {
 		query += " " + joinClause
