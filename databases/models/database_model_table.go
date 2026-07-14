@@ -219,6 +219,14 @@ func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType b
 
 	sb.WriteString(fmt.Sprintf("%s %s", quoteIdent(dbType, fieldName), sqlType))
 
+	// DEFAULT must come BEFORE the NOT NULL / constraint clauses: Oracle requires
+	// `col type DEFAULT x NOT NULL` (a `NOT NULL DEFAULT x` order is ORA-03076),
+	// and PG/MariaDB/SQL Server accept DEFAULT-first too — so emit it here for all.
+	defaultValue := t.getDefaultValueForDBType(field, dbType)
+	if defaultValue != "" {
+		sb.WriteString(fmt.Sprintf(" DEFAULT %s", defaultValue))
+	}
+
 	// Add PRIMARY KEY constraint
 	if field.IsPrimaryKey {
 		sb.WriteString(" PRIMARY KEY")
@@ -232,12 +240,6 @@ func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType b
 	// Add UNIQUE constraint
 	if field.IsUnique && !field.IsPrimaryKey { // PRIMARY KEY implies UNIQUE
 		sb.WriteString(" UNIQUE")
-	}
-
-	// Add DEFAULT value - check databases-specific default first
-	defaultValue := t.getDefaultValueForDBType(field, dbType)
-	if defaultValue != "" {
-		sb.WriteString(fmt.Sprintf(" DEFAULT %s", defaultValue))
 	}
 
 	// Add REFERENCES constraint for foreign keys
@@ -324,9 +326,9 @@ func (t *ModelDBTable) getDefaultValueForDBType(field ModelDBField, dbType base.
 		}
 	}
 
-	// 2. Check field's generic default value
+	// 2. Check field's generic default value (engine-aware for the common sentinels)
 	if field.DefaultValue != nil {
-		return valueToSQLLiteral(field, field.DefaultValue)
+		return renderDefaultForDBType(dbType, field, field.DefaultValue)
 	}
 
 	// 3. Check DataType's databases-specific default (t.g., DataTypeUID) - only if IsAutoIncrement is true
