@@ -387,13 +387,21 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 	var conditions []string
 
 	for k, v := range whereKeyValues {
-		// Format the field name according to databases requirements
-		k = DbDriverFormatIdentifier(driverName, k)
+		// Format the COLUMN identifier per the engine's rules, but bind the named
+		// parameter by the ORIGINAL key. This mirrors the SET-clause builder
+		// (SQLPartUpdateSetFieldValues): the arg map handed to sqlx.Named is keyed
+		// by the original field name, and sqlx placeholder lookup is always
+		// case-sensitive. Reusing the formatted (e.g. upper-cased) name for the
+		// ":placeholder" would emit ":ID" while the arg map still holds "id",
+		// which fails on the case-folding engines (MariaDB/SQL Server/Oracle) with
+		// "could not find name ID". On PostgreSQL formattedColumn == k, so this is
+		// byte-identical to before.
+		formattedColumn := DbDriverFormatIdentifier(driverName, k)
 
 		var condition string
 		if v == nil {
 			// Handle NULL values according to SQL standard (works in all databases)
-			condition = k + " IS NULL"
+			condition = formattedColumn + " IS NULL"
 		} else {
 			switch v := v.(type) {
 			case SQLExpression:
@@ -401,7 +409,7 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 				condition = v.String()
 			default:
 				// Handle regular equality conditions
-				condition = k + "=:" + k
+				condition = formattedColumn + "=:" + k
 			}
 		}
 		conditions = append(conditions, condition)
