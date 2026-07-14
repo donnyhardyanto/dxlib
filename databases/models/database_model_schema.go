@@ -45,13 +45,17 @@ func (s *ModelDBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	// Create schema statement
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL:
-		sb.WriteString(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s;\n\n", s.Name))
+		sb.WriteString(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s;\n\n", quoteIdent(dbType, s.Name)))
 	case base.DXDatabaseTypeSQLServer:
-		sb.WriteString(fmt.Sprintf("IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s')\nBEGIN\n    EXEC('CREATE SCHEMA %s')\nEND;\n\n", s.Name, s.Name))
+		sb.WriteString(fmt.Sprintf("IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s')\nBEGIN\n    EXEC('CREATE SCHEMA %s')\nEND;\n\n", s.Name, quoteIdent(dbType, s.Name)))
 	case base.DXDatabaseTypeMariaDB:
-		// MySQL/MariaDB uses "databases" instead of schema
-		// language=text
-		sb.WriteString(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;\nUSE %s;\n\n", s.Name, s.Name))
+		// MariaDB has NO schema layer, and the schema name must NOT become a
+		// database name (the DB is created separately, unrelated name; many virtual
+		// schemas can coexist in it). The virtual schema is carried by the table
+		// name itself (`schema.table` as a single quoted identifier — see
+		// qualifiedTableName), so there is no schema-creation DDL here. Tables land
+		// in the connection's current database.
+		sb.WriteString(fmt.Sprintf("-- MariaDB: virtual schema %q (carried in table names; no CREATE DATABASE)\n\n", s.Name))
 	case base.DXDatabaseTypeOracle:
 		// Oracle uses users as schemas, typically created by DBA
 		sb.WriteString(fmt.Sprintf("-- Oracle: Schema %s should be created by DBA\n\n", s.Name))

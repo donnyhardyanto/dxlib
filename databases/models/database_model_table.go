@@ -143,7 +143,11 @@ func (t *ModelDBTable) getOrderedFields() []string {
 // CreateDDL generates a DDL script for the table based on databases type
 func (t *ModelDBTable) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	var sb strings.Builder
-	tableName := t.FullTableName()
+	schemaName := ""
+	if t.Schema != nil {
+		schemaName = t.Schema.Name
+	}
+	tableName := qualifiedTableName(dbType, schemaName, t.TableName())
 
 	sb.WriteString(fmt.Sprintf("CREATE TABLE"+" %s (\n", tableName))
 
@@ -213,7 +217,7 @@ func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType b
 		sqlType = "TEXT" // Fallback if no type mapping exists
 	}
 
-	sb.WriteString(fmt.Sprintf("%s %s", fieldName, sqlType))
+	sb.WriteString(fmt.Sprintf("%s %s", quoteIdent(dbType, fieldName), sqlType))
 
 	// Add PRIMARY KEY constraint
 	if field.IsPrimaryKey {
@@ -241,8 +245,8 @@ func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType b
 		// References format: "schema.table.field"
 		parts := strings.Split(field.References, ".")
 		if len(parts) == 3 {
-			sb.WriteString(fmt.Sprintf(" REFERENCES %s.%s (%s)",
-				parts[0], parts[1], parts[2]))
+			sb.WriteString(fmt.Sprintf(" REFERENCES %s (%s)",
+				qualifiedTableName(dbType, parts[0], parts[1]), quoteIdent(dbType, parts[2])))
 		}
 	}
 
