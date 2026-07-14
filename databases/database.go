@@ -276,10 +276,14 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 		if err != nil {
 			return "", err
 		}
-		// go-sql-driver/mysql DSN: user:pass@tcp(host:port)/dbname[?options]
-		s = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", d.UserName, d.UserPassword, host, portAsString, d.DatabaseName)
+		// go-sql-driver/mysql DSN: user:pass@tcp(host:port)/dbname[?options].
+		// parseTime=true so DATETIME/TIMESTAMP columns scan as time.Time — the
+		// driver's default returns []byte, which JSON-serializes as base64 in
+		// every timestamp read (matching how the other engines already behave).
+		// An explicit parseTime in ConnectionOptions still wins (appended last).
+		s = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", d.UserName, d.UserPassword, host, portAsString, d.DatabaseName)
 		if d.ConnectionOptions != "" {
-			s += "?" + d.ConnectionOptions
+			s += "&" + d.ConnectionOptions
 		}
 	default:
 		err = errors.Errorf("configuration is unusable, value of database_type field of databases %s configuration is not supported (%s)", d.NameId, s)
