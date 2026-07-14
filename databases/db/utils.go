@@ -53,12 +53,20 @@ func DbDriverFormatIdentifier(driverName string, identifier string) string {
 func DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName string, kv utils.JSON) (r utils.JSON, err error) {
 	r = utils.JSON{}
 	for k, v := range kv {
-		formattedKey := DbDriverFormatIdentifier(driverName, k)
+		// Key the sqlx named-parameter map by the ORIGINAL field name, NOT the
+		// engine-formatted (e.g. upper-cased) identifier. This map is matched
+		// against the ":placeholder" names emitted by SQLPartWhereAndFieldNameValues,
+		// which bind by the original key; sqlx placeholder lookup is case-sensitive.
+		// Upper-casing the key here produced ":uid" vs arg "UID" on the case-folding
+		// engines (MariaDB/SQL Server/Oracle) -> "could not find name uid". UPDATE and
+		// DELETE already key their arg maps by the original name; this makes SELECT/
+		// COUNT consistent. Value conversion (below) still applies. PostgreSQL is
+		// unaffected (original == formatted there).
 		v, err := DbDriverConvertValueTypeToDBCompatible(driverName, v)
 		if err != nil {
 			return nil, err
 		}
-		r[formattedKey] = v
+		r[k] = v
 	}
 	return r, nil
 }
