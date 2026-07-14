@@ -166,6 +166,21 @@ func (t *ModelDBTable) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 
 	sb.WriteString(";\n")
 
+	// SQL Server only: for each nullable UNIQUE column the inline UNIQUE was
+	// skipped (see fieldToDDL) — emit a FILTERED unique index so multiple NULLs
+	// are allowed while non-NULL values stay unique, matching PG/MariaDB/Oracle.
+	if dbType == base.DXDatabaseTypeSQLServer {
+		for _, fieldName := range t.getOrderedFields() {
+			field := t.Fields[fieldName]
+			if field.IsUnique && !field.IsPrimaryKey && !field.IsNotNull {
+				col := quoteIdent(dbType, fieldName)
+				idxName := quoteIdent(dbType, t.TableName()+"_"+fieldName+"_uidx")
+				sb.WriteString(fmt.Sprintf("CREATE UNIQUE NONCLUSTERED INDEX %s ON %s (%s) WHERE %s IS NOT NULL;\n",
+					idxName, tableName, col, col))
+			}
+		}
+	}
+
 	return sb.String(), nil
 }
 
@@ -237,9 +252,17 @@ func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType b
 		sb.WriteString(" NOT NULL")
 	}
 
-	// Add UNIQUE constraint
+	// Add UNIQUE constraint. SQL Server treats NULLs as equal in a UNIQUE
+	// constraint, so a nullable UNIQUE column rejects a second NULL row (unlike
+	// PostgreSQL/MariaDB/Oracle, which allow multiple NULLs). For that one case we
+	// SKIP the inline UNIQUE here and emit a FILTERED unique index
+	// (WHERE col IS NOT NULL) in CreateDDL instead — restoring multi-NULL
+	// semantics. Every other engine, and every NOT-NULL unique column, keeps the
+	// inline UNIQUE unchanged.
 	if field.IsUnique && !field.IsPrimaryKey { // PRIMARY KEY implies UNIQUE
-		sb.WriteString(" UNIQUE")
+		if !(dbType == base.DXDatabaseTypeSQLServer && !field.IsNotNull) {
+			sb.WriteString(" UNIQUE")
+		}
 	}
 
 	// Add REFERENCES constraint for foreign keys
