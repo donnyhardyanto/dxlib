@@ -589,11 +589,11 @@ var (
 	}
 
 	DataTypeString8096 = DataType{
-		Description:        "Long text up to 8096 chars; falls back to TEXT (MariaDB) / CLOB (Oracle).",
+		Description:        "Long text up to 8096 chars; VARCHAR(MAX) on SQL Server (its VARCHAR cap is 8000), TEXT (MariaDB) / CLOB (Oracle).",
 		APIParameterType:   "string8096",
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(8096)", base.DXDatabaseTypeSQLServer: "VARCHAR(8096)", base.DXDatabaseTypeMariaDB: "TEXT", base.DXDatabaseTypeOracle: "CLOB"},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "VARCHAR(8096)", base.DXDatabaseTypeSQLServer: "VARCHAR(MAX)", base.DXDatabaseTypeMariaDB: "TEXT", base.DXDatabaseTypeOracle: "CLOB"},
 	}
 
 	DataTypeString32768 = DataType{

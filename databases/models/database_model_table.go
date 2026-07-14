@@ -143,7 +143,11 @@ func (t *ModelDBTable) getOrderedFields() []string {
 // CreateDDL generates a DDL script for the table based on databases type
 func (t *ModelDBTable) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	var sb strings.Builder
-	tableName := t.FullTableName()
+	schemaName := ""
+	if t.Schema != nil {
+		schemaName = t.Schema.Name
+	}
+	tableName := qualifiedTableName(dbType, schemaName, t.TableName())
 
 	sb.WriteString(fmt.Sprintf("CREATE TABLE"+" %s (\n", tableName))
 
@@ -213,7 +217,15 @@ func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType b
 		sqlType = "TEXT" // Fallback if no type mapping exists
 	}
 
-	sb.WriteString(fmt.Sprintf("%s %s", fieldName, sqlType))
+	sb.WriteString(fmt.Sprintf("%s %s", quoteIdent(dbType, fieldName), sqlType))
+
+	// DEFAULT must come BEFORE the NOT NULL / constraint clauses: Oracle requires
+	// `col type DEFAULT x NOT NULL` (a `NOT NULL DEFAULT x` order is ORA-03076),
+	// and PG/MariaDB/SQL Server accept DEFAULT-first too — so emit it here for all.
+	defaultValue := t.getDefaultValueForDBType(field, dbType)
+	if defaultValue != "" {
+		sb.WriteString(fmt.Sprintf(" DEFAULT %s", defaultValue))
+	}
 
 	// Add PRIMARY KEY constraint
 	if field.IsPrimaryKey {
@@ -230,19 +242,13 @@ func (t *ModelDBTable) fieldToDDL(fieldName string, field ModelDBField, dbType b
 		sb.WriteString(" UNIQUE")
 	}
 
-	// Add DEFAULT value - check databases-specific default first
-	defaultValue := t.getDefaultValueForDBType(field, dbType)
-	if defaultValue != "" {
-		sb.WriteString(fmt.Sprintf(" DEFAULT %s", defaultValue))
-	}
-
 	// Add REFERENCES constraint for foreign keys
 	if field.References != "" {
 		// References format: "schema.table.field"
 		parts := strings.Split(field.References, ".")
 		if len(parts) == 3 {
-			sb.WriteString(fmt.Sprintf(" REFERENCES %s.%s (%s)",
-				parts[0], parts[1], parts[2]))
+			sb.WriteString(fmt.Sprintf(" REFERENCES %s (%s)",
+				qualifiedTableName(dbType, parts[0], parts[1]), quoteIdent(dbType, parts[2])))
 		}
 	}
 
@@ -320,9 +326,9 @@ func (t *ModelDBTable) getDefaultValueForDBType(field ModelDBField, dbType base.
 		}
 	}
 
-	// 2. Check field's generic default value
+	// 2. Check field's generic default value (engine-aware for the common sentinels)
 	if field.DefaultValue != nil {
-		return valueToSQLLiteral(field, field.DefaultValue)
+		return renderDefaultForDBType(dbType, field, field.DefaultValue)
 	}
 
 	// 3. Check DataType's databases-specific default (t.g., DataTypeUID) - only if IsAutoIncrement is true

@@ -112,6 +112,39 @@ func (i *ModelDBIndex) GetOwnerName() string {
 	return ""
 }
 
+// qualifiedOwnerName returns the index's owner table, schema-qualified + quoted
+// for EXECUTED DDL (per engine; MariaDB virtual-schema single identifier).
+func (i *ModelDBIndex) qualifiedOwnerName(dbType base.DXDatabaseType) string {
+	if i.OwnerTable != nil {
+		schema := ""
+		if i.OwnerTable.Schema != nil {
+			schema = i.OwnerTable.Schema.Name
+		}
+		return qualifiedTableName(dbType, schema, i.OwnerTable.TableName())
+	}
+	if i.OwnerMaterializedView != nil {
+		return i.OwnerMaterializedView.FullName()
+	}
+	return ""
+}
+
+// quotedColumns returns the index's column list, each name quoted per engine,
+// preserving any per-column Order / NullsOrder.
+func (i *ModelDBIndex) quotedColumns(dbType base.DXDatabaseType, withNulls bool) string {
+	cols := make([]string, 0, len(i.Columns))
+	for _, col := range i.Columns {
+		s := quoteIdent(dbType, col.Name)
+		if col.Order != "" {
+			s += " " + col.Order
+		}
+		if withNulls && col.NullsOrder != "" {
+			s += " " + col.NullsOrder
+		}
+		cols = append(cols, s)
+	}
+	return strings.Join(cols, ", ")
+}
+
 // CreateDDL generates DDL script for the index based on databases type
 func (i *ModelDBIndex) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 	switch dbType {
@@ -142,9 +175,9 @@ func (i *ModelDBIndex) createPostgreSQLDDL() string {
 	if i.IfNotExists {
 		sb.WriteString("IF NOT EXISTS ")
 	}
-	sb.WriteString(i.Name)
+	sb.WriteString(quoteIdent(base.DXDatabaseTypePostgreSQL, i.Name))
 	sb.WriteString(" ON ")
-	sb.WriteString(i.GetOwnerName())
+	sb.WriteString(i.qualifiedOwnerName(base.DXDatabaseTypePostgreSQL))
 
 	// Method
 	if i.Method != "" && i.Method != ModelDBIndexMethodBTree {
@@ -154,18 +187,7 @@ func (i *ModelDBIndex) createPostgreSQLDDL() string {
 
 	// Columns
 	sb.WriteString(" (")
-	var cols []string
-	for _, col := range i.Columns {
-		colStr := col.Name
-		if col.Order != "" {
-			colStr += " " + col.Order
-		}
-		if col.NullsOrder != "" {
-			colStr += " " + col.NullsOrder
-		}
-		cols = append(cols, colStr)
-	}
-	sb.WriteString(strings.Join(cols, ", "))
+	sb.WriteString(i.quotedColumns(base.DXDatabaseTypePostgreSQL, true))
 	sb.WriteString(")")
 
 	// Include columns
@@ -201,21 +223,13 @@ func (i *ModelDBIndex) createSQLServerDDL() string {
 	}
 	// SQL Server supports CLUSTERED/NONCLUSTERED
 	sb.WriteString("NONCLUSTERED INDEX ")
-	sb.WriteString(i.Name)
+	sb.WriteString(quoteIdent(base.DXDatabaseTypeSQLServer, i.Name))
 	sb.WriteString(" ON ")
-	sb.WriteString(i.GetOwnerName())
+	sb.WriteString(i.qualifiedOwnerName(base.DXDatabaseTypeSQLServer))
 
 	// Columns
 	sb.WriteString(" (")
-	var cols []string
-	for _, col := range i.Columns {
-		colStr := col.Name
-		if col.Order != "" {
-			colStr += " " + col.Order
-		}
-		cols = append(cols, colStr)
-	}
-	sb.WriteString(strings.Join(cols, ", "))
+	sb.WriteString(i.quotedColumns(base.DXDatabaseTypeSQLServer, false))
 	sb.WriteString(")")
 
 	// Include columns
@@ -244,9 +258,9 @@ func (i *ModelDBIndex) createMariaDBDDL() string {
 		sb.WriteString("UNIQUE ")
 	}
 	sb.WriteString("INDEX ")
-	sb.WriteString(i.Name)
+	sb.WriteString(quoteIdent(base.DXDatabaseTypeMariaDB, i.Name))
 	sb.WriteString(" ON ")
-	sb.WriteString(i.GetOwnerName())
+	sb.WriteString(i.qualifiedOwnerName(base.DXDatabaseTypeMariaDB))
 
 	// Method (MySQL/MariaDB supports BTREE and HASH for some storage engines)
 	if i.Method != "" && i.Method != ModelDBIndexMethodBTree {
@@ -256,15 +270,7 @@ func (i *ModelDBIndex) createMariaDBDDL() string {
 
 	// Columns
 	sb.WriteString(" (")
-	var cols []string
-	for _, col := range i.Columns {
-		colStr := col.Name
-		if col.Order != "" {
-			colStr += " " + col.Order
-		}
-		cols = append(cols, colStr)
-	}
-	sb.WriteString(strings.Join(cols, ", "))
+	sb.WriteString(i.quotedColumns(base.DXDatabaseTypeMariaDB, false))
 	sb.WriteString(")")
 
 	sb.WriteString(";\n")
@@ -280,24 +286,14 @@ func (i *ModelDBIndex) createOracleDDL() string {
 		sb.WriteString("UNIQUE ")
 	}
 	sb.WriteString("INDEX ")
-	sb.WriteString(i.FullName())
+	// Index names are NOT schema-qualified on Oracle (ORA-00953) — bare (quoted).
+	sb.WriteString(quoteIdent(base.DXDatabaseTypeOracle, i.Name))
 	sb.WriteString(" ON ")
-	sb.WriteString(i.GetOwnerName())
+	sb.WriteString(i.qualifiedOwnerName(base.DXDatabaseTypeOracle))
 
 	// Columns
 	sb.WriteString(" (")
-	var cols []string
-	for _, col := range i.Columns {
-		colStr := col.Name
-		if col.Order != "" {
-			colStr += " " + col.Order
-		}
-		if col.NullsOrder != "" {
-			colStr += " " + col.NullsOrder
-		}
-		cols = append(cols, colStr)
-	}
-	sb.WriteString(strings.Join(cols, ", "))
+	sb.WriteString(i.quotedColumns(base.DXDatabaseTypeOracle, true))
 	sb.WriteString(")")
 
 	// Tablespace
