@@ -178,13 +178,23 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		}
 	}
 
-	// Handle FOR UPDATE clause
-	u := ""
+	// Handle FOR UPDATE (row locking) — engine-specific.
+	//   PostgreSQL / MariaDB / Oracle: a trailing "FOR UPDATE" clause.
+	//   SQL Server: "FOR UPDATE" is allowed only inside a DECLARE CURSOR, so a
+	//     plain SELECT ... FOR UPDATE is a syntax error. The equivalent is a table
+	//     locking HINT, "WITH (UPDLOCK, ROWLOCK)", placed right after the table
+	//     name (it locks that table's rows for the transaction, same intent).
+	u := ""            // trailing clause (PG/MariaDB/Oracle)
+	forUpdateHint := "" // table hint after the table name (SQL Server)
 	if forUpdatePart == nil {
 		forUpdatePart = false
 	}
 	if forUpdatePart == true {
-		u = " for update"
+		if driverName == "sqlserver" {
+			forUpdateHint = " WITH (UPDLOCK, ROWLOCK)"
+		} else {
+			u = " for update"
+		}
 	}
 
 	// Generate databases-specific limit and offset clauses
@@ -198,8 +208,9 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		effectiveOrderBy = additionalOrderBy
 	}
 
-	// Generate the final SQL
-	s = effectiveWith + "select " + f + " from " + tableName + j + effectiveWhere +
+	// Generate the final SQL. forUpdateHint (SQL Server) sits right after the table
+	// name; u (the trailing FOR UPDATE, other engines) goes at the very end.
+	s = effectiveWith + "select " + f + " from " + tableName + forUpdateHint + j + effectiveWhere +
 		effectiveGroupBy + effectiveHaving + effectiveOrderBy + effectiveLimitOffsetClause + u
 
 	return s, nil
