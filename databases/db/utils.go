@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -17,6 +18,23 @@ import (
 	"github.com/shopspring/decimal"
 	go_ora "github.com/sijms/go-ora/v2/network"
 )
+
+// QualifyTableNameForExec adapts a logical `schema.table` name to the target
+// engine for EXECUTED SQL. PostgreSQL/SQL Server/Oracle have real schemas, so
+// `schema.table` resolves natively — returned unchanged (byte-identical, no
+// behavior change). MariaDB has NO schema layer: the "schema" is virtual, carried
+// as a SINGLE quoted identifier `schema.table` (the dot is part of the table
+// name), so a dotted name is collapsed into one backtick-quoted identifier.
+// Idempotent (already-backtick-quoted or bare names pass through).
+func QualifyTableNameForExec(dbType base.DXDatabaseType, tableName string) string {
+	if dbType != base.DXDatabaseTypeMariaDB {
+		return tableName
+	}
+	if tableName == "" || strings.HasPrefix(tableName, "`") || !strings.Contains(tableName, ".") {
+		return tableName
+	}
+	return "`" + strings.ReplaceAll(tableName, "`", "``") + "`"
+}
 
 // DbDriverFormatIdentifier formats an identifier (column/table name) according to databases requirements
 func DbDriverFormatIdentifier(driverName string, identifier string) string {
@@ -35,12 +53,20 @@ func DbDriverFormatIdentifier(driverName string, identifier string) string {
 func DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName string, kv utils.JSON) (r utils.JSON, err error) {
 	r = utils.JSON{}
 	for k, v := range kv {
-		formattedKey := DbDriverFormatIdentifier(driverName, k)
+		// Key the sqlx named-parameter map by the ORIGINAL field name, NOT the
+		// engine-formatted (e.g. upper-cased) identifier. This map is matched
+		// against the ":placeholder" names emitted by SQLPartWhereAndFieldNameValues,
+		// which bind by the original key; sqlx placeholder lookup is case-sensitive.
+		// Upper-casing the key here produced ":uid" vs arg "UID" on the case-folding
+		// engines (MariaDB/SQL Server/Oracle) -> "could not find name uid". UPDATE and
+		// DELETE already key their arg maps by the original name; this makes SELECT/
+		// COUNT consistent. Value conversion (below) still applies. PostgreSQL is
+		// unaffected (original == formatted there).
 		v, err := DbDriverConvertValueTypeToDBCompatible(driverName, v)
 		if err != nil {
 			return nil, err
 		}
-		r[formattedKey] = v
+		r[k] = v
 	}
 	return r, nil
 }
@@ -369,13 +395,21 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 	var conditions []string
 
 	for k, v := range whereKeyValues {
-		// Format the field name according to databases requirements
-		k = DbDriverFormatIdentifier(driverName, k)
+		// Format the COLUMN identifier per the engine's rules, but bind the named
+		// parameter by the ORIGINAL key. This mirrors the SET-clause builder
+		// (SQLPartUpdateSetFieldValues): the arg map handed to sqlx.Named is keyed
+		// by the original field name, and sqlx placeholder lookup is always
+		// case-sensitive. Reusing the formatted (e.g. upper-cased) name for the
+		// ":placeholder" would emit ":ID" while the arg map still holds "id",
+		// which fails on the case-folding engines (MariaDB/SQL Server/Oracle) with
+		// "could not find name ID". On PostgreSQL formattedColumn == k, so this is
+		// byte-identical to before.
+		formattedColumn := DbDriverFormatIdentifier(driverName, k)
 
 		var condition string
 		if v == nil {
 			// Handle NULL values according to SQL standard (works in all databases)
-			condition = k + " IS NULL"
+			condition = formattedColumn + " IS NULL"
 		} else {
 			switch v := v.(type) {
 			case SQLExpression:
@@ -383,7 +417,7 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 				condition = v.String()
 			default:
 				// Handle regular equality conditions
-				condition = k + "=:" + k
+				condition = formattedColumn + "=:" + k
 			}
 		}
 		conditions = append(conditions, condition)

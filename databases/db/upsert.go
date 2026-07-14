@@ -64,6 +64,9 @@ func Upsert(
 	if err != nil {
 		return nil, 0, false, err
 	}
+	// MariaDB virtual-schema: the exec funcs interpolate tableName, so qualify it
+	// here too (prepareUpsert's copy is local); no-op on other engines.
+	tableName = QualifyTableNameForExec(dbType, tableName)
 
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL, base.DXDatabaseTypePostgresSQLV2:
@@ -104,6 +107,7 @@ func TxUpsert(
 	if err != nil {
 		return nil, 0, false, err
 	}
+	tableName = QualifyTableNameForExec(dbType, tableName)
 
 	switch dbType {
 	case base.DXDatabaseTypePostgreSQL, base.DXDatabaseTypePostgresSQLV2:
@@ -148,6 +152,8 @@ func prepareUpsert(
 		return 0, nil, nil, nil, nil, errors.New("updateData cannot be empty")
 	}
 
+	// MariaDB virtual-schema: collapse schema.table to a single backtick id (no-op on other engines).
+	tableName = QualifyTableNameForExec(dbType, tableName)
 	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return 0, nil, nil, nil, nil, errors.Wrap(err, "invalid table name")
 	}

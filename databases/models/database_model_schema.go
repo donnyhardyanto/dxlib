@@ -53,9 +53,10 @@ func (s *ModelDBSchema) CreateDDL(dbType base.DXDatabaseType) (string, error) {
 		// database name (the DB is created separately, unrelated name; many virtual
 		// schemas can coexist in it). The virtual schema is carried by the table
 		// name itself (`schema.table` as a single quoted identifier — see
-		// qualifiedTableName), so there is no schema-creation DDL here. Tables land
-		// in the connection's current database.
-		sb.WriteString(fmt.Sprintf("-- MariaDB: virtual schema %q (carried in table names; no CREATE DATABASE)\n\n", s.Name))
+		// qualifiedTableName), so there is NO schema-creation DDL emitted here (a Go
+		// comment only — emitting a SQL comment is unsafe because callers that split
+		// the script on ';' would glue a dangling comment onto the next statement).
+		// Tables land in the connection's current database.
 	case base.DXDatabaseTypeOracle:
 		// Oracle uses users as schemas, typically created by DBA
 		sb.WriteString(fmt.Sprintf("-- Oracle: Schema %s should be created by DBA\n\n", s.Name))

@@ -69,6 +69,8 @@ func Insert(ctx context.Context, db *sqlx.DB, tableName string, setFieldValues u
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name explicitly
+	// MariaDB virtual-schema: collapse schema.table to a single backtick id (no-op on other engines).
+	tableName = QualifyTableNameForExec(dbType, tableName)
 	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
@@ -242,6 +244,8 @@ func TxInsert(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name explicitly
+	// MariaDB virtual-schema: collapse schema.table to a single backtick id (no-op on other engines).
+	tableName = QualifyTableNameForExec(dbType, tableName)
 	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}

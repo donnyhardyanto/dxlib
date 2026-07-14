@@ -260,6 +260,8 @@ func BaseSelect(ctx context.Context, db *sqlx.DB, tableName string, fieldTypeMap
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name
+	// MariaDB virtual-schema: collapse schema.table to a single backtick id (no-op on other engines).
+	tableName = QualifyTableNameForExec(dbType, tableName)
 	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
@@ -364,6 +366,8 @@ func BaseTxSelect(ctx context.Context, tx *sqlx.Tx, tableName string, fieldTypeM
 	dbType := base.StringToDXDatabaseType(driverName)
 
 	// Validate table name explicitly
+	// MariaDB virtual-schema: collapse schema.table to a single backtick id (no-op on other engines).
+	tableName = QualifyTableNameForExec(dbType, tableName)
 	if err := CheckIdentifier(dbType, tableName); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid table name")
 	}
