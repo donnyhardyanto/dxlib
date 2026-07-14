@@ -390,31 +390,39 @@ func execUpsertSQLServer(
 // ---------- Oracle ----------
 
 func buildUpsertOraclePLSQL(tableName string, insertCols, updateCols, whereCols []string, idField string) string {
+	// Column identifiers quoted-uppercase (reserved-word-safe, e.g. "UID" — matches
+	// the DDL); the ":placeholder" binds keep the ORIGINAL key, same rule as the
+	// INSERT/UPDATE/WHERE builders.
+	quotedInsertCols := make([]string, len(insertCols))
 	valueRefs := make([]string, len(insertCols))
 	for i, c := range insertCols {
+		quotedInsertCols[i] = DbDriverFormatIdentifier("oracle", c)
 		valueRefs[i] = ":" + c
 	}
 	updateAssigns := make([]string, len(updateCols))
 	for i, c := range updateCols {
-		updateAssigns[i] = fmt.Sprintf("%s = :%s", c, c)
+		updateAssigns[i] = fmt.Sprintf("%s = :%s", DbDriverFormatIdentifier("oracle", c), c)
 	}
 	whereAssigns := make([]string, len(whereCols))
 	for i, c := range whereCols {
-		whereAssigns[i] = fmt.Sprintf("%s = :%s", c, c)
+		whereAssigns[i] = fmt.Sprintf("%s = :%s", DbDriverFormatIdentifier("oracle", c), c)
 	}
+	quotedIDField := DbDriverFormatIdentifier("oracle", idField)
 	// Oracle MERGE does not expose $action or support RETURNING on MERGE portably,
 	// so use the canonical try-INSERT / catch-DUP_VAL_ON_INDEX / UPDATE idiom.
 	// Atomic within the enclosing transaction: UNIQUE constraint check is synchronous.
+	// The action travels as NUMBER (1=insert, 0=update): go-ora sizes a plain
+	// sql.Out string buffer too small (ORA-06502), so no string out-binds here.
 	return fmt.Sprintf(
-		`DECLARE v_id NUMBER; v_action VARCHAR2(1); BEGIN BEGIN INSERT INTO %s (%s) VALUES (%s) RETURNING %s INTO v_id; v_action := 'I'; EXCEPTION WHEN DUP_VAL_ON_INDEX THEN UPDATE %s SET %s WHERE %s RETURNING %s INTO v_id; IF SQL%%ROWCOUNT = 0 THEN RAISE_APPLICATION_ERROR(-20001, 'UPSERT_CONCURRENT_DELETE'); END IF; v_action := 'U'; END; :out_id := v_id; :out_action := v_action; END;`,
+		`DECLARE v_id NUMBER; v_action NUMBER; BEGIN BEGIN INSERT INTO %s (%s) VALUES (%s) RETURNING %s INTO v_id; v_action := 1; EXCEPTION WHEN DUP_VAL_ON_INDEX THEN UPDATE %s SET %s WHERE %s RETURNING %s INTO v_id; IF SQL%%ROWCOUNT = 0 THEN RAISE_APPLICATION_ERROR(-20001, 'UPSERT_CONCURRENT_DELETE'); END IF; v_action := 0; END; :out_id := v_id; :out_action := v_action; END;`,
 		tableName,
-		strings.Join(insertCols, ", "),
+		strings.Join(quotedInsertCols, ", "),
 		strings.Join(valueRefs, ", "),
-		idField,
+		quotedIDField,
 		tableName,
 		strings.Join(updateAssigns, ", "),
 		strings.Join(whereAssigns, " AND "),
-		idField,
+		quotedIDField,
 	)
 }
 
@@ -426,14 +434,13 @@ func execUpsertOracle(
 ) (sql.Result, int64, bool, error) {
 	sqlStmt := buildUpsertOraclePLSQL(tableName, insertCols, updateCols, whereCols, idField)
 
-	namedArgs := make([]interface{}, 0, len(args)+2)
-	for name, value := range args {
-		namedArgs = append(namedArgs, sql.Named(name, value))
-	}
+	// Rewrite the column binds to reserved-word-safe ":p_<name>" (ORA-01745) with
+	// matching sql.Named args; :out_id/:out_action are untouched (not arg keys).
+	sqlStmt, namedArgs := OracleSafeBindNames(sqlStmt, args)
 
 	var (
 		outID     int64
-		outAction string
+		outAction int64
 	)
 	namedArgs = append(namedArgs, sql.Named("out_id", sql.Out{Dest: &outID}))
 	namedArgs = append(namedArgs, sql.Named("out_action", sql.Out{Dest: &outAction}))
@@ -451,6 +458,6 @@ func execUpsertOracle(
 		return nil, 0, false, errors.Wrap(err, "oracle upsert plsql failed")
 	}
 
-	isInsert := outAction == "I"
+	isInsert := outAction == 1
 	return result, outID, isInsert, nil
 }

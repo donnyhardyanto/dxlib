@@ -57,15 +57,15 @@ func BaseQueryRows2(ctx context.Context, db *sqlx.DB, query string, arg any, fie
 		r = append(r, rowJSON)
 	}
 
-	// Apply field type conversion if fieldTypeMapping is provided
-	if fieldTypeMapping != nil && len(fieldTypeMapping) > 0 {
-		for i, row := range r {
-			convertedRow, err := databaseDb.DeformatKeys(row, db.DriverName(), fieldTypeMapping)
-			if err != nil {
-				return nil, nil, errors.Wrapf(err, "FIELD_TYPE_CONVERSION_ERROR:QUERY=%s", query)
-			}
-			r[i] = convertedRow
+	// Deformat keys (lowercase; case-folding engines like Oracle return UPPERCASE
+	// column names) and apply field type conversion — unconditional, matching
+	// RawQueryRows (DeformatKeys with a nil mapping only lowercases the keys).
+	for i, row := range r {
+		convertedRow, err := databaseDb.DeformatKeys(row, db.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "FIELD_TYPE_CONVERSION_ERROR:QUERY=%s", query)
 		}
+		r[i] = convertedRow
 	}
 
 	return rowsInfo, r, nil

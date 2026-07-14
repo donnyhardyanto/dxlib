@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
@@ -11,20 +12,25 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/jmoiron/sqlx"
+	go_ora "github.com/sijms/go-ora/v2"
 )
 
 // SQLPartInsertFieldNamesFieldValues generates the field names and values parts for an SQL INSERT statement
 func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName string) (fieldNames string, fieldValues string) {
 	for k, v := range insertKeyValues {
-		switch driverName {
-		case "oracle":
-			k = strings.ToUpper(k)
-		default:
+		// Format the COLUMN identifier per the engine's rules (Oracle: quoted-
+		// uppercase, reserved-word-safe — matches the DDL), but bind the named
+		// ":placeholder" by the ORIGINAL key — the arg maps handed to sqlx.Named /
+		// sql.Named are keyed by the original field name (same rule as the WHERE
+		// and SET builders). On the other engines formattedColumn == k.
+		formattedColumn := k
+		if driverName == "oracle" {
+			formattedColumn = DbDriverFormatIdentifier(driverName, k)
 		}
 		if fieldNames != "" {
 			fieldNames = fieldNames + ","
 		}
-		fieldNames = fieldNames + k
+		fieldNames = fieldNames + formattedColumn
 		if fieldValues != "" {
 			fieldValues = fieldValues + ","
 		}
@@ -160,26 +166,25 @@ func Insert(ctx context.Context, db *sqlx.DB, tableName string, setFieldValues u
 
 	case "oracle":
 		// Oracle uses RETURNING INTO syntax
-		// Prepare named arguments for Oracle
-		namedArgs := make([]interface{}, 0, len(convertedFieldValues))
-		for name, value := range convertedFieldValues {
-			// Skip SQL expressions
-			if _, ok := value.(SQLExpression); !ok {
-				namedArgs = append(namedArgs, sql.Named(strings.ToUpper(name), value))
-			}
-		}
-
 		// Build RETURNING INTO clause
 		var returningFields []string
 		var returningIntoFields []string
+		outParams := make([]interface{}, 0, len(returningFieldNames))
+		outDests := make([]*string, len(returningFieldNames))
 
-		for _, key := range returningFieldNames {
-			returningFields = append(returningFields, key)
+		for i, key := range returningFieldNames {
+			// RETURNING column quoted-uppercase (reserved-word-safe, e.g. "UID");
+			// the :name_out bind keeps the original key (out-bind names are never
+			// bare column names, so no reserved-word risk).
+			returningFields = append(returningFields, DbDriverFormatIdentifier(driverName, key))
 			returningIntoFields = append(returningIntoFields, fmt.Sprintf(":%s_out", key))
 
-			// Add output parameters
-			var outParam interface{}
-			namedArgs = append(namedArgs, sql.Named(key+"_out", sql.Out{Dest: &outParam}))
+			// Out binds are SIZED STRINGS (go_ora.Out): an untyped sql.Out dest is
+			// ORA-03146 (go-ora cannot size the TTC buffer), and the column's Go type
+			// is unknown here — Oracle implicitly converts any RETURNING value to the
+			// VARCHAR2 bind. Integer-looking values are coerced back below.
+			outDests[i] = new(string)
+			outParams = append(outParams, sql.Named(key+"_out", go_ora.Out{Dest: outDests[i], Size: 4000}))
 		}
 
 		sqlStatement := fmt.Sprintf("%s RETURNING %s INTO %s",
@@ -187,30 +192,35 @@ func Insert(ctx context.Context, db *sqlx.DB, tableName string, setFieldValues u
 			strings.Join(returningFields, ", "),
 			strings.Join(returningIntoFields, ", "))
 
+		// Rewrite the VALUES binds to reserved-word-safe ":p_<name>" (ORA-01745)
+		// with matching sql.Named args; :<key>_out binds are untouched (word
+		// boundary). SQLExpression entries carry no bind, and OracleSafeBindNames
+		// leaves an arg without a matching placeholder unrewritten — so exclude them.
+		bindValues := utils.JSON{}
+		for name, value := range convertedFieldValues {
+			if _, ok := value.(SQLExpression); !ok {
+				bindValues[name] = value
+			}
+		}
+		modifiedSQL, namedArgs := OracleSafeBindNames(sqlStatement, bindValues)
+		namedArgs = append(namedArgs, outParams...)
+
 		// Execute directly for Oracle with output parameters
-		result, err = db.ExecContext(ctx, sqlStatement, namedArgs...)
+		result, err = db.ExecContext(ctx, modifiedSQL, namedArgs...)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing oracle insert with RETURNING INTO")
 		}
 
-		// Extract output parameters
-		for _, arg := range namedArgs {
-			namedArg, ok := arg.(sql.NamedArg)
-			if !ok {
-				continue
-			}
-
-			if strings.HasSuffix(namedArg.Name, "_out") {
-				outArg, ok := namedArg.Value.(sql.Out)
-				if !ok {
-					continue
-				}
-
-				originalKey := strings.TrimSuffix(namedArg.Name, "_out")
-				if outArg.Dest != nil {
-					dest := outArg.Dest.(*interface{})
-					returningFieldValues[originalKey] = *dest
-				}
+		// Extract output parameters. The out binds are strings (see above); a
+		// CANONICAL integer (round-trips through ParseInt/FormatInt — so "0100"
+		// or "+1" stay strings) comes back as int64 so numeric consumers
+		// (utils/json.GetInt64) keep working. A NULL value arrives as "".
+		for i, key := range returningFieldNames {
+			s := *outDests[i]
+			if n, convErr := strconv.ParseInt(s, 10, 64); convErr == nil && strconv.FormatInt(n, 10) == s {
+				returningFieldValues[key] = n
+			} else {
+				returningFieldValues[key] = s
 			}
 		}
 
@@ -335,26 +345,25 @@ func TxInsert(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 
 	case "oracle":
 		// Oracle uses RETURNING INTO syntax
-		// Prepare named arguments for Oracle
-		namedArgs := make([]interface{}, 0, len(convertedFieldValues))
-		for name, value := range convertedFieldValues {
-			// Skip SQL expressions
-			if _, ok := value.(SQLExpression); !ok {
-				namedArgs = append(namedArgs, sql.Named(strings.ToUpper(name), value))
-			}
-		}
-
 		// Build RETURNING INTO clause
 		var returningFields []string
 		var returningIntoFields []string
+		outParams := make([]interface{}, 0, len(returningFieldNames))
+		outDests := make([]*string, len(returningFieldNames))
 
-		for _, key := range returningFieldNames {
-			returningFields = append(returningFields, key)
+		for i, key := range returningFieldNames {
+			// RETURNING column quoted-uppercase (reserved-word-safe, e.g. "UID");
+			// the :name_out bind keeps the original key (out-bind names are never
+			// bare column names, so no reserved-word risk).
+			returningFields = append(returningFields, DbDriverFormatIdentifier(driverName, key))
 			returningIntoFields = append(returningIntoFields, fmt.Sprintf(":%s_out", key))
 
-			// Add output parameters
-			var outParam interface{}
-			namedArgs = append(namedArgs, sql.Named(key+"_out", sql.Out{Dest: &outParam}))
+			// Out binds are SIZED STRINGS (go_ora.Out): an untyped sql.Out dest is
+			// ORA-03146 (go-ora cannot size the TTC buffer), and the column's Go type
+			// is unknown here — Oracle implicitly converts any RETURNING value to the
+			// VARCHAR2 bind. Integer-looking values are coerced back below.
+			outDests[i] = new(string)
+			outParams = append(outParams, sql.Named(key+"_out", go_ora.Out{Dest: outDests[i], Size: 4000}))
 		}
 
 		sqlStatement := fmt.Sprintf("%s RETURNING %s INTO %s",
@@ -362,30 +371,35 @@ func TxInsert(ctx context.Context, tx *sqlx.Tx, tableName string, setFieldValues
 			strings.Join(returningFields, ", "),
 			strings.Join(returningIntoFields, ", "))
 
+		// Rewrite the VALUES binds to reserved-word-safe ":p_<name>" (ORA-01745)
+		// with matching sql.Named args; :<key>_out binds are untouched (word
+		// boundary). SQLExpression entries carry no bind, and OracleSafeBindNames
+		// leaves an arg without a matching placeholder unrewritten — so exclude them.
+		bindValues := utils.JSON{}
+		for name, value := range convertedFieldValues {
+			if _, ok := value.(SQLExpression); !ok {
+				bindValues[name] = value
+			}
+		}
+		modifiedSQL, namedArgs := OracleSafeBindNames(sqlStatement, bindValues)
+		namedArgs = append(namedArgs, outParams...)
+
 		// Execute directly for Oracle with output parameters
-		_, err = tx.ExecContext(ctx, sqlStatement, namedArgs...)
+		_, err = tx.ExecContext(ctx, modifiedSQL, namedArgs...)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error executing oracle insert with RETURNING INTO")
 		}
 
-		// Extract output parameters
-		for _, arg := range namedArgs {
-			namedArg, ok := arg.(sql.NamedArg)
-			if !ok {
-				continue
-			}
-
-			if strings.HasSuffix(namedArg.Name, "_out") {
-				outArg, ok := namedArg.Value.(sql.Out)
-				if !ok {
-					continue
-				}
-
-				originalKey := strings.TrimSuffix(namedArg.Name, "_out")
-				if outArg.Dest != nil {
-					dest := outArg.Dest.(*interface{})
-					returningFieldValues[originalKey] = *dest
-				}
+		// Extract output parameters. The out binds are strings (see above); a
+		// CANONICAL integer (round-trips through ParseInt/FormatInt — so "0100"
+		// or "+1" stay strings) comes back as int64 so numeric consumers
+		// (utils/json.GetInt64) keep working. A NULL value arrives as "".
+		for i, key := range returningFieldNames {
+			s := *outDests[i]
+			if n, convErr := strconv.ParseInt(s, 10, 64); convErr == nil && strconv.FormatInt(n, 10) == s {
+				returningFieldValues[key] = n
+			} else {
+				returningFieldValues[key] = s
 			}
 		}
 

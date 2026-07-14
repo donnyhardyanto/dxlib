@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/donnyhardyanto/dxlib/base"
@@ -101,16 +100,10 @@ func QueryRows(
 		modifiedSQL = db.Rebind(modifiedSQL)
 
 	case base.DXDatabaseTypeOracle:
-		// go-ora binds by :name. sqlx.Named (above) rewrote the :name placeholders
-		// to `?` — reset to the ORIGINAL SQL so the :name placeholders survive to pair
-		// with the sql.Named args below (else `?` + named args -> ORA-00936).
-		modifiedSQL = sqlStatement
-
-		// Convert JSON arguments to sql.Named arguments
-		args = make([]interface{}, 0, len(sqlArguments))
-		for name, value := range sqlArguments {
-			args = append(args, sql.Named(name, value))
-		}
+		// go-ora binds by :name — start from the ORIGINAL SQL (sqlx.Named above
+		// rewrote :name to `?`), then rewrite each bind to a reserved-word-safe
+		// ":p_<name>" paired with matching sql.Named args (ORA-01745 otherwise).
+		modifiedSQL, args = OracleSafeBindNames(sqlStatement, sqlArguments)
 
 	case base.DXDatabaseTypeMariaDB:
 		// MariaDB uses ? placeholders
@@ -161,16 +154,10 @@ func RawCount(
 		modifiedSQL = db.Rebind(modifiedSQL)
 
 	case base.DXDatabaseTypeOracle:
-		// go-ora binds by :name. sqlx.Named (above) rewrote the :name placeholders
-		// to `?` — reset to the ORIGINAL SQL so the :name placeholders survive to pair
-		// with the sql.Named args below (else `?` + named args -> ORA-00936).
-		modifiedSQL = s
-
-		// Convert JSON arguments to sql.Named arguments
-		args = make([]interface{}, 0, len(sqlArguments))
-		for name, value := range sqlArguments {
-			args = append(args, sql.Named(name, value))
-		}
+		// go-ora binds by :name — start from the ORIGINAL SQL (sqlx.Named above
+		// rewrote :name to `?`), then rewrite each bind to a reserved-word-safe
+		// ":p_<name>" paired with matching sql.Named args (ORA-01745 otherwise).
+		modifiedSQL, args = OracleSafeBindNames(s, sqlArguments)
 
 	case base.DXDatabaseTypeMariaDB:
 		// MariaDB uses ? placeholders
@@ -240,16 +227,10 @@ func TxQueryRows(
 		modifiedSQL = tx.Rebind(modifiedSQL)
 
 	case base.DXDatabaseTypeOracle:
-		// go-ora binds by :name. sqlx.Named (above) rewrote the :name placeholders
-		// to `?` — reset to the ORIGINAL SQL so the :name placeholders survive to pair
-		// with the sql.Named args below (else `?` + named args -> ORA-00936).
-		modifiedSQL = sqlStatement
-
-		// Convert JSON arguments to sql.Named arguments
-		args = make([]interface{}, 0, len(sqlArguments))
-		for name, value := range sqlArguments {
-			args = append(args, sql.Named(name, value))
-		}
+		// go-ora binds by :name — start from the ORIGINAL SQL (sqlx.Named above
+		// rewrote :name to `?`), then rewrite each bind to a reserved-word-safe
+		// ":p_<name>" paired with matching sql.Named args (ORA-01745 otherwise).
+		modifiedSQL, args = OracleSafeBindNames(sqlStatement, sqlArguments)
 
 	case base.DXDatabaseTypeMariaDB:
 		// MariaDB uses ? placeholders

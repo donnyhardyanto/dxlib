@@ -20,10 +20,12 @@ func SQLPartUpdateSetFieldValues(setFieldValues utils.JSON, driverName string) (
 
 	var setParts []string
 	for k, v := range setFieldValues {
+		// Oracle: column quoted-uppercase (reserved-word-safe, matches the DDL);
+		// the ":placeholder" keeps the ORIGINAL key (same rule as the WHERE builder).
 		formattedKey := k
 		switch driverName {
 		case "oracle":
-			formattedKey = strings.ToUpper(k)
+			formattedKey = DbDriverFormatIdentifier(driverName, k)
 		default:
 		}
 

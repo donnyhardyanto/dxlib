@@ -58,15 +58,15 @@ func TxBaseQueryRows2(ctx context.Context, dtx *databases.DXDatabaseTx, query st
 		r = append(r, rowJSON)
 	}
 
-	// Apply field type conversion if fieldTypeMapping is provided
-	if fieldTypeMapping != nil && len(fieldTypeMapping) > 0 {
-		for i, row := range r {
-			convertedRow, err := databaseDb.DeformatKeys(row, dtx.Tx.DriverName(), fieldTypeMapping)
-			if err != nil {
-				return nil, nil, errors.Wrapf(err, "FIELD_TYPE_CONVERSION_ERROR:QUERY=%s", query)
-			}
-			r[i] = convertedRow
+	// Deformat keys (lowercase; case-folding engines like Oracle return UPPERCASE
+	// column names) and apply field type conversion — unconditional, matching
+	// RawTxQueryRows (DeformatKeys with a nil mapping only lowercases the keys).
+	for i, row := range r {
+		convertedRow, err := databaseDb.DeformatKeys(row, dtx.Tx.DriverName(), fieldTypeMapping)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "FIELD_TYPE_CONVERSION_ERROR:QUERY=%s", query)
 		}
+		r[i] = convertedRow
 	}
 
 	return rowsInfo, r, nil

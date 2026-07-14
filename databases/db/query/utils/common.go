@@ -33,8 +33,18 @@ func QuoteIdentifierByDbType(dbType base.DXDatabaseType, identifier string) stri
 	case base.DXDatabaseTypeSQLServer:
 		// SQL Server uses [identifier] - escape ] as ]]
 		return "[" + strings.ReplaceAll(identifier, "]", "]]") + "]"
-	case base.DXDatabaseTypePostgreSQL, base.DXDatabaseTypeMariaDB, base.DXDatabaseTypeOracle:
-		// PostgreSQL, MariaDB, Oracle use "identifier" - escape " as ""
+	case base.DXDatabaseTypeOracle:
+		// Oracle quoted identifiers are case-SENSITIVE and the DDL creates
+		// UPPERCASE objects (models.quoteIdent) — a quoted-lowercase name never
+		// resolves (ORA-00904), so fold to uppercase before quoting.
+		return "\"" + strings.ReplaceAll(strings.ToUpper(identifier), "\"", "\"\"") + "\""
+	case base.DXDatabaseTypeMariaDB:
+		// MariaDB quotes identifiers with BACKTICKS: without ANSI_QUOTES (the
+		// default) a double-quoted "name" is a STRING LITERAL, so e.g.
+		// ORDER BY "created_at" silently sorts by a constant (no error, no sort).
+		return "`" + strings.ReplaceAll(identifier, "`", "``") + "`"
+	case base.DXDatabaseTypePostgreSQL:
+		// PostgreSQL uses "identifier" - escape " as ""
 		return "\"" + strings.ReplaceAll(identifier, "\"", "\"\"") + "\""
 	default:
 		// PostgreSQL style as fallback

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
@@ -195,6 +196,32 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 		} else {
 			u = " for update"
 		}
+	}
+
+	// Oracle cannot combine FOR UPDATE with OFFSET/FETCH (the engine wraps them
+	// into an inline view -> ORA-02014). A row LIMIT under lock is expressed with
+	// the ROWNUM predicate instead — but ROWNUM filters BEFORE the final ORDER BY
+	// sort, so LIMIT+ORDER BY+FOR UPDATE would silently lock arbitrary rows, not
+	// the first N: that combination and a non-zero OFFSET under lock are rejected
+	// loudly (a "claim oldest N" query needs a hand-written nested claim like the
+	// relay's outboxClaimSQL). Un-ordered LIMIT under lock (e.g. a unique-key
+	// SelectOne with limit 1) is safe.
+	if driverName == "oracle" && forUpdatePart == true {
+		if offsetAsInt64 > 0 {
+			return "", errors.New("oracle: OFFSET with FOR UPDATE is not supported")
+		}
+		if limit != nil && limitAsInt64 > 0 {
+			if len(orderByFieldNameDirections) > 0 {
+				return "", errors.New("oracle: LIMIT with ORDER BY under FOR UPDATE is not supported (ROWNUM filters before the sort; write a nested claim query instead)")
+			}
+			rowLimit := "rownum <= " + strconv.FormatInt(limitAsInt64, 10)
+			if effectiveWhere == "" {
+				effectiveWhere = " where " + rowLimit
+			} else {
+				effectiveWhere += " and " + rowLimit
+			}
+		}
+		limit = nil // suppress the OFFSET/FETCH clause below (zero offset emits nothing)
 	}
 
 	// Generate databases-specific limit and offset clauses

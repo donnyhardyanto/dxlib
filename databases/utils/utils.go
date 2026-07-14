@@ -3,6 +3,7 @@ package utils
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
@@ -220,4 +221,55 @@ func CreateDatabase(db *sqlx.DB, dbName string) error {
 
 	return nil
 
+}
+
+// oracleUserNamePattern validates a user/schema name before it is embedded in
+// provisioning DDL (DDL cannot be parameterized) — anti-SQLI.
+var oracleUserNamePattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_$#]*$`)
+
+// CreateOracleUser provisions an Oracle schema USER — Oracle's equivalent of
+// "create database": one schema == one user inside the shared service/PDB, so
+// there is no CREATE DATABASE. The name is emitted UNQUOTED and Oracle folds it
+// to UPPERCASE, matching the quoted-UPPERCASE identifiers models.CreateDDL
+// emits. Grants cover the object types the model DDL creates, plus quota.
+// Requires an admin connection (e.g. SYSTEM) on the same service.
+func CreateOracleUser(db *sqlx.DB, userName string, password string) error {
+	if !oracleUserNamePattern.MatchString(userName) {
+		return errors.Errorf("invalid oracle user name: %q", userName)
+	}
+	statements := []string{
+		fmt.Sprintf(`CREATE USER %s IDENTIFIED BY "%s"`, userName, strings.ReplaceAll(password, `"`, `""`)),
+		fmt.Sprintf(`GRANT CREATE SESSION, CREATE TABLE, CREATE VIEW, CREATE SEQUENCE, CREATE PROCEDURE, CREATE TRIGGER TO %s`, userName),
+		fmt.Sprintf(`GRANT UNLIMITED TABLESPACE TO %s`, userName),
+	}
+	for _, statement := range statements {
+		_, err := db.Exec(statement)
+		if err != nil {
+			return errors.Errorf("failed to provision oracle user %s: %+v", userName, err)
+		}
+	}
+	return nil
+}
+
+// DropOracleUser drops an Oracle schema user and every object it owns (the
+// Oracle equivalent of DROP DATABASE). Sessions held by the user are killed
+// first — DROP USER fails with ORA-01940 while the user is connected.
+func DropOracleUser(db *sqlx.DB, userName string) (err error) {
+	defer func() {
+		if err != nil {
+			log.Log.Warnf("Error dropping oracle user %s: %s", userName, err.Error())
+		}
+	}()
+	if !oracleUserNamePattern.MatchString(userName) {
+		return errors.Errorf("invalid oracle user name: %q", userName)
+	}
+	err = KillConnections(db, userName)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(fmt.Sprintf(`DROP USER %s CASCADE`, userName))
+	if err != nil {
+		return errors.Errorf("failed to drop oracle user %s: %+v", userName, err)
+	}
+	return nil
 }
