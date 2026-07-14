@@ -254,7 +254,10 @@ func (d *DXDatabase) GetConnectionString() (s string, err error) {
 		if err != nil {
 			return "", err
 		}
-		s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;databases=%s;%s", host, portAsString, d.UserName, d.UserPassword, d.DatabaseName, d.ConnectionOptions)
+		// go-mssqldb ADO connection-string keyword is "database" (singular); the
+		// prior "databases=" was unrecognized, so the driver silently fell back to
+		// the login's default DB (master) instead of the requested one.
+		s = fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;%s", host, portAsString, d.UserName, d.UserPassword, d.DatabaseName, d.ConnectionOptions)
 	case base.DXDatabaseTypeOracle:
 		host, portAsString, err := net.SplitHostPort(d.Address)
 		if err != nil {
