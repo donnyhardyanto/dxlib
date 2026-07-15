@@ -401,9 +401,22 @@ func (d *DXDatabase) ApplyFromConfiguration() (err error) {
 		d.NonSensitiveConnectionString = d.GetNonSensitiveConnectionString()
 		d.ConnectionString, err = d.GetConnectionString()
 		if err != nil {
-			return err
+			// A database that is neither must_connected nor is_connect_at_start
+			// (e.g. a demo/compat-check target, or simply unconfigured in this
+			// environment) is documented to be listable without blocking boot.
+			// ConnectAllAtStart calls ApplyFromConfiguration for EVERY registered
+			// database before checking IsConnectAtStart, so an unusable address
+			// here must not fail the whole process — only a database that will
+			// actually be dialed now needs a working connection string.
+			if !d.MustConnected && !d.IsConnectAtStart {
+				log.Log.Warnf("Database %s has an unusable address (%s) but is not required to connect at start -- continuing without a connection string: %s", d.NameId, d.Address, err.Error())
+				err = nil
+			} else {
+				return err
+			}
+		} else {
+			log.Log.Infof("Connecting to Database %s... done", d.NonSensitiveConnectionString)
 		}
-		log.Log.Infof("Connecting to Database %s... done", d.NonSensitiveConnectionString)
 		d.IsConfigured = true
 		log.Log.Infof("Configuring to Database %s... done", d.NameId)
 	}
