@@ -197,38 +197,60 @@ func (hv *DXHashicorpVault) GetString(ctx context.Context, key string) (string, 
 // a key present in Vault always wins; the process env (docker run.env/key.env) only
 // fills what Vault lacks. The Vault key name IS the env var name (e.g. DB_POSTGRES_ADDRESS),
 // so infra connection config can live with the deploy while secrets stay in Vault.
-func envOrDefault(key, d string) string {
+// Config-source labels for the startup log. The Get*OrEnvOrDefault family reports WHICH TIER
+// supplied each value, because that is the only thing that makes a key-name mismatch visible.
+//
+// Why this exists: BUG-SEC-149. A reader looked up INNER_BOOTSTRAP_PQC_ENABLED while every setter
+// wrote INNER_BOOTSTRAP_PQC. Nothing set the name the code read, so the value silently came from the
+// compiled default — which happened to equal the intended value, so behaviour was correct and the
+// defect was invisible. A line saying "source=DEFAULT" while run.env plainly sets that key IS the
+// bug, stated out loud.
+//
+// The key NAME and the TIER are logged, never the VALUE. The tier is what diagnoses the fault; the
+// value would add credential-leak risk and no diagnostic power. This is deliberately stricter than
+// the Get*OrDefault family, which prints a masked default.
+const (
+	cfgSrcVault           = "VAULT"
+	cfgSrcEnv             = "ENV"
+	cfgSrcDefault         = "DEFAULT"
+	cfgSrcDefaultUnparsed = "DEFAULT (env var set but unparseable)"
+)
+
+func envOrDefault(key, d string) (string, string) {
 	if e := os.Getenv(key); e != "" {
-		return e
+		return e, cfgSrcEnv
 	}
-	return d
+	return d, cfgSrcDefault
 }
 
-func envIntOrDefault(key string, d int) int {
+func envIntOrDefault(key string, d int) (int, string) {
 	if e := os.Getenv(key); e != "" {
 		if n, err := strconv.Atoi(e); err == nil {
-			return n
+			return n, cfgSrcEnv
 		}
+		return d, cfgSrcDefaultUnparsed
 	}
-	return d
+	return d, cfgSrcDefault
 }
 
-func envInt64OrDefault(key string, d int64) int64 {
+func envInt64OrDefault(key string, d int64) (int64, string) {
 	if e := os.Getenv(key); e != "" {
 		if n, err := strconv.ParseInt(e, 10, 64); err == nil {
-			return n
+			return n, cfgSrcEnv
 		}
+		return d, cfgSrcDefaultUnparsed
 	}
-	return d
+	return d, cfgSrcDefault
 }
 
-func envBoolOrDefault(key string, d bool) bool {
+func envBoolOrDefault(key string, d bool) (bool, string) {
 	if e := os.Getenv(key); e != "" {
 		if b, err := strconv.ParseBool(e); err == nil {
-			return b
+			return b, cfgSrcEnv
 		}
+		return d, cfgSrcDefaultUnparsed
 	}
-	return d
+	return d, cfgSrcDefault
 }
 
 // ── Get*OrDefault: PURE Vault → literal default (no env). Unchanged semantics. ──
@@ -292,40 +314,52 @@ func (hv *DXHashicorpVault) GetStringOrEnvOrDefault(ctx context.Context, v strin
 	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err == nil {
 		if dvv, err2 := utils.GetStringFromKV(data, v); err2 == nil {
+			log.Log.Infof("Config %s resolved from %s", v, cfgSrcVault)
 			return dvv // Vault wins
 		}
 	}
-	return envOrDefault(v, d) // else env, else default
+	r, src := envOrDefault(v, d) // else env, else default
+	log.Log.Infof("Config %s resolved from %s", v, src)
+	return r
 }
 
 func (hv *DXHashicorpVault) GetIntOrEnvOrDefault(ctx context.Context, v string, d int) int {
 	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err == nil {
 		if dvv, err2 := utils.ConvertIntFromKV(data, v); err2 == nil {
+			log.Log.Infof("Config %s resolved from %s", v, cfgSrcVault)
 			return dvv
 		}
 	}
-	return envIntOrDefault(v, d)
+	r, src := envIntOrDefault(v, d)
+	log.Log.Infof("Config %s resolved from %s", v, src)
+	return r
 }
 
 func (hv *DXHashicorpVault) GetInt64OrEnvOrDefault(ctx context.Context, v string, d int64) int64 {
 	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err == nil {
 		if dvv, err2 := utils.ConvertInt64FromKV(data, v); err2 == nil {
+			log.Log.Infof("Config %s resolved from %s", v, cfgSrcVault)
 			return dvv
 		}
 	}
-	return envInt64OrDefault(v, d)
+	r, src := envInt64OrDefault(v, d)
+	log.Log.Infof("Config %s resolved from %s", v, src)
+	return r
 }
 
 func (hv *DXHashicorpVault) GetBoolOrEnvOrDefault(ctx context.Context, v string, d bool) bool {
 	data, err := hv.VaultGetData(ctx, &log.Log)
 	if err == nil {
 		if dvv, err2 := utils.ConvertToBoolFromKV(data, v); err2 == nil {
+			log.Log.Infof("Config %s resolved from %s", v, cfgSrcVault)
 			return dvv
 		}
 	}
-	return envBoolOrDefault(v, d)
+	r, src := envBoolOrDefault(v, d)
+	log.Log.Infof("Config %s resolved from %s", v, src)
+	return r
 }
 
 func (hv *DXHashicorpVault) VaultMapping(ctx context.Context, log *log.DXLog, texts ...string) (r []string, err error) {
