@@ -429,18 +429,60 @@ func (hv *DXHashicorpVault) VaultMapString(ctx context.Context, log *log.DXLog, 
 	return text, nil
 }
 
+// VaultGetData reads the configured path and returns its `data` map.
+//
+// It must FAIL, never ABORT. Every caller reaches this through the
+// Get*OrEnvOrDefault helpers, whose whole contract is "Vault -> env -> default":
+// a returned error simply moves on to the env/default branch, while a panic here
+// takes the entire service down at startup and makes that fallback unreachable.
+// Two nil dereferences used to do exactly that (fixed 2026-08-03):
+//
+//   - hv.Client is nil until Start() has been called and succeeded, so
+//     hv.Client.Logical() panicked when a service reached config resolution
+//     without a working Vault client.
+//   - the Vault API returns (nil, nil) for a path that DOES NOT EXIST - a
+//     missing secret is not an error there - so `secret.Data` dereferenced nil.
+//     This is what crashed service-configuration on the bank's OKD development
+//     cluster: SIGSEGV at this line, with the whole process gone, because one
+//     Vault path had not been populated yet.
 func (hv *DXHashicorpVault) VaultGetData(ctx context.Context, log *log.DXLog) (r utils.JSON, err error) {
+	if hv == nil || hv.Client == nil {
+		// Start() not called, or it failed. Returning lets the caller fall back.
+		return nil, log.ErrorAndCreateErrorf("vault client not initialized (Start not called or failed) for path:%s", hv.SafePath())
+	}
 	_, endOtel := hv.vaultOtelStart(ctx, "READ")
 	secret, err := hv.Client.Logical().Read(hv.Path)
 	endOtel(err)
 	if err != nil {
-		log.Fatalf("Unable to read credentials from Vault: %v", err.Error())
+		// NOT Fatalf: this returns, so logging it as fatal was misleading - the
+		// caller is expected to fall back to env/default.
+		log.Errorf(err, "unable to read from Vault path %s: %v", hv.SafePath(), err.Error())
 		return nil, err
+	}
+	if secret == nil {
+		// Path absent, or present with no data. Distinct message from the
+		// type-assertion failure below so the two are diagnosable apart.
+		return nil, log.ErrorAndCreateErrorf("vault path not found or empty:%s", hv.SafePath())
 	}
 	data, ok := secret.Data["data"].(map[string]any)
 	if !ok {
-		err = log.ErrorAndCreateErrorf("unable to read path from Vault:%s", hv.Path)
+		err = log.ErrorAndCreateErrorf("unable to read path from Vault:%s", hv.SafePath())
 		return nil, err
 	}
 	return data, nil
+}
+
+// SafePath is the configured path, for use in error and log messages.
+//
+// A Vault path is not a credential, but it is the one identifier worth printing
+// when a lookup fails - the crash this replaced gave operators a stack trace and
+// no path at all, so "which path is missing" took a code read to answer.
+func (hv *DXHashicorpVault) SafePath() string {
+	if hv == nil {
+		return "<nil vault>"
+	}
+	if hv.Path == "" {
+		return "<empty path>"
+	}
+	return hv.Path
 }
