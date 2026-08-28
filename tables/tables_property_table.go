@@ -109,10 +109,12 @@ func (pt *DXPropertyTable) GetAsIntOrDefault(ctx context.Context, l *log.DXLog, 
 		return 0, err
 	}
 	if v == nil {
-		err = pt.SetAsInt(ctx, l, propertyId, defaultValue)
-		if err != nil {
-			return 0, err
-		}
+		// Return the default without writing it. A getter must not mutate the
+		// database: it forced write permission on a read, raced two concurrent
+		// first-reads against each other, and -- worst -- masked a decode failure,
+		// because seeding the row let the writing process start up cleanly while a
+		// later reader failed on the same value. Callers that want the row seeded
+		// call SetAsInt explicitly.
 		return defaultValue, nil
 	}
 	vv, err := propertyGetAs[float64](l, "INT", v)
