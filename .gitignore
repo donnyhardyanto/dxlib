@@ -20,7 +20,7 @@
 # Go workspace file
 go.work
 go.work.sum
-go.sum
+# go.sum is deliberately NOT ignored: this is a library, so consumers need it
+# to build from a clean checkout and to verify module checksums.
 **/key.env
-**/*.sum
 
