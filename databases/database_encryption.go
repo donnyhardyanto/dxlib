@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/utils"
 )
@@ -237,9 +238,15 @@ func (dtx *DXDatabaseTx) executeEncryptedInsert(
 	// Execute
 	if len(returningFieldNames) > 0 {
 		row := dtx.Tx.QueryRowx(sqlStr, args...)
+		// Row.MapScan closes the underlying rows, so the column metadata has to
+		// be read before it, not after.
+		normalizeRow := db.NewRowNormalizer(dtx.Tx.DriverName(), row)
 		returningValues := make(map[string]any)
 		if err := row.MapScan(returningValues); err != nil {
 			return nil, nil, errors.Wrapf(err, "ENCRYPTED_INSERT_RETURNING_ERROR")
+		}
+		if normalizeRow != nil {
+			normalizeRow(returningValues)
 		}
 		return nil, returningValues, nil
 	}
@@ -332,11 +339,16 @@ func (dtx *DXDatabaseTx) executeEncryptedUpdate(
 		}
 		defer rows.Close()
 
+		normalizeRow := db.NewRowNormalizer(dtx.Tx.DriverName(), rows)
+
 		var results []utils.JSON
 		for rows.Next() {
 			row := make(map[string]any)
 			if err := rows.MapScan(row); err != nil {
 				return nil, nil, errors.Wrapf(err, "ENCRYPTED_UPDATE_SCAN_ERROR")
+			}
+			if normalizeRow != nil {
+				normalizeRow(row)
 			}
 			results = append(results, row)
 		}
@@ -399,17 +411,24 @@ func (dtx *DXDatabaseTx) executeEncryptedSelect(
 	}
 	defer rows.Close()
 
+	normalizeRow := db.NewRowNormalizer(dtx.Tx.DriverName(), rows)
+
 	var results []utils.JSON
 	for rows.Next() {
 		row := make(map[string]any)
 		if err := rows.MapScan(row); err != nil {
 			return nil, errors.Wrapf(err, "ENCRYPTED_SELECT_SCAN_ERROR")
 		}
-		// Convert []byte to string for decrypted text fields
-		for k, v := range row {
-			if b, ok := v.([]byte); ok {
-				row[k] = string(b)
-			}
+		if normalizeRow != nil {
+			normalizeRow(row)
+		}
+		// The decrypted output columns still need []byte -> string on their own:
+		// MariaDB's AES_DECRYPT() yields a binary string that the driver reports
+		// exactly like a BLOB, so the normaliser leaves it alone. Convert only
+		// the decrypted aliases — the blanket loop this replaces ran over every
+		// column and silently corrupted genuine binary data.
+		for _, def := range encryptionColumnDefs {
+			db.TextColumnToString(row, def.AliasName)
 		}
 		results = append(results, row)
 	}

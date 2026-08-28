@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/errors"
@@ -27,11 +29,19 @@ func RawQueryRows(ctx context.Context, db *sqlx.DB, fieldTypeMapping DXDatabaseT
 	if err != nil {
 		return rowsInfo, r, errors.Wrap(err, "failed to get columns")
 	}
+	// Give every driver's values the same Go type. This must run on the row as
+	// MapScan produced it — the plan is keyed by the driver's own column names,
+	// which DeformatKeys is about to rewrite. nil on PostgreSQL and whenever no
+	// column needs work.
+	normalizeRow := NewRowNormalizer(db.DriverName(), rows)
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed to scan row")
+		}
+		if normalizeRow != nil {
+			normalizeRow(rowJSON)
 		}
 		rowJSON, err = DeformatKeys(rowJSON, db.DriverName(), fieldTypeMapping)
 		if err != nil {
@@ -59,11 +69,16 @@ func RawTxQueryRows(ctx context.Context, tx *sqlx.Tx, fieldTypeMapping DXDatabas
 	if err != nil {
 		return rowsInfo, r, errors.Wrap(err, "failed to get columns")
 	}
+	// See RawQueryRows: normalise before the keys are deformatted.
+	normalizeRow := NewRowNormalizer(tx.DriverName(), rows)
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed to scan row")
+		}
+		if normalizeRow != nil {
+			normalizeRow(rowJSON)
 		}
 		rowJSON, err = DeformatKeys(rowJSON, tx.DriverName(), fieldTypeMapping)
 		if err != nil {
@@ -185,19 +200,31 @@ func RawCount(
 	if len(r) != 1 {
 		return 0, errors.New("unexpected number of rows returned from count query")
 	}
-	c, ok := r[0][magicVariableName].(int64)
-	if !ok {
-		// Handle potential type conversion for different databases
-		switch v := r[0][magicVariableName].(type) {
-		case int:
-			count = int64(v)
-		case float64:
-			count = int64(v)
-		default:
-			return 0, errors.New("unexpected type for count result")
+	// Handle potential type conversion for different databases. Oracle's
+	// count(*) is a bare NUMBER (scale marker 0xFF), which normalises to
+	// float64, so that arm is load-bearing rather than defensive; the []byte and
+	// string arms cover a driver whose metadata was not usable.
+	switch v := r[0][magicVariableName].(type) {
+	case int64:
+		count = v
+	case int:
+		count = int64(v)
+	case float64:
+		count = int64(v)
+	case []byte:
+		count, err = strconv.ParseInt(strings.TrimSpace(string(v)), 10, 64)
+		if err != nil {
+			return 0, errors.Wrapf(err, "unexpected count result %q", string(v))
 		}
+	case string:
+		count, err = strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+		if err != nil {
+			return 0, errors.Wrapf(err, "unexpected count result %q", v)
+		}
+	default:
+		return 0, errors.Errorf("unexpected type for count result: %T", v)
 	}
-	return c, nil
+	return count, nil
 }
 
 func TxQueryRows(

@@ -48,11 +48,20 @@ func BaseQueryRows2(ctx context.Context, db *sqlx.DB, query string, arg any, fie
 		return nil, r, errors.Wrapf(err, "NAMED_QUERY_ROWS_COLUMNS_ERROR:QUERY=%s", query)
 	}
 
+	// Give every driver's values the same Go type. This has to happen here, in
+	// the scan loop: the plan is keyed by the driver's own column names, and by
+	// the time the DeformatKeys loop below runs the rows are closed and the
+	// metadata is gone. nil on PostgreSQL and whenever no column needs work.
+	normalizeRow := databaseDb.NewRowNormalizer(db.DriverName(), rows)
+
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "NAMED_QUERY_ROWS_SCAN_ERROR:QUERY=%s", query)
+		}
+		if normalizeRow != nil {
+			normalizeRow(rowJSON)
 		}
 		r = append(r, rowJSON)
 	}

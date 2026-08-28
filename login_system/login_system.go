@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/donnyhardyanto/dxlib/databases"
+	databaseDb "github.com/donnyhardyanto/dxlib/databases/db"
 	dxlibLog "github.com/donnyhardyanto/dxlib/log"
 )
 
@@ -663,10 +664,17 @@ func (l *LoginSystem) redisWithDBInstanceRegister(sessionKey string, userId int6
 				return qErr
 			}
 			defer rows.Close()
+			// This path bypasses the framework query helpers, so it needs its
+			// own row normaliser: without it session_key and device_id arrive as
+			// []byte on MariaDB and every downstream string assertion fails.
+			normalizeRow := databaseDb.NewRowNormalizer(dtx.Tx.DriverName(), rows)
 			for rows.Next() {
 				row := make(map[string]any)
 				if scanErr := rows.MapScan(row); scanErr != nil {
 					return scanErr
+				}
+				if normalizeRow != nil {
+					normalizeRow(row)
 				}
 				oldSessions = append(oldSessions, row)
 			}
@@ -888,10 +896,17 @@ func (l *LoginSystem) dbOnlyInstanceRegister(sessionKey string, userId int64, de
 				return qErr
 			}
 			defer rows.Close()
+			// This path bypasses the framework query helpers, so it needs its
+			// own row normaliser: without it session_key and device_id arrive as
+			// []byte on MariaDB and every downstream string assertion fails.
+			normalizeRow := databaseDb.NewRowNormalizer(dtx.Tx.DriverName(), rows)
 			for rows.Next() {
 				row := make(map[string]any)
 				if scanErr := rows.MapScan(row); scanErr != nil {
 					return scanErr
+				}
+				if normalizeRow != nil {
+					normalizeRow(row)
 				}
 				oldSessions = append(oldSessions, row)
 			}

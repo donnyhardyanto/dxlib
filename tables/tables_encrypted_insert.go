@@ -8,6 +8,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/db"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -194,9 +195,15 @@ func executeEncryptedInsert(
 	// Execute
 	if len(returningFieldNames) > 0 {
 		row := dtx.Tx.QueryRowx(sqlStr, args...)
+		// Row.MapScan closes the underlying rows, so the column metadata has to
+		// be read before it, not after.
+		normalizeRow := db.NewRowNormalizer(dtx.Tx.DriverName(), row)
 		returningValues := make(map[string]any)
 		if err := row.MapScan(returningValues); err != nil {
 			return nil, nil, errors.Wrapf(err, "ENCRYPTED_INSERT_RETURNING_ERROR")
+		}
+		if normalizeRow != nil {
+			normalizeRow(returningValues)
 		}
 		return nil, returningValues, nil
 	}

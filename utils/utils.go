@@ -804,32 +804,47 @@ func StringsHasCommonItem(arr1, arr2 []string) bool {
 }
 
 // GetJSONFromV converts an `any` type to a JSON object.
+//
+// A JSON/CLOB column does not arrive as []byte on every engine: Oracle hands a
+// CLOB back as a Go string, and row-type normalisation turns a []byte text
+// column into a string before this runs. Accept both encodings of the same
+// document rather than rejecting one of them as "not JSON".
 func GetJSONFromV(v any) (r JSON, err error) {
-	r, ok := v.(JSON)
-	if !ok {
-		rASBytes, ok := v.([]byte)
-		if !ok {
-			err = errors.Errorf("VALUE_IS_NOT_JSON:%v", v)
-			return nil, err
-		}
-		r = JSON{}
-		err = json.Unmarshal(rASBytes, &r)
-		if err != nil {
-			return nil, err
-		}
+	if r, ok := v.(JSON); ok {
+		return r, nil
+	}
+	var rASBytes []byte
+	switch value := v.(type) {
+	case []byte:
+		rASBytes = value
+	case string:
+		rASBytes = []byte(value)
+	default:
+		return nil, errors.Errorf("VALUE_IS_NOT_JSON:%v", v)
+	}
+	r = JSON{}
+	err = json.Unmarshal(rASBytes, &r)
+	if err != nil {
+		return nil, err
 	}
 	return r, nil
 }
 
 // GetArrayFromV converts an `any` type to a slice of `any`.
+//
+// Accepts a string as well as []byte, for the same reason as GetJSONFromV.
 func GetArrayFromV(v any) (r []any, err error) {
 	if v == nil {
 		return nil, nil
 	}
-	rASBytes, ok := v.([]byte)
-	if !ok {
-		err = errors.Errorf("VALUE_IS_NOT_ARRAY_BYTE:%v", v)
-		return nil, err
+	var rASBytes []byte
+	switch value := v.(type) {
+	case []byte:
+		rASBytes = value
+	case string:
+		rASBytes = []byte(value)
+	default:
+		return nil, errors.Errorf("VALUE_IS_NOT_ARRAY_BYTE:%v", v)
 	}
 	r = []any{}
 	err = json.Unmarshal(rASBytes, &r)
@@ -963,7 +978,8 @@ func GetTimeFromKV(kv map[string]any, key string) (r time.Time, err error) {
 }
 
 // GetMapStringStringFromV converts any value to map[string]string.
-// Handles: direct map[string]string, []byte (JSON), map[string]any (converts values to string).
+// Handles: direct map[string]string, []byte or string (JSON), map[string]any
+// (converts values to string).
 func GetMapStringStringFromV(v any) (r map[string]string, err error) {
 	if v == nil {
 		return nil, errors.New("VALUE_IS_NIL")
@@ -972,8 +988,17 @@ func GetMapStringStringFromV(v any) (r map[string]string, err error) {
 	if m, ok := v.(map[string]string); ok {
 		return m, nil
 	}
-	// From []byte (JSONB from a database)
-	if rASBytes, ok := v.([]byte); ok {
+	// From []byte or string (JSONB from a database; a CLOB or a normalised text
+	// column arrives as a string, not []byte)
+	var rASBytes []byte
+	isEncodedJSON := false
+	switch value := v.(type) {
+	case []byte:
+		rASBytes, isEncodedJSON = value, true
+	case string:
+		rASBytes, isEncodedJSON = []byte(value), true
+	}
+	if isEncodedJSON {
 		r = map[string]string{}
 		err = json.Unmarshal(rASBytes, &r)
 		if err != nil {

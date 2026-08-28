@@ -216,11 +216,16 @@ func executeEncryptedUpdate(
 			}
 		}(rows)
 
+		normalizeRow := db.NewRowNormalizer(dtx.Tx.DriverName(), rows)
+
 		var results []utils.JSON
 		for rows.Next() {
 			row := make(map[string]any)
 			if err := rows.MapScan(row); err != nil {
 				return nil, nil, errors.Wrapf(err, "ENCRYPTED_UPDATE_SCAN_ERROR")
+			}
+			if normalizeRow != nil {
+				normalizeRow(row)
 			}
 			results = append(results, row)
 		}

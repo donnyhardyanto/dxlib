@@ -547,12 +547,16 @@ func executeEncryptedSelect(
 		return nil, nil, errors.Wrap(err, "ENCRYPTED_SELECT_ERROR")
 	}
 
-	// 9. Post-process bytes to strings (preserve existing behavior)
+	// 9. Convert the decrypted output columns from []byte to string.
+	//
+	// Row values are already type-normalised by the query layer, but a decrypted
+	// column cannot be: MariaDB's AES_DECRYPT() yields a binary string that the
+	// driver reports exactly like a BLOB, so the normaliser leaves it alone.
+	// Convert only the decrypted aliases — the blanket loop this replaces ran
+	// over every column and silently corrupted genuine binary data.
 	for _, row := range rows {
-		for k, v := range row {
-			if b, ok := v.([]byte); ok {
-				row[k] = string(b)
-			}
+		for _, col := range encryptionColumns {
+			db.TextColumnToString(row, col.AliasName)
 		}
 	}
 
@@ -674,12 +678,11 @@ func executeEncryptedPaging(
 		return nil, errors.Wrap(err, "ENCRYPTED_PAGING_QUERY_ERROR")
 	}
 
-	// 9. Post-process bytes to strings
+	// 9. Convert the decrypted output columns from []byte to string; see
+	// executeEncryptedSelect for why only the aliases and not the whole row.
 	for _, row := range rows {
-		for k, v := range row {
-			if b, ok := v.([]byte); ok {
-				row[k] = string(b)
-			}
+		for _, col := range encryptionColumns {
+			db.TextColumnToString(row, col.AliasName)
 		}
 	}
 

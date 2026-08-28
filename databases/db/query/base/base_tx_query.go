@@ -49,11 +49,18 @@ func TxBaseQueryRows2(ctx context.Context, dtx *databases.DXDatabaseTx, query st
 		return nil, r, errors.Wrapf(err, "TX_QUERY_ROWS_COLUMNS_ERROR:QUERY=%s", query)
 	}
 
+	// See BaseQueryRows2: normalise inside the scan loop, not in the DeformatKeys
+	// loop below, where the rows are already closed.
+	normalizeRow := databaseDb.NewRowNormalizer(dtx.Tx.DriverName(), rows)
+
 	for rows.Next() {
 		rowJSON := make(utils.JSON)
 		err = rows.MapScan(rowJSON)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "TX_QUERY_ROWS_SCAN_ERROR:QUERY=%s", query)
+		}
+		if normalizeRow != nil {
+			normalizeRow(rowJSON)
 		}
 		r = append(r, rowJSON)
 	}
