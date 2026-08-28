@@ -138,10 +138,26 @@ func GetBool(kv utils.JSON, k string) (bool, error) {
 	switch v := val.(type) {
 	case bool:
 		return v, nil
-	case int64, int32, int16, int8, int:
-		return v != 0, nil // converts any non-zero number to true
-	case float64, float32:
-		return v != 0, nil // handle floating point numbers
+	// One numeric type per clause, deliberately. A multi-type case clause leaves
+	// `v` with its interface type, so `v != 0` compared an interface against the
+	// untyped constant 0 -- which defaults to int -- and any(int64(0)) is never
+	// equal to any(int(0)). GetBool therefore returned true for zero on every
+	// width except plain int, which is what every driver returns for an INT
+	// column and what encoding/json returns for a JSON number.
+	case int:
+		return v != 0, nil
+	case int8:
+		return v != 0, nil
+	case int16:
+		return v != 0, nil
+	case int32:
+		return v != 0, nil
+	case int64:
+		return v != 0, nil
+	case float32:
+		return v != 0, nil
+	case float64:
+		return v != 0, nil
 	case string:
 		switch strings.ToLower(v) {
 		case "true", "1", "yes", "on":
