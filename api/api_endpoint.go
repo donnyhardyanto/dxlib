@@ -140,6 +140,16 @@ type DXAPIEndPoint struct {
 }
 
 func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
+	// ResponsePossibilities is dereferenced five times below -- four in the
+	// MarkDown branch and once in PostmanCollection -- and NewEndPoint has no
+	// in-library callers, so the pointer comes entirely from downstream apps with
+	// nothing validating it. A nil made GET /spec panic for the whole document,
+	// because APIHandlerPrintSpec serves this over HTTP. An empty set makes every
+	// use below a no-op.
+	if aep.ResponsePossibilities == nil {
+		aep.ResponsePossibilities = &DXAPIEndPointResponsePossibilities{}
+	}
+
 	switch SpecFormat {
 	case "MarkDown":
 		s = fmt.Sprintf("## %s\n", aep.Title)
