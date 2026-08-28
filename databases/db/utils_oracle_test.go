@@ -74,3 +74,67 @@ func TestOracleSafeBindNamesLeavesUnknownBinds(t *testing.T) {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
+
+// DBDriverExcludeSQLExpressionFromWhereKeyValues is named for excluding
+// SQLExpression values from the bind map, and until now it excluded nothing.
+//
+// A SQLExpression is inlined into the SQL text by
+// SQLPartWhereAndFieldNameValues, which emits no :placeholder for it. On the
+// three sqlx-driven engines the stray key was harmless, because sqlx binds by
+// the placeholder names it finds in the query. Oracle takes a different path --
+// OracleSafeBindNames builds one sql.Named per map key -- so the SQLExpression
+// struct reached go-ora and it answered:
+//
+//	call register type before use user defined type (UDT)
+//
+// which surfaced as a 500 on /collection/is_allowed_to_run and failed four
+// scheduler-gate tests in the bpm7 end-to-end suite.
+func TestExcludeSQLExpressionDropsExpressionsFromBindMap(t *testing.T) {
+	for _, driverName := range []string{"oracle", "postgres", "mariadb", "sqlserver"} {
+		r, err := DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName, utils.JSON{
+			"collection_id":   int64(2),
+			"is_deleted":      false,
+			"start_timestamp": SQLExpression{Expression: "('a' <= start_timestamp)"},
+		})
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", driverName, err)
+		}
+		if _, present := r["start_timestamp"]; present {
+			t.Errorf("%s: SQLExpression was kept in the bind map; it has no placeholder to bind to", driverName)
+		}
+		if _, present := r["collection_id"]; !present {
+			t.Errorf("%s: ordinary value collection_id was dropped", driverName)
+		}
+		if _, present := r["is_deleted"]; !present {
+			t.Errorf("%s: ordinary value is_deleted was dropped", driverName)
+		}
+	}
+}
+
+// TestExcludeSQLExpressionWouldHaveFailedBeforeTheFix pins the specific shape
+// that broke Oracle: the expression must not survive as far as the named-arg
+// builder, because sql.Named cannot carry a struct go-ora has no type for.
+func TestExcludeSQLExpressionWouldHaveFailedBeforeTheFix(t *testing.T) {
+	r, err := DBDriverExcludeSQLExpressionFromWhereKeyValues("oracle", utils.JSON{
+		"start_timestamp": SQLExpression{Expression: "(x <= y)"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(r) != 0 {
+		t.Fatalf("expected an empty bind map, got %d entries: %#v", len(r), r)
+	}
+
+	// And the whole point: nothing a SQLExpression could ride in on reaches the
+	// named-arg list that goes to go-ora.
+	_, args := OracleSafeBindNames("SELECT * FROM t WHERE x = :start_timestamp", r)
+	for _, a := range args {
+		na, ok := a.(sql.NamedArg)
+		if !ok {
+			continue
+		}
+		if _, isExpr := na.Value.(SQLExpression); isExpr {
+			t.Fatalf("a SQLExpression reached the named-arg list as %q", na.Name)
+		}
+	}
+}

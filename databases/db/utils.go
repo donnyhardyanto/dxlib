@@ -162,6 +162,15 @@ func DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName string, kv utils.
 		// DELETE already key their arg maps by the original name; this makes SELECT/
 		// COUNT consistent. Value conversion (below) still applies. PostgreSQL is
 		// unaffected (original == formatted there).
+		// A SQLExpression is inlined into the SQL text by
+		// SQLPartWhereAndFieldNameValues, which emits no :placeholder for it, so it
+		// must not also become a bind parameter. Oracle binds every key in this map
+		// (OracleSafeBindNames), so leaving it in handed the struct to go-ora and
+		// produced "call register type before use user defined type (UDT)". Every
+		// other builder -- insert, update, delete -- already filters it out here.
+		if _, isSQLExpression := v.(SQLExpression); isSQLExpression {
+			continue
+		}
 		v, err := DbDriverConvertValueTypeToDBCompatible(driverName, v)
 		if err != nil {
 			return nil, err
