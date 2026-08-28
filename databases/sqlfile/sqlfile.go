@@ -242,11 +242,43 @@ func removeComments(content string) string {
 	var result strings.Builder
 	inLineComment := false
 	inBlockComment := false
+	// Quote state. Without it a comment marker inside a string literal was taken
+	// for a comment and the rest of the value was deleted, so
+	// VALUES ('range 2026-01-01 -- 2026-12-31') silently stored a truncated
+	// string, and a /* in a literal ate everything up to the next */ even across
+	// statement boundaries.
+	inSingleQuote := false
+	inDoubleQuote := false
 	i := 0
 
 	for i < len(content) {
+		// Track literals before looking for comments: inside a literal, a comment
+		// marker is data.
+		if !inLineComment && !inBlockComment {
+			if content[i] == '\'' && !inDoubleQuote {
+				// SQL escapes a quote by doubling it, so '' is one character of
+				// data rather than a close followed by an open.
+				if inSingleQuote && i+1 < len(content) && content[i+1] == '\'' {
+					result.WriteString("''")
+					i += 2
+					continue
+				}
+				inSingleQuote = !inSingleQuote
+				result.WriteByte(content[i])
+				i++
+				continue
+			}
+			if content[i] == '"' && !inSingleQuote {
+				inDoubleQuote = !inDoubleQuote
+				result.WriteByte(content[i])
+				i++
+				continue
+			}
+		}
+		inString := inSingleQuote || inDoubleQuote
+
 		// Handle block comments /* */
-		if i < len(content)-1 && content[i] == '/' && content[i+1] == '*' && !inLineComment && !inBlockComment {
+		if i < len(content)-1 && content[i] == '/' && content[i+1] == '*' && !inLineComment && !inBlockComment && !inString {
 			inBlockComment = true
 			i += 2
 			continue
@@ -258,7 +290,7 @@ func removeComments(content string) string {
 		}
 
 		// Handle line comments --
-		if i < len(content)-1 && content[i] == '-' && content[i+1] == '-' && !inBlockComment && !inLineComment {
+		if i < len(content)-1 && content[i] == '-' && content[i+1] == '-' && !inBlockComment && !inLineComment && !inString {
 			inLineComment = true
 			i += 2
 			continue
