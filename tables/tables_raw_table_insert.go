@@ -31,7 +31,14 @@ func (t *DXRawTable) InsertReturningId(ctx context.Context, l *log.DXLog, data u
 	if err != nil {
 		return 0, err
 	}
-	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+	// Not a discarded error: Oracle returns a NUMBER row id as a decimal string,
+	// and an empty string where the driver reported no value. Swallowing that
+	// handed the caller id 0 with a nil error, so it went on to write child rows
+	// against row 0 and failed somewhere unrelated.
+	newId, err := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+	if err != nil {
+		return 0, err
+	}
 	return newId, nil
 }
 
@@ -41,7 +48,14 @@ func (t *DXRawTable) TxInsertReturningId(dtx *databases.DXDatabaseTx, data utils
 	if err != nil {
 		return 0, err
 	}
-	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+	// Not a discarded error: Oracle returns a NUMBER row id as a decimal string,
+	// and an empty string where the driver reported no value. Swallowing that
+	// handed the caller id 0 with a nil error, so it went on to write child rows
+	// against row 0 and failed somewhere unrelated.
+	newId, err := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
+	if err != nil {
+		return 0, err
+	}
 	return newId, nil
 }
 
