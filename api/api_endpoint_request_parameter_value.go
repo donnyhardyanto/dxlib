@@ -415,7 +415,6 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 	default:
 		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 	}
-	return nil
 }
 
 func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string) (err error) {

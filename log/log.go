@@ -244,7 +244,7 @@ func (l *DXLog) Errorf(err error, text string, v ...any) {
 
 func (l *DXLog) ErrorAndCreateErrorf(text string, v ...any) (err error) {
 	if v == nil {
-		err = errors.Errorf(text)
+		err = errors.New(text)
 	} else {
 		err = errors.Errorf(text, v...)
 	}
@@ -268,7 +268,7 @@ func (l *DXLog) Fatalf(text string, v ...any) {
 
 func (l *DXLog) FatalAndCreateErrorf(text string, v ...any) (err error) {
 	if v == nil {
-		err = errors.Errorf(text)
+		err = errors.New(text)
 	} else {
 		err = errors.Errorf(text, v...)
 	}
@@ -282,7 +282,7 @@ func (l *DXLog) Panic(location string, err error) {
 
 func (l *DXLog) PanicAndCreateErrorf(location, text string, v ...any) (err error) {
 	if v == nil {
-		err = errors.Errorf(text)
+		err = errors.New(text)
 	} else {
 		err = errors.Errorf(text, v...)
 	}

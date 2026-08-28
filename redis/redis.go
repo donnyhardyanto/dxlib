@@ -153,7 +153,7 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		redisConfiguration, ok := m[r.NameId].(utils.JSON)
 		if !ok {
 			if r.MustConnected {
-				err := log.Log.PanicAndCreateErrorf("Redis %s configuration not found", r.NameId)
+				err := log.Log.PanicAndCreateErrorf("DXRedis/ApplyConfigurations", "Redis %s configuration not found", r.NameId)
 				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("Manager is unusable, Redis %s configuration not found", r.NameId)
@@ -163,7 +163,7 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		r.Address, ok = redisConfiguration["address"].(string)
 		if !ok {
 			if r.MustConnected {
-				err := log.Log.PanicAndCreateErrorf("Mandatory address field in Redis %s configuration not exist", r.NameId)
+				err := log.Log.PanicAndCreateErrorf("DXRedis/ApplyConfigurations", "Mandatory address field in Redis %s configuration not exist", r.NameId)
 				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in Redis %s configuration not exist", r.NameId)
@@ -183,7 +183,7 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		r.DatabaseIndex, err = json2.GetInt(redisConfiguration, "database_index")
 		if err != nil {
 			if r.MustConnected {
-				err := log.Log.PanicAndCreateErrorf("Mandatory database_index field in Redis %s configuration not exist, check configuration and make sure it was integer not a string", r.NameId)
+				err := log.Log.PanicAndCreateErrorf("DXRedis/ApplyConfigurations", "Mandatory database_index field in Redis %s configuration not exist, check configuration and make sure it was integer not a string", r.NameId)
 				return err
 			} else {
 				err := log.Log.WarnAndCreateErrorf("configuration is unusable, mandatory address field in Redis %s configuration not exist", r.NameId)
