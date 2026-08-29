@@ -180,8 +180,8 @@ func (e *DBOperationError) Unwrap() error {
 
 // Methods for structural interface matching at routeHandler (no import needed)
 func (e *DBOperationError) DBOperation() string        { return e.Operation }
-func (e *DBOperationError) DBTableName() string         { return e.TableName }
-func (e *DBOperationError) DBMaskedDataString() string  { return e.MaskedData }
+func (e *DBOperationError) DBTableName() string        { return e.TableName }
+func (e *DBOperationError) DBMaskedDataString() string { return e.MaskedData }
 
 func NewDBOperationError(operation, tableName string, data utils.JSON, cause error) *DBOperationError {
 	return &DBOperationError{

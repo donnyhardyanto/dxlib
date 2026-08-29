@@ -185,7 +185,7 @@ func SQLPartConstructSelect(driverName string, tableName string, fieldNames []st
 	//     plain SELECT ... FOR UPDATE is a syntax error. The equivalent is a table
 	//     locking HINT, "WITH (UPDLOCK, ROWLOCK)", placed right after the table
 	//     name (it locks that table's rows for the transaction, same intent).
-	u := ""            // trailing clause (PG/MariaDB/Oracle)
+	u := ""             // trailing clause (PG/MariaDB/Oracle)
 	forUpdateHint := "" // table hint after the table name (SQL Server)
 	if forUpdatePart == nil {
 		forUpdatePart = false

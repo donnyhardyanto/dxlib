@@ -37,6 +37,7 @@ func quoteIdent(dbType base.DXDatabaseType, id string) string {
 //     Oracle SYSTIMESTAMP) — a bare `now()` is invalid on SQL Server/Oracle.
 //   - a Go bool → true/false on PG/MariaDB, but 1/0 on SQL Server (BIT) and Oracle
 //     (NUMBER(1)), which have no boolean literal.
+//
 // Anything else falls back to the plain literal renderer.
 func renderDefaultForDBType(dbType base.DXDatabaseType, field ModelDBField, v any) string {
 	if s, ok := v.(string); ok {

@@ -174,17 +174,17 @@ func (a ModelDBAggregateType) String() string {
 // ================== ModelDB VIEW ==================
 
 type ModelDBView struct {
-	ModelDBEntity                     // Embedded base entity (Name, Type, Order, Schema)
-	FromTable     *ModelDBTable       // Main table to select from
-	Columns       []ModelDBViewColumn // Columns to select
-	Joins         []ModelDBJoin       // Join clauses
-	Where         string              // WHERE clause (without the "WHERE" keyword)
-	GroupBy       []string            // GROUP BY columns (field names or expressions)
-	Having        string              // HAVING clause (without the "HAVING" keyword)
-	OrderBy       []ModelDBOrderBy    // ORDER BY clause
-	Distinct      bool                               // SELECT DISTINCT
-	RawSQL          string                             // Raw SQL for complex views (bypasses builder when set)
-	RawSQLFunc      func(base.DXDatabaseType) string   // DB-specific raw SQL generator (overrides RawSQL and builder when set)
+	ModelDBEntity                                          // Embedded base entity (Name, Type, Order, Schema)
+	FromTable       *ModelDBTable                          // Main table to select from
+	Columns         []ModelDBViewColumn                    // Columns to select
+	Joins           []ModelDBJoin                          // Join clauses
+	Where           string                                 // WHERE clause (without the "WHERE" keyword)
+	GroupBy         []string                               // GROUP BY columns (field names or expressions)
+	Having          string                                 // HAVING clause (without the "HAVING" keyword)
+	OrderBy         []ModelDBOrderBy                       // ORDER BY clause
+	Distinct        bool                                   // SELECT DISTINCT
+	RawSQL          string                                 // Raw SQL for complex views (bypasses builder when set)
+	RawSQLFunc      func(base.DXDatabaseType) string       // DB-specific raw SQL generator (overrides RawSQL and builder when set)
 	ViewBuilderFunc func(base.DXDatabaseType) *ModelDBView // DB-specific structured view builder (overrides builder when set)
 }
 

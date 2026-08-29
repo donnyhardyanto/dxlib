@@ -95,8 +95,8 @@ type SelectQueryBuilder struct {
 	GroupByFields    []string
 	HavingConditions []HavingConditionDef
 	OrderByDefs      []OrderByDef
-	RawOrderBys      []string     // Raw ORDER BY expressions (e.g., PostGIS distance)
-	OutFields        []string     // OutFields for SELECT or RETURNING clause
+	RawOrderBys      []string // Raw ORDER BY expressions (e.g., PostGIS distance)
+	OutFields        []string // OutFields for SELECT or RETURNING clause
 	LimitValue       int64    // LIMIT clause value (0 = no limit)
 	OffsetValue      int64    // OFFSET clause value (0 = no offset)
 	ForUpdatePart    any      // FOR UPDATE clause (string like "FOR UPDATE", or bool true)

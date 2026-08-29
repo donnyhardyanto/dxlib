@@ -173,4 +173,3 @@ func (t *DXTable) GetByNameIdNotDeletedAuto(ctx context.Context, l *log.DXLog, n
 func (t *DXTable) ShouldGetByNameIdNotDeletedAuto(ctx context.Context, l *log.DXLog, nameId string, fieldNames ...string) (*db.DXDatabaseTableRowsInfo, utils.JSON, error) {
 	return t.ShouldGetByNameIdNotDeleted(ctx, l, nameId, fieldNames...)
 }
-

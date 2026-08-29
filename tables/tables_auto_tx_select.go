@@ -259,4 +259,3 @@ func (t *DXTable) TxShouldGetByNameIdAuto(dtx *databases.DXDatabaseTx, nameId st
 	}
 	return t.TxShouldSelectOneAuto(dtx, fn, utils.JSON{t.FieldNameForRowNameId: nameId}, nil, nil, nil)
 }
-

@@ -133,6 +133,7 @@ func (c *DXConfiguration) AsNonSensitiveString() string {
 	}
 	return c.NameId + ": " + string(dataAsString)
 }
+
 // GetString retrieves a string, transparently resolving *SecureValue.
 // This is the primary getter — replaces GetSecureString as the canonical method.
 func (c *DXConfiguration) GetString(dotPath string) (string, error) {
