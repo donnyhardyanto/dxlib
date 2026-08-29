@@ -24,3 +24,6 @@ go.work.sum
 # to build from a clean checkout and to verify module checksums.
 **/key.env
 
+
+# GoReleaser build output.
+dist/

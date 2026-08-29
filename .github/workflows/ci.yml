@@ -1,0 +1,93 @@
+# The one question CodeQL cannot answer: does this module build the way a
+# consumer builds it?
+#
+# CodeQL runs on every push here and reports success. Its Go autobuilder resolves
+# dependencies itself, so it built and analysed 7245b73 -- a tree with no go.sum,
+# which no consumer could build -- and went green for two weeks. Local
+# development did the same, because it always runs inside a Go workspace.
+#
+# So this workflow is deliberately the plainest thing that could work, and its
+# value is entirely in what it does NOT do:
+#
+#   * no `-mod=mod`, ever. Readonly is the default and it is the whole point: a
+#     missing go.sum entry has to be an error, not something the build repairs.
+#   * no workspace. GOWORK=off is set for the job, because this repository is
+#     consumed as a module, not developed as part of one.
+#
+# Adding either would turn this back into a green tick that means nothing.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GOWORK: "off"
+
+jobs:
+  check:
+    name: build, vet, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Fails if go.sum is incomplete, which is the defect this exists to catch.
+      # `go mod download` without arguments verifies what go.mod requires against
+      # what go.sum records, and will not amend either.
+      - name: dependencies resolve from the committed go.sum
+        run: go mod download
+
+      # go.mod and go.sum must already be what tidy would produce. Catches the
+      # inverse of the above: a dependency dropped from the code but left in the
+      # manifest, and a require line no import justifies.
+      - name: go.mod and go.sum are tidy
+        run: |
+          cp go.mod go.mod.orig
+          cp go.sum go.sum.orig
+          go mod tidy
+          diff -u go.mod.orig go.mod || { echo "::error::go.mod is not tidy; run 'go mod tidy'"; exit 1; }
+          diff -u go.sum.orig go.sum || { echo "::error::go.sum is not tidy; run 'go mod tidy'"; exit 1; }
+          rm go.mod.orig go.sum.orig
+
+      - name: build
+        run: go build ./...
+
+      # vet does not run under `go build`, only under `go test`. That is exactly
+      # how a non-constant format string in log/log.go reached main.
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test -race -count=1 ./...
+
+  # Kept separate so a formatting nit cannot mask a real failure above, and so it
+  # can be read as advisory rather than blocking.
+  format:
+    name: gofmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi

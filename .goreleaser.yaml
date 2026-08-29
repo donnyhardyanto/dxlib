@@ -1,0 +1,60 @@
+# dxlib ships no binaries. Go consumers fetch it by module path and tag, so a
+# "release" here is a checksummed source archive and a changelog -- nothing is
+# compiled, and `builds` is skipped for exactly that reason.
+#
+# Its value is the changelog. Two releases in one week carried behaviour changes
+# that consumers had to be told about (GetBool no longer returning true for zero;
+# SQLExpression.String no longer escaping), and both were written by hand into
+# the tag message. Grouping commits by conventional-commit prefix makes the next
+# one assemble itself, and `fix(db):` lands under Bug fixes without anyone
+# remembering to put it there.
+version: 2
+
+project_name: dxlib
+
+before:
+  hooks:
+    # Must hold before anything is published. The workspace is off because that
+    # is how a consumer resolves this module -- see .github/workflows/ci.yml for
+    # why that distinction is the whole point.
+    - go mod download
+    - go build ./...
+    - go vet ./...
+    - go test ./...
+
+builds:
+  - skip: true
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Bug fixes
+      regexp: '^fix(\([^)]*\))?:'
+      order: 0
+    - title: Features
+      regexp: '^feat(\([^)]*\))?:'
+      order: 1
+    - title: Tests
+      regexp: '^test(\([^)]*\))?:'
+      order: 2
+    - title: Build and dependencies
+      regexp: '^chore(\([^)]*\))?:'
+      order: 3
+    - title: Other
+      order: 99
+  filters:
+    exclude:
+      - '^docs:'
+      - '^style:'
+      - '^Merge '
+
+release:
+  draft: false
+  prerelease: auto
+  # The tag message is written by hand and carries the consumer-facing warnings.
+  # GoReleaser appends its changelog beneath it rather than replacing it.
+  mode: append
+  footer: |
+    ---
+    Full module path: `github.com/donnyhardyanto/dxlib`

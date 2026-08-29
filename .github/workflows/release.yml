@@ -1,0 +1,45 @@
+# Runs GoReleaser when a version tag is pushed. The tag itself is still cut by
+# hand, because the cross-repo release order (dxlib -> bpm7-common ->
+# bpm7-worker-library -> bpm7-manager -> bpm7) is a judgement call GoReleaser
+# has no view of: each gitlink references a commit that must already exist on
+# origin.
+#
+# What this automates is the part that is mechanical and was being done by hand:
+# building the changelog and publishing the GitHub release. The tag message,
+# which carries the consumer-facing warnings, is written by a person and kept --
+# `mode: append` in .goreleaser.yaml puts the generated changelog beneath it.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  GOWORK: "off"
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # GoReleaser needs the full history and all tags to build a changelog
+          # against the previous release.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
