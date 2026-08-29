@@ -183,6 +183,9 @@ func executeEncryptedUpdate(
 		if value == nil {
 			whereClauses = append(whereClauses, fieldName+" IS NULL")
 		} else if sqlExpr, ok := value.(db.SQLExpression); ok {
+			// Raw on every engine, deliberately: this builder emits POSITIONAL
+			// placeholders and executes through Queryx, so sqlx.Named never runs
+			// and there is no "::" for anything to un-double.
 			whereClauses = append(whereClauses, sqlExpr.String())
 		} else {
 			whereClauses = append(whereClauses, fmt.Sprintf("%s = %s", fieldName, placeholder(dbType, argIndex)))

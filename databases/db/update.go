@@ -35,7 +35,7 @@ func SQLPartUpdateSetFieldValues(setFieldValues utils.JSON, driverName string) (
 		} else {
 			switch v := v.(type) {
 			case SQLExpression:
-				setPart = formattedKey + "=" + v.String()
+				setPart = formattedKey + "=" + SQLExpressionForDriver(v, driverName)
 			default:
 				setPart = formattedKey + "=:" + k
 			}

@@ -61,10 +61,18 @@ func Exec(ctx context.Context, db *sqlx.DB, sqlStatement string, sqlArguments ut
 
 	dbt := base.StringToDXDatabaseType(db.DriverName())
 
-	// First, convert named parameters to positional parameters (? placeholders)
-	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert named parameters")
+	// Convert named parameters to positional (? placeholders) for the engines
+	// that consume sqlx's output. Oracle is skipped deliberately: its branch
+	// below re-derives from the ORIGINAL SQL because go-ora binds by name, so
+	// running this could only ever fail -- and it does. A SQLExpression reaches
+	// Oracle with its colons intact (they must not be doubled, since nothing
+	// un-doubles them there), and sqlx reads ':30' inside a literal as a named
+	// parameter it cannot find.
+	if dbt != base.DXDatabaseTypeOracle {
+		modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert named parameters")
+		}
 	}
 
 	// Then handle databases-specific parameter styles
@@ -113,10 +121,18 @@ func TxExec(
 
 	dbt := base.StringToDXDatabaseType(tx.DriverName())
 
-	// First, convert named parameters to positional parameters (? placeholders)
-	modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert named parameters")
+	// Convert named parameters to positional (? placeholders) for the engines
+	// that consume sqlx's output. Oracle is skipped deliberately: its branch
+	// below re-derives from the ORIGINAL SQL because go-ora binds by name, so
+	// running this could only ever fail -- and it does. A SQLExpression reaches
+	// Oracle with its colons intact (they must not be doubled, since nothing
+	// un-doubles them there), and sqlx reads ':30' inside a literal as a named
+	// parameter it cannot find.
+	if dbt != base.DXDatabaseTypeOracle {
+		modifiedSQL, args, err = sqlx.Named(sqlStatement, sqlArguments)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert named parameters")
+		}
 	}
 
 	// Then handle databases-specific parameter styles

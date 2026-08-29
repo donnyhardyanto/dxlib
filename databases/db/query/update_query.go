@@ -28,7 +28,8 @@ func buildUpdateSQL(driverName string, qb *builder.UpdateQueryBuilder) (string, 
 	args := utils.JSON{}
 	for fieldName, value := range qb.SetFields {
 		if expr, ok := value.(databaseDb.SQLExpression); ok {
-			setParts = append(setParts, fieldName+"="+expr.String())
+			setParts = append(setParts,
+				fieldName+"="+databaseDb.SQLExpressionForDriver(expr, driverName))
 		} else {
 			setParts = append(setParts, fieldName+"=:"+fieldName)
 			args[fieldName] = value

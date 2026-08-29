@@ -492,7 +492,7 @@ func executeEncryptedSelect(
 		if value == nil {
 			qb.And(qb.QuoteIdentifier(fieldName) + " IS NULL")
 		} else if sqlExpr, ok := value.(db.SQLExpression); ok {
-			qb.And(sqlExpr.String())
+			qb.And(db.SQLExpressionForDatabaseType(sqlExpr, qb.DbType))
 		} else {
 			paramName := qb.GenerateParamName(fieldName)
 			qb.AndWithParam(

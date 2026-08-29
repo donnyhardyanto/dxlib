@@ -31,7 +31,8 @@ func buildInsertSQL(driverName string, qb *builder.InsertQueryBuilder) (string, 
 	for fieldName, value := range qb.SetFields {
 		columns = append(columns, fieldName)
 		if expr, ok := value.(databaseDb.SQLExpression); ok {
-			valuePlaceholders = append(valuePlaceholders, expr.String())
+			valuePlaceholders = append(valuePlaceholders,
+				databaseDb.SQLExpressionForDriver(expr, driverName))
 		} else {
 			valuePlaceholders = append(valuePlaceholders, ":"+fieldName)
 			args[fieldName] = value

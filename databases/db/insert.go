@@ -36,7 +36,7 @@ func SQLPartInsertFieldNamesFieldValues(insertKeyValues utils.JSON, driverName s
 		}
 		switch v.(type) {
 		case SQLExpression:
-			fieldValues = fieldValues + v.(SQLExpression).String()
+			fieldValues = fieldValues + SQLExpressionForDriver(v.(SQLExpression), driverName)
 		default:
 			fieldValues = fieldValues + ":" + k
 		}

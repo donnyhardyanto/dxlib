@@ -528,8 +528,9 @@ func SQLPartWhereAndFieldNameValues(whereKeyValues utils.JSON, driverName string
 		} else {
 			switch v := v.(type) {
 			case SQLExpression:
-				// Handle custom SQL expressions
-				condition = v.String()
+				// Raw on Oracle, colon-doubled everywhere else: only the sqlx
+				// engines run the named-parameter pass that un-doubles it.
+				condition = SQLExpressionForDriver(v, driverName)
 			default:
 				// Handle regular equality conditions
 				condition = formattedColumn + "=:" + k
