@@ -1,6 +1,6 @@
 module github.com/donnyhardyanto/dxlib
 
-go 1.26.6
+go 1.27.0
 
 require (
 	firebase.google.com/go/v4 v4.21.0
@@ -90,7 +90,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lib/pq v1.11.2 // indirect
+	github.com/lib/pq v1.12.3 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
