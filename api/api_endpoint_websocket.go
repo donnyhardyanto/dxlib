@@ -119,6 +119,8 @@ func (p *DXAPIEndPoint) runWSLoop(aepr *DXAPIEndPointRequest) {
 					return
 				}
 			case <-ticker.C:
+				// Runs on this goroutine, so a hook that writes the connection
+				// itself is still serialised against the sends above.
 				if p.OnWSPeriodic != nil {
 					if err := p.OnWSPeriodic(aepr); err != nil {
 						return
@@ -148,7 +150,11 @@ func (p *DXAPIEndPoint) runWSLoop(aepr *DXAPIEndPointRequest) {
 			continue
 		}
 		if len(response) > 0 {
-			if err := client.Conn.WriteMessage(websocket.TextMessage, response); err != nil {
+			// Through Send, never straight to the connection: gorilla allows one
+			// writer and the pump is it. Writing here would be a second.
+			select {
+			case client.Send <- response:
+			case <-aepr.Context.Done():
 				return
 			}
 		}
@@ -202,8 +208,16 @@ func (p *DXAPIEndPoint) WSClients() []*DXAPIEndPointWebSocketClient {
 
 // WSBroadcast queues a message for every connected client, skipping any whose
 // buffer is already full rather than blocking the caller on a slow reader.
+//
+// The read lock is held across the sends. wsUnregister closes Send under the
+// write lock, and a closed channel is ready rather than blocked, so a send
+// racing an unregister would take the default arm on a live client and panic on
+// a closed one. Holding the lock is what keeps the channel open for the send.
 func (p *DXAPIEndPoint) WSBroadcast(message []byte) (delivered int) {
-	for _, client := range p.WSClients() {
+	set := p.wsClientSetEnsure()
+	set.mu.RLock()
+	defer set.mu.RUnlock()
+	for client := range set.clients {
 		select {
 		case client.Send <- message:
 			delivered++

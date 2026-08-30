@@ -128,7 +128,7 @@ func (o *DXOrganization) ApplyData(d utils.JSON) (err error) {
 	}
 
 	o.Applications = d["applications"].(utils.JSON)
-	o.Database = databases.Manager.Databases[o.DatabaseNameId]
+	o.Database = databases.Manager.Get(o.DatabaseNameId)
 	o.Redis = redis.Manager.Redises[o.RedisNameId]
 	o.AccessTokenTimeoutDurationSec, err = json2.GetInt64(d, "access_token_timeout_duration_sec")
 	if err != nil {

@@ -79,7 +79,7 @@ func (t *DXRawTable) EnsureDatabase() error {
 // PostgreSQL stays the fallback for a nameid that is not registered (yet).
 func (t *DXRawTable) GetDbType() base.DXDatabaseType {
 	if t.Database == nil {
-		if d, ok := databases.Manager.Databases[t.DatabaseNameId]; ok && d != nil {
+		if d := databases.Manager.Get(t.DatabaseNameId); d != nil {
 			t.Database = d
 		}
 	}

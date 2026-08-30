@@ -4,9 +4,15 @@ import (
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"sync"
 )
 
 type DXDatabaseManager struct {
+	// mu guards Databases. GetOrCreate is reached from request goroutines --
+	// the first request for a tenant after a restart takes the create branch
+	// while other requests are reading -- and a concurrent map read and write
+	// is a fatal error in Go that no recover can catch.
+	mu        sync.RWMutex
 	Databases map[string]*DXDatabase
 	Scripts   map[string]*DXDatabaseScript
 }
@@ -24,6 +30,14 @@ func (dm *DXDatabaseManager) NewDatabase(nameId string, isConnectAtStart, mustBe
 		MustConnected:        mustBeConnected,
 		Connected:            false,
 		ConcurrencySemaphore: dbSemaphore,
+	}
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+	// Checked again under the write lock: two goroutines can both miss the
+	// read above, and the loser must not replace a handle the winner has
+	// already handed out and possibly connected.
+	if existing, exists := dm.Databases[nameId]; exists {
+		return existing
 	}
 	dm.Databases[nameId] = &d
 	return &d
@@ -102,9 +116,21 @@ func (dm *DXDatabaseManager) DisconnectAll() (err error) {
 	return err
 }
 
+// Get returns an already-registered database, or nil. Unlike GetOrCreate it
+// registers nothing, which is what a caller wants when a missing entry means
+// "not configured yet" rather than "make me one".
+func (dm *DXDatabaseManager) Get(nameId string) *DXDatabase {
+	dm.mu.RLock()
+	defer dm.mu.RUnlock()
+	return dm.Databases[nameId]
+}
+
 // GetOrCreate gets an existing databases or creates a new one with default settings
 func (dm *DXDatabaseManager) GetOrCreate(nameId string) *DXDatabase {
-	if d, exists := dm.Databases[nameId]; exists {
+	dm.mu.RLock()
+	d, exists := dm.Databases[nameId]
+	dm.mu.RUnlock()
+	if exists {
 		return d
 	}
 	return dm.NewDatabase(nameId, false, false)
