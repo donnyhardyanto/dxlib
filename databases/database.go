@@ -715,6 +715,23 @@ func (d *DXDatabase) Tx(ctx context.Context, log *log.DXLog, isolationLevel sql.
 		if err != nil {
 			return err
 		}
+		// A panic in the callback unwinds straight past the rollback below, and
+		// nothing else releases the transaction: database/sql has no finalizer
+		// for one, and its only automatic rollback waits on the context, which
+		// for the context.Background() callers never fires. The connection and
+		// any FOR UPDATE locks it holds would be gone for the life of the
+		// process. Roll back, then re-panic so the recover points above still
+		// see what they saw before.
+		defer func() {
+			if r := recover(); r != nil {
+				// A panic after a successful commit makes Rollback return
+				// ErrTxDone, which is not worth an error line.
+				if errTx := tx.Rollback(); errTx != nil && errTx != sql.ErrTxDone {
+					log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK_ON_PANIC(%v)", errTx.Error())
+				}
+				panic(r)
+			}
+		}()
 		err = callback(tx)
 		if err != nil {
 			log.Errorf(err, "TX_ERROR_IN_CALLBACK: %+v", err)
@@ -751,6 +768,16 @@ func (d *DXDatabase) Tx(ctx context.Context, log *log.DXLog, isolationLevel sql.
 		Log:      log,
 		Ctx:      ctx,
 	}
+	// See the note in the oracle branch: without this a panic leaves the
+	// transaction open for the life of the process.
+	defer func() {
+		if r := recover(); r != nil {
+			if errTx := tx.Rollback(); errTx != nil && errTx != sql.ErrTxDone {
+				log.Errorf(errTx, "SHOULD_NOT_HAPPEN:ERROR_IN_ROLLBACK_ON_PANIC(%v)", errTx.Error())
+			}
+			panic(r)
+		}
+	}()
 	err = callback(dtx)
 	if err != nil {
 		log.Errorf(err, "TX_ERROR_IN_CALLBACK: (%v)", err.Error())
