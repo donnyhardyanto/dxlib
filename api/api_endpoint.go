@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
@@ -120,18 +121,52 @@ type DXAPIEndPointResponsePossibility struct {
 
 type DXAPIEndPointExecuteFunc func(aepr *DXAPIEndPointRequest) (err error)
 
+// DXAPIEndPointWSOpenFunc runs once per connection, before the read loop starts.
+// Returning an error closes the connection without running OnWSClose.
+type DXAPIEndPointWSOpenFunc func(aepr *DXAPIEndPointRequest) (err error)
+
+// DXAPIEndPointWSMessageFunc handles one inbound frame. A non-empty response is
+// written straight back to the sender. This is where an application's own
+// protocol lives -- the library never looks inside the bytes.
+type DXAPIEndPointWSMessageFunc func(aepr *DXAPIEndPointRequest, message []byte) (response []byte, err error)
+
+// DXAPIEndPointWSCloseFunc runs once, after the read loop ends, however it ended.
+type DXAPIEndPointWSCloseFunc func(aepr *DXAPIEndPointRequest)
+
+// DXAPIEndPointWSPeriodicFunc runs on every WSPeriodicInterval tick for as long
+// as the connection is open, for whatever an application needs to push without
+// being asked.
+type DXAPIEndPointWSPeriodicFunc func(aepr *DXAPIEndPointRequest) (err error)
+
 type DXAPIEndPointResponsePossibilities map[string]DXAPIEndPointResponsePossibility
 type DXAPIEndPoint struct {
-	Owner                   *DXAPI
-	Title                   string
-	Uri                     string
-	Method                  string
-	EndPointType            DXAPIEndPointType
-	Description             string
-	RequestContentType      utilsHttp.RequestContentType
-	Parameters              []DXAPIEndPointParameter
-	OnExecute               DXAPIEndPointExecuteFunc
-	OnWSLoop                DXAPIEndPointExecuteFunc
+	Owner              *DXAPI
+	Title              string
+	Uri                string
+	Method             string
+	EndPointType       DXAPIEndPointType
+	Description        string
+	RequestContentType utilsHttp.RequestContentType
+	Parameters         []DXAPIEndPointParameter
+	OnExecute          DXAPIEndPointExecuteFunc
+	OnWSLoop           DXAPIEndPointExecuteFunc
+
+	// The hooks below drive the built-in WebSocket loop, used when OnWSLoop is
+	// nil. Each application differs only in what it does on open and close and
+	// in how it reads and writes a message, so those are all that is left to
+	// supply; the read loop, write pump, keepalive and client registry are the
+	// same everywhere and live in the library.
+	OnWSOpen           DXAPIEndPointWSOpenFunc
+	OnWSMessage        DXAPIEndPointWSMessageFunc
+	OnWSClose          DXAPIEndPointWSCloseFunc
+	OnWSPeriodic       DXAPIEndPointWSPeriodicFunc
+	WSPeriodicInterval time.Duration
+
+	// Endpoints are copied by value in places, so the client set sits behind a
+	// pointer: every copy then shares the one registry instead of carrying a
+	// lock that cannot legally be copied.
+	wsClients *wsClientSet
+
 	ResponsePossibilities   *DXAPIEndPointResponsePossibilities
 	Middlewares             []DXAPIEndPointExecuteFunc
 	Privileges              []string

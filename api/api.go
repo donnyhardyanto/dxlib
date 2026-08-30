@@ -334,6 +334,49 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	return &ae
 }
 
+// NewWSEndPoint registers a WebSocket endpoint served by the library's own
+// lifecycle: it opens, reads, writes and closes, and calls back for the parts
+// that differ between applications.
+//
+// onMessage is where an application's protocol lives -- the bytes are never
+// inspected here. onPeriodic runs every periodicInterval for anything that has
+// to be pushed unasked; with no periodic hook the same tick sends a ping, which
+// is what stops an idle connection being reaped in between. A zero interval
+// means thirty seconds.
+//
+// Use NewEndPoint with an onWSLoop instead when an endpoint wants the whole
+// lifecycle to itself.
+func (a *DXAPI) NewWSEndPoint(title, description, uri, method string,
+	onOpen DXAPIEndPointWSOpenFunc, onMessage DXAPIEndPointWSMessageFunc,
+	onClose DXAPIEndPointWSCloseFunc, onPeriodic DXAPIEndPointWSPeriodicFunc,
+	periodicInterval time.Duration, middlewares []DXAPIEndPointExecuteFunc,
+	privileges []string, rateLimitGroupNameId string) *DXAPIEndPoint {
+
+	t := a.FindEndPointByURI(uri)
+	if t != nil {
+		log.Log.Fatalf("Duplicate endpoint uri %s", uri)
+	}
+	ae := DXAPIEndPoint{
+		Owner:                a,
+		Title:                title,
+		Description:          description,
+		Uri:                  uri,
+		Method:               method,
+		EndPointType:         EndPointTypeWS,
+		RequestContentType:   utilsHttp.RequestContentTypeNone,
+		OnWSOpen:             onOpen,
+		OnWSMessage:          onMessage,
+		OnWSClose:            onClose,
+		OnWSPeriodic:         onPeriodic,
+		WSPeriodicInterval:   periodicInterval,
+		Middlewares:          middlewares,
+		Privileges:           privileges,
+		RateLimitGroupNameId: rateLimitGroupNameId,
+	}
+	a.EndPoints = append(a.EndPoints, ae)
+	return &ae
+}
+
 // dbContextCarrier is a local interface for extracting DB operation context
 // from errors without importing databases/db (avoids circular imports).
 // Go structural typing means any error implementing these methods matches.
