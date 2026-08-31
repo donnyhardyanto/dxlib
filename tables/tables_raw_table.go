@@ -457,41 +457,17 @@ func (t *DXRawTable) DoRequestSearchPagingList(aepr *api.DXAPIEndPointRequest, q
 	return nil
 }
 
+// RequestSearchPagingDownload builds a query builder and hands it to
+// DoRequestSearchPagingDownload, which reads search_text, filter_key_values and
+// order_by from the request and applies them.
+//
+// It used to read and apply all three here as well, and then call a function that
+// did the same again on the same builder, so every predicate and every sort key
+// landed on the statement twice. The values were identical both times, which is
+// why the rows came back correct and it went unnoticed. This mirrors
+// RequestSearchPagingList, which has always only built and delegated.
 func (t *DXRawTable) RequestSearchPagingDownload(aepr *api.DXAPIEndPointRequest) error {
-	_, searchText, err := aepr.GetParameterValueAsString("search_text")
-	if err != nil {
-		return err
-	}
-
-	isFilterKeyValuesExist, filterKeyValues, err := aepr.GetParameterValueAsJSON("filter_key_values")
-	if err != nil {
-		return err
-	}
-
-	_, orderByArray, err := aepr.GetParameterValueAsArrayOfAny("order_by")
-	if err != nil {
-		return err
-	}
-
-	if err := t.EnsureDatabase(); err != nil {
-		return err
-	}
-
-	qb := t.NewTableSelectQueryBuilder()
-	if searchText != "" {
-		qb.SearchLike(searchText, t.SearchTextFieldNames...)
-	}
-	if isFilterKeyValuesExist && filterKeyValues != nil {
-		err := t.processFilterKeyValues(qb, filterKeyValues)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Parse order_by into OrderBy calls with validation
-	qb.ParseOrderByFromArray(orderByArray)
-
-	return t.DoRequestSearchPagingDownload(aepr, qb)
+	return t.DoRequestSearchPagingDownload(aepr, t.NewTableSelectQueryBuilder())
 }
 
 // DoRequestSearchPagingDownload executes paging with a pre-built TableSelectQueryBuilder and writes file download response.
