@@ -246,6 +246,16 @@ func TxCountWithSelectQueryBuilder2(ctx context.Context, dtx *databases.DXDataba
 		query += " " + havingClause
 	}
 
+	// A grouped count has to count the groups, not the rows in one of them.
+	// SELECT COUNT(*) ... GROUP BY agent returns a row per agent carrying that
+	// agent's row count, and the read below takes only the first, so a caller
+	// paging a grouped list was told how many rows the first group held. Wrapping
+	// the grouped query and counting its output asks the question that was meant.
+	// HAVING has to travel inside the wrapper with the GROUP BY it belongs to.
+	if groupByClause != "" {
+		query = "SELECT COUNT(*) AS count FROM (" + query + ") AS _grouped"
+	}
+
 	_, row, err := named.TxNamedQueryRow2(ctx, dtx, query, args, nil)
 	if err != nil {
 		return 0, err
