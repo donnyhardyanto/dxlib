@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"time"
 
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
@@ -29,8 +30,29 @@ func (aepr *DXAPIEndPointRequest) ProxyHTTPAPIClient(method string, url string, 
 	return statusCode, r, err
 }
 
+// HTTPClientDoTimeout bounds one outbound exchange made by HTTPClientDo and
+// HTTPClientDoBodyAsJSONString: the dial, the request, the response, and the
+// body read that DumpResponse performs before returning.
+//
+// The zero value means no timeout, which is what every release up to and
+// including v1.118.2 did -- so this changes nothing for a consumer that does not
+// set it. A consumer that wants its proxy calls bounded assigns this once at
+// start-up, before any request is served; it is not safe to change while
+// requests are in flight.
+//
+// Without a bound, a downstream service that accepts the connection and never
+// answers holds the calling handler's goroutine and its socket open for ever.
+// The server's own WriteTimeout drops the *caller's* connection but does not
+// unwind the handler, so every retry against a wedged downstream stacks another
+// leaked goroutine.
+//
+// Keep any value below the server's WriteTimeoutSec (default 300), or the
+// deadline passes before the 502 above can be written and the caller gets a torn
+// connection instead of an answer.
+var HTTPClientDoTimeout time.Duration
+
 func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters utils.JSON, headers map[string]string) (response *http.Response, err error) {
-	var client = &http.Client{}
+	var client = &http.Client{Timeout: HTTPClientDoTimeout}
 	var request *http.Request
 	effectiveUrl := url
 	parametersInUrl := ""
@@ -73,7 +95,20 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 
 	response, err = client.Do(request)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_REQUEST:%v", err.Error())
+		// 502, not 422. This is the exchange with the downstream service failing
+		// -- refused, reset, or timed out -- not a caller sending something
+		// unprocessable, and 422 sent an operator looking at the request body.
+		//
+		// The label was copied from the DumpRequest branch above; the one the
+		// author intended is in the sibling function below, which handles this
+		// same line correctly.
+		//
+		// This also unblocks three callers that already meant 502 and could not
+		// say so: WriteResponse* is first-writer-wins, so the 422 written here
+		// suppressed HTTPClient2's DIAL_ERROR, ProxyHTTPAPIClient's
+		// PROXY_HTTP_API_CLIENT_ERROR, and any guarded fallback a consumer wrote
+		// around this call.
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "", "ERROR_IN_MAKE_HTTP_REQUEST:%v", err.Error())
 		return nil, err
 	}
 
@@ -87,7 +122,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 }
 
 func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url string, parametersAsJSONString string, headers map[string]string) (response *http.Response, err error) {
-	var client = &http.Client{}
+	var client = &http.Client{Timeout: HTTPClientDoTimeout}
 	var request *http.Request
 	effectiveUrl := url
 
@@ -112,7 +147,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 
 	response, err = client.Do(request)
 	if err != nil {
-		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_MAKE_HTTP_REQUEST:%v", err.Error())
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "", "ERROR_IN_MAKE_HTTP_REQUEST:%v", err.Error())
 		return nil, err
 	}
 
