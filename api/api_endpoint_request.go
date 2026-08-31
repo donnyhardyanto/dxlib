@@ -6,17 +6,20 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/language"
 	"github.com/donnyhardyanto/dxlib/log"
+	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 	"github.com/donnyhardyanto/dxlib/utils/lv"
@@ -972,6 +975,8 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			return aepr.preProcessRequestAsApplicationOctetStream()
 		case utilsHttp.RequestContentTypeApplicationJSON:
 			return aepr.preProcessRequestAsApplicationJSON()
+		case utilsHttp.RequestContentTypeMultiPartFormData:
+			return aepr.preProcessRequestAsMultiPartFormData()
 		default:
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request content-type is not supported yet (%v)", aepr.EndPoint.RequestContentType)
 		}
@@ -979,6 +984,104 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "Request method is not supported yet (%v)", aepr.EndPoint.Method)
 	}
 	return nil
+}
+
+const (
+	// defaultMultiPartMaxRequestBytes caps a whole multipart request when the
+	// endpoint declares no RequestMaxContentLength of its own. It is generous for
+	// a chat attachment -- a photo, a scan, a short clip -- and small enough that
+	// one request cannot fill the temp directory.
+	defaultMultiPartMaxRequestBytes int64 = 32 << 20
+	// multiPartMaxMemoryBytes is how much of the form is held in memory before
+	// ParseMultipartForm spills the rest to temp files. The file part is meant to
+	// spill: it is streamed to object storage rather than read into the process.
+	multiPartMaxMemoryBytes int64 = 10 << 20
+)
+
+// A file cannot travel inside a JSON body, so the endpoints that take one are
+// registered multipart. Until this existed the POST switch fell through to its
+// default and answered 422 before the handler ran, which left every file upload
+// endpoint dead.
+//
+// The value parts are surfaced exactly as JSON body keys are: each declared
+// parameter is looked up by name and handed to the same
+// processEndPointRequestParameterValues, so both transports agree on what a body
+// value becomes -- the same mandatory check, the same validation, and the same
+// silent drop of a part matching no declared parameter. The file part is left in
+// the parsed form for the handler to take with FormFile; it is never a declared
+// parameter, so nothing here binds it.
+func (aepr *DXAPIEndPointRequest) preProcessRequestAsMultiPartFormData() (err error) {
+	actualContentType := aepr.Request.Header.Get("Content-Type")
+	if actualContentType != "" && !strings.Contains(actualContentType, "multipart/form-data") {
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_IS_NOT_MULTIPART_FORM_DATA: %s", actualContentType)
+	}
+
+	// The Content-Length check at the top of PreProcessRequest is advisory: a
+	// chunked upload sends none and a wrong one can be sent deliberately, so the
+	// ceiling that counts is enforced here as the body is read.
+	maxRequestBytes := aepr.EndPoint.RequestMaxContentLength
+	if maxRequestBytes <= 0 {
+		maxRequestBytes = defaultMultiPartMaxRequestBytes
+	}
+	aepr.Request.Body = http.MaxBytesReader(*aepr.ResponseWriter, aepr.Request.Body, maxRequestBytes)
+
+	if err = aepr.Request.ParseMultipartForm(multiPartMaxMemoryBytes); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if stderrors.As(err, &maxBytesErr) {
+			return aepr.WriteResponseAndNewErrorf(http.StatusRequestEntityTooLarge, "", "REQUEST_MAX_CONTENT_LENGTH_EXCEEDED:%d", maxRequestBytes)
+		}
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_MULTIPART_FORM_CANT_BE_PARSED:%v", err.Error())
+	}
+
+	// Read from MultipartForm.Value rather than FormValue: FormValue merges the
+	// URL query into the body parameters, which would let a caller supply a body
+	// field from the query string of a request whose body says otherwise.
+	bodyAsJSON := utils.JSON{}
+	if aepr.Request.MultipartForm != nil {
+		for _, v := range aepr.EndPoint.Parameters {
+			formValues, ok := aepr.Request.MultipartForm.Value[v.NameId]
+			if !ok || len(formValues) == 0 {
+				continue
+			}
+			bodyAsJSON[v.NameId] = multiPartValueToNative(v.Type, formValues[0])
+		}
+	}
+
+	switch aepr.EndPoint.EndPointType {
+	case EndPointTypeHTTPJSON, EndPointTypeHTTPDownloadStream:
+		return aepr.processEndPointRequestParameterValues(bodyAsJSON)
+	default:
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_MULTIPART_ENDPOINT_TYPE_X_NOT_IMPLEMENTED_YET:%v", aepr.EndPoint.EndPointType)
+	}
+}
+
+// multiPartValueToNative maps one text form value to the type the parameter
+// resolvers expect, chosen from the declared type rather than guessed from the
+// text. Multipart carries every value as a string, so something has to decide
+// that "12" is a number where a session id is wanted and the literal text where
+// a caption is wanted; reading the declaration is what stops an all-digit caption
+// becoming a number and then being rejected as one. A value that does not parse
+// for its declared type is passed through untouched, so Validate reports the same
+// mismatch it would for JSON rather than this hiding it.
+func multiPartValueToNative(t dxlibTypes.APIParameterType, s string) any {
+	switch t {
+	case dxlibTypes.APIParameterTypeInt64, dxlibTypes.APIParameterTypeInt64P,
+		dxlibTypes.APIParameterTypeInt64ZP, dxlibTypes.APIParameterTypeNullableInt64,
+		dxlibTypes.APIParameterTypeID,
+		dxlibTypes.APIParameterTypeFloat64, dxlibTypes.APIParameterTypeFloat64P,
+		dxlibTypes.APIParameterTypeFloat64ZP:
+		if f, parseErr := strconv.ParseFloat(s, 64); parseErr == nil {
+			return f
+		}
+		return s
+	case dxlibTypes.APIParameterTypeBoolean:
+		if b, parseErr := strconv.ParseBool(s); parseErr == nil {
+			return b
+		}
+		return s
+	default:
+		return s
+	}
 }
 
 func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (err error) {
