@@ -628,6 +628,14 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 	rw.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	rw.Header().Set("X-Content-Type-Options", "nosniff")
 
+	// The status and headers are on the wire from here, so the request is
+	// committed: nothing can turn it into an error response any more. The flag has
+	// to say so now rather than after the write below, because the write is the
+	// thing that can fail -- and every error path from here checks this flag to
+	// decide whether it may still send JSON. Marked late, a failed write left it
+	// false and the framework appended an error object to the tail of a
+	// half-written spreadsheet, under a 200.
+	aepr.ResponseHeaderSent = true
 	rw.WriteHeader(http.StatusOK)
 	aepr.ResponseStatusCode = http.StatusOK
 
@@ -635,7 +643,6 @@ func (t *DXRawTable) DoRequestSearchPagingDownload(aepr *api.DXAPIEndPointReques
 		return err
 	}
 
-	aepr.ResponseHeaderSent = true
 	aepr.ResponseBodySent = true
 
 	return nil

@@ -446,28 +446,29 @@ func (r *DXObjectStorage) SendStreamObject(aepr *api.DXAPIEndPointRequest, filen
 	if originalFilename != "" {
 		responseWriter.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalFilename))
 	}
+	// Committed from here: the status is on the wire and nothing downstream may
+	// turn this into an error response. Marked before the copy rather than after,
+	// because the copy is what fails, and every error path checks this flag to
+	// decide whether it may still write JSON.
+	aepr.ResponseHeaderSent = true
 	responseWriter.WriteHeader(http.StatusOK)
 	aepr.ResponseStatusCode = http.StatusOK
 
-	// Use io.Pipe to stream the object, the thread will exist until it send all the content, even after the handler return to web server
-	reader, writer := io.Pipe()
-	go func() {
-		defer func() {
-			_ = writer.Close()
-		}()
-		_, err := io.Copy(writer, object)
-		if err != nil {
-			aepr.Log.Errorf(err, "PIPE_COPY_ERROR: %s", err.Error())
-		}
+	// Copied straight through rather than across a pipe and a goroutine. The
+	// goroutine bought nothing -- the handler waited on the other end of the pipe
+	// regardless -- and it put the copy on a different goroutine from the one
+	// serving the request, which is where a failure has to be raised: a panic on
+	// any other goroutine takes the process down instead of ending the response.
+	defer func() {
 		_ = object.Close()
 	}()
-
-	// Send the object stream
-	_, err = io.Copy(responseWriter, reader)
-	if err != nil {
-		return aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "SEND_STREAM_ERROR:%s", err.Error())
+	if _, err = io.Copy(responseWriter, object); err != nil {
+		// Answering with JSON now would append it to a half-sent file. The response
+		// is abandoned instead, so the framing ends short and every client reports
+		// a failed transfer rather than saving a truncated file as a whole one.
+		aepr.Log.Errorf(err, "SEND_STREAM_ERROR:%s", err.Error())
+		panic(http.ErrAbortHandler)
 	}
-	aepr.ResponseHeaderSent = true
 	aepr.ResponseBodySent = true
 	return nil
 }
