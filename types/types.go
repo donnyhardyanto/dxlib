@@ -376,13 +376,76 @@ var (
 		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "BOOLEAN", base.DXDatabaseTypeSQLServer: "BIT", base.DXDatabaseTypeMariaDB: "BOOLEAN", base.DXDatabaseTypeOracle: "NUMBER(1)"},
 	}
 
+	// DataTypeISO8601 is an instant, and the instant must survive the round trip.
+	//
+	// # Why MariaDB is text and the other three are not
+	//
+	// PostgreSQL, SQL Server and Oracle each have a column type that knows what an
+	// instant is: TIMESTAMP WITH TIME ZONE, DATETIMEOFFSET, TIMESTAMP WITH TIME
+	// ZONE. Write 12:00+07:00 and read back the same instant, whatever zone the
+	// reader is in.
+	//
+	// MariaDB and MySQL have no such type. There are two candidates and neither
+	// works:
+	//
+	//   DATETIME  stores the wall-clock digits it was handed and nothing else. The
+	//             offset is dropped on write, silently. Two processes in different
+	//             zones write "12:00" for instants seven hours apart and the column
+	//             cannot tell them apart afterwards -- the information is gone, not
+	//             merely unlabelled.
+	//   TIMESTAMP normalises to UTC internally, which sounds right, but renders
+	//             through the READER's session time_zone. The value you get back
+	//             depends on the connection that asks, not on the row. Measured:
+	//             written at session +07:00, the same row reads 12:00 at +07:00 and
+	//             05:00 at +00:00. It also spans only 1970-2038.
+	//
+	// So this type used to map to DATETIME on MariaDB, which meant a type whose
+	// whole promise is "instant with timezone" quietly kept the zone on three
+	// engines and discarded it on the fourth. No error, no warning, and nothing
+	// visible until a writer and a reader disagree about which zone the bare digits
+	// were in -- at which point every value is wrong by an offset and there is no
+	// way to tell by how much, because the offset was never recorded.
+	//
+	// Text is the only representation MariaDB has that can carry an offset at all,
+	// so on MariaDB this type is ISO-8601 text and the DDL is VARCHAR(35). That is
+	// a deliberate per-engine divergence: identical MEANING on all four, at the
+	// cost of a different column type on one, which is the correct trade when the
+	// alternative is a type that keeps its promise on three engines out of four.
+	//
+	// # The invariant that makes text safe
+	//
+	// Stored UTC-normalised and fixed-width -- "2006-01-02T15:04:05.000000000Z",
+	// always nine fractional digits, never trimmed. That is what makes byte order
+	// equal chronological order, which ORDER BY, BETWEEN, MIN and MAX on this
+	// column all silently depend on. Mixed offsets would break all of them: with
+	// "12:00:00+07:00" and "06:00:00Z" -- the same instant -- a string comparison
+	// answers by the leading digit and gets it backwards. Trimmed fractions break
+	// them too, because "…:05.5Z" sorts after "…:05.50Z" while being equal.
+	//
+	// Normalising to UTC discards the caller's original offset. That is the same
+	// thing PostgreSQL's TIMESTAMP WITH TIME ZONE does, and it is not a loss: this
+	// type is defined as an instant, and the instant is exact. A column that must
+	// remember which zone a human was standing in needs a second column for it.
+	//
+	// The write path enforces this. models.NormalizeFieldValueForDBType converts a
+	// time.Time to that layout when this type lands on a text column, because
+	// go-sql-driver/mysql would otherwise encode it as a MySQL datetime literal --
+	// "2026-08-31 12:00:00", no offset, not ISO-8601 -- which is worse than the
+	// DATETIME this replaced. VARCHAR(35) rather than (30) leaves room for an
+	// offset-bearing value written by something outside dxlib; such a value is
+	// still read correctly, it just does not sort against the normalised ones.
 	DataTypeISO8601 = DataType{
-		Description:        "Instant with timezone (RFC3339/ISO-8601); JSON string, Go time.Time; TIMESTAMP WITH TIME ZONE.",
+		Description:        "Instant with timezone (RFC3339/ISO-8601); JSON string, Go time.Time; TIMESTAMP WITH TIME ZONE, ISO-8601 text on MariaDB, which has no offset-bearing type.",
 		APIParameterType:   APIParameterTypeISO8601,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeTime,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "TIMESTAMP WITH TIME ZONE", base.DXDatabaseTypeSQLServer: "DATETIMEOFFSET", base.DXDatabaseTypeMariaDB: "DATETIME", base.DXDatabaseTypeOracle: "TIMESTAMP WITH TIME ZONE"},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: "TIMESTAMP WITH TIME ZONE", base.DXDatabaseTypeSQLServer: "DATETIMEOFFSET", base.DXDatabaseTypeMariaDB: "VARCHAR(35)", base.DXDatabaseTypeOracle: "TIMESTAMP WITH TIME ZONE"},
 	}
+
+	// ISO8601TextLayout is the on-disk form of DataTypeISO8601 wherever it is
+	// stored as text. Fixed width and UTC, so byte order is chronological order.
+	// See the comment on DataTypeISO8601 for why that matters.
+	ISO8601TextLayout = "2006-01-02T15:04:05.000000000Z07:00"
 
 	DataTypeDate = DataType{
 		Description:        "Calendar date, no time; JSON string YYYY-MM-DD, Go time.Time; DATE.",

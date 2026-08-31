@@ -564,7 +564,7 @@ func (t *ModelDBTable) buildInsertData(dbType base.DXDatabaseType, data utils.JS
 
 		cols = append(cols, fieldName)
 		vals = append(vals, t.placeholder(dbType, argIndex))
-		args = append(args, val)
+		args = append(args, NormalizeFieldValueForDBType(field, dbType, val))
 		argIndex++
 	}
 
@@ -748,7 +748,7 @@ func (t *ModelDBTable) buildUpdateData(dbType base.DXDatabaseType, data utils.JS
 		}
 
 		sets = append(sets, fmt.Sprintf("%s = %s", fieldName, t.placeholder(dbType, argIndex)))
-		args = append(args, val)
+		args = append(args, NormalizeFieldValueForDBType(field, dbType, val))
 		argIndex++
 	}
 
