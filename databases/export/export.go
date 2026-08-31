@@ -22,6 +22,13 @@ type ExportFormat string
 const (
 	CSV ExportFormat = "csv"
 	XLS ExportFormat = "xls"
+	// XLSX is what a caller asking for a spreadsheet almost always names, and
+	// tables.DXTableExportFormatEnumSetAll has offered it as a valid choice all
+	// along. It was missing here, so every request for it was answered
+	// "unsupported export format: xlsx" before a byte was written. It writes the
+	// same bytes as XLS: excelize produces OOXML either way, which is why the
+	// content type for XLS is already the OOXML one.
+	XLSX ExportFormat = "xlsx"
 )
 
 type ExportOptions struct {
@@ -76,7 +83,7 @@ func ExportToStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opt
 		contentType = "text/csv"
 		data, err := exportToCSVStream(rowsInfo, rows, opts)
 		return data, contentType, err
-	case XLS:
+	case XLS, XLSX:
 		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 		data, err := exportToXLSStream(rowsInfo, rows, opts)
 		return data, contentType, err
