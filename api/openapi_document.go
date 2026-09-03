@@ -122,6 +122,10 @@ type DXOpenAPIDocument struct {
 	Info       DXOpenAPIInfo                            `json:"info"`
 	Paths      *DXOpenAPIOrderedMap[*DXOpenAPIPathItem] `json:"paths"`
 	Components *DXOpenAPIComponents                     `json:"components,omitempty"`
+	// Security is the top-level security requirement. Only one is ever emitted
+	// here -- mutualTLS, and only when the API is actually served under
+	// mode: mtls. See openAPISecurityForTLS.
+	Security []DXOpenAPISecurityRequirement `json:"security,omitempty"`
 	// WebSocketEndPoints is x-dxlib-websocket-endpoints. OpenAPI 3.1 describes
 	// request/response operations and has no construct for a socket lifecycle,
 	// so WebSocket endpoints are listed here rather than under paths, where a
@@ -136,7 +140,29 @@ type DXOpenAPIInfo struct {
 }
 
 type DXOpenAPIComponents struct {
-	Schemas *DXOpenAPIOrderedMap[*DXOpenAPISchema] `json:"schemas,omitempty"`
+	Schemas         *DXOpenAPIOrderedMap[*DXOpenAPISchema]         `json:"schemas,omitempty"`
+	SecuritySchemes *DXOpenAPIOrderedMap[*DXOpenAPISecurityScheme] `json:"securitySchemes,omitempty"`
+}
+
+// DXOpenAPISecurityRequirement is one entry of a security list: a scheme name
+// mapped to its scopes. Only mutualTLS is emitted or accepted, and mutualTLS
+// takes no scopes, so the slice is always empty -- a non-empty one is refused
+// by the reader rather than ignored.
+type DXOpenAPISecurityRequirement map[string][]string
+
+// DXOpenAPISecurityScheme is a componentsecuritySchemes entry.
+//
+// Only type mutualTLS is ever produced. The body token that authenticates
+// these APIs is deliberately NOT modelled here: OpenAPI 3.1 offers apiKey
+// (in: query, header or cookie only), http, oauth2, openIdConnect and
+// mutualTLS, and none of them can express a credential carried inside the
+// request body. Declaring apiKey with in: body would produce a document that
+// is invalid and that every reader outside dxlib would misread. The token is a
+// request-body property, which is what it actually is, and it appears in the
+// requestBody schema like any other parameter. OPENAPI.md states this.
+type DXOpenAPISecurityScheme struct {
+	Type        string `json:"type"`
+	Description string `json:"description,omitempty"`
 }
 
 // DXOpenAPIPathItem holds one operation per HTTP method. dxlib registers one

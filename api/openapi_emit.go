@@ -8,6 +8,8 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/errors"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
+
+	utilsTLS "github.com/donnyhardyanto/dxlib/utils/tls"
 )
 
 // The emitter: registered endpoints -> DXOpenAPIDocument. It sits beside
@@ -53,6 +55,24 @@ func (a *DXAPI) OpenAPIDocument() (*DXOpenAPIDocument, error) {
 		return nil
 	}
 	state := openAPIStateOf(a)
+
+	// mutualTLS is the one security scheme this emitter produces, and only when
+	// it is true: the API has TLS in force with mode: mtls, so every caller
+	// really does have to present a certificate the listener verifies. Under
+	// https or http there is nothing to declare and neither field is emitted.
+	// The scheme is read off the API's own TLS state rather than passed in, so
+	// the document cannot claim a transport requirement the listener does not
+	// enforce.
+	if name, scheme := openAPISecurityForTLS(a); scheme != nil {
+		if doc.Components == nil {
+			doc.Components = &DXOpenAPIComponents{}
+		}
+		if doc.Components.SecuritySchemes == nil {
+			doc.Components.SecuritySchemes = NewDXOpenAPIOrderedMap[*DXOpenAPISecurityScheme]()
+		}
+		doc.Components.SecuritySchemes.Set(name, scheme)
+		doc.Security = []DXOpenAPISecurityRequirement{{name: {}}}
+	}
 
 	for i := range a.EndPoints {
 		ep := &a.EndPoints[i]
@@ -387,4 +407,30 @@ func openAPIPathTemplateNames(uri string) ([]string, error) {
 		names = append(names, name)
 	}
 	return names, nil
+}
+
+// OpenAPIMutualTLSSchemeName is the componentsecuritySchemes key used for the
+// mutualTLS requirement. It is fixed so that a document round-trips.
+const OpenAPIMutualTLSSchemeName = "mutualTLS"
+
+// openAPISecurityForTLS returns the security scheme to declare for this API's
+// transport, or ("", nil) when there is nothing true to say.
+//
+// Only mode: mtls produces one. That is the only case where the transport
+// itself authenticates the caller, and mutualTLS is a real OpenAPI 3.1 scheme
+// type, so the document states a fact rather than a convention. Authorization
+// stays in x-dxlib-privileges, which is a different question -- checked against
+// a member's ACLs after the token middleware has run -- and the two are not
+// alternatives.
+func openAPISecurityForTLS(a *DXAPI) (string, *DXOpenAPISecurityScheme) {
+	if a == nil || a.TLS == nil || a.TLS.Config == nil || a.TLS.Settings == nil {
+		return "", nil
+	}
+	if a.TLS.Settings.Mode != utilsTLS.ModeMTLS {
+		return "", nil
+	}
+	return OpenAPIMutualTLSSchemeName, &DXOpenAPISecurityScheme{
+		Type:        "mutualTLS",
+		Description: "Every caller presents a client certificate the listener verifies against its configured CA trust.",
+	}
 }

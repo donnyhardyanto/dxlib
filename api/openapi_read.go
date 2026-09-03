@@ -331,12 +331,11 @@ func openAPIYAMLValue(y *yaml.Node, pointer string) (*openAPINode, error) {
 var openAPIRefusedFields = map[string]string{
 	"oneOf": "SCHEMA_COMPOSITION_NOT_SUPPORTED", "anyOf": "SCHEMA_COMPOSITION_NOT_SUPPORTED",
 	"allOf": "SCHEMA_COMPOSITION_NOT_SUPPORTED", "not": "SCHEMA_COMPOSITION_NOT_SUPPORTED",
-	"discriminator":   "SCHEMA_COMPOSITION_NOT_SUPPORTED",
-	"callbacks":       "CALLBACKS_NOT_SUPPORTED",
-	"webhooks":        "WEBHOOKS_NOT_SUPPORTED",
-	"security":        "SECURITY_REQUIREMENTS_ARE_NOT_ENFORCED_BY_DXLIB_AND_ARE_REFUSED_RATHER_THAN_IGNORED",
-	"securitySchemes": "SECURITY_REQUIREMENTS_ARE_NOT_ENFORCED_BY_DXLIB_AND_ARE_REFUSED_RATHER_THAN_IGNORED",
-	"servers":         "NOT_CARRIED_BY_DXLIB", "tags": "NOT_CARRIED_BY_DXLIB", "externalDocs": "NOT_CARRIED_BY_DXLIB",
+	"discriminator": "SCHEMA_COMPOSITION_NOT_SUPPORTED",
+	"callbacks":     "CALLBACKS_NOT_SUPPORTED",
+	"webhooks":      "WEBHOOKS_NOT_SUPPORTED",
+
+	"servers": "NOT_CARRIED_BY_DXLIB", "tags": "NOT_CARRIED_BY_DXLIB", "externalDocs": "NOT_CARRIED_BY_DXLIB",
 	"deprecated": "NOT_CARRIED_BY_DXLIB", "links": "NOT_CARRIED_BY_DXLIB", "examples": "NOT_CARRIED_BY_DXLIB",
 	"example": "NOT_CARRIED_BY_DXLIB", "encoding": "NOT_CARRIED_BY_DXLIB", "style": "NOT_CARRIED_BY_DXLIB",
 	"explode": "NOT_CARRIED_BY_DXLIB", "allowReserved": "NOT_CARRIED_BY_DXLIB", "allowEmptyValue": "NOT_CARRIED_BY_DXLIB",
@@ -506,7 +505,7 @@ func openAPIScalar(n *openAPINode, pointer string) (any, error) {
 // --- document ------------------------------------------------------------------
 
 func openAPIReadDocument(root *openAPINode) (*DXOpenAPIDocument, error) {
-	if err := openAPIFields(root, "", "openapi", "info", "paths", "components", OpenAPIExtensionWebSocketEndPoints); err != nil {
+	if err := openAPIFields(root, "", "openapi", "info", "paths", "components", "security", OpenAPIExtensionWebSocketEndPoints); err != nil {
 		return nil, err
 	}
 	doc := &DXOpenAPIDocument{Paths: NewDXOpenAPIOrderedMap[*DXOpenAPIPathItem]()}
@@ -549,7 +548,7 @@ func openAPIReadDocument(root *openAPINode) (*DXOpenAPIDocument, error) {
 	}
 
 	if components := root.field("components"); components != nil {
-		if err := openAPIFields(components, "/components", "schemas"); err != nil {
+		if err := openAPIFields(components, "/components", "schemas", "securitySchemes"); err != nil {
 			return nil, err
 		}
 		doc.Components = &DXOpenAPIComponents{}
@@ -566,6 +565,34 @@ func openAPIReadDocument(root *openAPINode) (*DXOpenAPIDocument, error) {
 				doc.Components.Schemas.Set(name, s)
 			}
 		}
+		if schemes := components.field("securitySchemes"); schemes != nil {
+			if schemes.kind != openAPINodeObject {
+				return nil, openAPIWrongType(schemes, "/components/securitySchemes", "object")
+			}
+			// An empty securitySchemes declares nothing and is left nil, so it
+			// does not survive as a state distinct from being absent -- which
+			// would make emit -> read -> emit differ on a document that means
+			// exactly the same thing either way.
+			if len(schemes.keys) > 0 {
+				doc.Components.SecuritySchemes = NewDXOpenAPIOrderedMap[*DXOpenAPISecurityScheme]()
+			}
+			for _, name := range schemes.keys {
+				pointer := "/components/securitySchemes/" + openAPIPointerEscape(name)
+				sch, err := openAPIReadSecurityScheme(schemes.fields[name], pointer, name)
+				if err != nil {
+					return nil, err
+				}
+				doc.Components.SecuritySchemes.Set(name, sch)
+			}
+		}
+	}
+
+	if sec := root.field("security"); sec != nil {
+		reqs, err := openAPIReadSecurityRequirements(sec, "/security", doc.Components)
+		if err != nil {
+			return nil, err
+		}
+		doc.Security = reqs
 	}
 
 	if ws := root.field(OpenAPIExtensionWebSocketEndPoints); ws != nil {
@@ -1314,4 +1341,90 @@ func (v *openAPIValidator) schema(s *DXOpenAPISchema, pointer string) error {
 		}
 	}
 	return nil
+}
+
+// --- security ------------------------------------------------------------------
+//
+// The reader accepts exactly what the emitter produces, which here is one
+// scheme: mutualTLS, taking no scopes. Every other scheme type is refused by
+// name rather than ignored, for the same reason the rest of this file refuses
+// what it cannot model -- a document that declares an authentication
+// requirement dxlib does not enforce would be read as a guarantee it is not.
+//
+// apiKey is called out separately in the message because it is the one someone
+// will reach for to describe the body token, and it cannot: OpenAPI 3.1 allows
+// apiKey only in a query parameter, a header or a cookie. The body token is a
+// request-body property and is documented there. See OPENAPI.md.
+
+func openAPIReadSecurityScheme(n *openAPINode, pointer, name string) (*DXOpenAPISecurityScheme, error) {
+	if n.kind != openAPINodeObject {
+		return nil, openAPIWrongType(n, pointer, "object")
+	}
+	// The type is read and rejected BEFORE the field whitelist, so an apiKey
+	// scheme is reported as an unsupported scheme type rather than as an
+	// unknown "in" field. The type is the root cause; the extra fields are its
+	// symptoms, and naming a symptom sends the reader to the wrong fix.
+	t, err := openAPIRequiredString(n, pointer, "type")
+	if err != nil {
+		return nil, err
+	}
+	if t != "mutualTLS" {
+		detail := "ONLY_mutualTLS_IS_SUPPORTED"
+		if t == "apiKey" {
+			detail = "ONLY_mutualTLS_IS_SUPPORTED:apiKey_CANNOT_DESCRIBE_A_BODY_TOKEN_BECAUSE_OPENAPI_ALLOWS_in=query|header|cookie_ONLY:A_BODY_TOKEN_IS_A_requestBody_PROPERTY"
+		}
+		return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:security-scheme-type-%s:%s:%s", t, pointer, detail)
+	}
+	if name != OpenAPIMutualTLSSchemeName {
+		return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:security-scheme-name-%s:%s:THE_mutualTLS_SCHEME_MUST_BE_NAMED_%s_SO_A_DOCUMENT_ROUND_TRIPS", name, pointer, OpenAPIMutualTLSSchemeName)
+	}
+	if err := openAPIFields(n, pointer, "type", "description"); err != nil {
+		return nil, err
+	}
+	scheme := &DXOpenAPISecurityScheme{Type: t}
+	if scheme.Description, _, err = openAPIString(n, pointer, "description"); err != nil {
+		return nil, err
+	}
+	return scheme, nil
+}
+
+func openAPIReadSecurityRequirements(n *openAPINode, pointer string, components *DXOpenAPIComponents) ([]DXOpenAPISecurityRequirement, error) {
+	if n.kind != openAPINodeArray {
+		return nil, openAPIWrongType(n, pointer, "array")
+	}
+	var out []DXOpenAPISecurityRequirement
+	for i, item := range n.items {
+		itemPointer := fmt.Sprintf("%s/%d", pointer, i)
+		if item.kind != openAPINodeObject {
+			return nil, openAPIWrongType(item, itemPointer, "object")
+		}
+		req := DXOpenAPISecurityRequirement{}
+		for _, name := range item.keys {
+			namePointer := itemPointer + "/" + openAPIPointerEscape(name)
+			if name != OpenAPIMutualTLSSchemeName {
+				return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:security-requirement-%s:%s:ONLY_%s_IS_SUPPORTED", name, namePointer, OpenAPIMutualTLSSchemeName)
+			}
+			// A scheme has to be declared before it can be required, or the
+			// document asserts a requirement nothing defines.
+			if components == nil || components.SecuritySchemes == nil {
+				return nil, errors.Errorf("OPENAPI_SECURITY_SCHEME_NOT_DECLARED:%s:%s:DECLARE_IT_UNDER_components/securitySchemes", name, namePointer)
+			}
+			if _, ok := components.SecuritySchemes.Get(name); !ok {
+				return nil, errors.Errorf("OPENAPI_SECURITY_SCHEME_NOT_DECLARED:%s:%s:DECLARE_IT_UNDER_components/securitySchemes", name, namePointer)
+			}
+			scopes := item.fields[name]
+			if scopes.kind != openAPINodeArray {
+				return nil, openAPIWrongType(scopes, namePointer, "array")
+			}
+			// mutualTLS carries no scopes. A non-empty array is refused rather
+			// than dropped: whoever wrote it meant something by it, and dxlib
+			// would enforce none of it. Authorization is x-dxlib-privileges.
+			if len(scopes.items) != 0 {
+				return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:security-scopes:%s:mutualTLS_TAKES_NO_SCOPES:AUTHORIZATION_IS_%s", namePointer, OpenAPIExtensionPrivileges)
+			}
+			req[name] = []string{}
+		}
+		out = append(out, req)
+	}
+	return out, nil
 }

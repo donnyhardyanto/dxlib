@@ -232,13 +232,14 @@ paths:
 info: {title: a, version: "1"}
 security: [{bearer: []}]
 paths: {}
-`, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:security", "NOT_ENFORCED"}},
+`, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:security-requirement-bearer", "ONLY_mutualTLS_IS_SUPPORTED"}},
 		{"securitySchemes", `openapi: 3.1.0
 info: {title: a, version: "1"}
 paths: {}
 components:
-  securitySchemes: {}
-`, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:securitySchemes", "/components/securitySchemes"}},
+  securitySchemes:
+    mutualTLS: {type: http, scheme: bearer}
+`, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:security-scheme-type-http", "/components/securitySchemes/mutualTLS"}},
 		{"servers", `openapi: 3.1.0
 info: {title: a, version: "1"}
 servers: [{url: http://x}]

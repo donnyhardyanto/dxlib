@@ -299,9 +299,11 @@ server does.
 
 The failure this design exists to prevent is a construct quietly skipped in a
 definition that decides who may call what. A reader built on a general
-library with a permissive model would accept `security`, `oneOf` and
-`pattern`, carry them in a struct, and bind an endpoint that enforces none of
-them. So the reader is a strict walker: every object position has the list of
+library with a permissive model would accept `oneOf`, `pattern` and any
+`security` scheme, carry them in a struct, and bind an endpoint that enforces
+none of them. (`security` is the one of those that is now partly readable, and
+only the part that is true: `mutualTLS`, which the transport really does
+enforce. Section 6a.) So the reader is a strict walker: every object position has the list of
 keys it understands; a key on the list is read; a key off the list is an
 error. The message names the key and the JSON pointer (RFC 6901, with `/` in
 a path escaped as `~1`), and the line when the parser knows it:
@@ -504,6 +506,102 @@ registers `postgres`, and dxlib's `databases` package registers the same name,
 and both are in that service's own dependency graph. Its five endpoints were
 transcribed from `module_instance/define_api_push_notification.go` and
 `define_oam_system.go` with stand-in handlers, every other argument verbatim.
+
+**The fixture is anonymized, deliberately.** The copies under
+`api/testdata/openapi/` keep the shape of those registrations exactly -- 104
+operations across eight documents, the same parameter counts, required flags,
+content types and privilege cardinality -- but every operation path, privilege
+name, field name and service title is synthetic. Round-trip fidelity is a
+property of structure, not of names, so nothing is lost by it. Two reasons it
+is worth doing: a general-purpose library's test data has no business being one
+deployment's endpoint inventory, which is a coupling problem before it is
+anything else; and dxlib is a public repository, where a real corpus would
+publish an API surface and its authorization vocabulary to anyone who cloned
+it. The real documents stay in the service tree, which is where the drift check
+uses them.
+
+## 6a. Authentication, authorization, and what `security` may say
+
+Three different things, kept apart on purpose.
+
+**The body token is not a `security` scheme, and is not modelled as one.**
+Authentication on these APIs is a `token` field inside the JSON request body.
+OpenAPI 3.1 offers five scheme types -- `apiKey` (`in: query`, `header` or
+`cookie` only), `http`, `oauth2`, `openIdConnect`, `mutualTLS` -- and not one of
+them can express a credential carried in the body. Declaring `apiKey` with
+`in: body` would produce a document that is invalid and that every reader
+outside dxlib would misinterpret. So the token is what it actually is: a
+request-body property, appearing in the `requestBody` schema like any other
+parameter. That *is* the declaration; there is no `security` entry beside it.
+The reader says so when someone reaches for `apiKey`:
+
+```
+OPENAPI_UNSUPPORTED_CONSTRUCT:security-scheme-type-apiKey:/components/securitySchemes/mutualTLS:
+  ONLY_mutualTLS_IS_SUPPORTED:apiKey_CANNOT_DESCRIBE_A_BODY_TOKEN_BECAUSE_OPENAPI_ALLOWS_in=query|header|cookie_ONLY:
+  A_BODY_TOKEN_IS_A_requestBody_PROPERTY
+```
+
+**`mutualTLS` is emitted when, and only when, it is true.** If the API is
+served with TLS in force and `mode: mtls`, the document carries
+
+```json
+"components": { "securitySchemes": { "mutualTLS": { "type": "mutualTLS" } } },
+"security": [ { "mutualTLS": [] } ]
+```
+
+That is a real OpenAPI 3.1 scheme type, and under `mode: mtls` every caller
+really does have to present a certificate the listener verifies. Under `https`
+or `http` neither field is emitted, because there would be nothing true to say.
+The scheme is read off the API's own `DXAPI.TLS` rather than passed in, so a
+document cannot claim a transport requirement its listener does not enforce.
+The key is fixed at `mutualTLS` and the scope array must be empty; another key
+would not survive the round trip, and a scope array would be an authorization
+claim dxlib enforces nothing from.
+
+**Authorization stays in `x-dxlib-privileges`.** It is checked against a
+member's ACLs *after* the token middleware has run, and it is not an
+alternative to `security` -- the two answer different questions. Mapping
+privileges onto `security` would have meant inventing a scheme whose "scopes"
+were ACL names: a lie in the document, and one that external tooling would read
+as OAuth2 scopes issued by an authorization server.
+
+## 6b. Moving an existing API onto the document
+
+The order matters, because each step is checkable before the next.
+
+1. **Emit what is already registered.** Leave every `NewEndPoint` call alone
+   and write the document out, either from `OpenAPIAsJSON` in a small program
+   or by serving `APIHandlerOpenAPI` once and saving the response. This is a
+   faithful mirror of the current registrations, so if an endpoint is
+   under-privileged in Go today the document will say so in the same words --
+   it is a starting point, not an audit.
+2. **Commit the document** beside the service's other configuration, and read
+   it. This is the first time the API's shape, and which operations carry no
+   privilege at all, is answerable with `jq` instead of by grepping the
+   `define_api_*.go` files.
+3. **Replace the registrations with handlers.** Each `NewEndPoint` call becomes
+   a `RegisterHandler(operationId, handler, middlewares...)`, which takes the
+   middleware chain in the order `NewEndPoint` did. Everything else -- URI,
+   method, content type, parameters, privileges, rate-limit group, content
+   length ceiling -- comes from the document.
+4. **Load it.** `LoadOpenAPIFile` is fatal on any disagreement; `BindOpenAPI`
+   returns the error instead, for tests. Every endpoint is built before the
+   first is appended, so a document binds whole or not at all.
+5. **Let the drift check hold the two halves together.** From here on, an
+   `operationId` with no handler, or a handler with no `operationId`, stops the
+   process with both lists named.
+
+What does not move, and cannot: `OnExecute`, the middleware chain, and the
+WebSocket hooks. A document cannot carry a function, and naming middlewares as
+strings would be a second registry to keep in step with the first.
+
+**The honest size of this.** One OAM API with a handful of endpoints is an
+afternoon. `service-contact-center-api` is 83 operations, and converting it is
+a real project whose payoff arrives only when a team stops editing Go to change
+a parameter -- so it is worth doing per API, one at a time, with the drift check
+catching every mistake, and not worth doing as a single change. A service may
+bind a document for some of its APIs and keep the rest in code indefinitely;
+nothing in the design pushes toward a big-bang migration.
 
 ## 7. What this is not
 
