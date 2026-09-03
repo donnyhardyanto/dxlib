@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -57,6 +58,22 @@ type DXAPIEndPointRequest struct {
 	EffectiveRequestHeader map[string]string
 	DecryptedRequestBody   utils.JSON // E2E decrypted body for debug logging
 	WSClient               *DXAPIEndPointWebSocketClient
+
+	// PeerCertificate is the caller's leaf certificate, present only when the
+	// request arrived over TLS and the server VERIFIED the certificate against
+	// its ca-trust pool -- mode mtls, enforcing or on its verify-if-given rung.
+	// It is nil on plaintext, nil when no certificate was sent, and nil under
+	// mode https or the request rung even if a certificate was sent, because
+	// there Go leaves it in r.TLS.PeerCertificates unverified and an
+	// unverified certificate is a claim, not an identity. Middlewares and
+	// OnBeforePreProcessRequest can make per-caller decisions on it; a
+	// rejection there is after the handshake, so the allow-list in the tls
+	// block is the place for anything that should never reach a handler.
+	PeerCertificate *x509.Certificate
+	// PeerIdentity is PeerCertificate reduced to one string (first URI SAN,
+	// else first DNS SAN, else first IP SAN, else CN); "" when PeerCertificate
+	// is nil. It is what the audit log carries.
+	PeerIdentity string
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {

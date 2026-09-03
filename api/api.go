@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	stdlog "log"
 	"log/slog"
 	"runtime/debug"
 
@@ -32,6 +33,7 @@ import (
 
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 	utilsJSON "github.com/donnyhardyanto/dxlib/utils/json"
+	utilsTLS "github.com/donnyhardyanto/dxlib/utils/tls"
 )
 
 const (
@@ -90,6 +92,12 @@ type DXAPIAuditLogEntry struct {
 	Method       string    `json:"method,omitempty"`
 	StatusCode   int       `json:"status_code,omitempty"`
 	ErrorMessage string    `json:"error_message,omitempty"`
+	// PeerIdentity is the caller as named by the verified client certificate,
+	// when the request arrived over mTLS; empty otherwise. Under direct mTLS
+	// there is no proxy in front to set X-Proxy-Client-IP, so IPAddress above
+	// is whatever the caller put in X-Forwarded-For and this field is the one
+	// that was actually authenticated. See GetIPAddress.
+	PeerIdentity string `json:"peer_identity,omitempty"`
 }
 
 type DXAuditLogHandler func(ctx context.Context, oldAuditLogId int64, parameters *DXAPIAuditLogEntry) (newAuditLogId int64, err error)
@@ -107,6 +115,12 @@ type DXAPI struct {
 		Pattern string
 		Handler http.Handler
 	}
+	// TLS is the server's TLS state, built from the "tls" block beside
+	// "address" in the api configuration. nil means the block is absent and the
+	// listener is plaintext, exactly as before the block existed. A block with
+	// enabled=false leaves this non-nil with a nil Config, so the settings can
+	// still be reported.
+	TLS                      *utilsTLS.DXServerTLS
 	RuntimeIsActive          bool
 	HTTPServer               *http.Server
 	Log                      log.DXLog
@@ -248,6 +262,37 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 
 	a.EnableBrowserSecurityHeaders = utilsJSON.GetBoolWithDefault(c1, "enable-browser-security-headers", false)
 
+	// The tls block. Absent means plaintext, said out loud so that "no TLS" is
+	// a line in the log and not the absence of one. Present means every key in
+	// it is validated now, whether or not enabled is true, and any mistake is
+	// fatal here, the same way a missing address is: a process that starts
+	// with an unresolved trust source and then makes accept/reject decisions
+	// is worse than one that never starts.
+	//
+	// The error from utilsTLS names only the key path and what is wrong with
+	// it. It is deliberately not utilsJSON.GetString's text, which prints the
+	// whole enclosing map on failure.
+	tlsBlock, tlsPresent := c1["tls"]
+	if !tlsPresent {
+		log.Log.Infof("API %s: TLS disabled (no tls block); listening in plaintext at %s", a.NameId, a.Address)
+		return nil
+	}
+	tlsKV, ok := tlsBlock.(utils.JSON)
+	if !ok {
+		return log.Log.FatalAndCreateErrorf("TLS_CONFIG_ERROR:%s.%s.tls:WRONG_TYPE:%T:EXPECTED_OBJECT", configurationNameId, a.NameId, tlsBlock)
+	}
+	a.TLS, err = utilsTLS.NewServerTLS(tlsKV)
+	if err != nil {
+		return log.Log.FatalAndCreateErrorf("TLS_CONFIG_ERROR:%s.%s.tls/%v", configurationNameId, a.NameId, err)
+	}
+	switch {
+	case a.TLS.Settings.Mode == utilsTLS.ModeHTTP:
+		// Plaintext by an explicit word, not by an absent block: info, not a
+		// warning, because it is what the operator wrote.
+		log.Log.Infof("API %s: TLS mode=http; listening in plaintext at %s", a.NameId, a.Address)
+	case a.TLS.Config == nil:
+		log.Log.Warnf("API %s: TLS configured but enabled=false; listening in plaintext at %s (%s)", a.NameId, a.Address, a.TLS.Summary())
+	}
 	return nil
 }
 
@@ -413,11 +458,12 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 	if a.OnAuditLogStart != nil {
 		auditLogId, err = a.OnAuditLogStart(requestContext, auditLogId, &DXAPIAuditLogEntry{
-			StartTime: auditLogStartTime,
-			IPAddress: GetIPAddress(r),
-			APIURL:    r.URL.Path,
-			APITitle:  p.Title,
-			Method:    r.Method,
+			StartTime:    auditLogStartTime,
+			IPAddress:    GetIPAddress(r),
+			PeerIdentity: PeerIdentityFromRequest(r),
+			APIURL:       r.URL.Path,
+			APITitle:     p.Title,
+			Method:       r.Method,
 		})
 	}
 
@@ -500,11 +546,12 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 		if core.IsOtelEnabled {
 			elapsed := time.Since(routeStartTime).Seconds()
-			attrs := metric.WithAttributes(
+			span.SetAttributes(tlsAttributes(r.TLS, aepr.PeerIdentity)...)
+			attrs := metric.WithAttributes(append([]attribute.KeyValue{
 				attribute.String("http.method", r.Method),
 				attribute.String("http.route", p.Uri),
 				attribute.Int("http.status_code", aepr.ResponseStatusCode),
-			)
+			}, tlsAttributes(r.TLS, aepr.PeerIdentity)...)...)
 			dxlibOtel.HTTPRequestDuration.Record(requestContext, elapsed, attrs)
 			dxlibOtel.HTTPRequestCount.Add(requestContext, 1, attrs)
 			if aepr.ResponseStatusCode >= 500 {
@@ -631,6 +678,7 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			_, err = a.OnAuditLogUserIdentified(requestContext, auditLogId, &DXAPIAuditLogEntry{
 				StartTime:    auditLogStartTime,
 				IPAddress:    GetIPAddress(r),
+				PeerIdentity: aepr.PeerIdentity,
 				APIURL:       r.URL.Path,
 				APITitle:     p.Title,
 				Method:       r.Method,
@@ -729,6 +777,21 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		WriteTimeout: time.Duration(a.WriteTimeoutSec) * time.Second,
 		ReadTimeout:  time.Duration(a.ReadTimeoutSec) * time.Second,
 	}
+	tlsEnabled := a.TLS != nil && a.TLS.Config != nil
+	if tlsEnabled {
+		// ConfigForHTTPServer, not Config: it pins NextProtos to what
+		// http.Server negotiates, so the clone handed back after a CA rotation
+		// keeps HTTP/2. The WebSocket path is unaffected by HTTP/2 being on --
+		// gorilla's dialer and browsers do not offer h2 for an upgrade, and the
+		// TLS test in this package proves it against the real listener -- so
+		// TLSNextProto is left alone.
+		a.HTTPServer.TLSConfig = a.TLS.ConfigForHTTPServer()
+		// Every refused handshake is reported through ErrorLog and nowhere
+		// else. Left nil, Go writes it to stderr as an unclassified line; this
+		// writer sorts it into TRUST, VALIDITY_WINDOW, IDENTITY and so on.
+		// Plaintext listeners keep a nil ErrorLog, exactly as before.
+		a.HTTPServer.ErrorLog = stdlog.New(utilsTLS.NewHandshakeErrorLogWriter(), "", 0)
+	}
 
 	// CORS middleware — parse allowed origins once before the closure
 	var allowedOriginsMap map[string]bool
@@ -805,8 +868,21 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 
 	errorGroup.Go(func() error {
 		a.RuntimeIsActive = true
-		log.Log.Infof("Listening at %s... start", a.Address)
-		err := a.HTTPServer.ListenAndServe()
+		var err error
+		if tlsEnabled {
+			trust := ""
+			if a.TLS.Settings.Mode == utilsTLS.ModeMTLS {
+				trust = ", ca-trust=" + a.TLS.Settings.CATrust
+			}
+			log.Log.Infof("Listening at %s (TLS mode=%s, client-auth=%s%s)... start", a.Address, a.TLS.Settings.Mode, a.TLS.Settings.ClientAuthName, trust)
+			// Empty file arguments: the certificate comes from GetCertificate,
+			// which is what makes rotation on disk take effect without a
+			// restart.
+			err = a.HTTPServer.ListenAndServeTLS("", "")
+		} else {
+			log.Log.Infof("Listening at %s... start", a.Address)
+			err = a.HTTPServer.ListenAndServe()
+		}
 		if (err != nil) && (!errors.Is(err, http.ErrServerClosed)) {
 			log.Log.Errorf(err, "HTTP server error: %+v", err)
 		}

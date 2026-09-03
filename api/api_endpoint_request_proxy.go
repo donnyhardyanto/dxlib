@@ -11,6 +11,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
+	utilsHttpClient "github.com/donnyhardyanto/dxlib/utils/http/client"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
 )
 
@@ -29,6 +30,13 @@ func (aepr *DXAPIEndPointRequest) ProxyHTTPAPIClient(method string, url string, 
 	}
 	return statusCode, r, err
 }
+
+// The two http.Clients below take their Transport from utils/http/client, which
+// is nil until an "http-client" configuration with a tls block is loaded. A nil
+// Transport is what these had always had, so a consumer without that block
+// sees the same bare client as before; with it, every proxy call presents the
+// process's client certificate and verifies the upstream against the named
+// trust source, from the one place that is configured.
 
 // HTTPClientDoTimeout bounds one outbound exchange made by HTTPClientDo and
 // HTTPClientDoBodyAsJSONString: the dial, the request, the response, and the
@@ -52,7 +60,7 @@ func (aepr *DXAPIEndPointRequest) ProxyHTTPAPIClient(method string, url string, 
 var HTTPClientDoTimeout time.Duration
 
 func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters utils.JSON, headers map[string]string) (response *http.Response, err error) {
-	var client = &http.Client{Timeout: HTTPClientDoTimeout}
+	var client = utilsHttpClient.NewHTTPClient(HTTPClientDoTimeout)
 	var request *http.Request
 	effectiveUrl := url
 	parametersInUrl := ""
@@ -95,6 +103,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 
 	response, err = client.Do(request)
 	if err != nil {
+		utilsHttpClient.LogHandshakeFailure(&aepr.Log, effectiveUrl, err)
 		// 502, not 422. This is the exchange with the downstream service failing
 		// -- refused, reset, or timed out -- not a caller sending something
 		// unprocessable, and 422 sent an operator looking at the request body.
@@ -122,7 +131,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 }
 
 func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url string, parametersAsJSONString string, headers map[string]string) (response *http.Response, err error) {
-	var client = &http.Client{Timeout: HTTPClientDoTimeout}
+	var client = utilsHttpClient.NewHTTPClient(HTTPClientDoTimeout)
 	var request *http.Request
 	effectiveUrl := url
 
@@ -147,6 +156,7 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 
 	response, err = client.Do(request)
 	if err != nil {
+		utilsHttpClient.LogHandshakeFailure(&aepr.Log, effectiveUrl, err)
 		err = aepr.WriteResponseAndNewErrorf(http.StatusBadGateway, "", "ERROR_IN_MAKE_HTTP_REQUEST:%v", err.Error())
 		return nil, err
 	}

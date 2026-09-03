@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
+	utilsTLS "github.com/donnyhardyanto/dxlib/utils/tls"
 )
 
 type DXAPIEndPointType int
@@ -313,5 +315,26 @@ func (aep *DXAPIEndPoint) NewEndPointRequest(context context.Context, w http.Res
 	er.Id = fmt.Sprintf("%p", er)
 	er.Log = log.NewLog(&aep.Owner.Log, context, aep.Title+" | "+er.Id)
 	er.Log.RequestURL = r.URL.Path
+	er.PeerCertificate = VerifiedPeerCertificate(r)
+	er.PeerIdentity = utilsTLS.PeerIdentity(er.PeerCertificate)
 	return er
+}
+
+// VerifiedPeerCertificate is the client certificate the TLS layer verified for
+// this request, or nil. It reads VerifiedChains, not PeerCertificates: under
+// the "request" migration rung Go fills PeerCertificates with whatever the
+// client sent and verifies none of it, and treating that as an identity would let a
+// caller choose its own. When VerifiedChains is non-empty its first chain's
+// first element is the leaf, and it is the same object as PeerCertificates[0].
+func VerifiedPeerCertificate(r *http.Request) *x509.Certificate {
+	if r == nil || r.TLS == nil || len(r.TLS.VerifiedChains) == 0 || len(r.TLS.VerifiedChains[0]) == 0 {
+		return nil
+	}
+	return r.TLS.VerifiedChains[0][0]
+}
+
+// PeerIdentityFromRequest is utilsTLS.PeerIdentity of VerifiedPeerCertificate,
+// for the audit entry written before the request object exists.
+func PeerIdentityFromRequest(r *http.Request) string {
+	return utilsTLS.PeerIdentity(VerifiedPeerCertificate(r))
 }

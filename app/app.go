@@ -24,6 +24,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/redis"
 	"github.com/donnyhardyanto/dxlib/task"
+	utilsHttpClient "github.com/donnyhardyanto/dxlib/utils/http/client"
 	"github.com/donnyhardyanto/dxlib/utils/os"
 )
 
@@ -67,6 +68,7 @@ type DXApp struct {
 	IsStorageExist       bool
 	IsObjectStorageExist bool
 	IsAPIExist           bool
+	IsHTTPClientExist    bool
 	IsTaskExist          bool
 
 	DebugKey                     string
@@ -146,6 +148,18 @@ func (a *DXApp) loadConfiguration() (err error) {
 	_, a.IsObjectStorageExist = configuration.Manager.Configurations["object_storage"]
 	if a.IsObjectStorageExist {
 		err = object_storage.Manager.LoadFromConfiguration("object_storage")
+		if err != nil {
+			return err
+		}
+	}
+	// The outbound side. An "http-client" configuration carries the client
+	// certificate and trust source every HTTPClient, HTTPClientDo and WebSocket
+	// dial in the process uses; without it they build the bare client they
+	// always did. Loaded before "api" so a failure here is reported before any
+	// listener's configuration is, and nothing has bound a port yet.
+	_, a.IsHTTPClientExist = configuration.Manager.Configurations["http-client"]
+	if a.IsHTTPClientExist {
+		err = utilsHttpClient.LoadFromConfiguration("http-client")
 		if err != nil {
 			return err
 		}
