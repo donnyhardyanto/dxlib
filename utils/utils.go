@@ -1433,6 +1433,24 @@ type MaskRule struct{ Front, Back int }
 var (
 	maskRules  = map[string]MaskRule{} // lowercased field keyword → rule (host-populated)
 	maskStrict = false                 // true → ignore Front/Back, force full mask (prod/compliance)
+
+	// maskDefaultDeny decides what happens to a field that matches NEITHER the credential
+	// keywords NOR maskRules. false (the default) = ALLOW: the value is logged as-is, which is
+	// what makes the decrypted-request dump readable for the developer who deliberately opened
+	// it. true = DENY: anything not explicitly named in logAllowedFields is masked.
+	//
+	// Neither setting is right everywhere, which is why this is a switch rather than a decision
+	// baked into the library (BUG-SEC-220). ALLOW suits a laptop or a dev VM, where the dump is
+	// off by default and the only reader is the developer who turned it on. DENY suits any
+	// environment whose logs leave that machine — a shipped log pipeline, a bank's SIEM — where
+	// a field nobody remembered to name must not be the thing that leaks.
+	//
+	// The trade-off is real and must not be hidden: under DENY the dump prints "********" for
+	// every field the host did not enumerate, and the request body's key space is CLIENT
+	// controlled, so a dump can legitimately go almost entirely blank. That is the price of
+	// fail-closed, and it is the host's call to pay it.
+	maskDefaultDeny  = false
+	logAllowedFields = map[string]bool{} // lowercased EXACT field name → safe to log verbatim
 )
 
 // SetMaskRules replaces the PII field→rule map (called once by the host at init).
@@ -1446,6 +1464,26 @@ func SetMaskRules(rules map[string]MaskRule) {
 
 // SetMaskStrict forces full masking of PII regardless of per-field rules (prod hardening).
 func SetMaskStrict(b bool) { maskStrict = b }
+
+// SetMaskDefaultDeny chooses what happens to a field the rules do not mention: false = log it
+// (default, current behaviour), true = mask it unless SetLogAllowedFields names it. Called once
+// by the host at init from its own configuration; see maskDefaultDeny for why this is a switch.
+func SetMaskDefaultDeny(b bool) { maskDefaultDeny = b }
+
+// SetLogAllowedFields replaces the set of field names that stay readable under default-deny.
+// Matched EXACTLY (lowercased), deliberately unlike maskRules: a deny rule should be fuzzy so it
+// catches `foto_ktp` from `ktp`, but an ALLOW rule must not, or a substring like `id` would
+// silently un-mask `national_id`.
+func SetLogAllowedFields(names []string) {
+	m := make(map[string]bool, len(names))
+	for _, n := range names {
+		m[strings.ToLower(n)] = true
+	}
+	logAllowedFields = m
+}
+
+// MaskDefaultDeny reports the current default, so a host can log which posture it started in.
+func MaskDefaultDeny() bool { return maskDefaultDeny }
 
 // piiRuleFor returns the partial-mask rule for a field name (longest keyword match), if any.
 func piiRuleFor(fieldName string) (MaskRule, bool) {
@@ -1476,6 +1514,8 @@ func partialMask(s string, r MaskRule) string {
 // MaskSensitiveValue masks a value for logging.
 //   - Credential fields (IsSensitiveField): ALWAYS full "********".
 //   - PII fields (SetMaskRules): partial (Front+Back) unless SetMaskStrict → full.
+//   - Unmatched fields: logged as-is under default-ALLOW, masked under default-DENY unless
+//     SetLogAllowedFields names them (SetMaskDefaultDeny).
 //   - Requires BOTH dxlib.IsDebug AND OverrideShowPasswordOnLog to show raw values
 //     (prevents accidental exposure from a single env flip).
 func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
@@ -1490,6 +1530,11 @@ func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
 			return "********"
 		}
 		return partialMask(fmt.Sprintf("%v", value), r)
+	}
+	// The field matched no rule. Under default-ALLOW it is logged; under default-DENY it is
+	// masked unless the host named it safe. BUG-SEC-220.
+	if maskDefaultDeny && !logAllowedFields[strings.ToLower(fieldName)] {
+		return "********"
 	}
 	return value
 }
