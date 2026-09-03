@@ -25,7 +25,9 @@ import (
 	"github.com/donnyhardyanto/dxlib/redis"
 	"github.com/donnyhardyanto/dxlib/task"
 	utilsHttpClient "github.com/donnyhardyanto/dxlib/utils/http/client"
-	"github.com/donnyhardyanto/dxlib/utils/os"
+	"os"
+
+	utilsOs "github.com/donnyhardyanto/dxlib/utils/os"
 )
 
 type DXAppArgCommandFunc func(s *DXApp, ac *DXAppArgCommand, T any) (err error)
@@ -124,6 +126,45 @@ func (a *DXApp) Run() (err error) {
 		return err
 	}
 	return nil
+}
+
+// RunAndExit runs the application and, if it fails, ends the process with a
+// non-zero status.
+//
+// It exists because the exit status matters more than it looks, and was being
+// thrown away. Every service in this family ended main with
+//
+//	_ = dxlibApp.App.Run()
+//
+// which discards the error. A service that could not read its configuration
+// file, or could not reach its database, logged the reason and then exited
+// **0**. Everything that reads an exit status -- a Kubernetes liveness probe, a
+// systemd unit with Restart=on-failure, a supervisor, a CI step, a shell && --
+// reads 0 as "did its job". So a service that never started looked like one
+// that had started and finished cleanly. That is also how a startup panic in
+// push-notification-server stayed invisible for as long as it did: the build
+// passed, and running it appeared to succeed.
+//
+// Run already logs the error before returning it, so nothing is logged twice
+// here. Logging in this library is synchronous, so the line explaining the
+// failure is on disk before the process goes.
+//
+// On success it returns rather than calling os.Exit(0), so any deferred work
+// in the caller still runs; as the last statement of main that ends the
+// process with 0 anyway:
+//
+//	func main() {
+//	    dxlibApp.Set(...)
+//	    dxlibApp.App.OnDefineConfiguration = defineConfiguration
+//	    dxlibApp.App.RunAndExit()
+//	}
+//
+// A caller that needs to distinguish failure kinds, or to do its own cleanup,
+// should call Run and handle the error -- but must not discard it.
+func (a *DXApp) RunAndExit() {
+	if err := a.Run(); err != nil {
+		os.Exit(1)
+	}
 }
 
 func (a *DXApp) loadConfiguration() (err error) {
@@ -412,7 +453,7 @@ func Set(nameId, title, description string, isLoop bool, debugKey string, debugV
 	App.DebugKey = debugKey
 	App.DebugValue = debugValue
 	if App.DebugKey != "" {
-		dxlib.IsDebug = os.GetEnvDefaultValue(App.DebugKey, "") == App.DebugValue
+		dxlib.IsDebug = utilsOs.GetEnvDefaultValue(App.DebugKey, "") == App.DebugValue
 	}
 	log.Log.Prefix = nameId
 	App.SetupNewRelicApplication()
