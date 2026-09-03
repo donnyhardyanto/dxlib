@@ -1,0 +1,3669 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "sample-service-1",
+    "version": "1.0.0",
+    "description": "Endpoints registered on API sample-service-1."
+  },
+  "paths": {
+    "/cmdSampleOperation005": {
+      "get": {
+        "operationId": "cmdSampleOperation005",
+        "summary": "cmdSampleOperation005",
+        "description": "Sample operation for the round-trip fixture.",
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation006": {
+      "get": {
+        "operationId": "cmdSampleOperation006",
+        "summary": "cmdSampleOperation006",
+        "description": "Sample operation for the round-trip fixture.",
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation007": {
+      "get": {
+        "operationId": "cmdSampleOperation007",
+        "summary": "cmdSampleOperation007",
+        "description": "Sample operation for the round-trip fixture.",
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation008": {
+      "post": {
+        "operationId": "cmdSampleOperation008",
+        "summary": "cmdSampleOperation008",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_002": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_003": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_004": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_005": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_006": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_002",
+                  "field_003",
+                  "field_004",
+                  "field_005",
+                  "field_006"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation009": {
+      "post": {
+        "operationId": "cmdSampleOperation009",
+        "summary": "cmdSampleOperation009",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation010": {
+      "post": {
+        "operationId": "cmdSampleOperation010",
+        "summary": "cmdSampleOperation010",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation011": {
+      "post": {
+        "operationId": "cmdSampleOperation011",
+        "summary": "cmdSampleOperation011",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_008": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_008"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation012": {
+      "post": {
+        "operationId": "cmdSampleOperation012",
+        "summary": "cmdSampleOperation012",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation013": {
+      "post": {
+        "operationId": "cmdSampleOperation013",
+        "summary": "cmdSampleOperation013",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_009": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_002": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_010": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_011": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_012": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_013": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_014": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_003": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_009",
+                  "field_002",
+                  "field_010",
+                  "field_011",
+                  "field_012",
+                  "field_013",
+                  "field_014",
+                  "field_003"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-01"
+        ]
+      }
+    },
+    "/cmdSampleOperation014": {
+      "post": {
+        "operationId": "cmdSampleOperation014",
+        "summary": "cmdSampleOperation014",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_015": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_015"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-02"
+        ]
+      }
+    },
+    "/cmdSampleOperation015": {
+      "post": {
+        "operationId": "cmdSampleOperation015",
+        "summary": "cmdSampleOperation015",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_016": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_017": {
+                    "type": "object",
+                    "properties": {
+                      "field_009": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_010": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_011": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_012": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_013": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_014": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      }
+                    },
+                    "x-dxlib-type": "json"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_016",
+                  "field_017"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-03"
+        ]
+      }
+    },
+    "/cmdSampleOperation016": {
+      "post": {
+        "operationId": "cmdSampleOperation016",
+        "summary": "cmdSampleOperation016",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_017": {
+                    "type": "object",
+                    "properties": {
+                      "field_009": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_010": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_011": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_012": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_013": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_014": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      }
+                    },
+                    "x-dxlib-type": "json"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_017"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation017": {
+      "post": {
+        "operationId": "cmdSampleOperation017",
+        "summary": "cmdSampleOperation017",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_016": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_016"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-04"
+        ]
+      }
+    },
+    "/cmdSampleOperation018": {
+      "post": {
+        "operationId": "cmdSampleOperation018",
+        "summary": "cmdSampleOperation018",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_016": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_016"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-05"
+        ]
+      }
+    },
+    "/cmdSampleOperation019": {
+      "post": {
+        "operationId": "cmdSampleOperation019",
+        "summary": "cmdSampleOperation019",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_016": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_016"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-06"
+        ]
+      }
+    },
+    "/cmdSampleOperation020": {
+      "post": {
+        "operationId": "cmdSampleOperation020",
+        "summary": "cmdSampleOperation020",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_015": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_015"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-07"
+        ]
+      }
+    },
+    "/cmdSampleOperation021": {
+      "post": {
+        "operationId": "cmdSampleOperation021",
+        "summary": "cmdSampleOperation021",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation022": {
+      "post": {
+        "operationId": "cmdSampleOperation022",
+        "summary": "cmdSampleOperation022",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_016": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_003": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_016",
+                  "field_003"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-08"
+        ]
+      }
+    },
+    "/cmdSampleOperation023": {
+      "post": {
+        "operationId": "cmdSampleOperation023",
+        "summary": "cmdSampleOperation023",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_018": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_003": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_018",
+                  "field_003"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation024": {
+      "post": {
+        "operationId": "cmdSampleOperation024",
+        "summary": "cmdSampleOperation024",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_016": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_019": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_016",
+                  "field_019"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-09"
+        ]
+      }
+    },
+    "/cmdSampleOperation025": {
+      "post": {
+        "operationId": "cmdSampleOperation025",
+        "summary": "cmdSampleOperation025",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_020": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_020"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-10"
+        ]
+      }
+    },
+    "/cmdSampleOperation026": {
+      "post": {
+        "operationId": "cmdSampleOperation026",
+        "summary": "cmdSampleOperation026",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_021": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_022": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_023": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_021",
+                  "field_022",
+                  "field_023"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-11"
+        ]
+      }
+    },
+    "/cmdSampleOperation027": {
+      "post": {
+        "operationId": "cmdSampleOperation027",
+        "summary": "cmdSampleOperation027",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_024": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_017": {
+                    "type": "object",
+                    "properties": {
+                      "field_021": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_022": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_023": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      }
+                    },
+                    "x-dxlib-type": "json"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_024",
+                  "field_017"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-12"
+        ]
+      }
+    },
+    "/cmdSampleOperation028": {
+      "post": {
+        "operationId": "cmdSampleOperation028",
+        "summary": "cmdSampleOperation028",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_024": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_024"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-13"
+        ]
+      }
+    },
+    "/cmdSampleOperation029": {
+      "post": {
+        "operationId": "cmdSampleOperation029",
+        "summary": "cmdSampleOperation029",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_016": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_024": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_016",
+                  "field_024"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-14"
+        ]
+      }
+    },
+    "/cmdSampleOperation030": {
+      "post": {
+        "operationId": "cmdSampleOperation030",
+        "summary": "cmdSampleOperation030",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_016": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_025": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_016",
+                  "field_025"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-14"
+        ]
+      }
+    },
+    "/cmdSampleOperation031": {
+      "post": {
+        "operationId": "cmdSampleOperation031",
+        "summary": "cmdSampleOperation031",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_026": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_026"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-15"
+        ]
+      }
+    },
+    "/cmdSampleOperation032": {
+      "post": {
+        "operationId": "cmdSampleOperation032",
+        "summary": "cmdSampleOperation032",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_027": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_028": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_029": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_030": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_031": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_027",
+                  "field_028",
+                  "field_029",
+                  "field_030",
+                  "field_031"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-16"
+        ]
+      }
+    },
+    "/cmdSampleOperation033": {
+      "post": {
+        "operationId": "cmdSampleOperation033",
+        "summary": "cmdSampleOperation033",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_032": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_017": {
+                    "type": "object",
+                    "properties": {
+                      "field_028": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_027": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_029": {
+                        "type": "integer",
+                        "format": "int64",
+                        "x-dxlib-type": "int64"
+                      },
+                      "field_030": {
+                        "type": "integer",
+                        "format": "int64",
+                        "x-dxlib-type": "int64"
+                      },
+                      "field_031": {
+                        "type": "integer",
+                        "format": "int64",
+                        "x-dxlib-type": "int64"
+                      }
+                    },
+                    "x-dxlib-type": "json"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_032",
+                  "field_017"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-16"
+        ]
+      }
+    },
+    "/cmdSampleOperation034": {
+      "post": {
+        "operationId": "cmdSampleOperation034",
+        "summary": "cmdSampleOperation034",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_032": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_032"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-16"
+        ]
+      }
+    },
+    "/cmdSampleOperation035": {
+      "post": {
+        "operationId": "cmdSampleOperation035",
+        "summary": "cmdSampleOperation035",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_032": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_025": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_033": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_034": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_032",
+                  "field_025",
+                  "field_033",
+                  "field_034"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-16"
+        ]
+      }
+    },
+    "/cmdSampleOperation036": {
+      "post": {
+        "operationId": "cmdSampleOperation036",
+        "summary": "cmdSampleOperation036",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_035": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_017": {
+                    "type": "object",
+                    "properties": {
+                      "field_033": {
+                        "type": "integer",
+                        "format": "int64",
+                        "x-dxlib-type": "int64"
+                      },
+                      "field_032": {
+                        "type": "integer",
+                        "format": "int64",
+                        "x-dxlib-type": "int64"
+                      },
+                      "field_024": {
+                        "type": "integer",
+                        "format": "int64",
+                        "x-dxlib-type": "int64"
+                      },
+                      "field_034": {
+                        "type": "integer",
+                        "format": "int64",
+                        "x-dxlib-type": "int64"
+                      }
+                    },
+                    "x-dxlib-type": "json"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_035",
+                  "field_017"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-16"
+        ]
+      }
+    },
+    "/cmdSampleOperation037": {
+      "post": {
+        "operationId": "cmdSampleOperation037",
+        "summary": "cmdSampleOperation037",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_035": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_035"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-16"
+        ]
+      }
+    },
+    "/cmdSampleOperation038": {
+      "post": {
+        "operationId": "cmdSampleOperation038",
+        "summary": "cmdSampleOperation038",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_021": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_036": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_037": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_038": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_021",
+                  "field_036",
+                  "field_037",
+                  "field_038"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-17"
+        ]
+      }
+    },
+    "/cmdSampleOperation039": {
+      "post": {
+        "operationId": "cmdSampleOperation039",
+        "summary": "cmdSampleOperation039",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_039": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_017": {
+                    "type": "object",
+                    "properties": {
+                      "field_021": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_040": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_037": {
+                        "type": "integer",
+                        "format": "int64",
+                        "x-dxlib-type": "int64"
+                      },
+                      "field_036": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      },
+                      "field_038": {
+                        "type": "string",
+                        "x-dxlib-type": "string"
+                      }
+                    },
+                    "x-dxlib-type": "json"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_039",
+                  "field_017"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-17"
+        ]
+      }
+    },
+    "/cmdSampleOperation040": {
+      "post": {
+        "operationId": "cmdSampleOperation040",
+        "summary": "cmdSampleOperation040",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_039": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_039"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-17"
+        ]
+      }
+    },
+    "/cmdSampleOperation041": {
+      "post": {
+        "operationId": "cmdSampleOperation041",
+        "summary": "cmdSampleOperation041",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-18"
+        ]
+      }
+    },
+    "/cmdSampleOperation042": {
+      "post": {
+        "operationId": "cmdSampleOperation042",
+        "summary": "cmdSampleOperation042",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-19"
+        ]
+      }
+    },
+    "/cmdSampleOperation043": {
+      "post": {
+        "operationId": "cmdSampleOperation043",
+        "summary": "cmdSampleOperation043",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-20"
+        ]
+      }
+    },
+    "/cmdSampleOperation044": {
+      "post": {
+        "operationId": "cmdSampleOperation044",
+        "summary": "cmdSampleOperation044",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-21"
+        ]
+      }
+    },
+    "/cmdSampleOperation045": {
+      "post": {
+        "operationId": "cmdSampleOperation045",
+        "summary": "cmdSampleOperation045",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-22"
+        ]
+      }
+    },
+    "/cmdSampleOperation046": {
+      "post": {
+        "operationId": "cmdSampleOperation046",
+        "summary": "cmdSampleOperation046",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation047": {
+      "post": {
+        "operationId": "cmdSampleOperation047",
+        "summary": "cmdSampleOperation047",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation048": {
+      "post": {
+        "operationId": "cmdSampleOperation048",
+        "summary": "cmdSampleOperation048",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation049": {
+      "post": {
+        "operationId": "cmdSampleOperation049",
+        "summary": "cmdSampleOperation049",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_042": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_043": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041",
+                  "field_042",
+                  "field_043"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation050": {
+      "post": {
+        "operationId": "cmdSampleOperation050",
+        "summary": "cmdSampleOperation050",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_044": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041",
+                  "field_044"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation051": {
+      "post": {
+        "operationId": "cmdSampleOperation051",
+        "summary": "cmdSampleOperation051",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-23"
+        ]
+      }
+    },
+    "/cmdSampleOperation052": {
+      "post": {
+        "operationId": "cmdSampleOperation052",
+        "summary": "cmdSampleOperation052",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation053": {
+      "post": {
+        "operationId": "cmdSampleOperation053",
+        "summary": "cmdSampleOperation053",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-23"
+        ]
+      }
+    },
+    "/cmdSampleOperation054": {
+      "post": {
+        "operationId": "cmdSampleOperation054",
+        "summary": "cmdSampleOperation054",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_045": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_046": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041",
+                  "field_045",
+                  "field_046"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation055": {
+      "post": {
+        "operationId": "cmdSampleOperation055",
+        "summary": "cmdSampleOperation055",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation056": {
+      "post": {
+        "operationId": "cmdSampleOperation056",
+        "summary": "cmdSampleOperation056",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_047": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041",
+                  "field_047"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation057": {
+      "post": {
+        "operationId": "cmdSampleOperation057",
+        "summary": "cmdSampleOperation057",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_048": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041",
+                  "field_048"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation058": {
+      "post": {
+        "operationId": "cmdSampleOperation058",
+        "summary": "cmdSampleOperation058",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-23"
+        ]
+      }
+    },
+    "/cmdSampleOperation059": {
+      "post": {
+        "operationId": "cmdSampleOperation059",
+        "summary": "cmdSampleOperation059",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_027": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_049": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_050": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_051": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_052": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_053": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_054": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_055": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_056": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_027",
+                  "field_049",
+                  "field_050",
+                  "field_051",
+                  "field_052",
+                  "field_053",
+                  "field_054",
+                  "field_055",
+                  "field_056"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation060": {
+      "post": {
+        "operationId": "cmdSampleOperation060",
+        "summary": "cmdSampleOperation060",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation061": {
+      "post": {
+        "operationId": "cmdSampleOperation061",
+        "summary": "cmdSampleOperation061",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation062": {
+      "post": {
+        "operationId": "cmdSampleOperation062",
+        "summary": "cmdSampleOperation062",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_057": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_044": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041",
+                  "field_044"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation063": {
+      "post": {
+        "operationId": "cmdSampleOperation063",
+        "summary": "cmdSampleOperation063",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_057": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_042": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_043": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041",
+                  "field_057",
+                  "field_042",
+                  "field_043"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation064": {
+      "post": {
+        "operationId": "cmdSampleOperation064",
+        "summary": "cmdSampleOperation064",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_057": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041",
+                  "field_057"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation065": {
+      "post": {
+        "operationId": "cmdSampleOperation065",
+        "summary": "cmdSampleOperation065",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation066": {
+      "post": {
+        "operationId": "cmdSampleOperation066",
+        "summary": "cmdSampleOperation066",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_027": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_049": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_050": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_051": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_052": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_053": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_054": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_055": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_056": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_058": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_027",
+                  "field_049",
+                  "field_050",
+                  "field_051",
+                  "field_052",
+                  "field_053",
+                  "field_054",
+                  "field_055",
+                  "field_056",
+                  "field_058"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation067": {
+      "post": {
+        "operationId": "cmdSampleOperation067",
+        "summary": "cmdSampleOperation067",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_027": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_049": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_050": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_051": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_052": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_053": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_054": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_055": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_056": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_027",
+                  "field_049",
+                  "field_050",
+                  "field_051",
+                  "field_052",
+                  "field_053",
+                  "field_054",
+                  "field_055",
+                  "field_056"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation068": {
+      "post": {
+        "operationId": "cmdSampleOperation068",
+        "summary": "cmdSampleOperation068",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_057": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_059": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_060": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041",
+                  "field_057",
+                  "field_059",
+                  "field_060"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation069": {
+      "post": {
+        "operationId": "cmdSampleOperation069",
+        "summary": "cmdSampleOperation069",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_057": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation070": {
+      "post": {
+        "operationId": "cmdSampleOperation070",
+        "summary": "cmdSampleOperation070",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_057": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_047": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041",
+                  "field_047"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation071": {
+      "post": {
+        "operationId": "cmdSampleOperation071",
+        "summary": "cmdSampleOperation071",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_001": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_057": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_048": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  }
+                },
+                "required": [
+                  "field_001",
+                  "field_041",
+                  "field_057",
+                  "field_048"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation072": {
+      "post": {
+        "operationId": "cmdSampleOperation072",
+        "summary": "cmdSampleOperation072",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_061": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_062": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_063": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_061",
+                  "field_062",
+                  "field_063"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation073": {
+      "post": {
+        "operationId": "cmdSampleOperation073",
+        "summary": "cmdSampleOperation073",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_064": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_065": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_063": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_064",
+                  "field_065",
+                  "field_063"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation074": {
+      "post": {
+        "operationId": "cmdSampleOperation074",
+        "summary": "cmdSampleOperation074",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_066": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_067": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_068": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_069": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_042": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_070": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  }
+                },
+                "required": [
+                  "field_007",
+                  "field_066",
+                  "field_067",
+                  "field_068",
+                  "field_069",
+                  "field_042",
+                  "field_070"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation075": {
+      "post": {
+        "operationId": "cmdSampleOperation075",
+        "summary": "cmdSampleOperation075",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-23"
+        ]
+      }
+    },
+    "/cmdSampleOperation076": {
+      "post": {
+        "operationId": "cmdSampleOperation076",
+        "summary": "cmdSampleOperation076",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-24"
+        ]
+      }
+    },
+    "/cmdSampleOperation077": {
+      "post": {
+        "operationId": "cmdSampleOperation077",
+        "summary": "cmdSampleOperation077",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-25",
+          "sample-privilege-26"
+        ]
+      }
+    },
+    "/cmdSampleOperation078": {
+      "post": {
+        "operationId": "cmdSampleOperation078",
+        "summary": "cmdSampleOperation078",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-25",
+          "sample-privilege-26"
+        ]
+      }
+    },
+    "/cmdSampleOperation079": {
+      "post": {
+        "operationId": "cmdSampleOperation079",
+        "summary": "cmdSampleOperation079",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_041",
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation080": {
+      "post": {
+        "operationId": "cmdSampleOperation080",
+        "summary": "cmdSampleOperation080",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_041": {
+                    "type": "integer",
+                    "format": "int64",
+                    "x-dxlib-type": "int64"
+                  },
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_041",
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation081": {
+      "post": {
+        "operationId": "cmdSampleOperation081",
+        "summary": "cmdSampleOperation081",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_078": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_079": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPDownloadStream",
+        "x-dxlib-privileges": [
+          "sample-privilege-24"
+        ]
+      }
+    },
+    "/cmdSampleOperation082": {
+      "post": {
+        "operationId": "cmdSampleOperation082",
+        "summary": "cmdSampleOperation082",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_078": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_079": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPDownloadStream",
+        "x-dxlib-privileges": [
+          "sample-privilege-24"
+        ]
+      }
+    },
+    "/cmdSampleOperation083": {
+      "post": {
+        "operationId": "cmdSampleOperation083",
+        "summary": "cmdSampleOperation083",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_078": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_079": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPDownloadStream",
+        "x-dxlib-privileges": [
+          "sample-privilege-07"
+        ]
+      }
+    },
+    "/cmdSampleOperation084": {
+      "post": {
+        "operationId": "cmdSampleOperation084",
+        "summary": "cmdSampleOperation084",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_078": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_079": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPDownloadStream",
+        "x-dxlib-privileges": [
+          "sample-privilege-25",
+          "sample-privilege-26"
+        ]
+      }
+    },
+    "/cmdSampleOperation085": {
+      "post": {
+        "operationId": "cmdSampleOperation085",
+        "summary": "cmdSampleOperation085",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_078": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_079": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPDownloadStream",
+        "x-dxlib-privileges": [
+          "sample-privilege-25",
+          "sample-privilege-26"
+        ]
+      }
+    },
+    "/cmdSampleOperation086": {
+      "post": {
+        "operationId": "cmdSampleOperation086",
+        "summary": "cmdSampleOperation086",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-07"
+        ]
+      }
+    },
+    "/cmdSampleOperation087": {
+      "post": {
+        "operationId": "cmdSampleOperation087",
+        "summary": "cmdSampleOperation087",
+        "description": "Sample operation for the round-trip fixture.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_007": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_071": {
+                    "type": "string",
+                    "x-dxlib-type": "string"
+                  },
+                  "field_072": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "x-dxlib-type": "array-string"
+                  },
+                  "field_073": {
+                    "type": "object",
+                    "x-dxlib-type": "json-passthrough"
+                  },
+                  "field_074": {
+                    "type": "array",
+                    "x-dxlib-type": "array"
+                  },
+                  "field_075": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_076": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "x-dxlib-type": "int64zp"
+                  },
+                  "field_077": {
+                    "type": "boolean",
+                    "x-dxlib-type": "bool"
+                  }
+                },
+                "required": [
+                  "field_007"
+                ]
+              }
+            }
+          }
+        },
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON",
+        "x-dxlib-privileges": [
+          "sample-privilege-07"
+        ]
+      }
+    }
+  }
+}

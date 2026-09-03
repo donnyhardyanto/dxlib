@@ -1,0 +1,18 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "sample-service-2",
+    "version": "1.0.0",
+    "description": "Endpoints registered on API sample-service-2."
+  },
+  "paths": {
+    "/cmdSampleOperation092": {
+      "get": {
+        "operationId": "cmdSampleOperation092",
+        "summary": "cmdSampleOperation092",
+        "description": "Sample operation for the round-trip fixture.",
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "sample-service-3",
+    "version": "1.0.0",
+    "description": "Endpoints registered on API sample-service-3."
+  },
+  "paths": {},
+  "x-dxlib-websocket-endpoints": {
+    "description": "WebSocket endpoints registered on this API. OpenAPI 3.1 describes request/response operations and has no construct for a WebSocket lifecycle (upgrade, open, frames in both directions, periodic push, close), so they are listed here and not under paths. The protocol inside the frames is the application's own and is not described.",
+    "endpoints": [
+      {
+        "operationId": "ws",
+        "path": "/ws",
+        "method": "GET",
+        "summary": "ws",
+        "description": "WebSocket relay",
+        "periodicInterval": "5s"
+      }
+    ]
+  }
+}

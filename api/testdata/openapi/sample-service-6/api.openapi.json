@@ -1,0 +1,42 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "sample-service-1",
+    "version": "1.0.0",
+    "description": "Endpoints registered on API sample-service-1."
+  },
+  "paths": {
+    "/cmdSampleOperation088": {
+      "get": {
+        "operationId": "cmdSampleOperation088",
+        "summary": "cmdSampleOperation088",
+        "description": "Sample operation for the round-trip fixture.",
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation089": {
+      "get": {
+        "operationId": "cmdSampleOperation089",
+        "summary": "cmdSampleOperation089",
+        "description": "Sample operation for the round-trip fixture.",
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation090": {
+      "get": {
+        "operationId": "cmdSampleOperation090",
+        "summary": "cmdSampleOperation090",
+        "description": "Sample operation for the round-trip fixture.",
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    },
+    "/cmdSampleOperation091": {
+      "get": {
+        "operationId": "cmdSampleOperation091",
+        "summary": "cmdSampleOperation091",
+        "description": "Sample operation for the round-trip fixture.",
+        "x-dxlib-endpoint-type": "EndPointTypeHTTPJSON"
+      }
+    }
+  }
+}
