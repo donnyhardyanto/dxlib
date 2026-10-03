@@ -18,8 +18,8 @@ type DXDatabaseManager struct {
 }
 
 func (dm *DXDatabaseManager) NewDatabase(nameId string, isConnectAtStart, mustBeConnected bool) *DXDatabase {
-	if dm.Databases[nameId] != nil {
-		return dm.Databases[nameId]
+	if existing := dm.Get(nameId); existing != nil {
+		return existing
 	}
 	dbSemaphore := make(chan struct{}, 10)
 
