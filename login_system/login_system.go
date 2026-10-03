@@ -82,6 +82,7 @@ type LoginSystem struct {
 	SyncTicker            *time.Ticker
 	PubSubKeyExpired      *goredis.PubSub // nil in DBOnly mode
 	PubSubKeyEvicted      *goredis.PubSub // nil in DBOnly mode
+	syncStop              chan struct{}   // closed by Stop to end the sync loop
 }
 
 // ====================== Constructors ======================
@@ -376,27 +377,53 @@ func (l *LoginSystem) startRedis() error {
 		}
 	}()
 
-	// Start sync ticker
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				l.Log.Error("LoginSystem.startRedis:sync-goroutine:PANIC:", fmt.Errorf("%v\n%s", r, debug.Stack()))
-			}
-		}()
-		l.SyncTicker = time.NewTicker(l.SyncInterval)
-		defer l.SyncTicker.Stop()
-		for range l.SyncTicker.C {
-			l.checkSessions()
-		}
-	}()
-
+	l.startSyncLoop("LoginSystem.startRedis:sync-goroutine", l.checkSessions)
 	return nil
 }
 
-func (l *LoginSystem) stopRedis() {
+// startSyncLoop runs task every SyncInterval until Stop. The ticker is made
+// here rather than in the goroutine, so Stop always sees it, and the loop
+// waits on syncStop as well: stopping a ticker never closes its channel, so a
+// loop ranging over it alone would block for good once Stop ran.
+func (l *LoginSystem) startSyncLoop(name string, task func()) {
+	if l.SyncInterval <= 0 {
+		l.Log.Warnf("%s:SYNC_INTERVAL_NOT_POSITIVE:%v:periodic_sync_disabled", name, l.SyncInterval)
+		return
+	}
+	ticker := time.NewTicker(l.SyncInterval)
+	stop := make(chan struct{})
+	l.SyncTicker = ticker
+	l.syncStop = stop
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				l.Log.Error(name+":PANIC:", fmt.Errorf("%v\n%s", r, debug.Stack()))
+			}
+		}()
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				task()
+			}
+		}
+	}()
+}
+
+func (l *LoginSystem) stopSyncLoop() {
 	if l.SyncTicker != nil {
 		l.SyncTicker.Stop()
 	}
+	if l.syncStop != nil {
+		close(l.syncStop)
+		l.syncStop = nil
+	}
+}
+
+func (l *LoginSystem) stopRedis() {
+	l.stopSyncLoop()
 	if l.PubSubKeyExpired != nil {
 		_ = l.PubSubKeyExpired.Close()
 	}
@@ -410,25 +437,12 @@ func (l *LoginSystem) stopRedis() {
 
 func (l *LoginSystem) startDBOnly() error {
 	// Start background cleanup goroutine that polls expired_at
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				l.Log.Error("LoginSystem.startDBOnly:cleanup-goroutine:PANIC:", fmt.Errorf("%v\n%s", r, debug.Stack()))
-			}
-		}()
-		l.SyncTicker = time.NewTicker(l.SyncInterval)
-		defer l.SyncTicker.Stop()
-		for range l.SyncTicker.C {
-			l.dbOnlyCleanupExpired()
-		}
-	}()
+	l.startSyncLoop("LoginSystem.startDBOnly:cleanup-goroutine", l.dbOnlyCleanupExpired)
 	return nil
 }
 
 func (l *LoginSystem) stopDBOnly() {
-	if l.SyncTicker != nil {
-		l.SyncTicker.Stop()
-	}
+	l.stopSyncLoop()
 }
 
 // ====================== Redis Expiration Callback ======================
