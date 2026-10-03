@@ -170,8 +170,10 @@ func (m *LoginSystemManager) GetOrCreate(tenantId int64, expiredTimeDuration tim
 func (m *LoginSystemManager) InstanceRegister(tenantId int64, sessionKey string, userId int64,
 	deviceId string, sessionData map[string]any, expiredTimeDuration time.Duration) error {
 
+	// The TTL goes with the session: GetOrCreate uses it only when it creates
+	// the tenant's LoginSystem, which a tenant's first call does.
 	ls := m.GetOrCreate(tenantId, expiredTimeDuration)
-	err := ls.InstanceRegister(sessionKey, userId, deviceId, sessionData)
+	err := ls.InstanceRegisterWithTTL(sessionKey, userId, deviceId, sessionData, expiredTimeDuration)
 	if err == nil {
 		m.SessionToTenant.Store(sessionKey, tenantId)
 	}

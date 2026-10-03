@@ -243,14 +243,30 @@ func (l *LoginSystem) Stop() {
 
 // ====================== Public API ======================
 
+// SessionTTLField is the system field in sessionData holding a session's own
+// TTL in milliseconds, set by InstanceRegisterWithTTL. A session without it
+// lives by ExpiredTimeDuration.
+const SessionTTLField = "session_ttl_ms"
+
 // InstanceRegister registers a new session. Kicks existing sessions based on DeviceInstanceType rules.
 // sessionData should contain all application-specific fields (roles, pn_type, pn_token, etc.)
 // System fields (session_key, usermanagement_user_id, device_id) are injected automatically.
 func (l *LoginSystem) InstanceRegister(sessionKey string, userId int64, deviceId string, sessionData map[string]any) error {
+	return l.InstanceRegisterWithTTL(sessionKey, userId, deviceId, sessionData, 0)
+}
+
+// InstanceRegisterWithTTL is InstanceRegister with the session's own TTL. A
+// positive ttl is stored in sessionData as SessionTTLField and used both at
+// registration and for every sliding renewal of a ShortLived session, so the
+// session keeps it for life. Zero or less means ExpiredTimeDuration.
+func (l *LoginSystem) InstanceRegisterWithTTL(sessionKey string, userId int64, deviceId string, sessionData map[string]any, ttl time.Duration) error {
 	// Inject system fields into sessionData
 	sessionData["session_key"] = sessionKey
 	sessionData["usermanagement_user_id"] = userId
 	sessionData["device_id"] = deviceId
+	if ttl > 0 {
+		sessionData[SessionTTLField] = ttl.Milliseconds()
+	}
 
 	switch l.Storage {
 	case RedisOnly:
@@ -479,7 +495,7 @@ func (l *LoginSystem) redisOnlyInstanceRegister(sessionKey string, userId int64,
 	}
 
 	// SET the TTL key (the key whose expiry triggers the pub/sub callback)
-	if err := l.RedisClient.Set(ctx, l.ttlKey(sessionKey), "1", l.ExpiredTimeDuration).Err(); err != nil {
+	if err := l.RedisClient.Set(ctx, l.ttlKey(sessionKey), "1", l.sessionTTL(sessionData)).Err(); err != nil {
 		l.Log.Error("redisOnlyInstanceRegister:SET_TTL:", err)
 	}
 
@@ -494,13 +510,7 @@ func (l *LoginSystem) redisOnlyInstanceGet(sessionKey string) (map[string]any, e
 
 	// Check TTL key exists
 	var err error
-	if l.TokenLifetime == ShortLived {
-		// GETEX with TTL renewal (sliding window)
-		_, err = l.RedisClient.GetEx(ctx, l.ttlKey(sessionKey), l.ExpiredTimeDuration).Result()
-	} else {
-		// GET without TTL renewal (fixed expiry)
-		_, err = l.RedisClient.Get(ctx, l.ttlKey(sessionKey)).Result()
-	}
+	_, err = l.RedisClient.Get(ctx, l.ttlKey(sessionKey)).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -518,6 +528,7 @@ func (l *LoginSystem) redisOnlyInstanceGet(sessionKey string) (map[string]any, e
 
 	// Fix JSON number → int64 for user_id
 	l.fixJsonNumbers(sessionData)
+	l.redisRenew(ctx, sessionKey, sessionData)
 	return sessionData, nil
 }
 
@@ -718,7 +729,7 @@ func (l *LoginSystem) redisWithDBInstanceRegister(sessionKey string, userId int6
 		}
 
 		// Insert new session
-		expiredAt := time.Now().UTC().Add(l.ExpiredTimeDuration)
+		expiredAt := time.Now().UTC().Add(l.sessionTTL(sessionData))
 		_, _, err = dtx.Insert(ctx, SessionStoreName, map[string]any{
 			"appmanagement_appinstance_id": l.TenantId,
 			"usermanagement_user_id":       userId,
@@ -737,7 +748,7 @@ func (l *LoginSystem) redisWithDBInstanceRegister(sessionKey string, userId int6
 	if err := l.RedisClient.HSet(ctx, l.hashKey(), sessionKey, sessionDataBytes).Err(); err != nil {
 		l.Log.Error("redisWithDBInstanceRegister:HSET:", err)
 	}
-	if err := l.RedisClient.Set(ctx, l.ttlKey(sessionKey), "1", l.ExpiredTimeDuration).Err(); err != nil {
+	if err := l.RedisClient.Set(ctx, l.ttlKey(sessionKey), "1", l.sessionTTL(sessionData)).Err(); err != nil {
 		l.Log.Error("redisWithDBInstanceRegister:SET_TTL:", err)
 	}
 
@@ -752,11 +763,7 @@ func (l *LoginSystem) redisWithDBInstanceGet(sessionKey string) (map[string]any,
 
 	// Check Redis TTL key
 	var err error
-	if l.TokenLifetime == ShortLived {
-		_, err = l.RedisClient.GetEx(ctx, l.ttlKey(sessionKey), l.ExpiredTimeDuration).Result()
-	} else {
-		_, err = l.RedisClient.Get(ctx, l.ttlKey(sessionKey)).Result()
-	}
+	_, err = l.RedisClient.Get(ctx, l.ttlKey(sessionKey)).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -773,6 +780,7 @@ func (l *LoginSystem) redisWithDBInstanceGet(sessionKey string) (map[string]any,
 	}
 
 	l.fixJsonNumbers(sessionData)
+	l.redisRenew(ctx, sessionKey, sessionData)
 	return sessionData, nil
 }
 
@@ -944,7 +952,7 @@ func (l *LoginSystem) dbOnlyInstanceRegister(sessionKey string, userId int64, de
 		}
 
 		// Insert new session
-		expiredAt := time.Now().UTC().Add(l.ExpiredTimeDuration)
+		expiredAt := time.Now().UTC().Add(l.sessionTTL(sessionData))
 		_, _, err = dtx.Insert(ctx, SessionStoreName, map[string]any{
 			"appmanagement_appinstance_id": l.TenantId,
 			"usermanagement_user_id":       userId,
@@ -988,9 +996,14 @@ func (l *LoginSystem) dbOnlyInstanceGet(sessionKey string) (map[string]any, erro
 		return nil, errors.New("session_expired")
 	}
 
+	sessionData := l.extractSessionData(session)
+	if sessionData == nil {
+		return nil, errors.New("dbOnlyInstanceGet:invalid_session_data")
+	}
+
 	// For ShortLived, update expired_at (sliding window)
 	if l.TokenLifetime == ShortLived {
-		newExpiredAt := time.Now().UTC().Add(l.ExpiredTimeDuration)
+		newExpiredAt := time.Now().UTC().Add(l.sessionTTL(sessionData))
 		_, _, err = l.Db.Update(ctx, SessionStoreName, map[string]any{
 			"expired_at": newExpiredAt,
 		}, map[string]any{
@@ -999,11 +1012,6 @@ func (l *LoginSystem) dbOnlyInstanceGet(sessionKey string) (map[string]any, erro
 		if err != nil {
 			l.Log.Error("dbOnlyInstanceGet:UPDATE_expired_at:", err)
 		}
-	}
-
-	sessionData := l.extractSessionData(session)
-	if sessionData == nil {
-		return nil, errors.New("dbOnlyInstanceGet:invalid_session_data")
 	}
 	return sessionData, nil
 }
@@ -1237,6 +1245,36 @@ func (l *LoginSystem) fixJsonNumbers(sessionData map[string]any) {
 				sessionData[k] = int64(f)
 			}
 		}
+	}
+}
+
+// sessionTTL returns the session's own TTL from SessionTTLField, or
+// ExpiredTimeDuration when it has none.
+func (l *LoginSystem) sessionTTL(sessionData map[string]any) time.Duration {
+	var ms int64
+	switch v := sessionData[SessionTTLField].(type) {
+	case int64:
+		ms = v
+	case int:
+		ms = int64(v)
+	case float64:
+		ms = int64(v)
+	}
+	if ms > 0 {
+		return time.Duration(ms) * time.Millisecond
+	}
+	return l.ExpiredTimeDuration
+}
+
+// redisRenew slides a ShortLived session's TTL key forward by the session's
+// own TTL. The TTL lives in the session data, so this runs after the HGET
+// rather than as part of the existence check.
+func (l *LoginSystem) redisRenew(ctx context.Context, sessionKey string, sessionData map[string]any) {
+	if l.TokenLifetime != ShortLived {
+		return
+	}
+	if err := l.RedisClient.Expire(ctx, l.ttlKey(sessionKey), l.sessionTTL(sessionData)).Err(); err != nil {
+		l.Log.Error("LoginSystem.redisRenew:EXPIRE:", err)
 	}
 }
 
