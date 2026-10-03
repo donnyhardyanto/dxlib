@@ -1,0 +1,11 @@
+dxlib
+Copyright Donny Hardyanto
+
+The captcha package uses Freetype-Go (github.com/golang/freetype), which may be
+used under either the FreeType License or the GPL-2.0-or-later. dxlib uses it
+under the FreeType License, which asks for this credit:
+
+    Portions of this software are copyright © 2010 The FreeType Project
+    (www.freetype.org). All rights reserved.
+
+Freetype-Go is copyright 2010 The Freetype-Go Authors.
