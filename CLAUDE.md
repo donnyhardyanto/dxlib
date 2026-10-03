@@ -8,8 +8,9 @@ tag is cut and their pin moves.
 
     go build ./... && go vet ./... && go test -race ./...
 
-Bugs go in GitHub issues, one per bug, with `Fixes #N` in the fixing commit. Ask before pushing; never
-force-push.
+Bugs are tracked in GitHub issues only, one per bug, with `Fixes #N` in the fixing commit. There are no
+`BUG_OUTSTANDING.md` or `BUG_HISTORY.md` files (in any spelling); do not create them. Ask before pushing;
+never force-push.
 
 ## Dependencies: SBOM scan
 
