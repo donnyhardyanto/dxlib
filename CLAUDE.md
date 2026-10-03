@@ -12,6 +12,9 @@ Bugs are tracked in GitHub issues only, one per bug, with `Fixes #N` in the fixi
 `BUG_OUTSTANDING.md` or `BUG_HISTORY.md` files (in any spelling); do not create them. Ask before pushing;
 never force-push.
 
+Docker is not used. The library has no images or compose files; if containers are ever needed, they use
+Podman (`podman`, `podman compose`).
+
 ## Dependencies: SBOM scan
 
 Every dependency upgrade or new dependency gets an SBOM scan before it is committed. That covers `go.mod`
