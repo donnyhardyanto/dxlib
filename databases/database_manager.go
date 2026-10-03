@@ -1,10 +1,12 @@
 package databases
 
 import (
+	"sort"
+	"sync"
+
 	dxlibv3Configuration "github.com/donnyhardyanto/dxlib/configuration"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"sync"
 )
 
 type DXDatabaseManager struct {
@@ -71,9 +73,10 @@ func (dm *DXDatabaseManager) LoadFromConfiguration(configurationNameId string) (
 }
 
 func (dm *DXDatabaseManager) ConnectAllAtStart() (err error) {
-	if len(dm.Databases) > 0 {
+	databases := dm.Snapshot()
+	if len(databases) > 0 {
 		log.Log.Info("Connecting to Database Manager... start")
-		for _, v := range dm.Databases {
+		for _, v := range databases {
 			err := v.ApplyFromConfiguration()
 			if err != nil {
 				err = log.Log.ErrorAndCreateErrorf("Cannot configure to databases %s to connect", v.NameId)
@@ -92,7 +95,7 @@ func (dm *DXDatabaseManager) ConnectAllAtStart() (err error) {
 }
 
 func (dm *DXDatabaseManager) ConnectAll(configurationNameId string) (err error) {
-	for _, v := range dm.Databases {
+	for _, v := range dm.Snapshot() {
 		err := v.ApplyFromConfiguration()
 		if err != nil {
 			err = log.Log.ErrorAndCreateErrorf("Cannot configure to databases %s to connect", v.NameId)
@@ -107,7 +110,7 @@ func (dm *DXDatabaseManager) ConnectAll(configurationNameId string) (err error) 
 }
 
 func (dm *DXDatabaseManager) DisconnectAll() (err error) {
-	for _, v := range dm.Databases {
+	for _, v := range dm.Snapshot() {
 		err = v.Disconnect()
 		if err != nil {
 			return err
@@ -123,6 +126,39 @@ func (dm *DXDatabaseManager) Get(nameId string) *DXDatabase {
 	dm.mu.RLock()
 	defer dm.mu.RUnlock()
 	return dm.Databases[nameId]
+}
+
+// Set registers d under nameId, replacing any handle already there. It is the
+// locked way to add a database the caller built and configured itself.
+func (dm *DXDatabaseManager) Set(nameId string, d *DXDatabase) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+	dm.Databases[nameId] = d
+}
+
+// Names returns the registered names, sorted.
+func (dm *DXDatabaseManager) Names() []string {
+	dm.mu.RLock()
+	defer dm.mu.RUnlock()
+	names := make([]string, 0, len(dm.Databases))
+	for nameId := range dm.Databases {
+		names = append(names, nameId)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// Snapshot returns a copy of the registry, safe to range while other
+// goroutines register databases. Ranging dm.Databases directly is not: a
+// concurrent map read and write is a fatal error.
+func (dm *DXDatabaseManager) Snapshot() map[string]*DXDatabase {
+	dm.mu.RLock()
+	defer dm.mu.RUnlock()
+	snapshot := make(map[string]*DXDatabase, len(dm.Databases))
+	for nameId, d := range dm.Databases {
+		snapshot[nameId] = d
+	}
+	return snapshot
 }
 
 // GetOrCreate gets an existing databases or creates a new one with default settings
