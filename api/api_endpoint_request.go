@@ -1110,12 +1110,36 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationOctetStream() (e
 	case EndPointTypeWS:
 		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_CONTENT_TYPE_OCTETSTREAM_ENDPOINT_TYPE_X_NOT_IMPLEMENTED_YET:%v", aepr.EndPoint.Method)
 	default:
-		aepr.RequestBodyAsBytes, err = io.ReadAll(aepr.Request.Body)
+		aepr.RequestBodyAsBytes, err = aepr.readCappedBody()
 		if err != nil {
+			if tooLarge := aepr.writeIfBodyTooLarge(err); tooLarge != nil {
+				return tooLarge
+			}
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_READING_REQUEST_BODY: %v", err.Error())
 		}
 	}
 	return nil
+}
+
+// readCappedBody reads the whole request body, holding it to the endpoint's
+// RequestMaxContentLength when one is set. The Content-Length check at the top
+// of PreProcessRequest cannot do that alone: a chunked request sends none.
+func (aepr *DXAPIEndPointRequest) readCappedBody() ([]byte, error) {
+	if aepr.EndPoint.RequestMaxContentLength > 0 {
+		aepr.Request.Body = http.MaxBytesReader(*aepr.ResponseWriter, aepr.Request.Body, aepr.EndPoint.RequestMaxContentLength)
+	}
+	return io.ReadAll(aepr.Request.Body)
+}
+
+// writeIfBodyTooLarge answers 413 when err is readCappedBody hitting the
+// ceiling, as a declared oversize Content-Length is answered, and returns nil
+// for any other error.
+func (aepr *DXAPIEndPointRequest) writeIfBodyTooLarge(err error) error {
+	var maxBytesErr *http.MaxBytesError
+	if !stderrors.As(err, &maxBytesErr) {
+		return nil
+	}
+	return aepr.WriteResponseAndNewErrorf(http.StatusRequestEntityTooLarge, "", "REQUEST_MAX_CONTENT_LENGTH_EXCEEDED:%d", aepr.EndPoint.RequestMaxContentLength)
 }
 
 func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err error) {
@@ -1126,8 +1150,11 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		}
 	}
 	bodyAsJSON := utils.JSON{}
-	aepr.RequestBodyAsBytes, err = io.ReadAll(aepr.Request.Body)
+	aepr.RequestBodyAsBytes, err = aepr.readCappedBody()
 	if err != nil {
+		if tooLarge := aepr.writeIfBodyTooLarge(err); tooLarge != nil {
+			return tooLarge
+		}
 		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_READ:%v=%v", err.Error(), aepr.RequestBodyAsBytes)
 	}
 
