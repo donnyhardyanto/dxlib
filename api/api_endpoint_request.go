@@ -1285,6 +1285,11 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "INVALID_PREKEY", "NOT_ERROR:UNPACK_ERROR:%v", err.Error())
 		}
 
+		// The elements come from client data; a payload short of a header and a
+		// body is corrupt, not something to index past the end of.
+		if len(lvPayloadElements) < 2 {
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "DATA_CORRUPT", "DATA_CORRUPT:PAYLOAD_ELEMENT_COUNT:%d", len(lvPayloadElements))
+		}
 		lvPayloadHeader := lvPayloadElements[0]
 		lvPayloadBody := lvPayloadElements[1]
 
