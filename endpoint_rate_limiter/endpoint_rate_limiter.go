@@ -72,51 +72,46 @@ func (e *EndpointRateLimiter) IsAllowed(ctx context.Context, groupNameId, identi
 		return true, nil
 	}
 
-	// Check if the identifier is blocked for this API
-	blockedKey := e.getBlockKey(groupNameId, identifier)
 	p := *(e.RedisInstance)
-	blocked, err := p.Connection.Exists(ctx, blockedKey).Result()
+	allowed, err := isAllowedScript.Run(ctx, p.Connection,
+		[]string{e.getAttemptKey(groupNameId, identifier), e.getBlockKey(groupNameId, identifier)},
+		config.TimeWindow.Milliseconds(), config.MaxAttempts, config.BlockDuration.Milliseconds(),
+	).Int()
 	if err != nil {
 		return false, err
 	}
-	if blocked == 1 {
-		return false, nil
-	}
-
-	// Get current attempts
-	attemptsKey := e.getAttemptKey(groupNameId, identifier)
-	attempts, err := p.Connection.Get(ctx, attemptsKey).Int()
-	if errors.Is(err, redis.Nil) {
-		// Key doesn't exist, first attempt
-		err = p.Connection.Set(ctx, attemptsKey, 1, config.TimeWindow).Err()
-		if err != nil {
-			return false, err
-		}
-		return true, err
-	}
-	if err != nil {
-		return false, err
-	}
-
-	// Check if attempts exceeded
-	if attempts >= config.MaxAttempts {
-		// Block the identifier for this API
-		err = p.Connection.Set(ctx, blockedKey, true, config.BlockDuration).Err()
-		if err != nil {
-			return false, err
-		}
-		// Reset attempts counter
-		err = p.Connection.Del(ctx, attemptsKey).Err()
-		return false, err
-	}
-
-	// Increment attempts
-	err = p.Connection.Incr(ctx, attemptsKey).Err()
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return allowed == 1, nil
 }
+
+// isAllowedScript checks the block, counts the attempt and sets the block as
+// one step. Done as separate commands, parallel requests all read the same
+// count and all passed, requests already past the block check started a fresh
+// window once the counter was reset, and an INCR on a counter that expired in
+// between left one with no TTL. Attempts 1..MaxAttempts pass; the next one
+// blocks the identifier for BlockDuration and resets the counter. A zero
+// duration means no expiry, as it did with SET.
+//
+// KEYS[1] attempts key, KEYS[2] blocked key
+// ARGV[1] window ms, ARGV[2] max attempts, ARGV[3] block ms
+var isAllowedScript = redis.NewScript(`
+if redis.call('EXISTS', KEYS[2]) == 1 then
+	return 0
+end
+local attempts = redis.call('INCR', KEYS[1])
+if attempts == 1 and tonumber(ARGV[1]) > 0 then
+	redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+if attempts > tonumber(ARGV[2]) then
+	if tonumber(ARGV[3]) > 0 then
+		redis.call('SET', KEYS[2], '1', 'PX', ARGV[3])
+	else
+		redis.call('SET', KEYS[2], '1')
+	end
+	redis.call('DEL', KEYS[1])
+	return 0
+end
+return 1
+`)
 
 // Reset clears the rate limit counters and blocked status for a specific identifier and API
 func (e *EndpointRateLimiter) Reset(ctx context.Context, groupNameId, identifier string) error {
