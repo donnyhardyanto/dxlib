@@ -981,7 +981,9 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 						return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, s, s)
 					}
 				}
-				if rpv.RawValue != nil {
+				// Only X-Var fills ParameterValues on this path, so an optional
+				// parameter the caller left out has no entry at all.
+				if ok && rpv.RawValue != nil {
 					err = rpv.Validate()
 					if err != nil {
 						aepr.WriteResponseAsError(http.StatusUnprocessableEntity, err)
