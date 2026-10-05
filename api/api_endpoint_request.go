@@ -484,8 +484,8 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 			errMsg := fmt.Sprintf("E2EE_ENCRYPTION_PARAMETERS_NIL:PREKEY_MISSING_OR_USED:status=%d", statusCode)
 			err := errors.New(errMsg)
 
-			requestDump, err2 := aepr.RequestDumpAsString()
-			if err2 != nil {
+			requestDump := aepr.DecryptedRequestDumpAsString()
+			if requestDump == "" {
 				requestDump = "DUMP REQUEST FAIL"
 			}
 
