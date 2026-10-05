@@ -213,6 +213,40 @@ func get(t *testing.T, client *http.Client, addr string) (*http.Response, error)
 	return resp, err
 }
 
+// handshakeRefusal dials addr with cfg and returns the error a refused client
+// sees. A refusal the server makes in VerifyConnection (the deny list, the key
+// floor, the SAN allow-list) has a particular shape under TLS 1.3: the client
+// has sent its Finished and its Handshake() has returned before the server has
+// read its certificate, so the bad-certificate alert arrives on the client's
+// first read, not from the handshake. An http.Client cannot be relied on to
+// show it. Go's HTTP/2 transport, when the connection dies before the first
+// stream is opened on it, reports "http2: client conn could not be established"
+// and drops the error that closed the connection (net/http/internal/http2,
+// awaitOpenSlotForStreamLocked; its own TestTransportFailureErrorForHTTP1Response
+// is skipped for the same race). Whether the alert or that message surfaces
+// depends on which goroutine wins, which made the tests that classify the
+// refusal flaky. So the refusal is read at the TLS layer: the handshake, one
+// request written so a server that admitted the client would serve it and hit
+// the handler, then the read that carries the alert. The write's error is not
+// the refusal and is not returned: a server that has already closed has sent a
+// reset, and the alert is buffered ahead of it. Under TLS 1.2, or for a
+// refusal made while the hello is processed, the handshake itself fails and
+// that error is returned.
+func handshakeRefusal(t *testing.T, cfg *tls.Config, addr string) error {
+	t.Helper()
+	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 5 * time.Second}, "tcp", addr, cfg)
+	if err != nil {
+		return err
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = conn.Write([]byte("GET / HTTP/1.1\r\nHost: " + addr + "\r\n\r\n"))
+	_, err = conn.Read(make([]byte, 1))
+	return err
+}
+
 func mustBuildServer(t *testing.T, kv utils.JSON) *DXServerTLS {
 	t.Helper()
 	s, err := NewServerTLS(kv)
@@ -839,7 +873,7 @@ func TestAllowedClientSANsRejectAtHandshake(t *testing.T) {
 		s := mustBuildServer(t, p.serverBlock(utils.JSON{"allowed-client-sans": []string{"spiffe://cluster.local/ns/dcc/sa/queue-scheduler"}}))
 		addr, _, errorLog := startServer(t, s.Config, okHandler(&hits))
 
-		_, err := get(t, httpsClient(stranger), addr)
+		err := handshakeRefusal(t, stranger, addr)
 		if err == nil {
 			t.Fatal("a valid certificate from our CA with a SAN not in the allow-list was admitted")
 		}
@@ -1714,7 +1748,7 @@ func TestDenyCertificatesRevokeAtTheHandshake(t *testing.T) {
 		t.Helper()
 		var hits atomic.Int32
 		addr, _, errorLog := startServer(t, s.Config, okHandler(&hits))
-		_, err := get(t, httpsClient(client), addr)
+		err := handshakeRefusal(t, client, addr)
 		if err == nil {
 			t.Fatal("a denied certificate was admitted")
 		}
@@ -1722,7 +1756,7 @@ func TestDenyCertificatesRevokeAtTheHandshake(t *testing.T) {
 			t.Error("the handler ran for a denied certificate")
 		}
 		if class, _ := ClassifyHandshakeError(err); class != HandshakeClassPeerRejectedUs {
-			t.Errorf("client saw class %s, want %s", class, HandshakeClassPeerRejectedUs)
+			t.Errorf("client saw class %s, want %s: %v", class, HandshakeClassPeerRejectedUs, err)
 		}
 		if !errorLog.contains(t, "TLS_PEER_REVOKED") || !errorLog.contains(t, wantInLog) {
 			t.Errorf("server log lacks TLS_PEER_REVOKED with %q: %v", wantInLog, errorLog.lines)

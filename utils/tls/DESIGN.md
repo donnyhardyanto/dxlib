@@ -1286,6 +1286,20 @@ asserts two things that a hello Go declined to build could not produce: the
 client's error is the server's alert (`remote error: tls: ...`), and the
 server's error log grew by a handshake error for it.
 
+A refusal made in `VerifyConnection` (the deny list, the key floor, the SAN
+allow-list) has a different shape under TLS 1.3: the client's own handshake has
+completed before the server reads its certificate, so the `bad certificate`
+alert arrives on the client's first read, not from `Handshake()`. Go's HTTP/2
+transport does not carry that error to the caller when the connection dies
+before its first stream is opened; it reports `http2: client conn could not be
+established` and the alert text is lost, a known gap in
+`net/http/internal/http2`. `TestDenyCertificatesRevokeAtTheHandshake` and
+`TestAllowedClientSANsRejectAtHandshake` therefore read the refusal at the TLS
+layer, through the `handshakeRefusal` helper, rather than through an
+`http.Client`; the earlier `http.Client` form was intermittently classified
+`OTHER`. A Go HTTP/2 client in production sees the same generic message under
+that timing, and the server's log line is where the class is.
+
 The `utils/tls` suite runs green under `-race` on macOS (the development host),
 which matters for the atomic pointers the deny-file reload introduced. `api`
 runs green as well. An earlier revision of the suite also ran in a
