@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	stderrors "errors"
 	stdlog "log"
 	"net"
 	"net/http"
@@ -2031,4 +2032,74 @@ func TestPreflightReportsTheDenyList(t *testing.T) {
 	if !r.OK || !strings.Contains(r.Text, "holds: cipher-suites=CHACHA20,CBC") {
 		t.Errorf("client report:\n%s", r.Text)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Classification by text: one row per class, and the HTTP/2 client's lost
+// connection
+// ---------------------------------------------------------------------------
+
+// TestClassifyHandshakeTextByMessage pins the wording each class is matched
+// on, so a new case cannot move an old one, and adds the message Go's HTTP/2
+// client gives for a connection that closed before its first request went out.
+// Under TLS 1.3 that is how a refused client certificate reaches an
+// http.Client, the transport having dropped the alert, so it is TRANSPORT with
+// advice that points at the server's log. The transport's other closure
+// messages are not the handshake's doing and stay OTHER.
+func TestClassifyHandshakeTextByMessage(t *testing.T) {
+	cases := []struct {
+		text       string
+		wantClass  string
+		wantAdvice string // a substring the advice has to carry; empty means no advice at all
+	}{
+		{`Get "https://127.0.0.1:1/": http2: client conn could not be established`, HandshakeClassTransport, "TLS 1.3"},
+		{"http2: client conn could not be established", HandshakeClassTransport, "server's log"},
+		{"http2: client conn not usable", HandshakeClassOther, ""},
+		{"http2: client conn is closed", HandshakeClassOther, ""},
+		{"http2: client connection force closed via ClientConn.Close", HandshakeClassOther, ""},
+		{"something else entirely", HandshakeClassOther, ""},
+		{"x509: certificate has expired or is not yet valid: current time 2026-10-05T03:00:00Z is before 2026-10-06T03:00:00Z", HandshakeClassValidityWindow, "clock"},
+		{"x509: certificate signed by unknown authority", HandshakeClassTrust, "ca-trust"},
+		{"x509: cannot validate certificate for 127.0.0.1 because it doesn't contain any IP SANs", HandshakeClassName, "server-name"},
+		{"remote error: tls: bad certificate", HandshakeClassPeerRejectedUs, "refused our certificate"},
+		{"http: TLS handshake error from 10.0.0.9:51234: tls: client didn't provide a certificate", HandshakeClassNoClientCert, "mode=mtls"},
+		{"remote error: tls: handshake failure", HandshakeClassPolicy, "tls-policy"},
+		{"http: TLS handshake error from 10.0.0.9:51234: TLS_PEER_NOT_ALLOWED:stranger.dcc.svc", HandshakeClassIdentity, "allowed-client-sans"},
+		{`http: TLS handshake error from 10.0.0.9:51234: TLS_PEER_REVOKED:victim.test:chain[0]="CN=victim":spki-sha256=00`, HandshakeClassRevoked, "deny list"},
+		{"http: TLS handshake error from 10.0.0.9:51234: KEY_TOO_WEAK:RSA-1024", HandshakeClassKeyStrength, "key-strength"},
+		{"http: TLS handshake error from 10.0.0.9:51234: tls: first record does not look like a TLS handshake", HandshakeClassTransport, "plaintext"},
+		{"http: TLS handshake error from 10.0.0.9:51234: EOF", HandshakeClassTransport, "dropped"},
+		{"read tcp 10.0.0.1:40000->10.0.0.2:443: read: connection reset by peer", HandshakeClassTransport, "dropped"},
+	}
+	for _, c := range cases {
+		class, advice := ClassifyHandshakeText(c.text)
+		if class != c.wantClass || !strings.Contains(advice, c.wantAdvice) || (c.wantAdvice == "" && advice != "") {
+			t.Errorf("ClassifyHandshakeText(%q) = %s %q, want %s with %q", c.text, class, advice, c.wantClass, c.wantAdvice)
+		}
+		// An untyped error falls back to its text and lands in the same place.
+		if class, _ := ClassifyHandshakeError(stderrors.New(c.text)); class != c.wantClass {
+			t.Errorf("ClassifyHandshakeError(%q) = %s, want %s", c.text, class, c.wantClass)
+		}
+	}
+
+	// Through a real HTTP/2 client against a server that denies its
+	// certificate, the alert and the transport's lost-connection message race;
+	// whichever wins, the class is one an operator can act on, never OTHER.
+	t.Run("an HTTP/2 client refused at the handshake is never OTHER", func(t *testing.T) {
+		p := newPKI(t)
+		victim, victimCert, victimKey := p.clientLeaf(t, "victim", tlstest.LeafOptions{DNSNames: []string{"victim.test"}})
+		client := mustBuildClient(t, p.clientBlock(victimCert, victimKey, nil))
+		s := mustBuildServer(t, p.serverBlock(utils.JSON{"deny-certificates": denyEntries(utils.JSON{"spki-sha256": SPKISHA256Hex(victim.Cert)})}))
+		addr, _, _ := startServer(t, s.Config, okHandler(nil))
+		for i := 0; i < 20; i++ {
+			_, err := get(t, httpsClient(client), addr)
+			if err == nil {
+				t.Fatal("a denied certificate was admitted")
+			}
+			class, advice := ClassifyHandshakeError(err)
+			if (class != HandshakeClassPeerRejectedUs && class != HandshakeClassTransport) || advice == "" {
+				t.Fatalf("class %s (%q) for %v", class, advice, err)
+			}
+		}
+	})
 }

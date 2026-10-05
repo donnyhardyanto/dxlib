@@ -1022,7 +1022,12 @@ this host's clock is behind -- check NTP before the PKI". Both sides classify
 handshake failures: `ClassifyHandshakeError` sorts the typed `x509` errors (and,
 for the side that only received an alert, the text) into `VALIDITY_WINDOW`,
 `TRUST`, `NAME`, `PEER_REJECTED_US`, `NO_CLIENT_CERT`, `POLICY`, `IDENTITY`,
-`REVOKED`, `KEY_STRENGTH`, `TRANSPORT`, each with advice. On the server, refused
+`REVOKED`, `KEY_STRENGTH`, `TRANSPORT`, each with advice. `TRANSPORT` also takes
+the message Go's HTTP/2 client gives for a connection that closed before its
+first request went out, `http2: client conn could not be established`, with
+advice that under TLS 1.3 this is often a refused client certificate whose
+alert the transport dropped, and that the server's log carries the class; the
+test notes below have the shape. On the server, refused
 handshakes are only ever reported through `http.Server.ErrorLog`; with TLS on,
 that is now a writer that classifies each line into the dxlib log as
 `TLS_HANDSHAKE_REJECTED:<class>:...`. Plaintext listeners keep a nil `ErrorLog`,
@@ -1269,6 +1274,7 @@ a free `127.0.0.1` port.
 | CA pool hot reload; HTTP/2 kept after rotation | `TestClientCAPoolHotReloadKeepsHTTP2` |
 | `server-name` override; failure classified `NAME` | `TestServerNameOverride` |
 | clock problem distinguishable from trust problem, both sides | `TestValidityWindowIsDistinguishableFromTrust` |
+| classification by text, one row per class; the HTTP/2 client's `client conn could not be established` is `TRANSPORT` with TLS 1.3 advice; its near misses stay `OTHER`; an HTTP/2 client refused at the handshake is never `OTHER` | `TestClassifyHandshakeTextByMessage` |
 | preflight: good, `mode: http`, `mode: https`, wrong CA, not-yet-valid, weak key, expiring soon, config error, dial; prints `spki-sha256` | `TestPreflightReportsWhatAHandshakeWouldFind` |
 | expiry gauge sees the certificate | `TestCertificatesInServiceAreObservedForTheExpiryGauge` |
 | real `DXAPI` over mTLS: `PeerCertificate`/`PeerIdentity` on the request, audit entry, HTTP/2, TLS 1.3; `HTTPClient` and `HTTPClientDo` call sites; no-cert client refused | `TestDXAPIServesMTLSAndExposesThePeer` |
@@ -1298,7 +1304,12 @@ established` and the alert text is lost, a known gap in
 layer, through the `handshakeRefusal` helper, rather than through an
 `http.Client`; the earlier `http.Client` form was intermittently classified
 `OTHER`. A Go HTTP/2 client in production sees the same generic message under
-that timing, and the server's log line is where the class is.
+that timing; `ClassifyHandshakeText` files it as `TRANSPORT`, with advice that
+under TLS 1.3 it is often a refused certificate and that the server's log
+carries the class. `TestClassifyHandshakeTextByMessage` pins that, the
+transport's near-miss messages that stay `OTHER`, the wording every existing
+class is matched on, and that an `http.Client` refused through HTTP/2
+classifies as `PEER_REJECTED_US` or `TRANSPORT`, never `OTHER`.
 
 The `utils/tls` suite runs green under `-race` on macOS (the development host),
 which matters for the atomic pointers the deny-file reload introduced. `api`

@@ -30,7 +30,7 @@ const (
 	HandshakeClassIdentity       = "IDENTITY"         // refused by the SAN allow-list
 	HandshakeClassRevoked        = "REVOKED"          // a certificate in the peer's chain is on the deny list
 	HandshakeClassKeyStrength    = "KEY_STRENGTH"     // refused by the key-size floor
-	HandshakeClassTransport      = "TRANSPORT"        // connection dropped mid-handshake; often plaintext on a TLS port
+	HandshakeClassTransport      = "TRANSPORT"        // connection dropped mid-handshake, or on an HTTP/2 client before its first request; plaintext on a TLS port, or under TLS 1.3 a refused certificate the client never saw the alert for
 	HandshakeClassOther          = "OTHER"
 )
 
@@ -71,7 +71,11 @@ func ClassifyHandshakeError(err error) (class string, advice string) {
 
 // ClassifyHandshakeText classifies by message text alone. This is what an
 // http.Server error-log line offers, and what a client sees when the server
-// answered with a bare alert.
+// answered with a bare alert. It also knows the message Go's HTTP/2 client
+// gives when the connection closed before its first request went out, which
+// under TLS 1.3 is how a refused client certificate usually reaches an
+// http.Client: the server refuses after the client's own handshake has
+// completed, and the transport drops the alert that followed.
 func ClassifyHandshakeText(text string) (class string, advice string) {
 	t := strings.ToLower(text)
 	switch {
@@ -99,6 +103,13 @@ func ClassifyHandshakeText(text string) (class string, advice string) {
 		return HandshakeClassPolicy, "the peer offered no version, cipher suite or curve that tls-policy allows; the peer needs TLS 1.2 with ECDHE+AEAD or TLS 1.3"
 	case strings.Contains(t, "first record does not look like a tls handshake"):
 		return HandshakeClassTransport, "the peer spoke plaintext to a TLS port"
+	case strings.Contains(t, "client conn could not be established"):
+		// Go's HTTP/2 client, for a connection that closed before its first
+		// request went out (net/http/internal/http2, awaitOpenSlotForStreamLocked).
+		// The error that closed it is discarded, so under TLS 1.3 a server's
+		// bad-certificate alert arrives here as a lost connection. Only ever
+		// seen on the client; http.Server's error log never carries it.
+		return HandshakeClassTransport, "the connection closed before the first request went out on it; under TLS 1.3 a server that refuses our certificate does so after our handshake has completed, and Go's HTTP/2 client reports the lost connection instead of the bad-certificate alert, so this is often a PEER_REJECTED_US the client could not see: look in the server's log for TRUST, VALIDITY_WINDOW, IDENTITY, REVOKED or KEY_STRENGTH; any server that closes the connection right after the handshake gives the same message"
 	case strings.Contains(t, "eof"), strings.Contains(t, "connection reset"), strings.Contains(t, "broken pipe"):
 		return HandshakeClassTransport, "the connection dropped before the handshake finished; a health checker or a plaintext client hitting a TLS port does this"
 	default:
