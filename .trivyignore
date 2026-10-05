@@ -1,0 +1,6 @@
+# GO-2026-5932: golang.org/x/crypto/openpgp is unmaintained and unsafe by design. The advisory covers
+# every release of golang.org/x/crypto (no fixed version), so no upgrade clears it, and Trivy has no
+# reachability filter. dxlib imports only argon2 and bcrypt from the module; govulncheck ./... reports
+# the vulnerable package is not called. Accepted by the owner on 2026-10-05; see GO-2026-5932 in
+# .dependency-allowlist.json. The entry expires on the review date.
+GO-2026-5932 exp:2027-04-05

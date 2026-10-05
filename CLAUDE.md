@@ -22,7 +22,7 @@ Every dependency upgrade or new dependency gets an SBOM scan before it is commit
 
 Tools (all via Homebrew except govulncheck):
 
-    brew install syft grype osv-scanner
+    brew install syft grype osv-scanner trivy
     go install golang.org/x/vuln/cmd/govulncheck@latest
 
 Run from the repo root after changing the dependency (`go get ...` and `go mod tidy`, or `fvm flutter pub get`
@@ -32,9 +32,12 @@ in the Dart example):
     grype sbom:/tmp/dxlib-sbom.cdx.json
     osv-scanner scan source -r .
     govulncheck ./...
+    trivy fs --scanners vuln .
 
 The databases disagree at times (grype has flagged an `x/crypto` release that osv-scanner passed), so run all
-of them and act on the union.
+of them and act on the union. Trivy has no reachability filter, so an accepted finding also needs a line in
+`.trivyignore` (id plus `exp:` review date), next to its entry in `.dependency-allowlist.json`. Never use
+`--ignore-unfixed`: it hides every unfixed finding, not only the accepted ones.
 
 Rules:
 
@@ -42,7 +45,7 @@ Rules:
   in, at the version chosen. If it is not clean, choose a fixed version or a different library, or ask the
   owner.
 - An upgrade must not add a finding. A finding that was already there and has no fix yet may stay, but name it.
-- Put the result in the commit message: "SBOM scan clean (syft, grype, osv-scanner, govulncheck)", or what was
+- Put the result in the commit message: "SBOM scan clean (syft, grype, osv-scanner, govulncheck, trivy)", or what was
   found and how it was resolved.
 
 ## Dependencies: licence check

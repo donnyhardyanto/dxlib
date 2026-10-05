@@ -16,8 +16,9 @@ From the repo root, after `go get` and `go mod tidy`:
     grype sbom:/tmp/dxlib-sbom.cdx.json
     osv-scanner scan source -r .
     govulncheck ./...
+    trivy fs --scanners vuln .
 
-The databases disagree at times, so all four run and the union counts. Every dependency must be open
+The databases disagree at times, so all five run and the union counts. Every dependency must be open
 source under an OSI-approved licence; syft lists the licences from the module cache after
 `go mod download`:
 
@@ -53,3 +54,7 @@ Current entries:
 
 A project that depends on dxlib inherits this finding through dxlib's `go.mod`. It can accept it the
 same way, citing this entry, provided its own govulncheck run shows the same: openpgp not called.
+
+Trivy has no reachability filter and does not read the allowlist, so an accepted finding is also
+listed in `.trivyignore` with its review date as the expiry (`GO-2026-5932 exp:2027-04-05`). When the
+entry expires Trivy reports the finding again, which is the prompt to review it.
