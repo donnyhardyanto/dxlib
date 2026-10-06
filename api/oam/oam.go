@@ -8,6 +8,30 @@ import (
 	"github.com/donnyhardyanto/dxlib/errors"
 )
 
+func redactHeaders(h http.Header) map[string][]string {
+	redacted := make(map[string][]string, len(h))
+	sensitiveHeaders := map[string]bool{
+		"Authorization":       true,
+		"Proxy-Authorization": true,
+		"Cookie":              true,
+		"Set-Cookie":          true,
+		"X-Api-Key":           true,
+		"X-Auth-Token":        true,
+	}
+
+	for k, v := range h {
+		if sensitiveHeaders[http.CanonicalHeaderKey(k)] {
+			redacted[k] = []string{"[REDACTED]"}
+			continue
+		}
+		copied := make([]string, len(v))
+		copy(copied, v)
+		redacted[k] = copied
+	}
+
+	return redacted
+}
+
 func LogRequest(r *http.Request) (map[string]interface{}, error) {
 	requestBodyAsBytes, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -19,7 +43,7 @@ func LogRequest(r *http.Request) (map[string]interface{}, error) {
 		"host":        r.Host,
 		"request_uri": r.RequestURI,
 		"query":       r.URL.Query(),
-		"header":      r.Header,
+		"header":      redactHeaders(r.Header),
 		"body":        requestBodyAsBytes,
 	}
 	return lr, nil
