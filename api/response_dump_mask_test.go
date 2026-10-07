@@ -33,7 +33,7 @@ func newJSONRequest(rec *httptest.ResponseRecorder) *DXAPIEndPointRequest {
 }
 
 func TestWriteResponseAsJSONDumpsNon200MaskedAtEveryDepth(t *testing.T) {
-	utils.SetMaskRules(map[string]utils.MaskRule{"national_id": {Front: 4, Back: 2}, "full_name": {Front: 1}})
+	utils.SetMaskRules(map[string]utils.MaskRule{"national_id": {Front: 4, Back: 2}, "full_name": {Front: 1}, "customer_id": {Front: 4, Back: 2}})
 	t.Cleanup(func() { utils.SetMaskRules(map[string]utils.MaskRule{}) })
 	logged := captureLog(t)
 
@@ -45,6 +45,8 @@ func TestWriteResponseAsJSONDumpsNon200MaskedAtEveryDepth(t *testing.T) {
 				"full_name":     "Budi Santoso",
 				"national_id":   "3175012345678901",
 				"session_token": "tok-abc",
+				"record_id":     int64(9007199254740993),
+				"customer_id":   int64(3175099999999999),
 			},
 			"relatives": []utils.JSON{{"full_name": "Siti Aminah", "national_id": "3175019876543210"}},
 		},
@@ -54,12 +56,14 @@ func TestWriteResponseAsJSONDumpsNon200MaskedAtEveryDepth(t *testing.T) {
 	if !strings.Contains(log, "RESPONSE_DUMP_BEFORE_ENCRYPT") {
 		t.Fatalf("a 201 should still be dumped, log: %s", log)
 	}
-	for _, raw := range []string{"Budi Santoso", "3175012345678901", "tok-abc", "Siti Aminah", "3175019876543210"} {
+	for _, raw := range []string{"Budi Santoso", "3175012345678901", "tok-abc", "Siti Aminah", "3175019876543210", "3175099999999999", "e+15"} {
 		if strings.Contains(log, raw) {
 			t.Errorf("log carries %q in clear:\n%s", raw, log)
 		}
 	}
-	for _, masked := range []string{"3175****01", "3175****10", "********", "status_code=201"} {
+	// Numbers keep every digit: 9007199254740993 is one past what a float64 can hold, and a
+	// numeric field under a PII rule is masked on its digits, not on an exponent form.
+	for _, masked := range []string{"3175****01", "3175****10", "3175****99", "********", "status_code=201", "9007199254740993"} {
 		if !strings.Contains(log, masked) {
 			t.Errorf("log should carry %q:\n%s", masked, log)
 		}

@@ -472,7 +472,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 // back or re-marshalled, the line says so instead.
 func maskedResponseDump(jsonBytes []byte) string {
 	var body utils.JSON
-	if err := json.Unmarshal(jsonBytes, &body); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
+	dec.UseNumber() // keep every digit: a float64 would round a large id and print it in exponent form
+	if err := dec.Decode(&body); err != nil {
 		return fmt.Sprintf("(response body not dumped: %v)", err)
 	}
 	masked, err := json.Marshal(utils.MaskForLog(body))
