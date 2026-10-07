@@ -7,7 +7,7 @@ import "testing"
 // alike, because a typed operation sends its whole body under one "params" key.
 func TestMaskForLog_HostRulesApplyAtEveryDepth(t *testing.T) {
 	resetMaskState(t)
-	SetMaskRules(map[string]MaskRule{"national_id": {4, 2}, "full_name": {1, 0}})
+	SetMaskRules(map[string]MaskRule{"national_id": {Front: 4, Back: 2}, "full_name": {Front: 1, Back: 0}})
 
 	in := JSON{
 		"status_code": 201,
@@ -63,7 +63,7 @@ func TestMaskForLog_HostRulesApplyAtEveryDepth(t *testing.T) {
 
 func TestMaskForLog_ArrayElementsTakeTheArraysKey(t *testing.T) {
 	resetMaskState(t)
-	SetMaskRules(map[string]MaskRule{"phone": {3, 2}})
+	SetMaskRules(map[string]MaskRule{"phone": {Front: 3, Back: 2}})
 
 	out := MaskForLog(JSON{
 		"phone_numbers": []any{"081234567890", "0813"},
@@ -82,7 +82,7 @@ func TestMaskForLog_ArrayElementsTakeTheArraysKey(t *testing.T) {
 
 func TestMaskForLog_ContainerUnderAMatchingKeyIsMaskedWhole(t *testing.T) {
 	resetMaskState(t)
-	SetMaskRules(map[string]MaskRule{"address": {2, 2}})
+	SetMaskRules(map[string]MaskRule{"address": {Front: 2, Back: 2}})
 
 	out := MaskForLog(JSON{
 		"address":     JSON{"street": "Jl. Merdeka 1", "city": "Bandung"},
@@ -101,7 +101,7 @@ func TestMaskForLog_ContainerUnderAMatchingKeyIsMaskedWhole(t *testing.T) {
 // is masked whole.
 func TestMaskForLog_ArrayUnderARuleKeyMasksEachElement(t *testing.T) {
 	resetMaskState(t)
-	SetMaskRules(map[string]MaskRule{"address": {2, 2}})
+	SetMaskRules(map[string]MaskRule{"address": {Front: 2, Back: 2}})
 
 	out := MaskForLog(JSON{
 		"addresses": []any{"Jl. Merdeka 1, Bandung", JSON{"street": "Jl. Merdeka 1"}},
@@ -114,7 +114,7 @@ func TestMaskForLog_ArrayUnderARuleKeyMasksEachElement(t *testing.T) {
 
 func TestMaskForLog_StrictAndDefaultDenyReachNestedFields(t *testing.T) {
 	resetMaskState(t)
-	SetMaskRules(map[string]MaskRule{"national_id": {4, 2}})
+	SetMaskRules(map[string]MaskRule{"national_id": {Front: 4, Back: 2}})
 	SetMaskStrict(true)
 	SetMaskDefaultDeny(true)
 	SetLogAllowedFields([]string{"response_code"})
@@ -146,7 +146,7 @@ func TestMaskForLog_StrictAndDefaultDenyReachNestedFields(t *testing.T) {
 
 func TestMaskForLog_TypedSliceOfObjects(t *testing.T) {
 	resetMaskState(t)
-	SetMaskRules(map[string]MaskRule{"national_id": {4, 2}})
+	SetMaskRules(map[string]MaskRule{"national_id": {Front: 4, Back: 2}})
 
 	out := MaskForLog(JSON{
 		"rows": []map[string]any{{"national_id": "3175012345678901"}},

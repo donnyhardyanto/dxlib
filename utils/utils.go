@@ -1426,9 +1426,35 @@ func IsSensitiveField(fieldName string) bool {
 // domain-specific and dxlib must stay generic. Credentials (IsSensitiveField) are ALWAYS
 // fully masked and are NOT affected by these rules.
 
-// MaskRule reveals Front leading + Back trailing chars, masking the middle.
-// {0,0} (or MaskStrict) = full "********".
-type MaskRule struct{ Front, Back int }
+// MaskKind selects how a PII field is masked. The zero value, MaskKindPartial, is the original
+// Front+Back rule, so a host's existing rules keep their meaning.
+type MaskKind int
+
+const (
+	// MaskKindPartial reveals Front leading and Back trailing characters and masks the middle.
+	// {Front: 0, Back: 0} (or MaskStrict) is the full "********".
+	MaskKindPartial MaskKind = iota
+	// MaskKindEmail keeps the first two characters of the local part and of the domain and the
+	// top-level domain: "adi.darma@dana.co.id" becomes "ad***@da***.id". A value with no "@"
+	// is fully masked.
+	MaskKindEmail
+	// MaskKindInitials keeps the first letter of each word followed by a period:
+	// "Budi Santoso" becomes "B. S.". An empty value is fully masked.
+	MaskKindInitials
+	// MaskKindLocation rounds a coordinate to two decimals (about 1 km), so an area is logged,
+	// not a doorstep. It applies to a number, a "lat,lng" string, and, unlike the other kinds,
+	// to the numeric leaves of an object or array under the key, so {"location": {"lat": ..,
+	// "lng": ..}} is walked rather than masked whole. A value that is not a coordinate is fully
+	// masked.
+	MaskKindLocation
+)
+
+// MaskRule says how a PII field is masked for a log. Front and Back belong to MaskKindPartial;
+// the other kinds ignore them. Build it with keyed fields.
+type MaskRule struct {
+	Front, Back int
+	Kind        MaskKind
+}
 
 var (
 	maskRules  = map[string]MaskRule{} // lowercased field keyword → rule (host-populated)
@@ -1511,14 +1537,117 @@ func partialMask(s string, r MaskRule) string {
 	return string(runes[:r.Front]) + "****" + string(runes[len(runes)-r.Back:])
 }
 
+// applyMaskRule masks one leaf value under rule r, by its kind. MaskStrict wins over every kind.
+func applyMaskRule(value any, r MaskRule) any {
+	if maskStrict {
+		return "********"
+	}
+	switch r.Kind {
+	case MaskKindEmail:
+		return maskEmail(fmt.Sprintf("%v", value))
+	case MaskKindInitials:
+		return maskInitials(fmt.Sprintf("%v", value))
+	case MaskKindLocation:
+		return maskLocation(value)
+	default:
+		return partialMask(fmt.Sprintf("%v", value), r)
+	}
+}
+
+// maskEmail keeps the first two runes of the local part and of the domain, and the top-level
+// domain: "adi.darma@dana.co.id" → "ad***@da***.id". Without an "@" the value is fully masked.
+func maskEmail(s string) string {
+	at := strings.LastIndex(s, "@")
+	if at < 0 {
+		return "********"
+	}
+	local, domain := s[:at], s[at+1:]
+	tld := ""
+	if dot := strings.LastIndex(domain, "."); dot >= 0 {
+		tld = domain[dot:]
+		domain = domain[:dot]
+	}
+	return firstRunes(local, 2) + "***@" + firstRunes(domain, 2) + "***" + tld
+}
+
+// maskInitials keeps the first rune of each word, each followed by a period: "Budi Santoso"
+// → "B. S.". An empty value is fully masked.
+func maskInitials(s string) string {
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return "********"
+	}
+	initials := make([]string, len(words))
+	for i, w := range words {
+		initials[i] = firstRunes(w, 1) + "."
+	}
+	return strings.Join(initials, " ")
+}
+
+// maskLocation rounds a coordinate to two decimals. A number stays a number (as a float64); a
+// string is read as comma-separated coordinates and rounded term by term, keeping the string
+// form. Anything that is not a coordinate is fully masked.
+func maskLocation(value any) any {
+	switch v := value.(type) {
+	case float64:
+		return roundCoordinate(v)
+	case float32:
+		return roundCoordinate(float64(v))
+	case int:
+		return float64(v)
+	case int32:
+		return float64(v)
+	case int64:
+		return float64(v)
+	case json.Number:
+		f, err := v.Float64()
+		if err != nil {
+			return "********"
+		}
+		return roundCoordinate(f)
+	case string:
+		parts := strings.Split(v, ",")
+		for i, p := range parts {
+			f, err := strconv.ParseFloat(strings.TrimSpace(p), 64)
+			if err != nil {
+				return "********"
+			}
+			parts[i] = strconv.FormatFloat(roundCoordinate(f), 'f', 2, 64)
+		}
+		return strings.Join(parts, ",")
+	default:
+		return "********"
+	}
+}
+
+func roundCoordinate(f float64) float64 {
+	return math.Round(f*100) / 100
+}
+
+// firstRunes returns the first n runes of s, or all of s when it is shorter.
+func firstRunes(s string, n int) string {
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n])
+}
+
 // MaskSensitiveValue masks a value for logging.
 //   - Credential fields (IsSensitiveField): ALWAYS full "********".
-//   - PII fields (SetMaskRules): partial (Front+Back) unless SetMaskStrict → full.
+//   - PII fields (SetMaskRules): masked by the rule's kind (partial Front+Back, e-mail,
+//     initials or location) unless SetMaskStrict → full.
 //   - Unmatched fields: logged as-is under default-ALLOW, masked under default-DENY unless
 //     SetLogAllowedFields names them (SetMaskDefaultDeny).
 //   - Requires BOTH dxlib.IsDebug AND OverrideShowPasswordOnLog to show raw values
 //     (prevents accidental exposure from a single env flip).
 func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
+	return maskLeaf(fieldName, value, nil)
+}
+
+// maskLeaf is MaskSensitiveValue with an inherited rule: the rule of an enclosing location key,
+// applied to a numeric leaf that has no rule of its own (see MaskKindLocation).
+func maskLeaf(fieldName string, value any, inherited *MaskRule) any {
 	if dxlib.IsDebug && OverrideShowPasswordOnLog {
 		return value
 	}
@@ -1526,10 +1655,10 @@ func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
 		return "********" // credentials: never partial
 	}
 	if r, ok := piiRuleFor(fieldName); ok {
-		if maskStrict {
-			return "********"
-		}
-		return partialMask(fmt.Sprintf("%v", value), r)
+		return applyMaskRule(value, r)
+	}
+	if inherited != nil && isNumeric(value) {
+		return applyMaskRule(value, *inherited)
 	}
 	// The field matched no rule. Under default-ALLOW it is logged; under default-DENY it is
 	// masked unless the host named it safe. BUG-SEC-220.
@@ -1537,6 +1666,14 @@ func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
 		return "********"
 	}
 	return value
+}
+
+func isNumeric(v any) bool {
+	switch v.(type) {
+	case float64, float32, int, int32, int64, json.Number:
+		return true
+	}
+	return false
 }
 
 // MaskSensitiveDataInJSON recursively masks sensitive fields in a JSON structure.
@@ -1560,38 +1697,42 @@ func MaskSensitiveDataInJSON(data JSON) JSON {
 //
 // A key that matches a credential keyword masks whatever it holds, object or array, whole as
 // "********". A key that matches a PII rule and holds an object masks it whole too: there is no
-// front or back of a nested object to reveal, and fail-closed is the safer reading. An array's
-// elements take the array's key, so {"phone_numbers": ["0812...", "0813..."]} masks each number
-// under the rule that matches phone_numbers, and an object inside that array is masked whole.
+// front or back of a nested object to reveal, and fail-closed is the safer reading. The one
+// exception is MaskKindLocation, which walks the object and rounds its numeric leaves. An
+// array's elements take the array's key, so {"phone_numbers": ["0812...", "0813..."]} masks each
+// number under the rule that matches phone_numbers, and an object inside that array is masked
+// whole.
 //
 // Use it for anything written to a log; it never changes the data it is given.
 func MaskForLog(data JSON) JSON {
-	return maskForLogMap(data)
+	return maskForLogMap(data, nil)
 }
 
-func maskForLogMap(data map[string]any) JSON {
+func maskForLogMap(data map[string]any, inherited *MaskRule) JSON {
 	result := make(JSON, len(data))
 	for k, v := range data {
-		result[k] = maskForLogValue(k, v)
+		result[k] = maskForLogValue(k, v, inherited)
 	}
 	return result
 }
 
 // maskForLogValue masks one value under the field name key, descending into containers.
-func maskForLogValue(key string, v any) any {
+// inherited is the location rule of an enclosing key, if any, so the numeric leaves of a
+// location object are rounded.
+func maskForLogValue(key string, v any, inherited *MaskRule) any {
 	switch typed := v.(type) {
 	case map[string]any:
 		if maskContainerWhole(key) {
 			return "********"
 		}
-		return maskForLogMap(typed)
+		return maskForLogMap(typed, locationRuleFor(key, inherited))
 	case []any:
 		if maskCredentialWhole(key) {
 			return "********"
 		}
 		out := make([]any, len(typed))
 		for i, e := range typed {
-			out[i] = maskForLogValue(key, e)
+			out[i] = maskForLogValue(key, e, inherited)
 		}
 		return out
 	case []map[string]any:
@@ -1600,12 +1741,21 @@ func maskForLogValue(key string, v any) any {
 		}
 		out := make([]any, len(typed))
 		for i, e := range typed {
-			out[i] = maskForLogValue(key, e)
+			out[i] = maskForLogValue(key, e, inherited)
 		}
 		return out
 	default:
-		return MaskSensitiveValue(key, v)
+		return maskLeaf(key, v, inherited)
 	}
+}
+
+// locationRuleFor returns the location rule an object under key passes to its leaves: the
+// key's own location rule, else the one already inherited.
+func locationRuleFor(key string, inherited *MaskRule) *MaskRule {
+	if r, ok := piiRuleFor(key); ok && r.Kind == MaskKindLocation {
+		return &r
+	}
+	return inherited
 }
 
 // maskCredentialWhole reports whether a container under key is a credential and so masked as
@@ -1619,7 +1769,8 @@ func maskCredentialWhole(key string) bool {
 }
 
 // maskContainerWhole reports whether an object under key is masked as one value: when the key
-// is a credential or matches a PII rule.
+// is a credential or matches a PII rule of any kind but location, which walks the object and
+// rounds its coordinates instead.
 func maskContainerWhole(key string) bool {
 	if maskCredentialWhole(key) {
 		return true
@@ -1627,8 +1778,8 @@ func maskContainerWhole(key string) bool {
 	if dxlib.IsDebug && OverrideShowPasswordOnLog {
 		return false
 	}
-	_, hasRule := piiRuleFor(key)
-	return hasRule
+	r, hasRule := piiRuleFor(key)
+	return hasRule && r.Kind != MaskKindLocation
 }
 
 // maskSensitiveDataInJSONRecursive is the internal recursive implementation.

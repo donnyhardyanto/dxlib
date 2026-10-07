@@ -6,8 +6,8 @@ import "testing"
 // 2+2); short values full; strict mode forces full; unknown fields untouched.
 func TestMaskSensitiveValue_PII(t *testing.T) {
 	SetMaskRules(map[string]MaskRule{
-		"nik": {5, 2}, "ktp": {5, 2},
-		"nama": {2, 2}, "email": {2, 2}, "alamat": {2, 2}, "phone": {2, 2},
+		"nik": {Front: 5, Back: 2}, "ktp": {Front: 5, Back: 2},
+		"nama": {Front: 2, Back: 2}, "email": {Front: 2, Back: 2}, "alamat": {Front: 2, Back: 2}, "phone": {Front: 2, Back: 2},
 	})
 	SetMaskStrict(false)
 	t.Cleanup(func() { SetMaskRules(map[string]MaskRule{}); SetMaskStrict(false) })

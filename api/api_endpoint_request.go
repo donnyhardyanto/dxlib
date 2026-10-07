@@ -265,16 +265,13 @@ func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
 		params = aepr.GetParameterValues()
 	}
 	if len(params) > 0 {
-		maskedParams := utils.JSON{}
-		for k, v := range params {
-			maskedParams[k] = utils.MaskSensitiveValue(k, v)
-		}
-
-		paramsJSON, err := json.MarshalIndent(maskedParams, "", "  ")
+		// The host's mask rules apply at every depth, objects and arrays alike, so a body that
+		// nests everything under one key is masked the same as a flat one.
+		paramsJSON, err := json.Marshal(params)
 		if err != nil {
 			b.WriteString(fmt.Sprintf("ERROR_MARSHALING_PARAMS: %v\n", err))
 		} else {
-			b.Write(paramsJSON)
+			b.WriteString(maskedJSONDump(paramsJSON, true))
 			b.WriteString("\n")
 		}
 	} else {
@@ -466,20 +463,32 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 }
 
 // maskedResponseDump renders a marshalled response body for a log line with the host's mask
-// rules applied at every depth (utils.MaskForLog). It works from the wire bytes rather than the
-// original map so that typed slices and structs inside the body are seen as plain JSON and
-// nothing slips past the walker. It never returns the raw body: when the bytes cannot be read
-// back or re-marshalled, the line says so instead.
+// rules applied at every depth.
 func maskedResponseDump(jsonBytes []byte) string {
+	return maskedJSONDump(jsonBytes, false)
+}
+
+// maskedJSONDump renders a marshalled JSON object for a log with the host's mask rules applied
+// at every depth (utils.MaskForLog), indented when asked. It works from the bytes rather than
+// the original map so that typed slices and structs inside are seen as plain JSON and nothing
+// slips past the walker. It never returns the raw body: when the bytes cannot be read back or
+// re-marshalled, the text says so instead.
+func maskedJSONDump(jsonBytes []byte, indent bool) string {
 	var body utils.JSON
 	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
 	dec.UseNumber() // keep every digit: a float64 would round a large id and print it in exponent form
 	if err := dec.Decode(&body); err != nil {
-		return fmt.Sprintf("(response body not dumped: %v)", err)
+		return fmt.Sprintf("(body not dumped: %v)", err)
 	}
-	masked, err := json.Marshal(utils.MaskForLog(body))
+	var masked []byte
+	var err error
+	if indent {
+		masked, err = json.MarshalIndent(utils.MaskForLog(body), "", "  ")
+	} else {
+		masked, err = json.Marshal(utils.MaskForLog(body))
+	}
 	if err != nil {
-		return fmt.Sprintf("(response body not dumped: %v)", err)
+		return fmt.Sprintf("(body not dumped: %v)", err)
 	}
 	return string(masked)
 }
