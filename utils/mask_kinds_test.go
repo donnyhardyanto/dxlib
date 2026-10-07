@@ -43,12 +43,18 @@ func TestMaskKind_Initials(t *testing.T) {
 	resetMaskState(t)
 	SetMaskRules(kindRules())
 
+	// Each word is its first letter and a fixed "***", whatever its length, so the mask gives
+	// away neither the word nor its length; runs of whitespace are one space; a hyphenated
+	// name is one word; an empty or blank value is fully masked.
 	cases := map[string]any{
-		"Budi Santoso":      "B. S.",
-		"  Siti   Aminah  ": "S. A.",
-		"Émile Zola":        "É. Z.",
-		"Ali":               "A.",
+		"Budi Santoso":      "B*** S***",
+		"  Siti   Aminah  ": "S*** A***",
+		"Émile Zola":        "É*** Z***",
+		"Ali":               "A***",
+		"A":                 "A***",
+		"Jean-Luc Picard":   "J*** P***",
 		"":                  "********",
+		"   ":               "********",
 	}
 	for in, want := range cases {
 		if got := MaskSensitiveValue("full_name", in); got != want {
@@ -126,14 +132,14 @@ func TestMaskKind_ReachDepthThreeUnderParams(t *testing.T) {
 	})
 
 	applicant := out["params"].(JSON)["applicant"].(JSON)
-	want := JSON{"email": "ad***@da***.id", "full_name": "B. S.", "latitude": -6.91, "longitude": 107.61}
+	want := JSON{"email": "ad***@da***.id", "full_name": "B*** S***", "latitude": -6.91, "longitude": 107.61}
 	for k, w := range want {
 		if applicant[k] != w {
 			t.Errorf("depth-3 %s: got %v, want %v", k, applicant[k], w)
 		}
 	}
 	relative := out["params"].(JSON)["relatives"].([]any)[0].(JSON)
-	want = JSON{"email": "si***@ma***.com", "full_name": "S. A.", "location": "-6.91,107.61"}
+	want = JSON{"email": "si***@ma***.com", "full_name": "S*** A***", "location": "-6.91,107.61"}
 	for k, w := range want {
 		if relative[k] != w {
 			t.Errorf("depth-3 in array %s: got %v, want %v", k, relative[k], w)

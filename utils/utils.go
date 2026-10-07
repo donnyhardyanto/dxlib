@@ -1438,8 +1438,11 @@ const (
 	// top-level domain: "adi.darma@dana.co.id" becomes "ad***@da***.id". A value with no "@"
 	// is fully masked.
 	MaskKindEmail
-	// MaskKindInitials keeps the first letter of each word followed by a period:
-	// "Budi Santoso" becomes "B. S.". An empty value is fully masked.
+	// MaskKindInitials keeps the first letter of each word and masks the rest of it with three
+	// asterisks, three whatever the word's length: "Budi Santoso" becomes "B*** S***". Words
+	// are split on any run of whitespace, so surrounding and doubled spaces vanish; a
+	// one-letter word is "A***" too, so a word's length cannot be read off the mask; a
+	// hyphenated name is one word. An empty value is fully masked.
 	MaskKindInitials
 	// MaskKindLocation rounds a coordinate to two decimals (about 1 km), so an area is logged,
 	// not a doorstep. It applies to a number, a "lat,lng" string, and, unlike the other kinds,
@@ -1570,8 +1573,9 @@ func maskEmail(s string) string {
 	return firstRunes(local, 2) + "***@" + firstRunes(domain, 2) + "***" + tld
 }
 
-// maskInitials keeps the first rune of each word, each followed by a period: "Budi Santoso"
-// → "B. S.". An empty value is fully masked.
+// maskInitials keeps the first rune of each word followed by a fixed "***": "Budi Santoso"
+// → "B*** S***". The rest of the word, however long, is three asterisks, so the mask gives
+// away neither the word nor its length. An empty or all-whitespace value is fully masked.
 func maskInitials(s string) string {
 	words := strings.Fields(s)
 	if len(words) == 0 {
@@ -1579,7 +1583,7 @@ func maskInitials(s string) string {
 	}
 	initials := make([]string, len(words))
 	for i, w := range words {
-		initials[i] = firstRunes(w, 1) + "."
+		initials[i] = firstRunes(w, 1) + "***"
 	}
 	return strings.Join(initials, " ")
 }
