@@ -449,9 +449,12 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 		return
 	}
 
-	// Log response before encryption for debugging
+	// Log the response before encryption for debugging. Anything but a 200 is dumped, which
+	// includes 201/202 successes and relayed upstream error bodies, so the dump goes through the
+	// masker with the host's rules at every depth; the status code is kept outside the body
+	// so it stays readable under default-deny.
 	if statusCode != http.StatusOK {
-		aepr.Log.Infof("RESPONSE_DUMP_BEFORE_ENCRYPT:\n%s", string(jsonBytes))
+		aepr.Log.Infof("RESPONSE_DUMP_BEFORE_ENCRYPT: status_code=%d\n%s", statusCode, maskedResponseDump(jsonBytes))
 	}
 
 	if header == nil {
@@ -460,6 +463,23 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 	header["Content-Type"] = "application/json"
 
 	aepr.WriteResponseAsBytes(statusCode, header, jsonBytes)
+}
+
+// maskedResponseDump renders a marshalled response body for a log line with the host's mask
+// rules applied at every depth (utils.MaskForLog). It works from the wire bytes rather than the
+// original map so that typed slices and structs inside the body are seen as plain JSON and
+// nothing slips past the walker. It never returns the raw body: when the bytes cannot be read
+// back or re-marshalled, the line says so instead.
+func maskedResponseDump(jsonBytes []byte) string {
+	var body utils.JSON
+	if err := json.Unmarshal(jsonBytes, &body); err != nil {
+		return fmt.Sprintf("(response body not dumped: %v)", err)
+	}
+	masked, err := json.Marshal(utils.MaskForLog(body))
+	if err != nil {
+		return fmt.Sprintf("(response body not dumped: %v)", err)
+	}
+	return string(masked)
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header map[string]string, bodyAsBytes []byte) {

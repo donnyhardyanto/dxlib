@@ -1541,8 +1541,94 @@ func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
 
 // MaskSensitiveDataInJSON recursively masks sensitive fields in a JSON structure.
 // Returns a deep copy with sensitive values replaced by "********".
+//
+// Only the built-in credential keywords (IsSensitiveField) apply here, at any depth of nested
+// objects; arrays are copied as they are. It serves configuration.FilterSensitiveData, whose
+// readers expect the host's PII rules and default-deny posture NOT to apply (a DENY host's config
+// dump would otherwise go blank). A log dump of request or response data goes through
+// MaskForLog instead.
 func MaskSensitiveDataInJSON(data JSON) JSON {
 	return maskSensitiveDataInJSONRecursive(data, "")
+}
+
+// MaskForLog returns a deep copy of data with every value masked the way MaskSensitiveValue
+// masks it, at every depth: nested objects, arrays, and objects inside arrays all get the same
+// treatment, so a body that puts everything under one "params" key is masked the same as a
+// flat one. The credential keywords, the host's PII rules (SetMaskRules, SetMaskStrict) and the
+// default-deny switch (SetMaskDefaultDeny, SetLogAllowedFields) all apply, each to the leaf
+// field's own name.
+//
+// A key that matches a credential keyword masks whatever it holds, object or array, whole as
+// "********". A key that matches a PII rule and holds an object masks it whole too: there is no
+// front or back of a nested object to reveal, and fail-closed is the safer reading. An array's
+// elements take the array's key, so {"phone_numbers": ["0812...", "0813..."]} masks each number
+// under the rule that matches phone_numbers, and an object inside that array is masked whole.
+//
+// Use it for anything written to a log; it never changes the data it is given.
+func MaskForLog(data JSON) JSON {
+	return maskForLogMap(data)
+}
+
+func maskForLogMap(data map[string]any) JSON {
+	result := make(JSON, len(data))
+	for k, v := range data {
+		result[k] = maskForLogValue(k, v)
+	}
+	return result
+}
+
+// maskForLogValue masks one value under the field name key, descending into containers.
+func maskForLogValue(key string, v any) any {
+	switch typed := v.(type) {
+	case map[string]any:
+		if maskContainerWhole(key) {
+			return "********"
+		}
+		return maskForLogMap(typed)
+	case []any:
+		if maskCredentialWhole(key) {
+			return "********"
+		}
+		out := make([]any, len(typed))
+		for i, e := range typed {
+			out[i] = maskForLogValue(key, e)
+		}
+		return out
+	case []map[string]any:
+		if maskCredentialWhole(key) {
+			return "********"
+		}
+		out := make([]any, len(typed))
+		for i, e := range typed {
+			out[i] = maskForLogValue(key, e)
+		}
+		return out
+	default:
+		return MaskSensitiveValue(key, v)
+	}
+}
+
+// maskCredentialWhole reports whether a container under key is a credential and so masked as
+// one value. The debug override that shows raw values (dxlib.IsDebug and
+// OverrideShowPasswordOnLog together) applies here as it does to leaves.
+func maskCredentialWhole(key string) bool {
+	if dxlib.IsDebug && OverrideShowPasswordOnLog {
+		return false
+	}
+	return IsSensitiveField(key)
+}
+
+// maskContainerWhole reports whether an object under key is masked as one value: when the key
+// is a credential or matches a PII rule.
+func maskContainerWhole(key string) bool {
+	if maskCredentialWhole(key) {
+		return true
+	}
+	if dxlib.IsDebug && OverrideShowPasswordOnLog {
+		return false
+	}
+	_, hasRule := piiRuleFor(key)
+	return hasRule
 }
 
 // maskSensitiveDataInJSONRecursive is the internal recursive implementation.

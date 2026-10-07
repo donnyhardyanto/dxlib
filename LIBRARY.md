@@ -228,8 +228,9 @@ General utility functions. The most important export is `JSON = map[string]any`,
 | Function | Description |
 |---|---|
 | `IsSensitiveField(fieldName string) bool` | Returns true if fieldName contains keywords like "password", "token", "secret", "key", "credential". |
-| `MaskSensitiveValue(fieldName string, value interface{}) interface{}` | Returns `"********"` if field is sensitive, original value otherwise. |
-| `MaskSensitiveDataInJSON(data JSON) JSON` | Deep-copies a `JSON` map, replacing sensitive values with `"********"`. Used by `configuration.FilterSensitiveData()`. |
+| `MaskSensitiveValue(fieldName string, value interface{}) interface{}` | Masks one value for a log: `"********"` for a credential field, the host's partial rule (`SetMaskRules`, `SetMaskStrict`) for a PII field, and the default-deny posture (`SetMaskDefaultDeny`, `SetLogAllowedFields`) for anything else. |
+| `MaskSensitiveDataInJSON(data JSON) JSON` | Deep-copies a `JSON` map, replacing credential values with `"********"` in nested objects. Only the built-in credential keywords apply, not the host's rules. Used by `configuration.FilterSensitiveData()`. |
+| `MaskForLog(data JSON) JSON` | Deep-copies a `JSON` map applying `MaskSensitiveValue` at every depth, in objects and arrays. A credential key masks its container whole; a PII-rule key masks an object whole and an array element by element. Use it for any request or response body written to a log. |
 
 ### Functions — collections
 
