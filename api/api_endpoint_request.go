@@ -194,22 +194,16 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 		_, _ = fmt.Fprintf(&b, "Transfer-Encoding: %s\r\n", strings.Join(req.TransferEncoding, ","))
 	}
 
-	var reqWriteExcludeHeaderDump = map[string]bool{
-		"Host":                true, // not in Header map anyway
-		"Transfer-Encoding":   true,
-		"Trailer":             true,
-		"Authorization":       true,
-		"Proxy-Authorization": true,
-		"Cookie":              true,
-		"Set-Cookie":          true,
-		"X-Api-Key":           true,
-		"X-Auth-Token":        true,
-	}
-
-	err := req.Header.WriteSubset(&b, reqWriteExcludeHeaderDump)
-	if err != nil {
-		return nil, err
-	}
+	// Host and the framing headers are written above, as the standard library's dump does.
+	// Every other header is written, in name order, with a credential value masked: the
+	// built-in list, the host's list (utils.SetCredentialHeaders) and the credential keywords
+	// decide which, so a header the list does not name is still caught by its name. A masked
+	// header keeps its line, so the dump shows that it was sent.
+	b.WriteString(utils.WriteHeadersForLog(req.Header, map[string]bool{
+		"Host":              true, // not in Header map anyway
+		"Transfer-Encoding": true,
+		"Trailer":           true,
+	}))
 
 	_, _ = io.WriteString(&b, "\r\n")
 	const maxBodyDumpBytes = 1024
@@ -220,11 +214,7 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 	} else {
 		b.Write(body)
 	}
-	_, err = io.WriteString(&b, "\r\n\r\n")
-
-	if err != nil {
-		return nil, err
-	}
+	_, _ = io.WriteString(&b, "\r\n\r\n")
 	return b.Bytes(), nil
 }
 
@@ -248,8 +238,7 @@ func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
 	b.WriteString("Decrypted Headers:\n")
 	if aepr.EffectiveRequestHeader != nil {
 		for k, v := range aepr.EffectiveRequestHeader {
-			maskedValue := utils.MaskSensitiveValue(k, v)
-			b.WriteString(fmt.Sprintf("%s: %v\n", k, maskedValue))
+			b.WriteString(fmt.Sprintf("%s: %v\n", k, maskedHeaderValue(k, v)))
 		}
 	} else {
 		b.WriteString("(no decrypted headers)\n")
@@ -279,6 +268,17 @@ func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
 	}
 
 	return b.String()
+}
+
+// maskedHeaderValue masks one decrypted header for a log: a credential header (the declared
+// lists and the credential keywords) is "********"; any other goes through MaskSensitiveValue,
+// so a host's PII rule on a header name and the default-deny posture apply as they do to a body
+// field.
+func maskedHeaderValue(name, value string) any {
+	if utils.IsCredentialHeader(name) {
+		return utils.MaskHeaderValue(name, value)
+	}
+	return utils.MaskSensitiveValue(name, value)
 }
 
 func (aepr *DXAPIEndPointRequest) GetResponseWriter() *http.ResponseWriter {

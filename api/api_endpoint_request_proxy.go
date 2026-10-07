@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httputil"
+	"strings"
 	"time"
 
 	"github.com/donnyhardyanto/dxlib/utils"
@@ -94,12 +94,12 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 		request.Header[k] = []string{v}
 	}
 
-	requestDump, err := httputil.DumpRequest(request, true)
+	requestDump, err := outboundRequestDump(request)
 	if err != nil {
 		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_REQUEST:%v", err.Error())
 		return nil, err
 	}
-	aepr.Log.Debugf("Send Request to %s:\n%s\n", effectiveUrl, string(requestDump))
+	aepr.Log.Debugf("Send Request to %s:\n%s\n", effectiveUrl, requestDump)
 
 	response, err = client.Do(request)
 	if err != nil {
@@ -121,12 +121,12 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDo(method, url string, parameters ut
 		return nil, err
 	}
 
-	responseDump, err := httputil.DumpResponse(response, true)
+	responseDump, err := outboundResponseDump(response)
 	if err != nil {
 		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_RESPONSE:%v", err.Error())
 		return response, err
 	}
-	aepr.Log.Debugf("Response :\n%s\n", string(responseDump))
+	aepr.Log.Debugf("Response :\n%s\n", responseDump)
 	return response, nil
 }
 
@@ -147,12 +147,12 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 		request.Header[k] = []string{v}
 	}
 
-	requestDump, err := httputil.DumpRequest(request, true)
+	requestDump, err := outboundRequestDump(request)
 	if err != nil {
 		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_REQUEST:%v", err.Error())
 		return nil, err
 	}
-	aepr.Log.Debugf("Request :\n%s\n", string(requestDump))
+	aepr.Log.Debugf("Request :\n%s\n", requestDump)
 
 	response, err = client.Do(request)
 	if err != nil {
@@ -161,12 +161,12 @@ func (aepr *DXAPIEndPointRequest) HTTPClientDoBodyAsJSONString(method, url strin
 		return nil, err
 	}
 
-	responseDump, err := httputil.DumpResponse(response, true)
+	responseDump, err := outboundResponseDump(response)
 	if err != nil {
 		err = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "ERROR_IN_DUMP_RESPONSE:%v", err.Error())
 		return response, err
 	}
-	aepr.Log.Debugf("Response :\n%s\n", string(responseDump))
+	aepr.Log.Debugf("Response :\n%s\n", responseDump)
 	return response, nil
 }
 
@@ -243,4 +243,59 @@ func (aepr *DXAPIEndPointRequest) HTTPClient2(method, url string, parameters uti
 	aepr.Log.Debugf("Response data=%s", vAsString)
 
 	return r.StatusCode, responseAsJSON, nil
+}
+
+// outboundRequestDump renders an outbound request for a log the way httputil.DumpRequest does,
+// request line, headers and body, except that a credential header's value is masked (the
+// declared lists and the credential keywords, see utils.WriteHeadersForLog). The body is read
+// and put back, so the request can still be sent.
+func outboundRequestDump(request *http.Request) (string, error) {
+	var b strings.Builder
+	reqURI := request.URL.RequestURI()
+	if reqURI == "" {
+		reqURI = "/"
+	}
+	fmt.Fprintf(&b, "%s %s HTTP/%d.%d\r\n", request.Method, reqURI, request.ProtoMajor, request.ProtoMinor)
+	if host := request.Host; host != "" || request.URL != nil {
+		if host == "" {
+			host = request.URL.Host
+		}
+		fmt.Fprintf(&b, "Host: %s\r\n", host)
+	}
+	b.WriteString(utils.WriteHeadersForLog(request.Header, map[string]bool{"Host": true}))
+	b.WriteString("\r\n")
+	if request.Body != nil && request.Body != http.NoBody {
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			return "", err
+		}
+		_ = request.Body.Close()
+		request.Body = io.NopCloser(bytes.NewReader(body))
+		b.Write(body)
+	}
+	return b.String(), nil
+}
+
+// outboundResponseDump renders an upstream response for a log the way httputil.DumpResponse
+// does, status line, headers and body, with a credential header's value masked (Set-Cookie
+// among them). The body is read and put back, so the caller can still read it.
+func outboundResponseDump(response *http.Response) (string, error) {
+	var b strings.Builder
+	status := response.Status
+	if status == "" {
+		status = fmt.Sprintf("%d %s", response.StatusCode, http.StatusText(response.StatusCode))
+	}
+	fmt.Fprintf(&b, "HTTP/%d.%d %s\r\n", response.ProtoMajor, response.ProtoMinor, status)
+	b.WriteString(utils.WriteHeadersForLog(response.Header, nil))
+	b.WriteString("\r\n")
+	if response.Body != nil && response.Body != http.NoBody {
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			return "", err
+		}
+		_ = response.Body.Close()
+		response.Body = io.NopCloser(bytes.NewReader(body))
+		b.Write(body)
+	}
+	return b.String(), nil
 }
