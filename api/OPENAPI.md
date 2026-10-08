@@ -133,7 +133,11 @@ prefix (`OpenAPIOperationIdForMethod`): `GET` and `POST` on `/members` are
 `get_members` and `post_members`. Adding a method to a URI therefore changes
 the id of the endpoint already there. In a document read from disk the
 `operationId` field is authoritative and the rule does not apply: an endpoint
-bound from it is written back with the id the document gave it.
+bound from it is written back with the id the document gave it. (Before
+endpoints were keyed by method, a bound endpoint was written back with the id
+derived from its URI, whatever the document said.) A bound id that equals the
+id derived for an endpoint registered in code is an emission error
+(`OPENAPI_OPERATION_ID_COLLISION`), as two derived ids are.
 
 An endpoint is keyed by its method and URI together, so a path item may carry
 several methods, each one endpoint: `GET /members` and `POST /members` are two
@@ -145,9 +149,13 @@ looks one up; `FindEndPointByURI` answers the first registered on the URI,
 whatever its method.
 
 `StartAndWait` registers each URI once with the mux and picks the endpoint by
-the request's method. A method no endpoint on the URI serves goes to the first
-one registered there, which answers it as a URI with one endpoint always has:
-`OPTIONS` with 200, any other method with 405 `METHOD_NOT_ALLOWED`. Go's
+the request's method. `OPTIONS` is answered with 200 by the CORS middleware
+before any endpoint is picked, as before. Any other method no endpoint on the
+URI serves goes to the first HTTP endpoint registered there, which refuses it
+with 405 `METHOD_NOT_ALLOWED` naming that endpoint's method, as a URI with one
+endpoint always has (no `Allow` header is written). Methods are compared
+exactly at request time and without case at registration, so `get` and `GET`
+on one URI are still a duplicate. Go's
 method patterns (`GET /x`) are not used, because the mux would then answer an
 unmatched method itself, before the CORS middleware and without dxlib's
 refusal body.

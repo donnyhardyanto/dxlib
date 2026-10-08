@@ -589,7 +589,7 @@ Redis client wrapper using `go-redis/v8`. Supports ring topology, OTel instrumen
 
 HTTP API server. Endpoints are registered with parameter definitions and handler functions. Supports plain JSON, file upload/download streams, WebSocket, and E2E encryption (V1/V2/V3). Integrates with `tables` for standard CRUD, and with `log` for audit trails.
 
-An endpoint is keyed by its method and URI together: `GET /members` and `POST /members` are two endpoints. Registering the same method and URI twice stops the process. `FindEndPoint(method, uri)` returns the endpoint for a method; `FindEndPointByURI(uri)` the first registered on the URI. A request whose method no endpoint on its URI serves is answered by the first registered there: `OPTIONS` with 200, anything else with 405. `api/OPENAPI.md` section 2.2 has the operationId rule for a URI with several methods.
+An endpoint is keyed by its method and URI together: `GET /members` and `POST /members` are two endpoints. Registering the same method and URI twice stops the process. `FindEndPoint(method, uri)` returns the endpoint for a method; `FindEndPointByURI(uri)` the first registered on the URI. `OPTIONS` is answered with 200 as before; any other method no endpoint on the URI serves is refused with 405 by the first HTTP endpoint registered there. `api/OPENAPI.md` section 2.2 has the operationId rule for a URI with several methods.
 
 ### Types
 

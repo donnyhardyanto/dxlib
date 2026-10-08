@@ -81,6 +81,34 @@ func TestEndPointForMethodFallsBackToTheFirst(t *testing.T) {
 	if got := endPointForMethod(groups[1], "GET").Title; got != "b-post" {
 		t.Errorf("GET /b -> %s, want b-post", got)
 	}
+
+	// A WebSocket endpoint registered first does not take a method nobody
+	// serves when an HTTP endpoint shares the URI; alone, it still does.
+	mixed := endPointsByURI([]DXAPIEndPoint{
+		{Uri: "/live", Method: "GET", Title: "ws", EndPointType: EndPointTypeWS},
+		{Uri: "/live", Method: "POST", Title: "http", EndPointType: EndPointTypeHTTPJSON},
+		{Uri: "/only", Method: "GET", Title: "ws-only", EndPointType: EndPointTypeWS},
+	})
+	for method, want := range map[string]string{"GET": "ws", "POST": "http", "PUT": "http"} {
+		if got := endPointForMethod(mixed[0], method).Title; got != want {
+			t.Errorf("%s /live -> %s, want %s", method, got, want)
+		}
+	}
+	if got := endPointForMethod(mixed[1], "PUT").Title; got != "ws-only" {
+		t.Errorf("PUT /only -> %s, want ws-only", got)
+	}
+}
+
+// The duplicate check at registration compares the method without case.
+func TestFindEndPointFoldComparesMethodWithoutCase(t *testing.T) {
+	a := openAPITestAPI(t, "route-by-method-fold")
+	a.NewEndPoint("list", "", "/members", "get", EndPointTypeHTTPJSON, utilsHttp.RequestContentTypeNone, nil, noop, nil, nil, nil, nil, 0, "")
+	if a.findEndPointFold("GET", "/members") == nil {
+		t.Errorf("GET must find the endpoint registered as get")
+	}
+	if a.FindEndPoint("GET", "/members") != nil {
+		t.Errorf("FindEndPoint compares exactly, as the request is routed")
+	}
 }
 
 const routeByMethodSpec = `openapi: 3.1.0

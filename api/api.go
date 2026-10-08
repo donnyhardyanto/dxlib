@@ -370,8 +370,10 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	privileges []string, requestMaxContentLength int64, rateLimitGroupNameId string) *DXAPIEndPoint {
 
 	// An endpoint is keyed by method and URI: another method on the same URI
-	// is a second endpoint, the same method twice is a definition error.
-	if a.FindEndPoint(method, uri) != nil {
+	// is a second endpoint, the same method twice is a definition error. The
+	// method is compared without case, so "get" and "GET" stay a duplicate as
+	// they were when only the URI was compared.
+	if a.findEndPointFold(method, uri) != nil {
 		log.Log.Fatalf("Duplicate endpoint %s %s: an endpoint with this method and uri is already registered", method, uri)
 	}
 	ae := DXAPIEndPoint{
@@ -414,8 +416,10 @@ func (a *DXAPI) NewWSEndPoint(title, description, uri, method string,
 	privileges []string, rateLimitGroupNameId string) *DXAPIEndPoint {
 
 	// An endpoint is keyed by method and URI: another method on the same URI
-	// is a second endpoint, the same method twice is a definition error.
-	if a.FindEndPoint(method, uri) != nil {
+	// is a second endpoint, the same method twice is a definition error. The
+	// method is compared without case, so "get" and "GET" stay a duplicate as
+	// they were when only the URI was compared.
+	if a.findEndPointFold(method, uri) != nil {
 		log.Log.Fatalf("Duplicate endpoint %s %s: an endpoint with this method and uri is already registered", method, uri)
 	}
 	ae := DXAPIEndPoint{
@@ -458,16 +462,34 @@ func endPointsByURI(endPoints []DXAPIEndPoint) [][]*DXAPIEndPoint {
 }
 
 // endPointForMethod picks the endpoint of a URI's group that serves method.
-// When none does, the first registered takes the request, and its
-// PreProcessRequest answers it as a URI with one endpoint always has: OPTIONS
-// with 200, any other method with 405 METHOD_NOT_ALLOWED.
+// When none does, the first registered HTTP endpoint takes the request, and
+// its PreProcessRequest refuses it with 405 METHOD_NOT_ALLOWED, as a URI with
+// one endpoint always has. A WebSocket endpoint takes it only when the URI
+// has nothing else, as before: it would run its middlewares and attempt an
+// upgrade for a request that cannot be one. (OPTIONS never gets here under
+// StartAndWait; the CORS middleware answers it first.)
 func endPointForMethod(group []*DXAPIEndPoint, method string) *DXAPIEndPoint {
 	for _, p := range group {
 		if p.Method == method {
 			return p
 		}
 	}
+	for _, p := range group {
+		if p.EndPointType != EndPointTypeWS {
+			return p
+		}
+	}
 	return group[0]
+}
+
+// findEndPointFold is FindEndPoint with the method compared without case.
+func (a *DXAPI) findEndPointFold(method, uri string) *DXAPIEndPoint {
+	for _, endPoint := range a.EndPoints {
+		if endPoint.Uri == uri && strings.EqualFold(endPoint.Method, method) {
+			return &endPoint
+		}
+	}
+	return nil
 }
 
 // dbContextCarrier is a local interface for extracting DB operation context
