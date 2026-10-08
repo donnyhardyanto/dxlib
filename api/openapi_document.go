@@ -328,6 +328,15 @@ type DXOpenAPISchema struct {
 	Minimum              *float64                               `json:"minimum,omitempty"`
 	ExclusiveMinimum     *float64                               `json:"exclusiveMinimum,omitempty"`
 	MinLength            *int                                   `json:"minLength,omitempty"`
+	Maximum              *float64                               `json:"maximum,omitempty"`
+	ExclusiveMaximum     *float64                               `json:"exclusiveMaximum,omitempty"`
+	MultipleOf           *float64                               `json:"multipleOf,omitempty"`
+	MaxLength            *int                                   `json:"maxLength,omitempty"`
+	Pattern              string                                 `json:"pattern,omitempty"`
+	MinItems             *int                                   `json:"minItems,omitempty"`
+	MaxItems             *int                                   `json:"maxItems,omitempty"`
+	UniqueItems          bool                                   `json:"uniqueItems,omitempty"`
+	Const                *any                                   `json:"const,omitempty"`
 	// DXLibType is the exact dxlib parameter type. Several dxlib types share
 	// one JSON type -- int64, int64p and id are all integer/int64 -- so the
 	// JSON Schema alone cannot say which validator runs. With it present the

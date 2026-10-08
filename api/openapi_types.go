@@ -1,8 +1,6 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/donnyhardyanto/dxlib/errors"
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
@@ -119,6 +117,9 @@ func openAPISchemaFromParameter(p *DXAPIEndPointParameter) (*DXOpenAPISchema, er
 	}
 	if len(p.Enum) > 0 {
 		s.Enum = append([]any{}, p.Enum...)
+	}
+	if err := openAPIBoundsToSchema(p, m, s); err != nil {
+		return nil, err
 	}
 	switch p.Type {
 	case dxlibTypes.APIParameterTypeJSON:
@@ -280,6 +281,10 @@ func openAPIParameterFromSchema(name string, s *DXOpenAPISchema, isMustExist boo
 		p.Type = t
 	}
 
+	if err := openAPIBoundsFromSchema(s, &p, pointer); err != nil {
+		return p, err
+	}
+
 	switch p.Type {
 	case dxlibTypes.APIParameterTypeJSON:
 		children, err := openAPIParametersFromProperties(s, r, pointer)
@@ -294,6 +299,10 @@ func openAPIParameterFromSchema(name string, s *DXOpenAPISchema, isMustExist boo
 		items, itemsRelease, err := r.resolve(s.Items, pointer+"/items")
 		if err != nil {
 			return p, err
+		}
+		if what := openAPISchemaBoundNames(items); what != "" {
+			itemsRelease()
+			return p, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRAINT:%s:ON_object:%s/items", what, pointer)
 		}
 		children, err := openAPIParametersFromProperties(items, r, pointer+"/items")
 		itemsRelease()
@@ -348,10 +357,9 @@ func openAPIInferType(s *DXOpenAPISchema, pointer string) (dxlibTypes.APIParamet
 		if s.Minimum != nil || s.ExclusiveMinimum != nil {
 			return "", unsupported("minimum")
 		}
-		if s.MinLength != nil {
-			if *s.MinLength != 1 || s.Format != "" {
-				return "", unsupported(fmt.Sprintf("minLength=%d", *s.MinLength))
-			}
+		// minLength 1 alone is the non-empty type; any other minLength, or
+		// one beside a format, is carried as a bound on the type below.
+		if s.MinLength != nil && *s.MinLength == 1 && s.Format == "" {
 			return dxlibTypes.APIParameterTypeNonEmptyString, nil
 		}
 		switch s.Format {
@@ -378,37 +386,32 @@ func openAPIInferType(s *DXOpenAPISchema, pointer string) (dxlibTypes.APIParamet
 		if s.MinLength != nil {
 			return "", unsupported("minLength")
 		}
-		if s.ExclusiveMinimum != nil {
-			return "", unsupported("exclusiveMinimum")
-		}
 		wide := s.Format == "" || s.Format == "int64"
 		if s.Format != "" && s.Format != "int64" && s.Format != "int32" {
 			return "", errors.Errorf("OPENAPI_UNSUPPORTED_FORMAT:%q:ON_INTEGER:%s", s.Format, pointer)
 		}
+		// minimum 0 and 1 are the zp and p types; any other minimum is
+		// carried as a bound on the plain type.
 		switch {
-		case s.Minimum == nil:
-			if s.Type.Nullable() {
-				if wide {
-					return dxlibTypes.APIParameterTypeNullableInt64, nil
-				}
-				return dxlibTypes.APIParameterTypeNullableInt32, nil
-			}
-			if wide {
-				return dxlibTypes.APIParameterTypeInt64, nil
-			}
-			return dxlibTypes.APIParameterTypeInt32, nil
-		case *s.Minimum == 0:
+		case s.Minimum != nil && *s.Minimum == 0:
 			if wide {
 				return dxlibTypes.APIParameterTypeInt64ZP, nil
 			}
 			return dxlibTypes.APIParameterTypeInt32ZP, nil
-		case *s.Minimum == 1:
+		case s.Minimum != nil && *s.Minimum == 1:
 			if wide {
 				return dxlibTypes.APIParameterTypeInt64P, nil
 			}
 			return dxlibTypes.APIParameterTypeInt32P, nil
+		case s.Type.Nullable():
+			if wide {
+				return dxlibTypes.APIParameterTypeNullableInt64, nil
+			}
+			return dxlibTypes.APIParameterTypeNullableInt32, nil
+		case wide:
+			return dxlibTypes.APIParameterTypeInt64, nil
 		}
-		return "", unsupported(fmt.Sprintf("minimum=%v", *s.Minimum))
+		return dxlibTypes.APIParameterTypeInt32, nil
 	case "number":
 		if s.MinLength != nil {
 			return "", unsupported("minLength")
@@ -417,12 +420,9 @@ func openAPIInferType(s *DXOpenAPISchema, pointer string) (dxlibTypes.APIParamet
 		if s.Format != "" && s.Format != "double" && s.Format != "float" {
 			return "", errors.Errorf("OPENAPI_UNSUPPORTED_FORMAT:%q:ON_NUMBER:%s", s.Format, pointer)
 		}
+		// minimum 0 alone is the zp type, exclusiveMinimum 0 alone the p
+		// type; any other lower bound is carried as a bound on the plain type.
 		switch {
-		case s.Minimum == nil && s.ExclusiveMinimum == nil:
-			if wide {
-				return dxlibTypes.APIParameterTypeFloat64, nil
-			}
-			return dxlibTypes.APIParameterTypeFloat32, nil
 		case s.Minimum != nil && s.ExclusiveMinimum == nil && *s.Minimum == 0:
 			if wide {
 				return dxlibTypes.APIParameterTypeFloat64ZP, nil
@@ -433,8 +433,10 @@ func openAPIInferType(s *DXOpenAPISchema, pointer string) (dxlibTypes.APIParamet
 				return dxlibTypes.APIParameterTypeFloat64P, nil
 			}
 			return dxlibTypes.APIParameterTypeFloat32P, nil
+		case wide:
+			return dxlibTypes.APIParameterTypeFloat64, nil
 		}
-		return "", unsupported("minimum/exclusiveMinimum")
+		return dxlibTypes.APIParameterTypeFloat32, nil
 	case "boolean":
 		if s.Format != "" || s.Minimum != nil || s.ExclusiveMinimum != nil || s.MinLength != nil {
 			return "", unsupported("format/minimum/minLength")
@@ -470,6 +472,9 @@ func openAPIInferType(s *DXOpenAPISchema, pointer string) (dxlibTypes.APIParamet
 			return dxlibTypes.APIParameterTypeArray, nil
 		}
 		items := s.Items
+		if what := openAPISchemaBoundNames(items); what != "" {
+			return "", errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRAINT:%s:ON_ITEMS:%s/items", what, pointer)
+		}
 		switch {
 		case items.Ref != "":
 			// The reference is followed by the caller through the resolver;

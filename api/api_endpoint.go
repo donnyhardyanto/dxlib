@@ -73,6 +73,27 @@ type DXAPIEndPointParameter struct {
 	IsNullable  bool
 	Children    []DXAPIEndPointParameter
 	Enum        []any
+
+	// The JSON Schema bounds Validate checks beyond what Type implies. Each is
+	// off when nil (or empty, or false), so a declaration that sets none
+	// behaves as before. A bound applies to the values of its own kind only:
+	// the numeric bounds to the integer and number types, the length bounds
+	// and Pattern to the string types, the item bounds to the array types.
+	// Pattern is Go RE2 syntax and, as in JSON Schema, matches anywhere in the
+	// string unless anchored. OPENAPI.md section 2.4 has the rules.
+	Minimum          *float64
+	ExclusiveMinimum *float64
+	Maximum          *float64
+	ExclusiveMaximum *float64
+	MultipleOf       *float64
+	MinLength        *int
+	MaxLength        *int
+	Pattern          string
+	MinItems         *int
+	MaxItems         *int
+	UniqueItems      bool
+	// Const holds the one value accepted; a nil pointer means no const.
+	Const *any
 }
 
 func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {

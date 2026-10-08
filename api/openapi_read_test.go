@@ -517,13 +517,13 @@ components:
   schemas:
     A: {type: object, additionalProperties: false}
 `, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:additionalProperties-boolean", "/components/schemas/A/additionalProperties"}},
-		{"pattern constraint", `openapi: 3.1.0
+		{"minProperties constraint", `openapi: 3.1.0
 info: {title: a, version: "1"}
 paths: {}
 components:
   schemas:
-    A: {type: string, pattern: '^a'}
-`, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:pattern", "CONSTRAINT_NOT_ENFORCED"}},
+    A: {type: object, minProperties: 1}
+`, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:minProperties", "CONSTRAINT_NOT_ENFORCED"}},
 		{"YAML alias", `openapi: 3.1.0
 info: {title: a, version: "1"}
 paths:

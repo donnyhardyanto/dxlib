@@ -419,15 +419,20 @@ components:
 	}
 }
 
-// Inference without x-dxlib-type refuses what dxlib would not enforce.
+// Binding refuses what dxlib would not enforce.
 func TestOpenAPIBindRefusesConstraintsDXLibDoesNotEnforce(t *testing.T) {
 	for name, schema := range map[string]string{
-		"minimum 5":             `{type: integer, minimum: 5}`,
-		"minLength 3":           `{type: string, minLength: 3}`,
-		"array of numbers":      `{type: array, items: {type: number}}`,
-		"map of integers":       `{type: object, additionalProperties: {type: integer}}`,
-		"x-dxlib-type mismatch": `{type: string, x-dxlib-type: int64}`,
-		"format mismatch":       `{type: integer, format: int32, x-dxlib-type: int64}`,
+		"minimum on a string":     `{type: string, minimum: 5}`,
+		"maxLength on an integer": `{type: integer, maxLength: 3}`,
+		"minItems on a string":    `{type: string, x-dxlib-type: string, minItems: 1}`,
+		"const on an array":       `{type: array, const: 1}`,
+		"bound on array items":    `{type: array, items: {type: string, maxLength: 3}}`,
+		"bound on map values":     `{type: object, additionalProperties: {type: string, pattern: a}}`,
+		"looser than the type":    `{type: integer, minimum: 0, x-dxlib-type: int64p}`,
+		"array of numbers":        `{type: array, items: {type: number}}`,
+		"map of integers":         `{type: object, additionalProperties: {type: integer}}`,
+		"x-dxlib-type mismatch":   `{type: string, x-dxlib-type: int64}`,
+		"format mismatch":         `{type: integer, format: int32, x-dxlib-type: int64}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			a := openAPITestAPI(t, "openapi-bind-infer-"+name)

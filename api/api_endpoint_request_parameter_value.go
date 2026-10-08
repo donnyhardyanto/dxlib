@@ -775,5 +775,5 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_ENUM_VALUE:%s=%v, allowed=%v", nameIdPath, aeprpv.Value, aeprpv.Metadata.Enum)
 		}
 	}
-	return nil
+	return aeprpv.validateBounds(nameIdPath)
 }

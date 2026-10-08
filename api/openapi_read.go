@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -343,11 +344,7 @@ var openAPIRefusedFields = map[string]string{
 	"termsOfService": "NOT_CARRIED_BY_DXLIB",
 	"$schema":        "NOT_CARRIED_BY_DXLIB", "$id": "NOT_CARRIED_BY_DXLIB", "$defs": "NOT_CARRIED_BY_DXLIB",
 	"$dynamicRef": "NOT_CARRIED_BY_DXLIB", "$anchor": "NOT_CARRIED_BY_DXLIB", "$comment": "NOT_CARRIED_BY_DXLIB",
-	"const": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "pattern": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
-	"maximum": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "exclusiveMaximum": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
-	"maxLength": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "minItems": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
-	"maxItems": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "uniqueItems": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
-	"multipleOf": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "minProperties": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
+	"minProperties": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
 	"maxProperties": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "patternProperties": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
 	"prefixItems": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "contains": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
 	"dependentRequired": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "if": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
@@ -458,6 +455,22 @@ func openAPIInt64(parent *openAPINode, pointer, field string) (*int64, error) {
 		return nil, errors.Errorf("OPENAPI_BAD_INTEGER:%q:%s", n.text, openAPIAt(pointer+"/"+field, n))
 	}
 	return &i, nil
+}
+
+// openAPICount reads a non-negative integer bound: a length or an item count.
+func openAPICount(parent *openAPINode, pointer, field, negativeCode string) (*int, error) {
+	i, err := openAPIInt64(parent, pointer, field)
+	if err != nil || i == nil {
+		return nil, err
+	}
+	if *i < 0 {
+		return nil, errors.Errorf("%s:%d:%s", negativeCode, *i, openAPIAt(pointer+"/"+field, parent.field(field)))
+	}
+	if int64(int(*i)) != *i {
+		return nil, errors.Errorf("OPENAPI_BAD_INTEGER:%d:%s", *i, openAPIAt(pointer+"/"+field, parent.field(field)))
+	}
+	v := int(*i)
+	return &v, nil
 }
 
 func openAPIStringList(parent *openAPINode, pointer, field string) ([]string, error) {
@@ -879,7 +892,8 @@ func openAPIReadSchema(n *openAPINode, pointer string) (*DXOpenAPISchema, error)
 		return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:boolean-schema:%s", openAPIAt(pointer, n))
 	}
 	if err := openAPIFields(n, pointer, "$ref", "type", "format", "description", "properties", "required", "items",
-		"additionalProperties", "enum", "minimum", "exclusiveMinimum", "minLength", OpenAPIExtensionType); err != nil {
+		"additionalProperties", "enum", "minimum", "exclusiveMinimum", "minLength", "maximum", "exclusiveMaximum",
+		"multipleOf", "maxLength", "pattern", "minItems", "maxItems", "uniqueItems", "const", OpenAPIExtensionType); err != nil {
 		return nil, err
 	}
 	s := &DXOpenAPISchema{}
@@ -971,16 +985,52 @@ func openAPIReadSchema(n *openAPINode, pointer string) (*DXOpenAPISchema, error)
 	if s.ExclusiveMinimum, err = openAPIFloat64(n, pointer, "exclusiveMinimum"); err != nil {
 		return nil, err
 	}
-	minLength, err := openAPIInt64(n, pointer, "minLength")
-	if err != nil {
+	if s.MinLength, err = openAPICount(n, pointer, "minLength", "OPENAPI_NEGATIVE_MIN_LENGTH"); err != nil {
 		return nil, err
 	}
-	if minLength != nil {
-		if *minLength < 0 {
-			return nil, errors.Errorf("OPENAPI_NEGATIVE_MIN_LENGTH:%d:%s", *minLength, openAPIAt(pointer+"/minLength", n.field("minLength")))
+	if s.Maximum, err = openAPIFloat64(n, pointer, "maximum"); err != nil {
+		return nil, err
+	}
+	if s.ExclusiveMaximum, err = openAPIFloat64(n, pointer, "exclusiveMaximum"); err != nil {
+		return nil, err
+	}
+	if s.MultipleOf, err = openAPIFloat64(n, pointer, "multipleOf"); err != nil {
+		return nil, err
+	}
+	if s.MultipleOf != nil && !(*s.MultipleOf > 0) {
+		return nil, errors.Errorf("OPENAPI_MULTIPLE_OF_NOT_POSITIVE:%v:%s", *s.MultipleOf, openAPIAt(pointer+"/multipleOf", n.field("multipleOf")))
+	}
+	if s.MaxLength, err = openAPICount(n, pointer, "maxLength", "OPENAPI_NEGATIVE_MAX_LENGTH"); err != nil {
+		return nil, err
+	}
+	if s.Pattern, _, err = openAPIString(n, pointer, "pattern"); err != nil {
+		return nil, err
+	}
+	if s.Pattern != "" {
+		if _, err := regexp.Compile(s.Pattern); err != nil {
+			return nil, errors.Errorf("OPENAPI_PATTERN_NOT_GO_RE2:%q:%s:%v", s.Pattern, openAPIAt(pointer+"/pattern", n.field("pattern")), err)
 		}
-		v := int(*minLength)
-		s.MinLength = &v
+	}
+	if s.MinItems, err = openAPICount(n, pointer, "minItems", "OPENAPI_NEGATIVE_MIN_ITEMS"); err != nil {
+		return nil, err
+	}
+	if s.MaxItems, err = openAPICount(n, pointer, "maxItems", "OPENAPI_NEGATIVE_MAX_ITEMS"); err != nil {
+		return nil, err
+	}
+	if s.UniqueItems, err = openAPIBool(n, pointer, "uniqueItems"); err != nil {
+		return nil, err
+	}
+	if c := n.field("const"); c != nil {
+		// A const is a scalar here, like an enum member. A null const would
+		// never be checked: Validate takes a null value as not given.
+		if c.kind == openAPINodeNull {
+			return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:const-null:%s", openAPIAt(pointer+"/const", c))
+		}
+		v, err := openAPIScalar(c, pointer+"/const")
+		if err != nil {
+			return nil, err
+		}
+		s.Const = &v
 	}
 	if s.DXLibType, _, err = openAPIString(n, pointer, OpenAPIExtensionType); err != nil {
 		return nil, err

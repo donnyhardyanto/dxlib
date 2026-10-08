@@ -21,7 +21,7 @@ The one rule everything else follows from: **the emitter defines the dialect,
 and the reader accepts exactly that dialect and refuses everything else by
 name.** It reads the subset an endpoint declaration can express and nothing
 else. A construct outside that subset (`oneOf`, a remote `$ref`, a `security`
-requirement, a `pattern` constraint, an unknown standard field) is an error
+requirement, a `minProperties` constraint, an unknown standard field) is an error
 naming the construct and the JSON pointer where it sat. A definition that gates
 privileges must not be half-read.
 
@@ -197,6 +197,38 @@ because a declaration may set the type without the flag. `Enum` is `enum`,
 `Description` is `description`, `IsMustExist` is membership in the enclosing
 `required` list (or `required: true` on a query or path parameter).
 
+A parameter may also carry the JSON Schema bounds the validator checks beyond
+what its type implies, and each is written under its own keyword:
+`Minimum`, `ExclusiveMinimum`, `Maximum`, `ExclusiveMaximum` and `MultipleOf`
+on the integer and number types; `MinLength`, `MaxLength` and `Pattern` on the
+string types; `MinItems`, `MaxItems` and `UniqueItems` on the array types;
+`Const` on a scalar. A bound the type implies is merged with the declared
+one, and the stricter is written: `int64p` with `Minimum: 18` is `minimum:
+18`. A bound looser than the type's own (`int64p` with `Minimum: 0`) is
+refused (`OPENAPI_BOUND_LOOSER_THAN_TYPE`), and so is a bound on a type it
+does not belong to (`maxLength` on an integer), because the document would
+then say something the server does not do.
+
+What the validator checks, after the value is resolved, refusing with 422
+and the parameter's path (`order.note`):
+
+- Numbers are compared in decimal, so `0.3` is
+  a multiple of `0.1` and an `int64` above 2^53 is compared exactly.
+- A length counts characters (Unicode code points), as JSON Schema does,
+  and is taken on the string the handler receives: trimmed for the
+  `non-empty-string` types. For `date`, `time` and `iso8601`, which resolve to
+  a `time.Time`, it is taken on the string that was sent.
+- `pattern` is Go's RE2 syntax, not ECMA-262. Lookaround and backreferences
+  do not compile and are refused when the document is read
+  (`OPENAPI_PATTERN_NOT_GO_RE2`). As in JSON Schema, a pattern matches
+  anywhere in the string; anchor it for a whole match.
+- `uniqueItems` compares items by their JSON encoding, with object keys in
+  sorted order.
+- `const` compares by formatted text, like `enum` but case-sensitive. A
+  `const` of `null` is refused, because a null value is taken as not given.
+- A refusal names the bound and never echoes a string value, which may be a
+  secret. Numbers are echoed, as the enum refusal does.
+
 Reading a schema back, `x-dxlib-type` is used exactly when present, after a
 check that the schema's `type` (and `format`, if both name one) agree with it
 -- `type: string` with `x-dxlib-type: int64` is a contradiction and is refused.
@@ -205,13 +237,15 @@ the schema states must be one dxlib enforces, so the document never promises
 more than the server does:
 
 - `string` with no format is `string` (`nullable-string` if nullable);
-  `minLength: 1` is `non-empty-string`; the formats above map back; any other
-  format (`uuid`, `uri`) or any other `minLength` is refused.
+  `minLength: 1` alone is `non-empty-string`; the formats above map back; any
+  other format (`uuid`, `uri`) is refused. Any other `minLength`, or one beside
+  a format, is carried as a bound on the type.
 - `integer` is `int64` (`int32` with that format); `minimum: 0` is the `zp`
-  form, `minimum: 1` the `p` form, `minimum: 5` is refused. Nullable gives the
-  `nullable-*` form.
-- `number` is `float64` (`float32` with that format), `minimum: 0` the `zp`
-  form, `exclusiveMinimum: 0` the `p` form.
+  form, `minimum: 1` the `p` form; any other `minimum` is carried as a bound
+  on `int64` or `int32`. Nullable gives the `nullable-*` form.
+- `number` is `float64` (`float32` with that format), `minimum: 0` alone the
+  `zp` form, `exclusiveMinimum: 0` alone the `p` form; any other lower bound
+  is carried as a bound on `float64` or `float32`.
 - `object` with `properties` is `json`; with `additionalProperties: {type:
   string}` is `map-string-string`; with neither is `json-passthrough`, because
   dxlib's `json` type builds its value from the declared children and would
@@ -222,6 +256,15 @@ more than the server does:
   refused.
 - `money`, the `protected-*` strings, `phonenumber`, `npwp` and `id` have no
   JSON spelling of their own and are reached only through `x-dxlib-type`.
+
+With or without `x-dxlib-type`, a bound is carried onto the parameter only
+where it says more than the type does: `x-dxlib-type: int64p` with `minimum:
+1` binds `int64p` with no `Minimum`, and with `minimum: 5` binds `int64p` with
+`Minimum: 5`. A bound on a schema that becomes no parameter of its own (array
+`items` other than an object template's properties, a map's
+`additionalProperties`, a request body object, an object template's item
+object) has nothing to check it and is refused
+(`OPENAPI_UNSUPPORTED_CONSTRAINT`).
 
 A local `$ref` into `components/schemas` is followed wherever a schema may
 appear; a chain of references is followed to its end and a cycle is refused
@@ -323,8 +366,10 @@ A key is read, refused with a reason, or reported as unknown:
   (requirements dxlib does not enforce, refused rather than ignored);
   `servers`, `tags`, `externalDocs`, `deprecated`, `examples`, `links`,
   `encoding`, `style`, `explode` and the like (not carried, so not accepted);
-  `pattern`, `maximum`, `maxLength`, `minItems`, `uniqueItems`, `const` and the
-  other constraints dxlib's validator does not apply; `nullable` (a 3.0
+  `minProperties`, `maxProperties`, `patternProperties`, `prefixItems`,
+  `contains`, `dependentRequired` and `if`/`then`/`else`, the constraints
+  dxlib's validator does not apply (the bounds it does apply are read, section
+  2.4); `nullable` (a 3.0
   keyword; `type: [T, "null"]` is the 3.1 spelling). `$ref` is accepted only
   as `#/components/schemas/<name>`; a remote reference, a reference into any
   other section, a `$ref` on a parameter, request body, response or header,
@@ -394,6 +439,7 @@ rather than tolerated by a looser comparison:
   `Parent` pointers are rebuilt, not carried.
 - Foreign `x-*` extensions in a hand-written document are dropped on
   re-emission (section 2.6). The guarantee is over documents in this dialect.
+- A hand-written `uniqueItems: false` is the default and is not re-emitted.
 
 ## 5. Binding
 

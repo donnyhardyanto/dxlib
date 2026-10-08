@@ -417,6 +417,9 @@ func openAPIParametersFromObjectSchema(s *DXOpenAPISchema, r *openAPISchemaResol
 	if resolved.AdditionalProperties != nil {
 		return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:additionalProperties-on-body:%s:DECLARE_EVERY_PARAMETER", pointer)
 	}
+	if what := openAPISchemaBoundNames(resolved); what != "" {
+		return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRAINT:%s:ON_object:%s", what, pointer)
+	}
 	return openAPIParametersFromProperties(resolved, r, pointer)
 }
 
