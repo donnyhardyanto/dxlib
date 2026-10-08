@@ -337,13 +337,6 @@ paths:
     parameters: []
     get: {operationId: x}
 `, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:path-level-parameters", "/paths/~1x/parameters"}},
-		{"two methods on one path", `openapi: 3.1.0
-info: {title: a, version: "1"}
-paths:
-  /x:
-    get: {operationId: x}
-    post: {operationId: y}
-`, []string{"OPENAPI_UNSUPPORTED_CONSTRUCT:multiple-methods-on-one-path", "/paths/~1x"}},
 		{"query parameter on a POST", `openapi: 3.1.0
 info: {title: a, version: "1"}
 paths:

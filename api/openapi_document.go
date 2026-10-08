@@ -165,9 +165,8 @@ type DXOpenAPISecurityScheme struct {
 	Description string `json:"description,omitempty"`
 }
 
-// DXOpenAPIPathItem holds one operation per HTTP method. dxlib registers one
-// endpoint per URI and checks the method itself, so in an emitted document
-// exactly one of these is set; a hand-written document may set several.
+// DXOpenAPIPathItem holds one operation per HTTP method. dxlib keys an
+// endpoint by method and URI, so each operation set here is one endpoint.
 type DXOpenAPIPathItem struct {
 	Summary     string              `json:"summary,omitempty"`
 	Description string              `json:"description,omitempty"`

@@ -296,9 +296,24 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	return nil
 }
 
+// FindEndPointByURI returns a copy of the first endpoint registered on uri,
+// whatever its method, or nil. A URI may carry one endpoint per method; use
+// FindEndPoint to pick one by method.
 func (a *DXAPI) FindEndPointByURI(uri string) *DXAPIEndPoint {
 	for _, endPoint := range a.EndPoints {
 		if endPoint.Uri == uri {
+			return &endPoint
+		}
+	}
+	return nil
+}
+
+// FindEndPoint returns a copy of the endpoint registered for method on uri, or
+// nil. Endpoints are keyed by method and URI together, so GET /members and
+// POST /members are two endpoints.
+func (a *DXAPI) FindEndPoint(method, uri string) *DXAPIEndPoint {
+	for _, endPoint := range a.EndPoints {
+		if endPoint.Uri == uri && endPoint.Method == method {
 			return &endPoint
 		}
 	}
@@ -354,9 +369,10 @@ func (a *DXAPI) NewEndPoint(title, description, uri, method string, endPointType
 	onWSLoop DXAPIEndPointExecuteFunc, responsePossibilities *DXAPIEndPointResponsePossibilities, middlewares []DXAPIEndPointExecuteFunc,
 	privileges []string, requestMaxContentLength int64, rateLimitGroupNameId string) *DXAPIEndPoint {
 
-	t := a.FindEndPointByURI(uri)
-	if t != nil {
-		log.Log.Fatalf("Duplicate endpoint uri %s", uri)
+	// An endpoint is keyed by method and URI: another method on the same URI
+	// is a second endpoint, the same method twice is a definition error.
+	if a.FindEndPoint(method, uri) != nil {
+		log.Log.Fatalf("Duplicate endpoint %s %s: an endpoint with this method and uri is already registered", method, uri)
 	}
 	ae := DXAPIEndPoint{
 		Owner:                   a,
@@ -397,9 +413,10 @@ func (a *DXAPI) NewWSEndPoint(title, description, uri, method string,
 	periodicInterval time.Duration, middlewares []DXAPIEndPointExecuteFunc,
 	privileges []string, rateLimitGroupNameId string) *DXAPIEndPoint {
 
-	t := a.FindEndPointByURI(uri)
-	if t != nil {
-		log.Log.Fatalf("Duplicate endpoint uri %s", uri)
+	// An endpoint is keyed by method and URI: another method on the same URI
+	// is a second endpoint, the same method twice is a definition error.
+	if a.FindEndPoint(method, uri) != nil {
+		log.Log.Fatalf("Duplicate endpoint %s %s: an endpoint with this method and uri is already registered", method, uri)
 	}
 	ae := DXAPIEndPoint{
 		Owner:                a,
@@ -420,6 +437,37 @@ func (a *DXAPI) NewWSEndPoint(title, description, uri, method string,
 	}
 	a.EndPoints = append(a.EndPoints, ae)
 	return &ae
+}
+
+// endPointsByURI groups copies of the endpoints by URI, in the order each URI
+// was first registered and, within a URI, in registration order.
+func endPointsByURI(endPoints []DXAPIEndPoint) [][]*DXAPIEndPoint {
+	index := map[string]int{}
+	var groups [][]*DXAPIEndPoint
+	for _, endPoint := range endPoints {
+		p := endPoint
+		i, ok := index[p.Uri]
+		if !ok {
+			i = len(groups)
+			index[p.Uri] = i
+			groups = append(groups, nil)
+		}
+		groups[i] = append(groups[i], &p)
+	}
+	return groups
+}
+
+// endPointForMethod picks the endpoint of a URI's group that serves method.
+// When none does, the first registered takes the request, and its
+// PreProcessRequest answers it as a URI with one endpoint always has: OPTIONS
+// with 200, any other method with 405 METHOD_NOT_ALLOWED.
+func endPointForMethod(group []*DXAPIEndPoint, method string) *DXAPIEndPoint {
+	for _, p := range group {
+		if p.Method == method {
+			return p
+		}
+	}
+	return group[0]
 }
 
 // dbContextCarrier is a local interface for extracting DB operation context
@@ -817,16 +865,18 @@ func (a *DXAPI) StartAndWait(errorGroup *errgroup.Group) error {
 		}
 	}
 
-	// Set up routes
-	for _, endpoint := range a.EndPoints {
-		p := endpoint
+	// Set up routes: one mux pattern per URI, however many methods it carries.
+	// Go's method patterns ("GET /x") are not used, because the mux would then
+	// answer an unmatched method itself, before the CORS middleware and without
+	// dxlib's refusal body.
+	for _, group := range endPointsByURI(a.EndPoints) {
 		handlerFunc := func(w http.ResponseWriter, r *http.Request) {
-			a.routeHandler(w, r, &p)
+			a.routeHandler(w, r, endPointForMethod(group, r.Method))
 		}
 
 		// Always use the wrapper - it will handle both New Relic enabled and disabled cases
-		wrappedHandler := wrapHandler(handlerFunc, p.Uri)
-		mux.Handle(p.Uri, corsMiddleware(http.HandlerFunc(wrappedHandler)))
+		wrappedHandler := wrapHandler(handlerFunc, group[0].Uri)
+		mux.Handle(group[0].Uri, corsMiddleware(http.HandlerFunc(wrappedHandler)))
 	}
 
 	// Register raw handlers (static files, redirects, etc.)

@@ -25,8 +25,8 @@ import (
 //
 // Endpoints registered through NewEndPoint and NewWSEndPoint are untouched by
 // any of this. A service may bind a document for some of its endpoints and
-// keep the rest in code; the only interaction is that a URI can be claimed
-// once.
+// keep the rest in code; the only interaction is that a method on a URI can
+// be claimed once.
 
 // DXOpenAPIWSHandler is what a WebSocket operation binds to: the hooks
 // NewWSEndPoint takes, or OnLoop for an endpoint that runs the whole
@@ -56,10 +56,19 @@ type dxOpenAPIState struct {
 	mu           sync.Mutex
 	handlers     map[string]*dxOpenAPIHandler
 	handlerOrder []string
-	// pathParameters holds the declared path parameters of every bound URI,
-	// which live outside DXAPIEndPoint.Parameters (see the middleware below)
-	// and which the emitter needs to write the document back out.
+	// pathParameters holds the declared path parameters of every bound
+	// operation, which live outside DXAPIEndPoint.Parameters (see the
+	// middleware below) and which the emitter needs to write the document
+	// back out. operationIds holds the operationId the document gave each
+	// bound operation, so the emitter writes it back rather than deriving
+	// one. Both are keyed by openAPIRouteKey.
 	pathParameters map[string][]DXAPIEndPointParameter
+	operationIds   map[string]string
+}
+
+// openAPIRouteKey is the key of an endpoint: its method and URI together.
+func openAPIRouteKey(method, uri string) string {
+	return method + " " + uri
 }
 
 var (
@@ -78,7 +87,7 @@ func openAPIStateEnsure(a *DXAPI) *dxOpenAPIState {
 	defer openAPIStatesMu.Unlock()
 	s, ok := openAPIStates[a]
 	if !ok {
-		s = &dxOpenAPIState{handlers: map[string]*dxOpenAPIHandler{}, pathParameters: map[string][]DXAPIEndPointParameter{}}
+		s = &dxOpenAPIState{handlers: map[string]*dxOpenAPIHandler{}, pathParameters: map[string][]DXAPIEndPointParameter{}, operationIds: map[string]string{}}
 		openAPIStates[a] = s
 	}
 	return s
@@ -160,39 +169,49 @@ func (a *DXAPI) BindOpenAPI(doc *DXOpenAPIDocument) error {
 			a.NameId, strings.Join(specWithoutHandler, ","), strings.Join(handlerWithoutSpec, ","))
 	}
 
-	// URIs: once each, across what is already registered and what the
-	// document adds. NewEndPoint would find a duplicate too, with a fatal;
-	// this returns it.
+	// Method and URI: once each pair, across what is already registered and
+	// what the document adds. NewEndPoint would find a duplicate too, with a
+	// fatal; this returns it. Another method on a claimed URI is another
+	// endpoint, so the mux check below takes each URI once.
 	claimed := map[string]string{}
+	uris := map[string]string{}
 	for i := range a.EndPoints {
-		claimed[a.EndPoints[i].Uri] = "already registered on the API"
+		claimed[openAPIRouteKey(a.EndPoints[i].Method, a.EndPoints[i].Uri)] = "already registered on the API"
+		uris[a.EndPoints[i].Uri] = "already registered on the API"
 	}
-	claim := func(uri, where string) error {
-		if prior, taken := claimed[uri]; taken {
-			return errors.Errorf("OPENAPI_URI_ALREADY_REGISTERED:%s:%s:%s", uri, prior, where)
+	claim := func(method, uri, where string) error {
+		key := openAPIRouteKey(method, uri)
+		if prior, taken := claimed[key]; taken {
+			return errors.Errorf("OPENAPI_METHOD_AND_URI_ALREADY_REGISTERED:%s:%s:%s:%s", method, uri, prior, where)
 		}
-		claimed[uri] = where
+		claimed[key] = where
+		uris[uri] = where
 		return nil
 	}
 	for _, path := range doc.Paths.Keys() {
-		if err := claim(path, "/paths/"+openAPIPointerEscape(path)); err != nil {
-			return err
-		}
-	}
-	if doc.WebSocketEndPoints != nil {
-		for i, ws := range doc.WebSocketEndPoints.EndPoints {
-			if err := claim(ws.Path, fmt.Sprintf("/%s/endpoints/%d", OpenAPIExtensionWebSocketEndPoints, i)); err != nil {
+		item, _ := doc.Paths.Get(path)
+		methods, _ := item.Operations()
+		for _, method := range methods {
+			if err := claim(method, path, "/paths/"+openAPIPointerEscape(path)+"/"+strings.ToLower(method)); err != nil {
 				return err
 			}
 		}
 	}
-	if err := openAPICheckMuxPatterns(a, claimed); err != nil {
+	if doc.WebSocketEndPoints != nil {
+		for i, ws := range doc.WebSocketEndPoints.EndPoints {
+			if err := claim(ws.Method, ws.Path, fmt.Sprintf("/%s/endpoints/%d", OpenAPIExtensionWebSocketEndPoints, i)); err != nil {
+				return err
+			}
+		}
+	}
+	if err := openAPICheckMuxPatterns(a, uris); err != nil {
 		return err
 	}
 
 	resolver := &openAPISchemaResolver{components: doc.Components}
 	var built []DXAPIEndPoint
 	pathParameters := map[string][]DXAPIEndPointParameter{}
+	operationIds := map[string]string{}
 	for _, path := range doc.Paths.Keys() {
 		item, _ := doc.Paths.Get(path)
 		methods, ops := item.Operations()
@@ -207,8 +226,10 @@ func (a *DXAPI) BindOpenAPI(doc *DXOpenAPIDocument) error {
 				return err
 			}
 			built = append(built, ep)
+			key := openAPIRouteKey(methods[i], path)
+			operationIds[key] = op.OperationId
 			if len(pathParams) > 0 {
-				pathParameters[path] = pathParams
+				pathParameters[key] = pathParams
 			}
 		}
 	}
@@ -224,12 +245,16 @@ func (a *DXAPI) BindOpenAPI(doc *DXOpenAPIDocument) error {
 				return err
 			}
 			built = append(built, ep)
+			operationIds[openAPIRouteKey(ws.Method, ws.Path)] = ws.OperationId
 		}
 	}
 
 	a.EndPoints = append(a.EndPoints, built...)
-	for uri, params := range pathParameters {
-		state.pathParameters[uri] = params
+	for key, params := range pathParameters {
+		state.pathParameters[key] = params
+	}
+	for key, id := range operationIds {
+		state.operationIds[key] = id
 	}
 	return nil
 }

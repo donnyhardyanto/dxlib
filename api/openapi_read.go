@@ -1140,11 +1140,6 @@ func (doc *DXOpenAPIDocument) Validate() error {
 		if len(ops) == 0 {
 			return errors.Errorf("OPENAPI_PATH_WITHOUT_OPERATIONS:%s", pointer)
 		}
-		// dxlib registers one endpoint per URI and checks the method inside
-		// it, so a path item with two methods has no endpoint to become.
-		if len(ops) > 1 {
-			return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:multiple-methods-on-one-path:%s:DXLIB_REGISTERS_ONE_METHOD_PER_URI", pointer)
-		}
 		for i, op := range ops {
 			if err := v.operation(op, templateNames, methods[i], pointer+"/"+strings.ToLower(methods[i])); err != nil {
 				return err

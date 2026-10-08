@@ -290,13 +290,13 @@ func TestOpenAPIBindRefusesAHandlerRegisteredTwice(t *testing.T) {
 	}
 }
 
-func TestOpenAPIBindRefusesAURIAlreadyRegistered(t *testing.T) {
+func TestOpenAPIBindRefusesAMethodAndURIAlreadyRegistered(t *testing.T) {
 	a := openAPITestAPI(t, "openapi-bind-uri")
 	a.NewEndPoint("x", "", "/x", "GET", EndPointTypeHTTPJSON, utilsHttp.RequestContentTypeNone, nil, noop, nil, nil, nil, nil, 0, "")
 	doc := openAPIMustRead(t, "openapi: 3.1.0\ninfo: {title: a, version: '1'}\npaths:\n  /x:\n    get: {operationId: x}\n")
 	a.RegisterHandler("x", noop)
 	err := a.BindOpenAPI(doc)
-	if err == nil || !strings.Contains(err.Error(), "OPENAPI_URI_ALREADY_REGISTERED:/x:already registered on the API") {
+	if err == nil || !strings.Contains(err.Error(), "OPENAPI_METHOD_AND_URI_ALREADY_REGISTERED:GET:/x:already registered on the API:/paths/~1x/get") {
 		t.Fatalf("err = %v", err)
 	}
 	if len(a.EndPoints) != 1 {

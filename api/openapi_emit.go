@@ -24,13 +24,38 @@ import (
 // the leading slash goes, every other slash becomes an underscore, and the
 // braces of a path template are dropped. /cmdX is cmdX; /v2/cmdX is v2_cmdX,
 // which is what keeps the v1 and v2 forms of a command distinct. Handlers
-// register against this id, so the rule is part of the contract.
+// register against this id, so the rule is part of the contract. It is the id
+// of an endpoint that is alone on its URI; see OpenAPIOperationIdForMethod.
 func OpenAPIOperationId(uri string) string {
 	id := strings.TrimPrefix(uri, "/")
 	id = strings.ReplaceAll(id, "/", "_")
 	id = strings.ReplaceAll(id, "{", "")
 	id = strings.ReplaceAll(id, "}", "")
 	return id
+}
+
+// OpenAPIOperationIdForMethod is the operationId of an endpoint that shares
+// its URI with endpoints of other methods: the lower-case method, an
+// underscore, and OpenAPIOperationId. GET and POST on /members are get_members
+// and post_members. Every endpoint on such a URI takes this form, the first
+// registered included, so adding a method to a URI changes the id of the one
+// already there.
+func OpenAPIOperationIdForMethod(method, uri string) string {
+	return strings.ToLower(method) + "_" + OpenAPIOperationId(uri)
+}
+
+// openAPIEmittedOperationId is the id the emitter writes for an endpoint: the
+// one its document gave it when it was bound, otherwise the derived one.
+func openAPIEmittedOperationId(state *dxOpenAPIState, ep *DXAPIEndPoint, endPointsOnURI int) string {
+	if state != nil {
+		if id, ok := state.operationIds[openAPIRouteKey(ep.Method, ep.Uri)]; ok {
+			return id
+		}
+	}
+	if endPointsOnURI > 1 {
+		return OpenAPIOperationIdForMethod(ep.Method, ep.Uri)
+	}
+	return OpenAPIOperationId(ep.Uri)
 }
 
 // OpenAPIDocument builds the document for every endpoint registered on the
@@ -74,10 +99,15 @@ func (a *DXAPI) OpenAPIDocument() (*DXOpenAPIDocument, error) {
 		doc.Security = []DXOpenAPISecurityRequirement{{name: {}}}
 	}
 
+	endPointsOnURI := map[string]int{}
+	for i := range a.EndPoints {
+		endPointsOnURI[a.EndPoints[i].Uri]++
+	}
 	for i := range a.EndPoints {
 		ep := &a.EndPoints[i]
+		operationId := openAPIEmittedOperationId(state, ep, endPointsOnURI[ep.Uri])
 		if ep.EndPointType == EndPointTypeWS {
-			ws := openAPIWebSocketFromEndPoint(ep)
+			ws := openAPIWebSocketFromEndPoint(ep, operationId)
 			if err := claim(ws.OperationId, ep.Uri); err != nil {
 				return nil, err
 			}
@@ -89,9 +119,9 @@ func (a *DXAPI) OpenAPIDocument() (*DXOpenAPIDocument, error) {
 		}
 		var pathParameters []DXAPIEndPointParameter
 		if state != nil {
-			pathParameters = state.pathParameters[ep.Uri]
+			pathParameters = state.pathParameters[openAPIRouteKey(ep.Method, ep.Uri)]
 		}
-		op, err := openAPIOperationFromEndPoint(ep, pathParameters)
+		op, err := openAPIOperationFromEndPoint(ep, operationId, pathParameters)
 		if err != nil {
 			return nil, err
 		}
@@ -142,9 +172,9 @@ func (a *DXAPI) APIHandlerOpenAPI(aepr *DXAPIEndPointRequest) error {
 // document places them accordingly.
 var openAPIBodyMethods = map[string]bool{"POST": true, "PUT": true}
 
-func openAPIOperationFromEndPoint(ep *DXAPIEndPoint, pathParameters []DXAPIEndPointParameter) (*DXOpenAPIOperation, error) {
+func openAPIOperationFromEndPoint(ep *DXAPIEndPoint, operationId string, pathParameters []DXAPIEndPointParameter) (*DXOpenAPIOperation, error) {
 	op := &DXOpenAPIOperation{
-		OperationId:      OpenAPIOperationId(ep.Uri),
+		OperationId:      operationId,
 		Summary:          ep.Title,
 		Description:      ep.Description,
 		EndPointType:     ep.EndPointType.String(),
@@ -351,9 +381,9 @@ func openAPIResponsesFromEndPoint(ep *DXAPIEndPoint) (*DXOpenAPIOrderedMap[*DXOp
 // endpoint. Parameters, request content type and content length are not
 // carried: PreProcessRequest never runs for a WebSocket endpoint, so none of
 // the three has any effect there, and the document says what the server does.
-func openAPIWebSocketFromEndPoint(ep *DXAPIEndPoint) *DXOpenAPIWebSocketEndPoint {
+func openAPIWebSocketFromEndPoint(ep *DXAPIEndPoint, operationId string) *DXOpenAPIWebSocketEndPoint {
 	ws := &DXOpenAPIWebSocketEndPoint{
-		OperationId:    OpenAPIOperationId(ep.Uri),
+		OperationId:    operationId,
 		Path:           ep.Uri,
 		Method:         ep.Method,
 		Summary:        ep.Title,

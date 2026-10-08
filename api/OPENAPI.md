@@ -126,13 +126,31 @@ slash becomes an underscore, and the braces of a path template are dropped.
 which is what keeps a v1 and a v2 form of one command distinct when both carry
 the same `Title`. Handlers register against this id, so the rule is part of the
 contract; two endpoints whose URIs derive to one id are an emission error
-(`OPENAPI_OPERATION_ID_COLLISION`), not a last-wins. In a document read from
-disk the `operationId` field is authoritative and the rule does not apply.
+(`OPENAPI_OPERATION_ID_COLLISION`), not a last-wins. That form is for an
+endpoint alone on its URI. When a URI carries endpoints of several methods,
+each of them, the first registered included, takes the lower-case method as a
+prefix (`OpenAPIOperationIdForMethod`): `GET` and `POST` on `/members` are
+`get_members` and `post_members`. Adding a method to a URI therefore changes
+the id of the endpoint already there. In a document read from disk the
+`operationId` field is authoritative and the rule does not apply: an endpoint
+bound from it is written back with the id the document gave it.
 
-dxlib registers one endpoint per URI and checks the method inside it, so a
-path item carries exactly one method. A hand-written document with two methods
-on one path is refused (`multiple-methods-on-one-path`), because there is no
-endpoint for it to become.
+An endpoint is keyed by its method and URI together, so a path item may carry
+several methods, each one endpoint: `GET /members` and `POST /members` are two
+endpoints with their own parameters and handlers. `NewEndPoint` stops the
+process on the same method and URI registered twice, and the binder refuses it
+(`OPENAPI_METHOD_AND_URI_ALREADY_REGISTERED`). A WebSocket endpoint counts too:
+one on `GET /x` conflicts with an HTTP `GET /x`. `FindEndPoint(method, uri)`
+looks one up; `FindEndPointByURI` answers the first registered on the URI,
+whatever its method.
+
+`StartAndWait` registers each URI once with the mux and picks the endpoint by
+the request's method. A method no endpoint on the URI serves goes to the first
+one registered there, which answers it as a URI with one endpoint always has:
+`OPTIONS` with 200, any other method with 405 `METHOD_NOT_ALLOWED`. Go's
+method patterns (`GET /x`) are not used, because the mux would then answer an
+unmatched method itself, before the CORS middleware and without dxlib's
+refusal body.
 
 ### 2.3 Where the parameters go
 
@@ -517,8 +535,8 @@ func (a *DXAPI) OpenAPIDrift(doc *DXOpenAPIDocument) (specWithoutHandler, handle
 
 Registration happens in the same define step as `NewEndPoint` calls, and the
 load after it, so the drift check sees every handler. One document per API:
-a second `BindOpenAPI` on the same API would find its URIs taken. Registering
-one id twice is reported at load (`OPENAPI_HANDLER_REGISTERED_TWICE`) rather
+a second `BindOpenAPI` of the same document would find its methods and URIs
+taken. Registering one id twice is reported at load (`OPENAPI_HANDLER_REGISTERED_TWICE`) rather
 than at the second call, so the report is one error with the whole picture. A
 plain handler registered for a WebSocket id, or the reverse, is refused by
 name.
@@ -536,15 +554,16 @@ For each operation, a `DXAPIEndPoint` with `Uri`, `Method`, `EndPointType`,
 `RequestContentType`, `Parameters` (built through the mapping in 2.4),
 `ResponsePossibilities`, `Privileges`, `RequestMaxContentLength` and
 `RateLimitGroupNameId` from the document, `OnExecute` and `Middlewares` from
-the registration, and `Owner` set. A URI already registered on the API, by
-`NewEndPoint` or by an earlier path in the same document, is an error before
-anything is appended; `NewEndPoint` would have found it too, with a fatal.
+the registration, and `Owner` set. A method and URI already registered on the
+API, by `NewEndPoint` or by an earlier entry in the same document, is an error
+before anything is appended; `NewEndPoint` would have found it too, with a
+fatal. Another method on a registered URI is bound as another endpoint.
 
 ### 5.3 Path templates and Go's ServeMux
 
 `/users/{id}` is OpenAPI's path template and, since Go 1.22, `ServeMux`'s
-wildcard pattern, the same spelling. `StartAndWait` registers every endpoint
-with `mux.Handle(p.Uri, ...)`, so a bound template becomes a wildcard route
+wildcard pattern, the same spelling. `StartAndWait` registers every URI
+with `mux.Handle(uri, ...)`, so a bound template becomes a wildcard route
 with no other change. This was verified against the real listener, not
 inferred: `TestOpenAPIBoundEndPointsServeRequests` starts a `DXAPI` through
 `StartAndWait`, binds `/users/{id}/files/{file_id}` and `/users/me`, and
