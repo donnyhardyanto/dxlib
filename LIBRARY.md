@@ -509,11 +509,12 @@ ORM-like table abstraction over `databases`. Provides CRUD operations, auto-gene
 Pre-built response possibility sets for common CRUD endpoints:
 | Variable | Description |
 |---|---|
-| `DXAPIEndPointResponsePossibilityCreate` | Standard create response (201 + error codes) |
-| `DXAPIEndPointResponsePossibilityCreateByUid` | Create by UID response |
-| `DXAPIEndPointResponsePossibilityRead` | Standard read response |
-| `DXAPIEndPointResponsePossibilityUpdate` | Standard update response |
-| `DXAPIEndPointResponsePossibilityDelete` | Standard delete response |
+| `DXAPIEndPointResponsePossibilityCreate` | Standard create response: 200 with the new id, 400 invalid request, 401 invalid credential, 422 unprocessable entity, 500 internal error |
+| `DXAPIEndPointResponsePossibilityCreateByUid` | Create by UID response, same status set |
+| `DXAPIEndPointResponsePossibilityRead` | Standard read response, same status set |
+| `DXAPIEndPointResponsePossibilityUpdate` | Standard update response, same status set |
+| `DXAPIEndPointResponsePossibilityDelete` | Standard delete response, same status set |
+| `DXAPIEndPointResponsePossibilityList` | Standard list response, same status set |
 
 ### Variables
 

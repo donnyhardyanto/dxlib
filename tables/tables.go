@@ -65,8 +65,8 @@ var (
 			DataTemplate: nil,
 		},
 		"invalid_credential": api.DXAPIEndPointResponsePossibility{
-			StatusCode:   409,
-			Description:  "Invalid credential - 409",
+			StatusCode:   401,
+			Description:  "Invalid credential - 401",
 			DataTemplate: nil,
 		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{
@@ -93,8 +93,8 @@ var (
 			DataTemplate: nil,
 		},
 		"invalid_credential": api.DXAPIEndPointResponsePossibility{
-			StatusCode:   409,
-			Description:  "Invalid credential - 409",
+			StatusCode:   401,
+			Description:  "Invalid credential - 401",
 			DataTemplate: nil,
 		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{
@@ -119,8 +119,8 @@ var (
 			DataTemplate: nil,
 		},
 		"invalid_credential": api.DXAPIEndPointResponsePossibility{
-			StatusCode:   409,
-			Description:  "Invalid credential - 409",
+			StatusCode:   401,
+			Description:  "Invalid credential - 401",
 			DataTemplate: nil,
 		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{
@@ -145,8 +145,8 @@ var (
 			DataTemplate: nil,
 		},
 		"invalid_credential": api.DXAPIEndPointResponsePossibility{
-			StatusCode:   409,
-			Description:  "Invalid credential - 409",
+			StatusCode:   401,
+			Description:  "Invalid credential - 401",
 			DataTemplate: nil,
 		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{
@@ -171,8 +171,8 @@ var (
 			DataTemplate: nil,
 		},
 		"invalid_credential": api.DXAPIEndPointResponsePossibility{
-			StatusCode:   409,
-			Description:  "Invalid credential - 409",
+			StatusCode:   401,
+			Description:  "Invalid credential - 401",
 			DataTemplate: nil,
 		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{
@@ -203,8 +203,8 @@ var (
 			DataTemplate: nil,
 		},
 		"invalid_credential": api.DXAPIEndPointResponsePossibility{
-			StatusCode:   409,
-			Description:  "Invalid credential - 409",
+			StatusCode:   401,
+			Description:  "Invalid credential - 401",
 			DataTemplate: nil,
 		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{
