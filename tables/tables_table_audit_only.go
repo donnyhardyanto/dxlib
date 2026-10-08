@@ -82,12 +82,16 @@ func (t *DXTableAuditOnly) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.J
 	return t.DXRawTable.DoInsert(aepr, data)
 }
 
-// DoCreate inserts a row with audit fields and writes API response
+// DoCreate inserts a row with audit fields and writes API response. A row the
+// database refused for the client's reason is returned as ErrInsertRefused
+// (409 for a duplicate key, 422 for a constraint violation), which the route
+// handler answers with a sanitized body; any other error is returned as it is
+// and answers a sanitized 500.
 func (t *DXTableAuditOnly) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
 	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 	if err != nil {
-		return 0, err
+		return 0, insertError(err)
 	}
 	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
 	newUid := ""

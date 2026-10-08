@@ -69,6 +69,11 @@ var (
 			Description:  "Invalid credential - 401",
 			DataTemplate: nil,
 		},
+		"conflict": api.DXAPIEndPointResponsePossibility{
+			StatusCode:   409,
+			Description:  "Conflict - 409",
+			DataTemplate: nil,
+		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{
 			StatusCode:   422,
 			Description:  "Unprocessable entity - 422",
@@ -95,6 +100,11 @@ var (
 		"invalid_credential": api.DXAPIEndPointResponsePossibility{
 			StatusCode:   401,
 			Description:  "Invalid credential - 401",
+			DataTemplate: nil,
+		},
+		"conflict": api.DXAPIEndPointResponsePossibility{
+			StatusCode:   409,
+			Description:  "Conflict - 409",
 			DataTemplate: nil,
 		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{
@@ -147,6 +157,11 @@ var (
 		"invalid_credential": api.DXAPIEndPointResponsePossibility{
 			StatusCode:   401,
 			Description:  "Invalid credential - 401",
+			DataTemplate: nil,
+		},
+		"conflict": api.DXAPIEndPointResponsePossibility{
+			StatusCode:   409,
+			Description:  "Conflict - 409",
 			DataTemplate: nil,
 		},
 		"unprocessable_entity": api.DXAPIEndPointResponsePossibility{

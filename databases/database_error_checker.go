@@ -250,7 +250,8 @@ func IsConstraintViolationError(err error) bool {
 			1216, 1217, // foreign key constraint fails (older servers)
 			1364,       // field has no default value
 			1451, 1452, // foreign key constraint fails
-			3819: // check constraint violated
+			3819, // check constraint violated (MySQL 8.0.16+)
+			4025: // CONSTRAINT failed (MariaDB)
 			return true
 		}
 		return false
@@ -286,9 +287,12 @@ func IsConstraintViolationError(err error) bool {
 		return true
 	}
 
-	// MySQL/MariaDB
+	// MySQL/MariaDB. MariaDB words a CHECK violation (4025) as
+	// "CONSTRAINT `c` failed for `s`.`t`"; MySQL (3819) as
+	// "Check constraint 'c' is violated."
 	if strings.Contains(errMsg, "a foreign key constraint fails") ||
 		(strings.Contains(strings.ToLower(errMsg), "constraint") && strings.Contains(errMsg, "is violated")) ||
+		(strings.Contains(errMsg, "CONSTRAINT `") && strings.Contains(errMsg, "` failed for ")) ||
 		strings.Contains(errMsg, "cannot be null") ||
 		strings.Contains(errMsg, "doesn't have a default value") {
 		return true

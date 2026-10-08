@@ -518,12 +518,12 @@ ORM-like table abstraction over `databases`. Provides CRUD operations, auto-gene
 Pre-built response possibility sets for common CRUD endpoints:
 | Variable | Description |
 |---|---|
-| `DXAPIEndPointResponsePossibilityCreate` | Standard create response: 200 with the new id, 400 invalid request, 401 invalid credential, 422 unprocessable entity, 500 internal error |
-| `DXAPIEndPointResponsePossibilityCreateByUid` | Create by UID response, same status set |
-| `DXAPIEndPointResponsePossibilityRead` | Standard read response, same status set |
-| `DXAPIEndPointResponsePossibilityUpdate` | Standard update response, same status set |
-| `DXAPIEndPointResponsePossibilityDelete` | Standard delete response, same status set |
-| `DXAPIEndPointResponsePossibilityList` | Standard list response, same status set |
+| `DXAPIEndPointResponsePossibilityCreate` | Standard create response: 200 with the new id, 400 invalid request, 401 invalid credential, 409 conflict (duplicate key or unique-field-group violation), 422 unprocessable entity (a foreign-key, check or not-null violation, or a parameter the endpoint cannot accept), 500 internal error |
+| `DXAPIEndPointResponsePossibilityCreateByUid` | Create by UID response: 200 with the new uid, otherwise the same status set as Create |
+| `DXAPIEndPointResponsePossibilityRead` | Standard read response: 200, 400, 401, 422, 500 (no 409: a read has no conflict) |
+| `DXAPIEndPointResponsePossibilityUpdate` | Standard update response: 200, 400, 401, 409 conflict (unique-field-group violation on the WithValidation paths), 422, 500 |
+| `DXAPIEndPointResponsePossibilityDelete` | Standard delete response: 200, 400, 401, 422, 500 |
+| `DXAPIEndPointResponsePossibilityList` | Standard list response: 200 with rows, total_rows and total_page, 400, 401, 422, 500 |
 
 ### Variables
 

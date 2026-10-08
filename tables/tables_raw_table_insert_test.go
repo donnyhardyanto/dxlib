@@ -34,6 +34,7 @@ func TestInsertErrorStatusCode(t *testing.T) {
 		{"pg check", &pgconn.PgError{Code: "23514"}, http.StatusUnprocessableEntity},
 		{"pg not null", &pgconn.PgError{Code: "23502"}, http.StatusUnprocessableEntity},
 		{"mysql foreign key", &mysql.MySQLError{Number: 1452}, http.StatusUnprocessableEntity},
+		{"mariadb check", &mysql.MySQLError{Number: 4025, Message: "CONSTRAINT `c` failed for `s`.`t`"}, http.StatusUnprocessableEntity},
 		{"mssql foreign key or check", mssql.Error{Number: 547}, http.StatusUnprocessableEntity},
 		{"oracle parent missing", &network.OracleError{ErrCode: 2291}, http.StatusUnprocessableEntity},
 		{"oracle not null", &network.OracleError{ErrCode: 1400}, http.StatusUnprocessableEntity},

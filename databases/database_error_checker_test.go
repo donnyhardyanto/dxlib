@@ -33,6 +33,7 @@ func TestDuplicateAndConstraintPredicatesPerDialect(t *testing.T) {
 		{"mysql foreign key", &mysql.MySQLError{Number: 1452, Message: "Cannot add or update a child row"}, false, true},
 		{"mysql child rows", &mysql.MySQLError{Number: 1451, Message: "Cannot delete or update a parent row"}, false, true},
 		{"mysql check", &mysql.MySQLError{Number: 3819, Message: "Check constraint 'c' is violated."}, false, true},
+		{"mariadb check", &mysql.MySQLError{Number: 4025, Message: "CONSTRAINT `c` failed for `s`.`t`"}, false, true},
 		{"mysql not null", &mysql.MySQLError{Number: 1048, Message: "Column 'a' cannot be null"}, false, true},
 		{"mysql syntax", &mysql.MySQLError{Number: 1064, Message: "You have an error in your SQL syntax"}, false, false},
 		// SQL Server, typed
@@ -56,6 +57,7 @@ func TestDuplicateAndConstraintPredicatesPerDialect(t *testing.T) {
 		{"text mysql duplicate", errors.New("Error 1062 (23000): Duplicate entry '1' for key 't.PRIMARY'"), true, false},
 		{"text mysql foreign key", errors.New("Error 1452 (23000): Cannot add or update a child row: a foreign key constraint fails"), false, true},
 		{"text mysql check", errors.New("Error 3819 (HY000): Check constraint 't_chk_1' is violated."), false, true},
+		{"text mariadb check", errors.New("Error 4025 (23000): CONSTRAINT `t_chk_1` failed for `s`.`t`"), false, true},
 		{"text mysql not null", errors.New("Error 1048 (23000): Column 'a' cannot be null"), false, true},
 		{"text mssql foreign key", errors.New("mssql: The INSERT statement conflicted with the FOREIGN KEY constraint \"FK_t\""), false, true},
 		{"text mssql check", errors.New("mssql: The INSERT statement conflicted with the CHECK constraint \"CK_t\""), false, true},
