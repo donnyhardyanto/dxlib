@@ -738,6 +738,9 @@ var (
 		DataTypeFloat64P,
 		DataTypeFloat64ZP,
 
+		// Money type
+		DataTypeMoney,
+
 		// Boolean type
 		DataTypeBool,
 
@@ -789,6 +792,9 @@ var (
 		APIParameterTypeFloat64:   DataTypeFloat64,
 		APIParameterTypeFloat64P:  DataTypeFloat64P,
 		APIParameterTypeFloat64ZP: DataTypeFloat64ZP,
+
+		// Money type
+		APIParameterTypeMoney: DataTypeMoney,
 
 		// Boolean type
 		APIParameterTypeBoolean: DataTypeBool,

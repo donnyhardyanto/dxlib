@@ -92,9 +92,9 @@ func TestOpenAPITypeTableCoversEveryDeclaredType(t *testing.T) {
 			t.Errorf("dxlib type %q has no JSON Schema mapping", apiType)
 		}
 	}
-	// Three types are declared as constants without a row in Types; they are
+	// Two types are declared as constants without a row in Types; they are
 	// mapped too, since an endpoint may declare them.
-	for _, apiType := range []dxlibTypes.APIParameterType{dxlibTypes.APIParameterTypeBlob, dxlibTypes.APIParameterTypeEncryptedBlob, dxlibTypes.APIParameterTypeMoney} {
+	for _, apiType := range []dxlibTypes.APIParameterType{dxlibTypes.APIParameterTypeBlob, dxlibTypes.APIParameterTypeEncryptedBlob} {
 		if _, ok := openAPITypeTable[apiType]; !ok {
 			t.Errorf("dxlib type %q has no JSON Schema mapping", apiType)
 		}

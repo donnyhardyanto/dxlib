@@ -947,6 +947,15 @@ Type definitions for API parameter declarations. Used by `api.DXAPIEndPointParam
 | `APIParameterTypeDate` | Date string |
 | `APIParameterTypeISO8601` | ISO 8601 datetime string |
 
+### Registry
+
+| Name | Description |
+|---|---|
+| `DataTypeMoney` | The money type: `NUMERIC(23,4)` on PostgreSQL, `DECIMAL(23,4)` on SQL Server and MariaDB, `NUMBER(23,4)` on Oracle; JSON string, Go `decimal.Decimal`. Use it for amounts instead of the deprecated `DataTypeDecimal` |
+| `DataTypes` | Slice of the API parameter data types, money included. It lacks `id` and `map-string-string`, which only `Types` holds |
+| `Types` | Map from `APIParameterType` to its `DataType`, money included |
+| `GetDataTypeFromString(s)` | Looks a type up in `Types` by name (leading and trailing spaces removed, any case); `"money"` resolves to `DataTypeMoney`. Not in the registry: `blob`, `encrypted-blob`, the column-only types (serials, fixed-width strings, geometry point) and the deprecated `decimal` |
+
 ---
 
 ## `state_diagram`
