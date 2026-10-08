@@ -117,9 +117,13 @@ type DataType struct {
 	DefaultValueByDatabaseType map[base.DXDatabaseType]string // Database-specific default values for this type
 }
 
-// SQL type constants to avoid duplication
+// SQL type constants to avoid duplication. Oracle gets VARCHAR2: Oracle keeps
+// VARCHAR reserved for a future redefinition and documents VARCHAR2 as the
+// type to write, and every other Oracle string type here already says so.
 const VARCHAR255 = "VARCHAR(255)"
 const VARCHAR1024 = "VARCHAR(1024)"
+const OracleVARCHAR255 = "VARCHAR2(255)"
+const OracleVARCHAR1024 = "VARCHAR2(1024)"
 
 // UID Default Expressions for each databases type
 // Format: hex(timestamp_microseconds) + uuid
@@ -178,7 +182,7 @@ var (
 		APIParameterType:   APIParameterTypeString,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: VARCHAR1024},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: OracleVARCHAR1024},
 	}
 
 	DataTypeProtectedString = DataType{
@@ -186,7 +190,7 @@ var (
 		APIParameterType:   APIParameterTypeProtectedString,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: VARCHAR1024},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: OracleVARCHAR1024},
 	}
 
 	DataTypeProtectedSQLString = DataType{
@@ -194,7 +198,7 @@ var (
 		APIParameterType:   APIParameterTypeProtectedSQLString,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: VARCHAR1024},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: OracleVARCHAR1024},
 	}
 
 	DataTypeProtectedNonEmptyString = DataType{
@@ -202,7 +206,7 @@ var (
 		APIParameterType:   APIParameterTypeProtectedNonEmptyString,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: VARCHAR1024},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: OracleVARCHAR1024},
 	}
 
 	DataTypeNullableString = DataType{
@@ -210,7 +214,7 @@ var (
 		APIParameterType:   APIParameterTypeNullableString,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeStringPointer,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: VARCHAR1024},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: OracleVARCHAR1024},
 	}
 
 	DataTypeNonEmptyString = DataType{
@@ -218,7 +222,7 @@ var (
 		APIParameterType:   APIParameterTypeNonEmptyString,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: VARCHAR1024},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR1024, base.DXDatabaseTypeSQLServer: VARCHAR1024, base.DXDatabaseTypeMariaDB: VARCHAR1024, base.DXDatabaseTypeOracle: OracleVARCHAR1024},
 	}
 
 	DataTypeEmail = DataType{
@@ -226,7 +230,7 @@ var (
 		APIParameterType:   APIParameterTypeEmail,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR255, base.DXDatabaseTypeSQLServer: VARCHAR255, base.DXDatabaseTypeMariaDB: VARCHAR255, base.DXDatabaseTypeOracle: VARCHAR255},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR255, base.DXDatabaseTypeSQLServer: VARCHAR255, base.DXDatabaseTypeMariaDB: VARCHAR255, base.DXDatabaseTypeOracle: OracleVARCHAR255},
 	}
 
 	DataTypePhoneNumber = DataType{
@@ -234,7 +238,7 @@ var (
 		APIParameterType:   APIParameterTypePhoneNumber,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR255, base.DXDatabaseTypeSQLServer: VARCHAR255, base.DXDatabaseTypeMariaDB: VARCHAR255, base.DXDatabaseTypeOracle: VARCHAR255},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR255, base.DXDatabaseTypeSQLServer: VARCHAR255, base.DXDatabaseTypeMariaDB: VARCHAR255, base.DXDatabaseTypeOracle: OracleVARCHAR255},
 	}
 
 	DataTypeNPWP = DataType{
@@ -242,7 +246,7 @@ var (
 		APIParameterType:   APIParameterTypeNPWP,
 		JSONType:           JSONTypeString,
 		GoType:             GoTypeString,
-		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR255, base.DXDatabaseTypeSQLServer: VARCHAR255, base.DXDatabaseTypeMariaDB: VARCHAR255, base.DXDatabaseTypeOracle: VARCHAR255},
+		TypeByDatabaseType: map[base.DXDatabaseType]string{base.DXDatabaseTypePostgreSQL: VARCHAR255, base.DXDatabaseTypeSQLServer: VARCHAR255, base.DXDatabaseTypeMariaDB: VARCHAR255, base.DXDatabaseTypeOracle: OracleVARCHAR255},
 	}
 
 	// DataTypeID is an integer identifier / primary key — same underlying type as
