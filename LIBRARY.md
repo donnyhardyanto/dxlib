@@ -617,6 +617,9 @@ HTTP API server. Endpoints are registered with parameter definitions and handler
 | `MinItems`, `MaxItems` | `*int` | Item count bounds, for the array types |
 | `UniqueItems` | `bool` | No two array items may be equal |
 | `Const` | `*any` | The one value accepted, for a string, number or boolean, of the same JSON type as the parameter |
+| `Title` | `string` | Short name for the generated document (`title`); not checked |
+| `Default` | `*any` | Value the document names as the default (`default`), a scalar of the parameter's JSON type; not filled in when the parameter is left out |
+| `ReadOnly`, `WriteOnly` | `bool` | Annotations for the generated document (`readOnly`, `writeOnly`; not both). Not enforced: a read-only value is still read, and nothing strips a write-only one from a response |
 
 | Method | Description |
 |---|---|

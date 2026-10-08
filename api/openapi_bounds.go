@@ -184,6 +184,16 @@ func openAPINoBoundsBelow(s *DXOpenAPISchema, r *openAPISchemaResolver, pointer 
 // openAPIConstFits refuses a const of another JSON type than the value's:
 // a string const on an integer would never equal a resolved number.
 func openAPIConstFits(c any, jsonType string) error {
+	if !openAPIScalarFits(c, jsonType) {
+		return errors.Errorf("OPENAPI_CONST_OF_ANOTHER_TYPE:%v(%T):ON_%s", c, c, jsonType)
+	}
+	return nil
+}
+
+// openAPIScalarFits says whether a scalar read from a document or declared in
+// Go is a value of the given JSON type. An integral float is an integer, as
+// JSON Schema counts it.
+func openAPIScalarFits(c any, jsonType string) bool {
 	ok := false
 	switch jsonType {
 	case "string":
@@ -205,10 +215,7 @@ func openAPIConstFits(c any, jsonType string) error {
 			ok = true
 		}
 	}
-	if !ok {
-		return errors.Errorf("OPENAPI_CONST_OF_ANOTHER_TYPE:%v(%T):ON_%s", c, c, jsonType)
-	}
-	return nil
+	return ok
 }
 
 // openAPIBeyondImplied is the part of a lower bound the dxlib type does not

@@ -349,8 +349,7 @@ var openAPIRefusedFields = map[string]string{
 	"prefixItems": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "contains": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
 	"dependentRequired": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "if": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
 	"then": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB", "else": "CONSTRAINT_NOT_ENFORCED_BY_DXLIB",
-	"default": "NOT_CARRIED_BY_DXLIB", "readOnly": "NOT_CARRIED_BY_DXLIB", "writeOnly": "NOT_CARRIED_BY_DXLIB",
-	"title": "NOT_CARRIED_BY_DXLIB", "contentMediaType": "NOT_CARRIED_BY_DXLIB", "contentEncoding": "NOT_CARRIED_BY_DXLIB",
+	"contentMediaType": "NOT_CARRIED_BY_DXLIB", "contentEncoding": "NOT_CARRIED_BY_DXLIB",
 	"nullable": "OPENAPI_3.0_KEYWORD:USE_type_[T,null]",
 }
 
@@ -893,7 +892,8 @@ func openAPIReadSchema(n *openAPINode, pointer string) (*DXOpenAPISchema, error)
 	}
 	if err := openAPIFields(n, pointer, "$ref", "type", "format", "description", "properties", "required", "items",
 		"additionalProperties", "enum", "minimum", "exclusiveMinimum", "minLength", "maximum", "exclusiveMaximum",
-		"multipleOf", "maxLength", "pattern", "minItems", "maxItems", "uniqueItems", "const", OpenAPIExtensionType); err != nil {
+		"multipleOf", "maxLength", "pattern", "minItems", "maxItems", "uniqueItems", "const",
+		"title", "default", "readOnly", "writeOnly", OpenAPIExtensionType); err != nil {
 		return nil, err
 	}
 	s := &DXOpenAPISchema{}
@@ -930,6 +930,9 @@ func openAPIReadSchema(n *openAPINode, pointer string) (*DXOpenAPISchema, error)
 		}
 	}
 	if s.Format, _, err = openAPIString(n, pointer, "format"); err != nil {
+		return nil, err
+	}
+	if s.Title, _, err = openAPIString(n, pointer, "title"); err != nil {
 		return nil, err
 	}
 	if s.Description, _, err = openAPIString(n, pointer, "description"); err != nil {
@@ -1031,6 +1034,27 @@ func openAPIReadSchema(n *openAPINode, pointer string) (*DXOpenAPISchema, error)
 			return nil, err
 		}
 		s.Const = &v
+	}
+	if d := n.field("default"); d != nil {
+		// A scalar like const, and not null for the same reason: a null value
+		// is taken as not given.
+		if d.kind == openAPINodeNull {
+			return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:default-null:%s", openAPIAt(pointer+"/default", d))
+		}
+		if d.kind == openAPINodeObject || d.kind == openAPINodeArray {
+			return nil, errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:non-scalar-default:%s", openAPIAt(pointer+"/default", d))
+		}
+		v, err := openAPIScalar(d, pointer+"/default")
+		if err != nil {
+			return nil, err
+		}
+		s.Default = &v
+	}
+	if s.ReadOnly, err = openAPIBool(n, pointer, "readOnly"); err != nil {
+		return nil, err
+	}
+	if s.WriteOnly, err = openAPIBool(n, pointer, "writeOnly"); err != nil {
+		return nil, err
 	}
 	if s.DXLibType, _, err = openAPIString(n, pointer, OpenAPIExtensionType); err != nil {
 		return nil, err
@@ -1353,6 +1377,16 @@ func (v *openAPIValidator) schema(s *DXOpenAPISchema, pointer string) error {
 	}
 	if s.Format != "" && !openAPIKnownFormats[s.Format] {
 		return errors.Errorf("OPENAPI_UNSUPPORTED_FORMAT:%q:%s/format", s.Format, pointer)
+	}
+	if s.ReadOnly && s.WriteOnly {
+		return errors.Errorf("OPENAPI_READ_ONLY_AND_WRITE_ONLY:%s", pointer)
+	}
+	if s.Default != nil {
+		switch (*s.Default).(type) {
+		case string, bool, int, int32, int64, float32, float64:
+		default:
+			return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:default-%T:%s/default", *s.Default, pointer)
+		}
 	}
 	if s.DXLibType != "" {
 		if _, ok := openAPITypeTable[dxlibTypes.APIParameterType(s.DXLibType)]; !ok {

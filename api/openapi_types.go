@@ -121,6 +121,9 @@ func openAPISchemaFromParameter(p *DXAPIEndPointParameter) (*DXOpenAPISchema, er
 	if err := openAPIBoundsToSchema(p, m, s); err != nil {
 		return nil, err
 	}
+	if err := openAPIAnnotationsToSchema(p, m.jsonType, s); err != nil {
+		return nil, err
+	}
 	switch p.Type {
 	case dxlibTypes.APIParameterTypeJSON:
 		if len(p.Children) > 0 {
@@ -282,6 +285,9 @@ func openAPIParameterFromSchema(name string, s *DXOpenAPISchema, isMustExist boo
 	}
 
 	if err := openAPIBoundsFromSchema(s, &p, r, pointer); err != nil {
+		return p, err
+	}
+	if err := openAPIAnnotationsFromSchema(s, &p, pointer); err != nil {
 		return p, err
 	}
 

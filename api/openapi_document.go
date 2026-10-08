@@ -319,6 +319,7 @@ type DXOpenAPISchema struct {
 	Ref                  string                                 `json:"$ref,omitempty"`
 	Type                 DXOpenAPISchemaType                    `json:"type,omitempty"`
 	Format               string                                 `json:"format,omitempty"`
+	Title                string                                 `json:"title,omitempty"`
 	Description          string                                 `json:"description,omitempty"`
 	Properties           *DXOpenAPIOrderedMap[*DXOpenAPISchema] `json:"properties,omitempty"`
 	Required             []string                               `json:"required,omitempty"`
@@ -337,6 +338,11 @@ type DXOpenAPISchema struct {
 	MaxItems             *int                                   `json:"maxItems,omitempty"`
 	UniqueItems          bool                                   `json:"uniqueItems,omitempty"`
 	Const                *any                                   `json:"const,omitempty"`
+	// Default, ReadOnly and WriteOnly are annotations: carried, never
+	// checked or applied. See DXAPIEndPointParameter.
+	Default   *any `json:"default,omitempty"`
+	ReadOnly  bool `json:"readOnly,omitempty"`
+	WriteOnly bool `json:"writeOnly,omitempty"`
 	// DXLibType is the exact dxlib parameter type. Several dxlib types share
 	// one JSON type -- int64, int64p and id are all integer/int64 -- so the
 	// JSON Schema alone cannot say which validator runs. With it present the

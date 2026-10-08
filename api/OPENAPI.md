@@ -244,6 +244,32 @@ and the parameter's path (`order.note`):
 - A refusal names the bound and never echoes a string value, which may be a
   secret. Numbers are echoed, as the enum refusal does.
 
+A parameter may also carry the JSON Schema annotations `Title`, `Default`,
+`ReadOnly` and `WriteOnly`, written as `title`, `default`, `readOnly` and
+`writeOnly` and read back onto the parameter. Unlike the bounds they promise
+no check, and dxlib applies none of them:
+
+- `default` is not filled in. A parameter left out stays not given, and
+  the handler decides what that means, as before. `default` is a scalar of
+  the parameter's own JSON type; one of another type (`"7"` on an integer,
+  any scalar on an object or array), an object or array, and `null` (a null
+  value is taken as not given) are refused
+  (`OPENAPI_DEFAULT_OF_ANOTHER_TYPE`, `OPENAPI_UNSUPPORTED_CONSTRUCT`).
+- `readOnly` does not stop a value from being read from the request, and
+  `required` is read as written: a `readOnly` parameter in `required` is
+  mandatory in the request, although OpenAPI lets a client leave it out.
+- `writeOnly` is not enforced. Nothing strips it from a response; it tells a
+  reader of the document that the value (a password, a secret) is sent and
+  never returned, and the handler keeps that promise.
+- `readOnly` with `writeOnly` on one schema is refused in both directions
+  (`OPENAPI_READ_ONLY_AND_WRITE_ONLY`).
+
+Where a schema becomes no parameter (array `items`, a map's
+`additionalProperties`, a request body object), the annotations are read into
+the document model and dropped when the endpoints are built, as `description`
+is there. The endpoint's own `Title` is the operation's `summary`, not a
+schema `title`.
+
 Reading a schema back, `x-dxlib-type` is used exactly when present, after a
 check that the schema's `type` (and `format`, if both name one) agree with it
 -- `type: string` with `x-dxlib-type: int64` is a contradiction and is refused.
@@ -392,7 +418,8 @@ A key is read, refused with a reason, or reported as unknown:
   composition); `callbacks`; `webhooks`; `security` and `securitySchemes`
   (requirements dxlib does not enforce, refused rather than ignored);
   `servers`, `tags`, `externalDocs`, `deprecated`, `examples`, `links`,
-  `encoding`, `style`, `explode` and the like (not carried, so not accepted);
+  `encoding`, `style`, `explode` and the like (not carried, so not accepted;
+  `title`, `default`, `readOnly` and `writeOnly` are carried, section 2.4);
   `minProperties`, `maxProperties`, `patternProperties`, `prefixItems`,
   `contains`, `dependentRequired` and `if`/`then`/`else`, the constraints
   dxlib's validator does not apply (the bounds it does apply are read, section
@@ -466,7 +493,12 @@ rather than tolerated by a looser comparison:
   `Parent` pointers are rebuilt, not carried.
 - Foreign `x-*` extensions in a hand-written document are dropped on
   re-emission (section 2.6). The guarantee is over documents in this dialect.
-- A hand-written `uniqueItems: false` is the default and is not re-emitted.
+- A hand-written `uniqueItems: false` is the default and is not re-emitted,
+  and so are `readOnly: false` and `writeOnly: false`.
+- `title`, `default`, `readOnly` and `writeOnly` below a parameter (array
+  `items`, a map's values, a request body object) are dropped on binding,
+  as `description` is there (section 2.4). A `default` written as an
+  integral float (`2.0`) re-emits as `2`.
 
 ## 5. Binding
 

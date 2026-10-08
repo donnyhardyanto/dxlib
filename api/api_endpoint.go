@@ -94,6 +94,18 @@ type DXAPIEndPointParameter struct {
 	UniqueItems      bool
 	// Const holds the one value accepted; a nil pointer means no const.
 	Const *any
+
+	// The JSON Schema annotations. They describe the parameter to a reader of
+	// the generated document and promise no check: Validate ignores them, a
+	// Default is not filled in for a parameter left out, a ReadOnly parameter
+	// is still read from the request (and still required when IsMustExist),
+	// and nothing strips a WriteOnly value from a response. Default is a
+	// scalar of the parameter's own JSON type; a nil pointer means none.
+	// ReadOnly and WriteOnly may not both be set. OPENAPI.md section 2.4.
+	Title     string
+	Default   *any
+	ReadOnly  bool
+	WriteOnly bool
 }
 
 func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
@@ -118,6 +130,20 @@ func (aep *DXAPIEndPointParameter) PrintSpec(leftIndent int64) (s string) {
 			}
 			enumBuilder.WriteString("]")
 			s += fmt.Sprintf("%*s   Possible values: %s\n", leftIndent, "", enumBuilder.String())
+		}
+		// The annotations, each only when set, so a declaration without them
+		// prints as before.
+		if aep.Title != "" {
+			s += fmt.Sprintf("%*s   Title: %s\n", leftIndent, "", aep.Title)
+		}
+		if aep.Default != nil {
+			s += fmt.Sprintf("%*s   Default: %v\n", leftIndent, "", *aep.Default)
+		}
+		if aep.ReadOnly {
+			s += fmt.Sprintf("%*s   Read-only\n", leftIndent, "")
+		}
+		if aep.WriteOnly {
+			s += fmt.Sprintf("%*s   Write-only\n", leftIndent, "")
 		}
 		if len(aep.Children) > 0 {
 			for _, c := range aep.Children {
