@@ -290,7 +290,7 @@ func (aep *DXAPIEndPoint) NewParameter(parent *DXAPIEndPointParameter, nameId st
 	description = strings.TrimSpace(description)
 	p := DXAPIEndPointParameter{Owner: aep, NameId: nameId, Type: aType, Description: description, IsMustExist: isMustExist}
 	switch aType {
-	case dxlibTypes.APIParameterTypeNullableInt64:
+	case dxlibTypes.APIParameterTypeNullableInt64, dxlibTypes.APIParameterTypeNullableInt32:
 		p.IsNullable = true
 	case "nullable-string":
 		p.IsNullable = true

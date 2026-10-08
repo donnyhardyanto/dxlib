@@ -281,7 +281,7 @@ var (
 	}
 
 	DataTypeNullableInt32 = DataType{
-		Description:        "Optional 32-bit integer; INT.",
+		Description:        "Optional 32-bit integer (may be left out of a request); INT, Go int32.",
 		APIParameterType:   APIParameterTypeNullableInt32,
 		JSONType:           JSONTypeNumber,
 		GoType:             GoTypeInt32,

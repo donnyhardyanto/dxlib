@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/errors"
 	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 	security "github.com/donnyhardyanto/dxlib/utils/security"
+	"github.com/shopspring/decimal"
 
 	_ "time/tzdata"
 
@@ -120,12 +122,26 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) SetRawValue(rv any, variablePa
 
 func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValue(rawValueType, nameIdPath string) (err error) {
 	switch aeprpv.Metadata.Type {
-	case dxlibTypes.APIParameterTypeNullableInt64:
+	case dxlibTypes.APIParameterTypeNullableInt64, dxlibTypes.APIParameterTypeNullableInt32:
 	case dxlibTypes.APIParameterTypeInt64, dxlibTypes.APIParameterTypeInt64ZP, dxlibTypes.APIParameterTypeInt64P, dxlibTypes.APIParameterTypeID:
 		if rawValueType == "float64" {
 			if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
+		}
+	case dxlibTypes.APIParameterTypeInt32, dxlibTypes.APIParameterTypeInt32ZP, dxlibTypes.APIParameterTypeInt32P:
+		if rawValueType == "float64" {
+			f := aeprpv.RawValue.(float64)
+			if f != math.Trunc(f) {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			}
+		}
+	case dxlibTypes.APIParameterTypeMoney:
+		// Money travels as a JSON string; a JSON number has already been through
+		// a binary float and may have lost digits, so it is refused here as the
+		// data-model layer refuses it (validateFieldValue).
+		if rawValueType != "string" {
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 		}
 	case dxlibTypes.APIParameterTypeFloat32, dxlibTypes.APIParameterTypeFloat32ZP, dxlibTypes.APIParameterTypeFloat32P:
 		switch rawValueType {
@@ -242,6 +258,114 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToInt64XXX(nameIdPath s
 	}
 	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 }
+
+// rawValueToInt32 takes the same wire shapes as rawValueToInt64 (a JSON number
+// arrives as float64, a query-string or X-Var value as a string) and refuses
+// anything outside the int32 range. The float is range-checked before it is
+// converted: Go leaves an out-of-range float-to-int conversion undefined, so
+// the check cannot be done on the converted value.
+func (aeprpv *DXAPIEndPointRequestParameterValue) rawValueToInt32(nameIdPath string) (int32, error) {
+	var v int64
+	switch val := aeprpv.RawValue.(type) {
+	case float64:
+		if val != math.Trunc(val) || val < math.MinInt32 || val > math.MaxInt32 {
+			return 0, aeprpv.Owner.Log.WarnAndCreateErrorf("INT32_OUT_OF_RANGE:%s=%v", nameIdPath, val)
+		}
+		v = int64(val)
+	case int:
+		v = int64(val)
+	case int32:
+		return val, nil
+	case int64:
+		v = val
+	case string:
+		p, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return 0, aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_INT32_FORMAT:%s=%q", nameIdPath, val)
+		}
+		return int32(p), nil
+	default:
+		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+	}
+	if v < math.MinInt32 || v > math.MaxInt32 {
+		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf("INT32_OUT_OF_RANGE:%s=%v", nameIdPath, v)
+	}
+	return int32(v), nil
+}
+
+// resolveToInt32XXX mirrors resolveToInt64XXX. A nullable-int32 parameter may
+// be left out of the request; when it is, the value stays nil and the Go type
+// of a present value is still a plain int32.
+func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToInt32XXX(nameIdPath string) (err error) {
+	if aeprpv.Metadata.Type == dxlibTypes.APIParameterTypeNullableInt32 && aeprpv.RawValue == nil {
+		aeprpv.Value = nil
+		return nil
+	}
+	v, err := aeprpv.rawValueToInt32(nameIdPath)
+	if err != nil {
+		return err
+	}
+	switch aeprpv.Metadata.Type {
+	case dxlibTypes.APIParameterTypeNullableInt32, dxlibTypes.APIParameterTypeInt32:
+		aeprpv.Value = v
+		return nil
+	case dxlibTypes.APIParameterTypeInt32P:
+		if v > 0 {
+			aeprpv.Value = v
+			return nil
+		}
+	case dxlibTypes.APIParameterTypeInt32ZP:
+		if v >= 0 {
+			aeprpv.Value = v
+			return nil
+		}
+	}
+	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+}
+
+// resolveToMoney reads a money parameter from its string form into a
+// decimal.Decimal. Only a plain decimal string is taken ("1250000.375",
+// "-12.5", "7"); exponent notation, spaces, a currency sign or an empty string
+// are refused. Precision and scale are left to the NUMERIC(23,4) column.
+func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToMoney(nameIdPath string) (err error) {
+	s, ok := aeprpv.RawValue.(string)
+	if !ok {
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+	}
+	if !isPlainDecimalString(s) {
+		return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_MONEY_FORMAT:%s=%q", nameIdPath, s)
+	}
+	d, err := decimal.NewFromString(s)
+	if err != nil {
+		return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_MONEY_FORMAT:%s=%q", nameIdPath, s)
+	}
+	aeprpv.Value = d
+	return nil
+}
+
+// isPlainDecimalString accepts an optional sign, digits, and at most one dot
+// with digits on at least one side of it.
+func isPlainDecimalString(s string) bool {
+	if s == "" {
+		return false
+	}
+	if s[0] == '-' || s[0] == '+' {
+		s = s[1:]
+	}
+	digits, dots := 0, 0
+	for i := 0; i < len(s); i++ {
+		switch {
+		case s[i] >= '0' && s[i] <= '9':
+			digits++
+		case s[i] == '.':
+			dots++
+		default:
+			return false
+		}
+	}
+	return digits > 0 && dots <= 1
+}
+
 func (aeprpv *DXAPIEndPointRequestParameterValue) rawValueToFloat64(nameIdPath string) (float64, error) {
 	switch val := aeprpv.RawValue.(type) {
 	case float64:
@@ -439,6 +563,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		dxlibTypes.APIParameterTypeInt64ZP,
 		dxlibTypes.APIParameterTypeID:
 		return aeprpv.resolveToInt64XXX(nameIdPath)
+	case
+		dxlibTypes.APIParameterTypeNullableInt32,
+		dxlibTypes.APIParameterTypeInt32,
+		dxlibTypes.APIParameterTypeInt32P,
+		dxlibTypes.APIParameterTypeInt32ZP:
+		return aeprpv.resolveToInt32XXX(nameIdPath)
+	case dxlibTypes.APIParameterTypeMoney:
+		return aeprpv.resolveToMoney(nameIdPath)
 	case
 		dxlibTypes.APIParameterTypeFloat64,
 		dxlibTypes.APIParameterTypeFloat64P,

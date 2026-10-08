@@ -9,6 +9,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/base"
 	"github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/shopspring/decimal"
 )
 
 // ============================================================================
@@ -782,9 +783,12 @@ func (t *ModelDBTable) validateFieldValue(fieldName string, field *ModelDBField,
 		}
 	case types.GoTypeMoney:
 		// Money travels as a JSON string ("1250000.375") to preserve precision; a
-		// JSON number would already have lost it, so reject anything but a string.
-		if _, ok := val.(string); !ok {
-			return fmt.Errorf("field %s (money) expects a decimal string, got %T", fieldName, val)
+		// JSON number would already have lost it, so reject anything but a string
+		// or the decimal.Decimal a money request parameter resolves to.
+		switch val.(type) {
+		case string, decimal.Decimal:
+		default:
+			return fmt.Errorf("field %s (money) expects a decimal string or decimal.Decimal, got %T", fieldName, val)
 		}
 	case types.GoTypeInt64, types.GoTypeInt64Pointer:
 		switch val.(type) {

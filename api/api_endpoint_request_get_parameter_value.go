@@ -6,6 +6,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/donnyhardyanto/dxlib/utils"
+	"github.com/shopspring/decimal"
 )
 
 func (aepr *DXAPIEndPointRequest) GetParameterValueEntry(k string) (val *DXAPIEndPointRequestParameterValue, err error) {
@@ -183,6 +184,17 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsBool(k string, defaultValue
 
 func (aepr *DXAPIEndPointRequest) GetParameterValueAsInt64(k string) (isExist bool, val int64, err error) {
 	return getParameterValue[int64](aepr, k)
+}
+
+// GetParameterValueAsInt32 reads an int32, int32p, int32zp or nullable-int32
+// parameter. A nullable-int32 the caller left out answers isExist false.
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsInt32(k string) (isExist bool, val int32, err error) {
+	return getParameterValue[int32](aepr, k)
+}
+
+// GetParameterValueAsDecimal reads a money parameter, held as decimal.Decimal.
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsDecimal(k string) (isExist bool, val decimal.Decimal, err error) {
+	return getParameterValue[decimal.Decimal](aepr, k)
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValueAsFloat64(k string) (isExist bool, val float64, err error) {
