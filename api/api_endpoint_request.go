@@ -988,6 +988,11 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			if err != nil {
 				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", err.Error())
 			}
+			// FormValue answers "" for a key the query leaves out, as for
+			// one sent empty. An optional parameter left out is not held to
+			// its bounds; a mandatory one, or one sent empty, is.
+			_, sent := aepr.Request.Form[v.NameId]
+			rpv.isLeftOutOfQuery = !sent && !v.IsMustExist
 			if (rpv.Metadata.IsMustExist) && (rpv.RawValue == nil) && (!rpv.Metadata.IsNullable) {
 				s := fmt.Sprintf("MANDATORY_PARAMETER_NOT_EXIST:%s", variablePath)
 				return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, s, s)

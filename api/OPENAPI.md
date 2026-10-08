@@ -235,10 +235,11 @@ and the parameter's path (`order.note`):
   `money`), a boolean exactly. A `const` of another JSON type than the value's
   (`"7"` on an integer) is refused, and so is a `const` of `null`, because a
   null value is taken as not given.
-- A query parameter left out of a GET or DELETE arrives as an empty string
-  (`FormValue`), so an optional string parameter with `minLength`, `pattern`
-  or `const` refuses a request that leaves it out. That is how dxlib reads
-  query strings today, not something the bounds add.
+- A GET or DELETE query reads a key left out and a key sent empty both as
+  an empty string (`FormValue`). An optional parameter the query leaves out is
+  not held to its bounds, so a client may leave it out as OpenAPI allows. One
+  sent empty (`?code=`) is checked as the empty string, and so is a mandatory
+  one left out.
 - A refusal names the bound and never echoes a string value, which may be a
   secret. Numbers are echoed, as the enum refusal does.
 

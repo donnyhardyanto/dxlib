@@ -340,7 +340,7 @@ func openAPIParametersFromProperties(s *DXOpenAPISchema, r *openAPISchemaResolve
 // openAPIInferType is the backward mapping without x-dxlib-type. The rule is
 // that every constraint the schema states must be one dxlib enforces, so the
 // document never says more than the server does: minimum 0 or 1 on an integer
-// is int64zp or int64p, minimum 5 is refused.
+// is int64zp or int64p, and minimum 5 is int64 with a Minimum bound.
 func openAPIInferType(s *DXOpenAPISchema, pointer string) (dxlibTypes.APIParameterType, error) {
 	primary := s.Type.Primary()
 	if primary == "" {

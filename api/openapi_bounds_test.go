@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 	"math"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -385,5 +387,53 @@ func TestValidateChecksBoundsOfChildren(t *testing.T) {
 				t.Fatalf("err = %v, want %s", err, c.want)
 			}
 		})
+	}
+}
+
+// A GET query reads a left-out key and a key sent empty both as "". An
+// optional parameter left out is not held to its bounds, as OpenAPI lets a
+// client leave it out; one sent empty is, and so is a mandatory one.
+func TestPreProcessRequestBoundsOnQueryLeftOut(t *testing.T) {
+	code := DXAPIEndPointParameter{NameId: "code", Type: dxlibTypes.APIParameterTypeString, MinLength: boundsInt(3), Pattern: "^[A-Z]+$"}
+	kind := DXAPIEndPointParameter{NameId: "kind", Type: dxlibTypes.APIParameterTypeString, Const: boundsConst("member")}
+	mandatory := code
+	mandatory.IsMustExist = true
+	for _, c := range []struct {
+		name   string
+		target string
+		params []DXAPIEndPointParameter
+		want   string // "" when the request is accepted
+	}{
+		{"optional left out", "/probe", []DXAPIEndPointParameter{code, kind}, ""},
+		{"optional left out, other sent", "/probe?kind=member", []DXAPIEndPointParameter{code, kind}, ""},
+		{"optional sent empty", "/probe?code=", []DXAPIEndPointParameter{code}, "STRING_TOO_SHORT:code"},
+		{"const sent empty", "/probe?kind=", []DXAPIEndPointParameter{kind}, "VALUE_NOT_CONST:kind"},
+		{"optional sent too short", "/probe?code=AB", []DXAPIEndPointParameter{code}, "STRING_TOO_SHORT:code"},
+		{"optional sent and valid", "/probe?code=ABC", []DXAPIEndPointParameter{code}, ""},
+		{"mandatory left out", "/probe", []DXAPIEndPointParameter{mandatory}, "STRING_TOO_SHORT:code"},
+	} {
+		for _, method := range []string{http.MethodGet, http.MethodDelete} {
+			t.Run(method+" "+c.name, func(t *testing.T) {
+				r := httptest.NewRequest(method, c.target, nil)
+				aepr, rec := newPreProcessContext(r, &DXAPIEndPoint{
+					Method:       method,
+					EndPointType: EndPointTypeHTTPJSON,
+					Parameters:   c.params,
+				})
+				err := aepr.PreProcessRequest()
+				if c.want == "" {
+					if err != nil {
+						t.Fatalf("request rejected (status %d): %v", rec.Code, err)
+					}
+					return
+				}
+				if err == nil || !strings.Contains(err.Error(), c.want) {
+					t.Fatalf("err = %v, want %s", err, c.want)
+				}
+				if rec.Code != http.StatusUnprocessableEntity {
+					t.Fatalf("status %d, want 422", rec.Code)
+				}
+			})
+		}
 	}
 }

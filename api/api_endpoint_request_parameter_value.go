@@ -29,6 +29,11 @@ type DXAPIEndPointRequestParameterValue struct {
 	Children        map[string]*DXAPIEndPointRequestParameterValue
 	ArrayChildren   []DXAPIEndPointRequestParameterValue
 	//	ErrValidate error
+
+	// isLeftOutOfQuery marks an optional GET or DELETE parameter the query
+	// string did not carry; its value is FormValue's "", which no bound is
+	// checked on.
+	isLeftOutOfQuery bool
 }
 
 func (aeprpv *DXAPIEndPointRequestParameterValue) GetNameIdPath() (s string) {
@@ -774,6 +779,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 		if !found {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_ENUM_VALUE:%s=%v, allowed=%v", nameIdPath, aeprpv.Value, aeprpv.Metadata.Enum)
 		}
+	}
+	if aeprpv.isLeftOutOfQuery {
+		return nil
 	}
 	return aeprpv.validateBounds(nameIdPath)
 }
