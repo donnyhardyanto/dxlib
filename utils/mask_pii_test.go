@@ -20,8 +20,8 @@ func TestMaskSensitiveValue_PII(t *testing.T) {
 		{"ktp keyword", "no_ktp", "3175012345678901", "31750***01"},
 		{"nama 2+2", "nama", "Budi Santoso", "Bu***so"},
 		{"email 2+2", "email", "budi@mail.com", "bu***om"},
-		{"credential stays FULL (not partial)", "password", "supersecret", "********"},
-		{"token stays FULL", "access_token", "abcdefങ12345", "********"},
+		{"credential stays FULL (not partial)", "password", "supersecret", "***REDACTED***"},
+		{"token stays FULL", "access_token", "abcdefങ12345", "***REDACTED***"},
 		{"unknown field untouched", "trx_type", "LOGIN", "LOGIN"},
 		{"short PII → first rune", "nama", "Budi", "B***"},   // len 4 <= 2+2
 		{"short nik → first rune", "nik", "1234567", "1***"}, // len 7 <= 5+2

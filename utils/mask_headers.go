@@ -15,7 +15,7 @@ import (
 // "cookie", "session", "secret", ...) apply to a header name as well, so a header the list does
 // not name is still caught when its name says what it carries. A credential header is never
 // dropped from a dump and never partially shown: the line stays, so an operator can see that
-// the header was sent, and its value is "********".
+// the header was sent, and its value is "***REDACTED***".
 
 // credentialHeaderNames is the declared list, lowercased. The keyword net already catches most
 // of these; the list is what documents the intent and what a host extends.
@@ -63,7 +63,7 @@ func IsCredentialHeader(name string) bool {
 	return credentialHeaderNames[lower] || hostCredentialHeaderNames[lower] || IsSensitiveField(lower)
 }
 
-// MaskHeaderValue returns the value a dump may show for a header: "********" for a credential
+// MaskHeaderValue returns the value a dump may show for a header: "***REDACTED***" for a credential
 // header, the value itself otherwise. The debug override (IsDebug with OverrideShowPasswordOnLog)
 // shows every header raw, as it does for a body.
 func MaskHeaderValue(name, value string) string {
@@ -73,7 +73,7 @@ func MaskHeaderValue(name, value string) string {
 	if dxlib.IsDebug && OverrideShowPasswordOnLog {
 		return value
 	}
-	return "********"
+	return maskRedacted
 }
 
 // WriteHeadersForLog renders h as "Name: value" lines, one per value, in name order, with

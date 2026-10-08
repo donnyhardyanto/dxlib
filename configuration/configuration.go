@@ -87,7 +87,7 @@ func (c *DXConfiguration) FilterSensitiveData() (r utils.JSON) {
 	// Also apply explicit sensitive key list (for backwards compatibility and unique cases)
 	// This ensures any keys not caught by pattern matching are still masked
 	for _, v := range c.SensitiveDataKey {
-		utils.SetValueInNestedMap(r, v, "********")
+		utils.SetValueInNestedMap(r, v, utils.MaskRedactedMarker)
 	}
 
 	return r
@@ -97,7 +97,7 @@ func maskSecureValuesInMap(m map[string]any) {
 	for k, v := range m {
 		switch val := v.(type) {
 		case *secure_memory.SecureValue:
-			m[k] = "********[SECURE]"
+			m[k] = utils.MaskRedactedMarker + "[SECURE]"
 		case map[string]any:
 			maskSecureValuesInMap(val)
 		default:

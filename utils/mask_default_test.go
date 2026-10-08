@@ -75,8 +75,8 @@ func TestMaskDefault_DoesNotAffectCredentialsOrNamedPII(t *testing.T) {
 		SetMaskDefaultDeny(deny)
 		SetMaskRules(map[string]MaskRule{"nik": {Front: 5, Back: 2}})
 
-		if got := MaskSensitiveValue("password", "hunter2"); got != "********" {
-			t.Errorf("deny=%v: credential should be fully masked, got %v", deny, got)
+		if got := MaskSensitiveValue("password", "hunter2"); got != "***REDACTED***" {
+			t.Errorf("deny=%v: credential should be redacted, got %v", deny, got)
 		}
 		got := MaskSensitiveValue("nik", "3201234567890001")
 		if got == "3201234567890001" || got == "********" {

@@ -1579,7 +1579,7 @@ func firstRunes(s string, n int) string {
 }
 
 // MaskSensitiveValue masks a value for logging.
-//   - Credential fields (IsSensitiveField): ALWAYS full "********".
+//   - Credential fields (IsSensitiveField): ALWAYS "***REDACTED***".
 //   - PII fields (SetMaskRules): masked by the rule's kind (partial Front+Back, e-mail,
 //     initials or location) unless SetMaskStrict → full.
 //   - Unmatched fields: logged as-is under default-ALLOW, masked under default-DENY unless
@@ -1597,7 +1597,7 @@ func maskLeaf(fieldName string, value any, inherited *MaskRule) any {
 		return value
 	}
 	if IsSensitiveField(fieldName) {
-		return "********" // credentials: never partial
+		return maskRedacted // credentials: never partial
 	}
 	if r, ok := piiRuleFor(fieldName); ok {
 		return applyMaskRule(value, r)
@@ -1622,7 +1622,7 @@ func isNumeric(v any) bool {
 }
 
 // MaskSensitiveDataInJSON recursively masks sensitive fields in a JSON structure.
-// Returns a deep copy with sensitive values replaced by "********".
+// Returns a deep copy with sensitive values replaced by "***REDACTED***".
 //
 // Only the built-in credential keywords (IsSensitiveField) apply here, at any depth of nested
 // objects; arrays are copied as they are. It serves configuration.FilterSensitiveData, whose
@@ -1641,7 +1641,8 @@ func MaskSensitiveDataInJSON(data JSON) JSON {
 // field's own name.
 //
 // A key that matches a credential keyword masks whatever it holds, object or array, whole as
-// "********". A key that matches a PII rule and holds an object masks it whole too: there is no
+// "***REDACTED***". A key that matches a PII rule and holds an object masks it whole as
+// "********": there is no
 // front or back of a nested object to reveal, and fail-closed is the safer reading. The one
 // exception is MaskKindLocation, which walks the object and rounds its numeric leaves. An
 // array's elements take the array's key, so {"phone_numbers": ["0812...", "0813..."]} masks each
@@ -1667,13 +1668,16 @@ func maskForLogMap(data map[string]any, inherited *MaskRule) JSON {
 func maskForLogValue(key string, v any, inherited *MaskRule) any {
 	switch typed := v.(type) {
 	case map[string]any:
+		if maskCredentialWhole(key) {
+			return maskRedacted
+		}
 		if maskContainerWhole(key) {
-			return "********"
+			return maskFull
 		}
 		return maskForLogMap(typed, locationRuleFor(key, inherited))
 	case []any:
 		if maskCredentialWhole(key) {
-			return "********"
+			return maskRedacted
 		}
 		out := make([]any, len(typed))
 		for i, e := range typed {
@@ -1682,7 +1686,7 @@ func maskForLogValue(key string, v any, inherited *MaskRule) any {
 		return out
 	case []map[string]any:
 		if maskCredentialWhole(key) {
-			return "********"
+			return maskRedacted
 		}
 		out := make([]any, len(typed))
 		for i, e := range typed {
@@ -1743,7 +1747,7 @@ func maskSensitiveDataInJSONRecursive(data JSON, keyPath string) JSON {
 
 		// Check if this key is sensitive
 		if IsSensitiveField(fullKey) || IsSensitiveField(k) {
-			result[k] = "********"
+			result[k] = maskRedacted
 			continue
 		}
 

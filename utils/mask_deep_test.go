@@ -34,8 +34,8 @@ func TestMaskForLog_HostRulesApplyAtEveryDepth(t *testing.T) {
 	if got := applicant["national_id"]; got != "3175***01" {
 		t.Errorf("depth-3 PII rule: got %v, want 3175***01", got)
 	}
-	if got := applicant["password"]; got != "********" {
-		t.Errorf("depth-3 credential: got %v, want ********", got)
+	if got := applicant["password"]; got != "***REDACTED***" {
+		t.Errorf("depth-3 credential: got %v, want ***REDACTED***", got)
 	}
 	if got := applicant["branch_code"]; got != "0231" {
 		t.Errorf("unmatched field under default-ALLOW should pass: got %v", got)
@@ -48,8 +48,8 @@ func TestMaskForLog_HostRulesApplyAtEveryDepth(t *testing.T) {
 	if got := relatives[1].(JSON)["full_name"]; got != "A***" {
 		t.Errorf("short value under a partial rule keeps only its first rune: got %v", got)
 	}
-	if got := relatives[1].(JSON)["api_token"]; got != "********" {
-		t.Errorf("credential inside array: got %v, want ********", got)
+	if got := relatives[1].(JSON)["api_token"]; got != "***REDACTED***" {
+		t.Errorf("credential inside array: got %v, want ***REDACTED***", got)
 	}
 	if got := out["status_code"]; got != 201 {
 		t.Errorf("top-level unmatched field: got %v, want 201", got)
@@ -90,9 +90,9 @@ func TestMaskForLog_ContainerUnderAMatchingKeyIsMaskedWhole(t *testing.T) {
 		"token":       JSON{"value": "t"},
 	})
 
-	for _, k := range []string{"address", "credentials", "token"} {
-		if got := out[k]; got != "********" {
-			t.Errorf("%s holds a container under a matching key and must be masked whole, got %v", k, got)
+	for k, want := range map[string]string{"address": "********", "credentials": "***REDACTED***", "token": "***REDACTED***"} {
+		if got := out[k]; got != want {
+			t.Errorf("%s holds a container under a matching key and must be masked whole as %s, got %v", k, want, got)
 		}
 	}
 }

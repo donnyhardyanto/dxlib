@@ -48,10 +48,10 @@ func TestMaskHeaderValue(t *testing.T) {
 	resetHeaderState(t)
 	SetCredentialHeaders([]string{"X-Tenant-Access"})
 
-	if got := MaskHeaderValue("Authorization", "Bearer abc.def.ghi"); got != "********" {
+	if got := MaskHeaderValue("Authorization", "Bearer abc.def.ghi"); got != "***REDACTED***" {
 		t.Errorf("Authorization: got %q", got)
 	}
-	if got := MaskHeaderValue("X-Tenant-Access", "tenant-secret"); got != "********" {
+	if got := MaskHeaderValue("X-Tenant-Access", "tenant-secret"); got != "***REDACTED***" {
 		t.Errorf("host-declared header: got %q", got)
 	}
 	if got := MaskHeaderValue("X-Request-Id", "req-1"); got != "req-1" {
@@ -80,10 +80,10 @@ func TestWriteHeadersForLog(t *testing.T) {
 	h.Add("X-Note", "line one\r\nX-Forged: yes")
 
 	got := WriteHeadersForLog(h, map[string]bool{"Host": true})
-	want := "Authorization: ********\r\n" +
+	want := "Authorization: ***REDACTED***\r\n" +
 		"Content-Type: application/json\r\n" +
-		"Cookie: ********\r\n" +
-		"Cookie: ********\r\n" +
+		"Cookie: ***REDACTED***\r\n" +
+		"Cookie: ***REDACTED***\r\n" +
 		"X-Note: line one X-Forged: yes\r\n" +
 		"X-Request-Id: req-1\r\n"
 	if got != want {

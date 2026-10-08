@@ -271,7 +271,7 @@ func (aepr *DXAPIEndPointRequest) DecryptedRequestDumpAsString() string {
 }
 
 // maskedHeaderValue masks one decrypted header for a log: a credential header (the declared
-// lists and the credential keywords) is "********"; any other goes through MaskSensitiveValue,
+// lists and the credential keywords) is "***REDACTED***"; any other goes through MaskSensitiveValue,
 // so a host's PII rule on a header name and the default-deny posture apply as they do to a body
 // field.
 func maskedHeaderValue(name, value string) any {

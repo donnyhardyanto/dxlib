@@ -264,7 +264,7 @@ func (hv *DXHashicorpVault) GetStringOrDefault(ctx context.Context, v string, d 
 	}
 	maskedDefault := d
 	if utils.IsSensitiveField(v) && d != "" {
-		maskedDefault = "********"
+		maskedDefault = utils.MaskRedactedMarker
 	} else if d == "" {
 		maskedDefault = "(empty)"
 	}

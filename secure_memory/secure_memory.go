@@ -10,6 +10,7 @@ import (
 	"github.com/awnumar/memguard"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
 	"github.com/donnyhardyanto/dxlib/vault"
 )
 
@@ -289,7 +290,7 @@ func (sv *SecureValue) Resolve() (string, error) {
 
 // MarshalJSON ensures that SecureValue never leaks plaintext in JSON output.
 func (sv *SecureValue) MarshalJSON() ([]byte, error) {
-	return json.Marshal("********[SECURE]")
+	return json.Marshal(utils.MaskRedactedMarker + "[SECURE]")
 }
 
 // Manager is the global secure memory manager instance

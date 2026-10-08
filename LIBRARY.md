@@ -228,7 +228,7 @@ General utility functions. The most important export is `JSON = map[string]any`,
 | Function | Description |
 |---|---|
 | `IsSensitiveField(fieldName string) bool` | Returns true if fieldName contains keywords like "password", "token", "secret", "key", "credential". |
-| `MaskSensitiveValue(fieldName string, value interface{}) interface{}` | Masks one value for a log: `"********"` for a credential field, the host's rule (`SetMaskRules`, `SetMaskStrict`) for a PII field, and the default-deny posture (`SetMaskDefaultDeny`, `SetLogAllowedFields`) for anything else. A `MaskRule` has a `Kind`: `MaskKindPartial` (the default, keeps `Front` and `Back` characters), `MaskKindNumber` (the same after spaces and dashes are dropped), `MaskKindEmail` (`MaskEmail2by2`), `MaskKindInitials` (`MaskInitials`), `MaskKindLocation` (`MaskLocation2Decimals`) or `MaskKindRedacted` (`***REDACTED***`). The named rules below are ready-made values for `SetMaskRules`. |
+| `MaskSensitiveValue(fieldName string, value interface{}) interface{}` | Masks one value for a log: `"***REDACTED***"` for a credential field, the host's rule (`SetMaskRules`, `SetMaskStrict`) for a PII field, and the default-deny posture (`SetMaskDefaultDeny`, `SetLogAllowedFields`) for anything else. A `MaskRule` has a `Kind`: `MaskKindPartial` (the default, keeps `Front` and `Back` characters), `MaskKindNumber` (the same after spaces and dashes are dropped), `MaskKindEmail` (`MaskEmail2by2`), `MaskKindInitials` (`MaskInitials`), `MaskKindLocation` (`MaskLocation2Decimals`) or `MaskKindRedacted` (`***REDACTED***`). The named rules below are ready-made values for `SetMaskRules`. |
 | `MaskFrontBack(s string, front, back int) string` | Keeps the first `front` and last `back` runes with a fixed `***` between, so the length is hidden. A value no longer than `front+back` keeps only its first rune (`a***`); an empty one is `***`. |
 | `Mask2by2(s string) string` | `MaskFrontBack(s, 2, 2)`: `Pegawai Swasta` → `Pe***ta`. Rule `RuleMask2by2`. |
 | `MaskNumber(s string, front, back int) string` | `MaskFrontBack` after dropping spaces and dashes, so the kept characters are digits and the grouping is gone: `0812-3456-7789` with 4 and 3 → `0812***789`. |
@@ -238,12 +238,12 @@ General utility functions. The most important export is `JSON = map[string]any`,
 | `MaskInitials(s string) string` | A name as initials, `B*** S***`. Rule `RuleMaskInitials`. |
 | `MaskLocation2Decimals(value any) any` | A coordinate, a number or a `"lat,lng"` string, rounded to two decimals. Rule `RuleMaskLocation2Decimals`. |
 | `MaskFull(string) string`, `MaskRedacted(string) string` | `********`, and `***REDACTED***` for a secret or an image. Rules `RuleMaskFull`, `RuleMaskRedacted`. |
-| `MaskSensitiveDataInJSON(data JSON) JSON` | Deep-copies a `JSON` map, replacing credential values with `"********"` in nested objects. Only the built-in credential keywords apply, not the host's rules. Used by `configuration.FilterSensitiveData()`. |
+| `MaskSensitiveDataInJSON(data JSON) JSON` | Deep-copies a `JSON` map, replacing credential values with `"***REDACTED***"` in nested objects. Only the built-in credential keywords apply, not the host's rules. Used by `configuration.FilterSensitiveData()`. |
 | `IsCredentialHeader(name string) bool` | Returns true for a header that carries a credential: the built-in list (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, `X-Csrf-Token` and the like), the host's list (`SetCredentialHeaders`), or a name holding a credential keyword (`IsSensitiveField`). Case-insensitive. |
 | `SetCredentialHeaders(names []string)` | Replaces the host's own list of credential headers, added to the built-in list and the keywords. Called once at init. |
-| `MaskHeaderValue(name, value string) string` | Returns `"********"` for a credential header, the value itself otherwise. A credential header is never partially shown. |
+| `MaskHeaderValue(name, value string) string` | Returns `"***REDACTED***"` for a credential header, the value itself otherwise. A credential header is never partially shown. |
 | `WriteHeadersForLog(h http.Header, exclude map[string]bool) string` | Renders headers as `Name: value` lines in name order, one per value, with every credential value masked and line breaks inside a value flattened. Names in `exclude` are left out. Every request or response dump dxlib writes to a log goes through it. |
-| `MaskForLog(data JSON) JSON` | Deep-copies a `JSON` map applying `MaskSensitiveValue` at every depth, in objects and arrays. A credential key masks its container whole; a PII-rule key masks an object whole (a location rule instead walks it and rounds its numeric leaves) and an array element by element. Use it for any request or response body written to a log. |
+| `MaskForLog(data JSON) JSON` | Deep-copies a `JSON` map applying `MaskSensitiveValue` at every depth, in objects and arrays. A credential key masks its container whole as `"***REDACTED***"`; a PII-rule key masks an object whole as `"********"` (a location rule instead walks it and rounds its numeric leaves) and an array element by element. Use it for any request or response body written to a log. |
 
 ### Functions — collections
 
@@ -321,7 +321,7 @@ Stores sensitive data (API keys, passwords, tokens) in locked, non-swappable RAM
 | Method | Description |
 |---|---|
 | `Resolve() (string, error)` | Returns the stored plaintext string. |
-| `MarshalJSON() ([]byte, error)` | Always marshals as `"********"` to prevent accidental logging. |
+| `MarshalJSON() ([]byte, error)` | Always marshals as `"***REDACTED***[SECURE]"` to prevent accidental logging. |
 
 ### Variables
 
@@ -366,7 +366,7 @@ Loads JSON or YAML config files into `map[string]any` structures. Supports dot-p
 | `GetBool(dotPath string) (bool, error)` | Gets bool at dot-path. |
 | `GetFloat64(dotPath string) (float64, error)` | Gets float64 at dot-path. |
 | `GetStringFromSubMap(subMapKey, fieldKey string) (string, error)` | Shorthand for `GetString(subMapKey + "." + fieldKey)`. |
-| `FilterSensitiveData() utils.JSON` | Returns deep copy with sensitive fields masked as `"********"`. |
+| `FilterSensitiveData() utils.JSON` | Returns deep copy with sensitive fields masked as `"***REDACTED***"` (a `*SecureValue` as `"***REDACTED***[SECURE]"`). |
 | `ShowToLog()` | Logs the filtered (masked) config at Info level. |
 | `AsString() string` | Returns full config as indented JSON string. |
 | `AsNonSensitiveString() string` | Returns masked config as indented JSON string. |

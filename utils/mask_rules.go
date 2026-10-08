@@ -15,10 +15,14 @@ import (
 // Every partial mask writes a fixed "***" for what it hides, never one asterisk per character,
 // so the mask does not give away the length of the value.
 
+// MaskRedactedMarker is what a log shows in place of a secret: a credential field or header, a
+// token, a password, a PIN, an OTP or an image.
+const MaskRedactedMarker = "***REDACTED***"
+
 const (
 	maskHidden   = "***"
 	maskFull     = "********"
-	maskRedacted = "***REDACTED***"
+	maskRedacted = MaskRedactedMarker
 )
 
 // Named rules for SetMaskRules. RuleMask<front>by<back> keeps that many characters at each end;

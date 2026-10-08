@@ -44,10 +44,10 @@ func TestRequestDumpMasksCredentialHeaders(t *testing.T) {
 	for _, line := range []string{
 		"POST /v1/things?page=2 HTTP/1.1\r\n",
 		"Host: api.example.test\r\n",
-		"Authorization: ********\r\n",
-		"X-Upstream-Token: ********\r\n",
-		"X-Tenant-Access: ********\r\n",
-		"Cookie: ********\r\nCookie: ********\r\n",
+		"Authorization: ***REDACTED***\r\n",
+		"X-Upstream-Token: ***REDACTED***\r\n",
+		"X-Tenant-Access: ***REDACTED***\r\n",
+		"Cookie: ***REDACTED***\r\nCookie: ***REDACTED***\r\n",
 		"Content-Type: application/json\r\n",
 		"X-Request-Id: req-42\r\n",
 		"\r\n\r\n" + `{"name":"x"}`,
@@ -87,7 +87,7 @@ func TestDecryptedDumpMasksDeclaredCredentialHeaders(t *testing.T) {
 			t.Errorf("dump carries %q in clear:\n%s", raw, dump)
 		}
 	}
-	for _, line := range []string{"X-Tenant-Access: ********", "X-Upstream-Token: ********", "X-Request-Id: req-42"} {
+	for _, line := range []string{"X-Tenant-Access: ***REDACTED***", "X-Upstream-Token: ***REDACTED***", "X-Request-Id: req-42"} {
 		if !strings.Contains(dump, line) {
 			t.Errorf("dump should carry %q:\n%s", line, dump)
 		}
@@ -135,8 +135,8 @@ func TestHTTPClientDoMasksCredentialHeadersInItsDumps(t *testing.T) {
 	}
 	for _, line := range []string{
 		// The text handler quotes the message, so the bodies are looked for by their key.
-		"POST /things HTTP/1.1", "Authorization: ********", "X-Request-Id: req-42", "amount",
-		"HTTP/1.1 200 OK", "Set-Cookie: ********", "X-Trace-Id: trace-7", "ok",
+		"POST /things HTTP/1.1", "Authorization: ***REDACTED***", "X-Request-Id: req-42", "amount",
+		"HTTP/1.1 200 OK", "Set-Cookie: ***REDACTED***", "X-Trace-Id: trace-7", "ok",
 	} {
 		if !strings.Contains(log, line) {
 			t.Errorf("log should carry %q:\n%s", line, log)
@@ -172,7 +172,7 @@ func TestHTTPClientDoBodyAsJSONStringMasksCredentialHeadersInItsDumps(t *testing
 			t.Errorf("log carries %q in clear:\n%s", raw, log)
 		}
 	}
-	for _, line := range []string{"X-Api-Key: ********", "Set-Cookie: ********", "amount"} {
+	for _, line := range []string{"X-Api-Key: ***REDACTED***", "Set-Cookie: ***REDACTED***", "amount"} {
 		if !strings.Contains(log, line) {
 			t.Errorf("log should carry %q:\n%s", line, log)
 		}
