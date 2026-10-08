@@ -46,7 +46,7 @@ func TestInsertErrorClassifiesLikeTheRawPath(t *testing.T) {
 		{"unknown", errors.New("something else"), 0, ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			got := insertError(c.err)
+			got := insertError("widget", c.err)
 			var domainErr api.DXAPIDomainError
 			isDomain := errors.As(got, &domainErr)
 			if c.status == 0 {
@@ -74,9 +74,12 @@ func TestInsertErrorClassifiesLikeTheRawPath(t *testing.T) {
 			if got.Error() == c.reason {
 				t.Errorf("Error() = %q carries no detail for the server log", got.Error())
 			}
+			if !strings.Contains(domainErr.DomainErrorLogDetails(), "TABLE=widget") {
+				t.Errorf("log details %q do not name the table", domainErr.DomainErrorLogDetails())
+			}
 		})
 	}
-	if insertError(nil) != nil {
+	if insertError("widget", nil) != nil {
 		t.Errorf("insertError(nil) must be nil")
 	}
 }
@@ -133,12 +136,32 @@ func TestTableDoCreateReturnsTheClientStatusThroughTheRealChain(t *testing.T) {
 	raw := func(d *databases.DXDatabase) DXRawTable {
 		return DXRawTable{DatabaseNameId: d.NameId, Database: d, TableNameDirect: tableName, FieldNameForRowId: "id", FieldNameForRowUid: "uid", ResponseEnvelopeObjectName: "widget"}
 	}
-	creates := map[string]func(*databases.DXDatabase, *api.DXAPIEndPointRequest, utils.JSON) (int64, error){
-		"DXTable": func(d *databases.DXDatabase, aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
-			return (&DXTable{DXRawTable: raw(d)}).DoCreate(aepr, data)
+	// Every create that hands its error to the route handler, over both types.
+	// Each returns only the error: the id or uid is zero on failure.
+	creates := map[string]func(*databases.DXDatabase, *api.DXAPIEndPointRequest, utils.JSON) error{
+		"DXTable.DoCreate": func(d *databases.DXDatabase, aepr *api.DXAPIEndPointRequest, data utils.JSON) error {
+			_, err := (&DXTable{DXRawTable: raw(d)}).DoCreate(aepr, data)
+			return err
 		},
-		"DXTableAuditOnly": func(d *databases.DXDatabase, aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
-			return (&DXTableAuditOnly{DXRawTable: raw(d)}).DoCreate(aepr, data)
+		"DXTable.DoCreateReturnId": func(d *databases.DXDatabase, aepr *api.DXAPIEndPointRequest, data utils.JSON) error {
+			_, err := (&DXTable{DXRawTable: raw(d)}).DoCreateReturnId(aepr, data)
+			return err
+		},
+		"DXTable.DoCreateReturnUid": func(d *databases.DXDatabase, aepr *api.DXAPIEndPointRequest, data utils.JSON) error {
+			_, err := (&DXTable{DXRawTable: raw(d)}).DoCreateReturnUid(aepr, data)
+			return err
+		},
+		"DXTableAuditOnly.DoCreate": func(d *databases.DXDatabase, aepr *api.DXAPIEndPointRequest, data utils.JSON) error {
+			_, err := (&DXTableAuditOnly{DXRawTable: raw(d)}).DoCreate(aepr, data)
+			return err
+		},
+		"DXTableAuditOnly.DoCreateReturnId": func(d *databases.DXDatabase, aepr *api.DXAPIEndPointRequest, data utils.JSON) error {
+			_, err := (&DXTableAuditOnly{DXRawTable: raw(d)}).DoCreateReturnId(aepr, data)
+			return err
+		},
+		"DXTableAuditOnly.DoCreateReturnUid": func(d *databases.DXDatabase, aepr *api.DXAPIEndPointRequest, data utils.JSON) error {
+			_, err := (&DXTableAuditOnly{DXRawTable: raw(d)}).DoCreateReturnUid(aepr, data)
+			return err
 		},
 	}
 	cases := []struct {
@@ -157,9 +180,9 @@ func TestTableDoCreateReturnsTheClientStatusThroughTheRealChain(t *testing.T) {
 		for _, c := range cases {
 			t.Run(kind+"/"+c.name, func(t *testing.T) {
 				aepr, rec := newCreateRequest()
-				id, err := create(failingDatabase(c.driverErr), aepr, utils.JSON{"name": "secret-value"})
+				err := create(failingDatabase(c.driverErr), aepr, utils.JSON{"name": "secret-value"})
 				if err == nil {
-					t.Fatalf("DoCreate returned id %d and no error", id)
+					t.Fatalf("the create returned no error")
 				}
 				if aepr.ResponseHeaderSent || rec.Body.Len() != 0 {
 					t.Fatalf("DoCreate wrote a response itself (%d %s); the route handler owns the answer", rec.Code, rec.Body.String())
@@ -194,15 +217,27 @@ func TestTableDoCreateReturnsTheClientStatusThroughTheRealChain(t *testing.T) {
 						t.Errorf("body %s = %q leaks the table, the data or the driver message", k, s)
 					}
 				}
+				// The log gets the table and the driver message for every status.
 				// A duplicate is relabelled by CheckDatabaseError, which keeps the
-				// driver's message but drops the insert context; a constraint
-				// violation keeps the whole DBOperationError.
+				// driver's message but drops the insert context, so only a
+				// constraint violation still carries the masked data.
 				details := domainErr.DomainErrorLogDetails()
 				if !strings.Contains(details, c.constraint) {
 					t.Errorf("log details %q lack the driver message naming %q", details, c.constraint)
 				}
-				if c.status != http.StatusConflict && !strings.Contains(details, "table="+tableName) {
+				if !strings.Contains(details, "TABLE="+tableName) {
 					t.Errorf("log details %q lack the table", details)
+				}
+				if c.status != http.StatusConflict && !strings.Contains(details, "data=") {
+					t.Errorf("log details %q lack the masked data", details)
+				}
+				// The reason is written once, by whoever prints the error, although
+				// the relabelled duplicate already starts with it.
+				if n := strings.Count(details, c.reason); n != 0 {
+					t.Errorf("log details %q name the reason %d times; the route handler adds it", details, n)
+				}
+				if n := strings.Count(err.Error(), c.reason); n != 1 {
+					t.Errorf("Error() = %q names the reason %d times, want once", err.Error(), n)
 				}
 			})
 		}

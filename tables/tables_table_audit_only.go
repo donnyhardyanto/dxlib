@@ -91,7 +91,7 @@ func (t *DXTableAuditOnly) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.J
 	t.SetInsertAuditFields(aepr, data)
 	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 	if err != nil {
-		return 0, insertError(err)
+		return 0, insertError(t.GetFullTableName(), err)
 	}
 	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
 	newUid := ""
@@ -104,12 +104,17 @@ func (t *DXTableAuditOnly) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.J
 	return newId, nil
 }
 
-// DoCreateReturnId inserts a row with audit fields and writes API response with id
+// DoCreateReturnId inserts a row with audit fields and writes API response
+// with id. A row the database refused for the client's reason is returned as
+// ErrInsertRefused
+// (409 for a duplicate key, 422 for a constraint violation), which the route
+// handler answers with a sanitized body; any other error is returned as it is
+// and answers a sanitized 500.
 func (t *DXTableAuditOnly) DoCreateReturnId(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	t.SetInsertAuditFields(aepr, data)
 	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowId, t.FieldNameForRowUid})
 	if err != nil {
-		return 0, err
+		return 0, insertError(t.GetFullTableName(), err)
 	}
 	newId, _ := utilsJson.GetInt64(returningValues, t.FieldNameForRowId)
 	aepr.WriteResponseAsJSON(http.StatusOK, nil, utilsJson.Encapsulate(t.ResponseEnvelopeObjectName, utils.JSON{
@@ -138,12 +143,17 @@ func (t *DXTableAuditOnly) RequestCreateReturnId(aepr *api.DXAPIEndPointRequest)
 	return err
 }
 
-// DoCreateReturnUid inserts a row with audit fields and writes API response with uid (not id)
+// DoCreateReturnUid inserts a row with audit fields and writes API response
+// with uid (not id). A row the database refused for the client's reason is
+// returned as ErrInsertRefused
+// (409 for a duplicate key, 422 for a constraint violation), which the route
+// handler answers with a sanitized body; any other error is returned as it is
+// and answers a sanitized 500.
 func (t *DXTableAuditOnly) DoCreateReturnUid(aepr *api.DXAPIEndPointRequest, data utils.JSON) (string, error) {
 	t.SetInsertAuditFields(aepr, data)
 	_, returningValues, err := t.DXRawTable.Insert(aepr.Context, &aepr.Log, data, []string{t.FieldNameForRowUid})
 	if err != nil {
-		return "", err
+		return "", insertError(t.GetFullTableName(), err)
 	}
 	newUid := ""
 	if uid, ok := returningValues[t.FieldNameForRowUid].(string); ok {
