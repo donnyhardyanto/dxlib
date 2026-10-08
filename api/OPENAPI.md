@@ -237,9 +237,10 @@ and the parameter's path (`order.note`):
   null value is taken as not given.
 - A GET or DELETE query reads a key left out and a key sent empty both as
   an empty string (`FormValue`). An optional parameter the query leaves out is
-  not held to its bounds, so a client may leave it out as OpenAPI allows. One
-  sent empty (`?code=`) is checked as the empty string, and so is a mandatory
-  one left out.
+  not held to its bounds. One sent empty (`?code=`) is checked as the empty
+  string, and so is a mandatory one left out. The checks that come before the
+  bounds are unchanged: a left-out optional parameter with an `enum`, or of a
+  numeric type, is still refused as `""`.
 - A refusal names the bound and never echoes a string value, which may be a
   secret. Numbers are echoed, as the enum refusal does.
 
