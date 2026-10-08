@@ -591,6 +591,25 @@ HTTP API server. Endpoints are registered with parameter definitions and handler
 
 An endpoint is keyed by its method and URI together: `GET /members` and `POST /members` are two endpoints. Registering the same method and URI twice stops the process. `FindEndPoint(method, uri)` returns the endpoint for a method; `FindEndPointByURI(uri)` the first registered on the URI. `OPTIONS` is answered with 200 as before; any other method no endpoint on the URI serves is refused with 405 by the first HTTP endpoint registered there. `api/OPENAPI.md` section 2.2 has the operationId rule for a URI with several methods.
 
+### Refusal bodies
+
+By default a refusal (status 400 and above) is answered as `application/json` with `{status, status_code, reason, reason_message}`, plus `fields` or `error_log_ref` where the refusal has them. An API can answer with an RFC 9457 problem document (`application/problem+json`) instead. It is off unless turned on, in the API's configuration beside `address` or on the `DXAPI` value:
+
+| Configuration key | `DXAPI` field | Description |
+|---|---|---|
+| `problem-details` | `ProblemDetailsEnabled bool` | Answer every refusal with a problem document. Default `false` |
+| `problem-type-base-uri` | `ProblemTypeBaseURI string` | Put in front of the reason code to name the problem type, such as `https://example.com/problems/`. Default empty, which leaves the bare code as a relative reference |
+
+| Problem member | Taken from |
+|---|---|
+| `type` | The base URI and `reason`, when `reason` is a code (upper case letters, digits and underscores), so a client branches on the type's last segment. Otherwise `about:blank`: a refusal written with `WriteResponseAndNewErrorf` and no response message has only the status text as its reason, so its code (`REQUEST_FIELD_VALUE_IS_NOT_STRING:...`) is at the front of `detail` |
+| `title` | The status text, translated like `status` was |
+| `status` | The status code, as a number |
+| `detail` | `reason_message`, translated like it was; left out when empty |
+| `instance` | The request path, without its query string |
+
+`status_code`, `reason` and `reason_message` are not sent; every other member (`fields`, `error_log_ref`, anything a handler put in its refusal) is kept as an extension member. `NewProblemDetails(statusCode, body, typeBaseURI, instance)` does the same conversion for a caller that builds its own answer. Success bodies are not changed. An encrypted endpoint (V2, V3, V4) whose keys are gone answers `REFRESH_PREKEY`, `REFRESH_CAPTCHA` or `REFRESH_SESSION` in plain JSON, and with the setting on that answer is a problem document too. An encrypted answer keeps its outer envelope and Content-Type as before; the problem document and its Content-Type travel inside the envelope.
+
 ### Types
 
 **`DXAPIEndPointType`** — Endpoint variant enum.

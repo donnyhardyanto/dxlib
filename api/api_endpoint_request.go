@@ -429,15 +429,31 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 		}
 	}
 
-	// Translate status, reason, and reason_message using user's language
-	if status, ok := bodyAsJSON["status"].(string); ok {
-		bodyAsJSON["status"] = aepr.TranslateMessage(status)
-	}
-	if reason, ok := bodyAsJSON["reason"].(string); ok {
-		bodyAsJSON["reason"] = aepr.TranslateMessage(reason)
-	}
-	if reasonMessage, ok := bodyAsJSON["reason_message"].(string); ok {
-		bodyAsJSON["reason_message"] = aepr.TranslateMessage(reasonMessage)
+	contentType := "application/json"
+	problemDetailsEnabled, problemTypeBaseURI := aepr.problemDetailsSetting()
+	if problemDetailsEnabled && statusCode >= http.StatusBadRequest {
+		// A refusal as an RFC 9457 problem document. The type keeps the reason
+		// code as it is, so a client can branch on it; only title and detail
+		// are translated.
+		bodyAsJSON = NewProblemDetails(statusCode, bodyAsJSON, problemTypeBaseURI, aepr.problemInstance())
+		if title, ok := bodyAsJSON["title"].(string); ok {
+			bodyAsJSON["title"] = aepr.TranslateMessage(title)
+		}
+		if detail, ok := bodyAsJSON["detail"].(string); ok {
+			bodyAsJSON["detail"] = aepr.TranslateMessage(detail)
+		}
+		contentType = ContentTypeProblemJSON
+	} else {
+		// Translate status, reason, and reason_message using user's language
+		if status, ok := bodyAsJSON["status"].(string); ok {
+			bodyAsJSON["status"] = aepr.TranslateMessage(status)
+		}
+		if reason, ok := bodyAsJSON["reason"].(string); ok {
+			bodyAsJSON["reason"] = aepr.TranslateMessage(reason)
+		}
+		if reasonMessage, ok := bodyAsJSON["reason_message"].(string); ok {
+			bodyAsJSON["reason_message"] = aepr.TranslateMessage(reasonMessage)
+		}
 	}
 
 	jsonBytes, err = json.Marshal(bodyAsJSON)
@@ -457,7 +473,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 	if header == nil {
 		header = map[string]string{}
 	}
-	header["Content-Type"] = "application/json"
+	header["Content-Type"] = contentType
 
 	aepr.WriteResponseAsBytes(statusCode, header, jsonBytes)
 }
@@ -547,9 +563,10 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 					"reason_message": "Prekey missing, expired, or already used. Please call /prekey to get a new prekey.",
 				}
 			}
+			errorResponse, errorContentType := aepr.plainRefusal(statusCode, errorResponse)
 			errorBytes, _ := json.Marshal(errorResponse)
 
-			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.Header().Set("Content-Type", errorContentType)
 			responseWriter.WriteHeader(statusCode)
 			aepr.ResponseHeaderSent = true
 			aepr.ResponseStatusCode = statusCode
@@ -709,8 +726,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 				"reason":         "REFRESH_SESSION",
 				"reason_message": "Session not found or expired. Please call /v1/startup_1 to bootstrap a new session.",
 			}
+			errorResponse, errorContentType := aepr.plainRefusal(statusCode, errorResponse)
 			errorBytes, _ := json.Marshal(errorResponse)
-			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.Header().Set("Content-Type", errorContentType)
 			responseWriter.WriteHeader(statusCode)
 			aepr.ResponseHeaderSent = true
 			aepr.ResponseStatusCode = statusCode
@@ -811,8 +829,9 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsBytes(statusCode int, header ma
 				"reason":         "REFRESH_SESSION",
 				"reason_message": "Session not found or expired. Please call /v1/startup_1 to bootstrap a new session.",
 			}
+			errorResponse, errorContentType := aepr.plainRefusal(statusCode, errorResponse)
 			errorBytes, _ := json.Marshal(errorResponse)
-			responseWriter.Header().Set("Content-Type", "application/json")
+			responseWriter.Header().Set("Content-Type", errorContentType)
 			responseWriter.WriteHeader(statusCode)
 			aepr.ResponseHeaderSent = true
 			aepr.ResponseStatusCode = statusCode

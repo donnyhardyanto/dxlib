@@ -129,6 +129,14 @@ type DXAPI struct {
 	OnAuditLogStart          DXAuditLogHandler
 	OnAuditLogUserIdentified DXAuditLogHandler
 	OnAuditLogEnd            DXAuditLogHandler
+
+	// ProblemDetailsEnabled answers every refusal (status 400 and above) with an
+	// RFC 9457 problem document (application/problem+json) instead of
+	// {status, status_code, reason, reason_message}. Off by default.
+	ProblemDetailsEnabled bool
+	// ProblemTypeBaseURI is put in front of the reason code to name a problem
+	// type, as in "https://example.com/problems/" + "UNIQUE_FIELD_VIOLATION".
+	ProblemTypeBaseURI string
 }
 
 var SpecFormat = "MarkDown"
@@ -261,6 +269,10 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	}
 
 	a.EnableBrowserSecurityHeaders = utilsJSON.GetBoolWithDefault(c1, "enable-browser-security-headers", false)
+	a.ProblemDetailsEnabled = utilsJSON.GetBoolWithDefault(c1, "problem-details", false)
+	if problemTypeBaseURI, err := utilsJSON.GetString(c1, "problem-type-base-uri"); err == nil {
+		a.ProblemTypeBaseURI = problemTypeBaseURI
+	}
 
 	// The tls block. Absent means plaintext, said out loud so that "no TLS" is
 	// a line in the log and not the absence of one. Present means every key in
