@@ -102,15 +102,25 @@ func (failingConn) Begin() (driver.Tx, error)             { return nil, errors.N
 func (c failingConn) QueryContext(context.Context, string, []driver.NamedValue) (driver.Rows, error) {
 	return nil, c.err
 }
+
+// CheckNamedValue takes every argument as it is, so Oracle's go_ora.Out
+// RETURNING INTO parameters reach ExecContext and fail there like the rest.
+func (failingConn) CheckNamedValue(*driver.NamedValue) error { return nil }
 func (c failingConn) ExecContext(context.Context, string, []driver.NamedValue) (driver.Result, error) {
 	return nil, c.err
 }
 
 func failingDatabase(err error) *databases.DXDatabase {
+	return failingDatabaseOn("postgres", err)
+}
+
+// failingDatabaseOn is failingDatabase under another driver name, so db.Insert
+// builds that dialect's statement before the driver refuses it.
+func failingDatabaseOn(driverName string, err error) *databases.DXDatabase {
 	return &databases.DXDatabase{
 		NameId:     "failing",
 		Connected:  true,
-		Connection: sqlx.NewDb(sql.OpenDB(failingConnector{err}), "postgres"),
+		Connection: sqlx.NewDb(sql.OpenDB(failingConnector{err}), driverName),
 	}
 }
 

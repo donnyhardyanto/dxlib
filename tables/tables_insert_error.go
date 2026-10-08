@@ -20,7 +20,8 @@ const (
 // ErrInsertRefused is what the DoCreate family on DXTable and
 // DXTableAuditOnly returns when the database refused the row for a reason
 // that is the client's: a duplicate key (409 Conflict) or a foreign-key, check
-// or not-null violation (422 Unprocessable Entity). It is an
+// or not-null violation (422 Unprocessable Entity); DXRawTable.DoCreate, which
+// writes its own response, answers the same through writeInsertError. It is an
 // api.DXAPIDomainError, so the route handler answers that status with a body
 // holding only the reason code, and logs the details at Warn with the request
 // dump, as it does for ErrUniqueFieldViolation. The details name the table and
@@ -78,8 +79,7 @@ var _ api.DXAPIDomainError = (*ErrInsertRefused)(nil)
 
 // insertError is the error a DoCreate that writes no error response of its
 // own hands back to the route handler. A duplicate key becomes a 409
-// ErrInsertRefused, a constraint violation a 422 one, by the same predicates
-// insertErrorStatusCode uses for DXRawTable.DoCreate; everything else is
+// ErrInsertRefused, a constraint violation a 422 one; everything else is
 // returned unchanged, so the route handler treats it as the server error it
 // is. tableName is the table the row was for, kept for the log.
 func insertError(tableName string, err error) error {

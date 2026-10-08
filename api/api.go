@@ -705,49 +705,17 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if errors.As(err, &domainErr) {
 				// TRACE: execute_end (domain validation)
 				LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, domainErr.DomainErrorHTTPStatusCode(), domainErr.DomainErrorCode())
-				// Log as warning with full request context for debugging
-				requestDump, err2 := aepr.RequestDumpAsString()
-				if err2 != nil {
-					requestDump = "REQUEST_DUMP_ERROR"
-				}
-				decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
-				domainErrWrapped := errors.Errorf("DOMAIN_VALIDATION:%s:%s", domainErr.DomainErrorCode(), domainErr.DomainErrorLogDetails())
-				aepr.Log.LogText(domainErrWrapped, log.DXLogLevelWarn, "", fmt.Sprintf("Raw Request:\n%s%s", requestDump, decryptedDump))
-				// Send a sanitized response (no DB structure exposed)
-				if !aepr.ResponseHeaderSent {
-					aepr.WriteResponseAsJSON(domainErr.DomainErrorHTTPStatusCode(), nil, domainErr.DomainErrorResponseBody())
-				}
+				// Logged as a warning with the full request; the response names only the reason code
+				aepr.WriteResponseAsDomainError(domainErr)
 				err = nil // clear error so deferred functions don't treat as error
 				return
 			}
 			// TRACE: execute_end (error)
 			LogExecutionTrace(requestContext, "execute_end", aepr.Id, p.Uri, r.Method, executeStartTime, http.StatusInternalServerError, err.Error())
 
-			// Always log full error + request dump (including decrypted body), even if response already sent
-			requestDump, err2 := aepr.RequestDumpAsString()
-			if err2 != nil {
-				requestDump = "REQUEST_DUMP_ERROR"
-			}
-			// Extract DB operation context if available
-			dbContextStr := ""
-			var dbCtx dbContextCarrier
-			if errors.As(err, &dbCtx) {
-				dbContextStr = fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
-			}
-			decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
-			aepr.Log.Errorf(err, "EXECUTE_ERROR:%+v%s\nRaw Request:\n%s%s", err, dbContextStr, requestDump, decryptedDump)
-			// Send sanitized response with error_log reference for correlation
-			if !aepr.ResponseHeaderSent {
-				errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
-				responseBody := utils.JSON{
-					"status":         "Internal Server Error",
-					"status_code":    http.StatusInternalServerError,
-					"reason":         "INTERNAL_SERVER_ERROR",
-					"reason_message": "INTERNAL_SERVER_ERROR",
-					"error_log_ref":  errorLogRef,
-				}
-				aepr.WriteResponseAsJSON(http.StatusInternalServerError, nil, responseBody)
-			}
+			// Always log full error + request dump (including decrypted body), even if response already sent,
+			// and answer a sanitized 500 with an error_log reference for correlation
+			aepr.WriteResponseAsInternalServerError("EXECUTE_ERROR", err)
 			return
 		} else {
 			// TRACE: execute_end (success)

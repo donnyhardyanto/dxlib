@@ -7,6 +7,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsJson "github.com/donnyhardyanto/dxlib/utils/json"
@@ -91,25 +92,22 @@ func (t *DXRawTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (
 	return newId, nil
 }
 
-// insertErrorStatusCode picks the status for a failed insert. 409 Conflict is
-// for a duplicate key only. A foreign-key, check or not-null violation means
-// the request carried a value the schema cannot take, so it answers 422 like
-// a parameter PreProcessRequest cannot accept. Everything else (a lost
-// connection, a syntax error, an unknown driver error) is the server's and
-// answers 500.
-func insertErrorStatusCode(err error) int {
-	switch {
-	case databases.IsDuplicateKeyError(err):
-		return http.StatusConflict
-	case databases.IsConstraintViolationError(err):
-		return http.StatusUnprocessableEntity
-	default:
-		return http.StatusInternalServerError
+// writeInsertError answers a failed insert for DoCreate, which writes its own
+// error response and returns nil. A duplicate key (409) or a foreign-key, check
+// or not-null violation (422) is classified by insertError and answered as the
+// route handler answers that domain error: the body names only the reason code,
+// and the table, the driver message and (for a 422) the masked data go to the
+// log at Warn. Everything else is the server's and answers the route handler's
+// sanitized 500 with an error_log_ref, the full error logged at Error. The body
+// never carries the insert error's text, which names the table, the columns,
+// the constraint and the driver message.
+func writeInsertError(aepr *api.DXAPIEndPointRequest, tableName string, err error) {
+	var refused *ErrInsertRefused
+	if errors.As(insertError(tableName, err), &refused) {
+		aepr.WriteResponseAsDomainError(refused)
+		return
 	}
-}
-
-func writeInsertError(aepr *api.DXAPIEndPointRequest, err error) {
-	aepr.WriteResponseAsError(insertErrorStatusCode(err), err)
+	aepr.WriteResponseAsInternalServerError("INSERT_ERROR", err)
 }
 
 // DoCreate inserts a row and writes API response (suppresses errors)
@@ -121,7 +119,7 @@ func (t *DXRawTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (
 
 	_, returningValues, err := t.Insert(aepr.Context, &aepr.Log, data, returningFields)
 	if err != nil {
-		writeInsertError(aepr, err)
+		writeInsertError(aepr, t.GetFullTableName(), err)
 		return 0, nil
 	}
 
