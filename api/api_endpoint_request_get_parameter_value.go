@@ -162,6 +162,34 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsNullableInt64(k string, def
 	return true, &v1, nil
 }
 
+// GetParameterValueAsNullableInt32 reads a nullable-int32 parameter as *int32.
+// A value sent as JSON null and one left out both mean not given: both answer
+// isExist false and nil (or the int32 default, when one is passed), and the
+// handler decides what not given means.
+func (aepr *DXAPIEndPointRequest) GetParameterValueAsNullableInt32(k string, defaultValue ...any) (isExist bool, val *int32, err error) {
+	isExist, valAsAny, err := aepr.GetParameterValueAsAny(k)
+	if err != nil {
+		return isExist, nil, err
+	}
+	if !isExist {
+		if len(defaultValue) == 0 || defaultValue[0] == nil {
+			return false, nil, nil
+		}
+		v1, ok := defaultValue[0].(int32)
+		if !ok {
+			err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "PARAMETER_DEFAULT_VALUE_IS_NOT_NULLABLE_INT32:%s=%v", k, defaultValue[0])
+			return false, nil, err
+		}
+		return false, &v1, nil
+	}
+	v1, ok := valAsAny.(int32)
+	if !ok {
+		err = aepr.WriteResponseAndNewErrorf(http.StatusBadRequest, "", "REQUEST_FIELD_VALUE_IS_NOT_NULLABLE_INT32:%s=(%v)", k, valAsAny)
+		return true, nil, err
+	}
+	return true, &v1, nil
+}
+
 func getParameterValue[A any](aepr *DXAPIEndPointRequest, k string, defaultValue ...A) (isExist bool, val A, err error) {
 	isExist, valAsAny, err := aepr.GetParameterValueAsAny(k)
 	if !isExist {
@@ -187,7 +215,8 @@ func (aepr *DXAPIEndPointRequest) GetParameterValueAsInt64(k string) (isExist bo
 }
 
 // GetParameterValueAsInt32 reads an int32, int32p, int32zp or nullable-int32
-// parameter. A nullable-int32 the caller left out answers isExist false.
+// parameter. A nullable-int32 the caller left out answers isExist false; use
+// GetParameterValueAsNullableInt32 to read one as *int32.
 func (aepr *DXAPIEndPointRequest) GetParameterValueAsInt32(k string) (isExist bool, val int32, err error) {
 	return getParameterValue[int32](aepr, k)
 }

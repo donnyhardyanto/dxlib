@@ -937,7 +937,7 @@ Type definitions for API parameter declarations. Used by `api.DXAPIEndPointParam
 |---|---|
 | `APIParameterTypeString` | String parameter |
 | `APIParameterTypeInt64` / `Int64P` / `Int64ZP` / `NullableInt64` | 64-bit integer; `P` positive, `ZP` zero or positive, `Nullable` may be left out of the request. A JSON number or a decimal string (query string) is taken; read with `GetParameterValueAsInt64` |
-| `APIParameterTypeInt32` / `Int32P` / `Int32ZP` / `NullableInt32` | 32-bit integer, same wire forms as the 64-bit family; a value outside the int32 range is refused with 422. Read with `GetParameterValueAsInt32`; the Go value is a plain `int32` |
+| `APIParameterTypeInt32` / `Int32P` / `Int32ZP` / `NullableInt32` | 32-bit integer, same wire forms as the 64-bit family; a value outside the int32 range is refused with 422. Read with `GetParameterValueAsInt32`; the Go value is a plain `int32`. Read a `NullableInt32` with `GetParameterValueAsNullableInt32` as `*int32`: in a JSON body, null and a value left out both mean not given and answer `nil` (or the `int32` default passed in), as `GetParameterValueAsNullableInt64` and `GetParameterValueAsNullableString` do |
 | `APIParameterTypeMoney` | Fixed-point amount sent as a plain decimal string (`"1250000.375"`), held as `decimal.Decimal` (shopspring); a JSON number is refused with 422, as are exponent notation, spaces and signs other than a leading `+` or `-`. Read with `GetParameterValueAsDecimal` |
 | `APIParameterTypeFloat32` / `Float64` | Floating point |
 | `APIParameterTypeBoolean` | Boolean |
