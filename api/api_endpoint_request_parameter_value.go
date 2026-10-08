@@ -131,8 +131,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 		}
 	case dxlibTypes.APIParameterTypeInt32, dxlibTypes.APIParameterTypeInt32ZP, dxlibTypes.APIParameterTypeInt32P:
 		if rawValueType == "float64" {
-			f := aeprpv.RawValue.(float64)
-			if f != math.Trunc(f) {
+			if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
 			}
 		}
@@ -211,9 +210,20 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 // number path. An empty string is left to fail with the rest. IsMustExist is
 // checked against a nil RawValue only, so an empty string that resolved to zero
 // would let a mandatory id be satisfied by a value the caller never sent.
+//
+// A JSON number is refused unless it is a whole number within the int64 range,
+// checked on the float before it is converted (Go leaves an out-of-range
+// float-to-int conversion undefined). This is the check every int64-family
+// type goes through, nullable-int64 included; the type switch in
+// validateWhenNotSameWithRawValue only runs for some of them. float64 cannot
+// hold MaxInt64 (it rounds to 2^63), so a client that needs the top of the
+// range sends it as a string.
 func (aeprpv *DXAPIEndPointRequestParameterValue) rawValueToInt64(nameIdPath string) (int64, error) {
 	switch val := aeprpv.RawValue.(type) {
 	case float64:
+		if !utils.FloatFitsInt64(val) {
+			return 0, aeprpv.Owner.Log.WarnAndCreateErrorf("INT64_OUT_OF_RANGE:%s=%v", nameIdPath, val)
+		}
 		return int64(val), nil
 	case int:
 		return int64(val), nil
@@ -662,15 +672,18 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 		}
 
-		// Convert []any to []string
+		// Each element arrives as a float64 from encoding/json and gets the
+		// same whole-number and range check as a scalar int64 parameter.
 		s := make([]int64, len(rawSlice))
 		for i, v := range rawSlice {
 			aNumber, ok := v.(float64)
 			if !ok {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
 			}
-			aInt := int64(aNumber)
-			s[i] = aInt
+			if !utils.FloatFitsInt64(aNumber) {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("INT64_OUT_OF_RANGE:%s[%d]=%v", nameIdPath, i, aNumber)
+			}
+			s[i] = int64(aNumber)
 		}
 		aeprpv.Value = s
 		return nil

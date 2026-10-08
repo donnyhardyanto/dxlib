@@ -208,13 +208,26 @@ func NowAsString() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }
 
-// IfFloatIsInt checks if a float64 has no fractional part.
+// IfFloatIsInt reports whether f is a finite whole number: no fractional part
+// in either sign, and neither NaN nor an infinity. It says nothing about
+// whether the value fits an int64; FloatFitsInt64 adds that.
+//
+// The earlier test, f - float64(int64(f)) > 0, saw only a positive remainder,
+// so a negative fraction such as -5.5 passed and was truncated downstream.
 func IfFloatIsInt(f float64) bool {
-	fi := int64(f)
-	if (f - float64(fi)) > 0 {
-		return false
-	}
-	return true
+	return !math.IsInf(f, 0) && math.Trunc(f) == f
+}
+
+// twoPow63 is one past the largest int64. float64 cannot hold MaxInt64 itself
+// (it rounds up to 2^63), so the int64 upper bound on a float is exclusive here.
+const twoPow63 = float64(1 << 63)
+
+// FloatFitsInt64 reports whether f is a whole number an int64 can hold. The
+// bounds are checked on the float before any conversion: Go leaves an
+// out-of-range float-to-int conversion undefined, so the converted value
+// cannot be inspected afterwards.
+func FloatFitsInt64(f float64) bool {
+	return IfFloatIsInt(f) && f >= math.MinInt64 && f < twoPow63
 }
 
 // TypeAsString returns the type of a variable as a string.
