@@ -612,11 +612,11 @@ HTTP API server. Endpoints are registered with parameter definitions and handler
 | `Children` | `[]DXAPIEndPointParameter` | Nested parameters for JSON objects |
 | `Enum` | `[]any` | Valid values — returns 400 if value not in list |
 | `Minimum`, `ExclusiveMinimum`, `Maximum`, `ExclusiveMaximum`, `MultipleOf` | `*float64` | Numeric bounds beyond the type's own, for the integer and number types; nil means none. A value outside is refused with 422 |
-| `MinLength`, `MaxLength` | `*int` | Length bounds in characters, for the string types |
-| `Pattern` | `string` | Go RE2 regular expression the string must match somewhere (anchor it with `^...$` for a whole match) |
+| `MinLength`, `MaxLength` | `*int` | Length bounds in characters of the string as sent, for the string types |
+| `Pattern` | `string` | Go RE2 regular expression the string, as sent, must match somewhere (anchor it with `^...$` for a whole match) |
 | `MinItems`, `MaxItems` | `*int` | Item count bounds, for the array types |
 | `UniqueItems` | `bool` | No two array items may be equal |
-| `Const` | `*any` | The one value accepted, for a scalar |
+| `Const` | `*any` | The one value accepted, for a string, number or boolean, of the same JSON type as the parameter |
 
 | Method | Description |
 |---|---|

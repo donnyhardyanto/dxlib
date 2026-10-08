@@ -212,20 +212,33 @@ then say something the server does not do.
 What the validator checks, after the value is resolved, refusing with 422
 and the parameter's path (`order.note`):
 
-- Numbers are compared in decimal, so `0.3` is
-  a multiple of `0.1` and an `int64` above 2^53 is compared exactly.
-- A length counts characters (Unicode code points), as JSON Schema does,
-  and is taken on the string the handler receives: trimmed for the
-  `non-empty-string` types. For `date`, `time` and `iso8601`, which resolve to
-  a `time.Time`, it is taken on the string that was sent.
+- Numbers are compared in decimal, so `0.3` is a multiple of `0.1` and an
+  `int64` value above 2^53 is compared exactly. The bound itself is held as a
+  float64, so an integer bound above 2^53 is rounded to the nearest float64
+  when it is read; keep integer bounds within 2^53 where exactness matters. A
+  NaN or infinite bound in a Go declaration is refused when the document is
+  emitted and, if never emitted, answers `INVALID_BOUND_DECLARED` at request
+  time.
+- The string bounds read the string as sent, as JSON Schema does: untrimmed
+  for the `non-empty-string` types, the text of a `date`, `time`, `iso8601` or
+  `money` value rather than what it resolves to. A length counts characters
+  (Unicode code points).
 - `pattern` is Go's RE2 syntax, not ECMA-262. Lookaround and backreferences
   do not compile and are refused when the document is read
   (`OPENAPI_PATTERN_NOT_GO_RE2`). As in JSON Schema, a pattern matches
-  anywhere in the string; anchor it for a whole match.
+  anywhere in the string; anchor it for a whole match. RE2's `.` also matches
+  `\r`.
 - `uniqueItems` compares items by their JSON encoding, with object keys in
   sorted order.
-- `const` compares by formatted text, like `enum` but case-sensitive. A
-  `const` of `null` is refused, because a null value is taken as not given.
+- `const` is compared in its own JSON type: a number in decimal (`1000000`
+  equals `1e6`), a string exactly as sent (`"12.50"` is not `"12.5"`, even on
+  `money`), a boolean exactly. A `const` of another JSON type than the value's
+  (`"7"` on an integer) is refused, and so is a `const` of `null`, because a
+  null value is taken as not given.
+- A query parameter left out of a GET or DELETE arrives as an empty string
+  (`FormValue`), so an optional string parameter with `minLength`, `pattern`
+  or `const` refuses a request that leaves it out. That is how dxlib reads
+  query strings today, not something the bounds add.
 - A refusal names the bound and never echoes a string value, which may be a
   secret. Numbers are echoed, as the enum refusal does.
 
@@ -260,11 +273,20 @@ more than the server does:
 With or without `x-dxlib-type`, a bound is carried onto the parameter only
 where it says more than the type does: `x-dxlib-type: int64p` with `minimum:
 1` binds `int64p` with no `Minimum`, and with `minimum: 5` binds `int64p` with
-`Minimum: 5`. A bound on a schema that becomes no parameter of its own (array
-`items` other than an object template's properties, a map's
-`additionalProperties`, a request body object, an object template's item
-object) has nothing to check it and is refused
+`Minimum: 5`. Only the properties of a `json` schema and of an
+`array-json-template`'s item object become parameters. A bound anywhere else
+below a parameter (in array `items`, a map's `additionalProperties`, the
+properties of a `json-passthrough` or `map-string-string` object, through any
+`$ref`), and a bound on a request body object or an object template's item
+object, has nothing to check it and is refused
 (`OPENAPI_UNSUPPORTED_CONSTRAINT`).
+
+Before these bounds were read, a schema carrying `x-dxlib-type` had its
+`minimum` and `minLength` ignored. They are now carried and checked, so a
+hand-written document with `x-dxlib-type: string` and `minLength: 1` refuses an
+empty string it used to pass, and one with a bound looser than its type, or a
+bound under array items, no longer binds. Documents the emitter wrote are
+unaffected.
 
 A local `$ref` into `components/schemas` is followed wherever a schema may
 appear; a chain of references is followed to its end and a cycle is refused
@@ -282,6 +304,9 @@ code have no representation and are an emission error. An endpoint that
 declares no possibilities gets no `responses` key at all, which 3.1 permits
 and which is the truthful rendering, and reads back as none. `default` and
 range keys like `2XX` are refused, because a possibility carries an integer.
+Bounds in a response schema are read, carried on the `DataTemplate`
+parameters and written back, but nothing checks a response against them; they
+describe what the handler sends.
 
 ### 2.6 The `x-dxlib-*` extensions
 

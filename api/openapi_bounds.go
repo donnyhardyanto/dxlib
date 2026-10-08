@@ -2,10 +2,12 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 
 	"github.com/donnyhardyanto/dxlib/errors"
+	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
 )
 
 // The JSON Schema bounds a parameter carries beyond its type: minimum,
@@ -84,18 +86,38 @@ func openAPISchemaBoundNames(s *DXOpenAPISchema) string {
 
 // openAPIBoundsFromSchema carries a schema's bounds onto the parameter read
 // from it, once its dxlib type is known.
-func openAPIBoundsFromSchema(s *DXOpenAPISchema, p *DXAPIEndPointParameter, pointer string) error {
+func openAPIBoundsFromSchema(s *DXOpenAPISchema, p *DXAPIEndPointParameter, r *openAPISchemaResolver, pointer string) error {
 	m := openAPITypeTable[p.Type]
 	for _, name := range openAPISchemaBounds(s) {
 		if !openAPIBoundApplies(openAPIBoundKind[name], m.jsonType) {
 			return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRAINT:%s:ON_%s:%s", name, m.jsonType, pointer)
 		}
 	}
-	if what := openAPISchemaBoundNames(s.Items); what != "" {
-		return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRAINT:%s:ON_ITEMS:%s/items", what, pointer)
+	if s.Const != nil {
+		if err := openAPIConstFits(*s.Const, m.jsonType); err != nil {
+			return errors.Wrapf(err, "OPENAPI_AT:%s/const", pointer)
+		}
 	}
-	if what := openAPISchemaBoundNames(s.AdditionalProperties); what != "" {
-		return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRAINT:%s:ON_ADDITIONAL_PROPERTIES:%s/additionalProperties", what, pointer)
+	// Only the properties of a json type, and of an array-json-template's
+	// item object, become parameters. Everything else under this schema is
+	// never validated, so a bound anywhere in it is refused.
+	if s.Items != nil && p.Type != dxlibTypes.APIParameterTypeArrayJSONTemplate {
+		if err := openAPINoBoundsBelow(s.Items, r, pointer+"/items"); err != nil {
+			return err
+		}
+	}
+	if s.AdditionalProperties != nil {
+		if err := openAPINoBoundsBelow(s.AdditionalProperties, r, pointer+"/additionalProperties"); err != nil {
+			return err
+		}
+	}
+	if s.Properties != nil && p.Type != dxlibTypes.APIParameterTypeJSON {
+		for _, name := range s.Properties.Keys() {
+			child, _ := s.Properties.Get(name)
+			if err := openAPINoBoundsBelow(child, r, pointer+"/properties/"+openAPIPointerEscape(name)); err != nil {
+				return err
+			}
+		}
 	}
 	var err error
 	if p.Minimum, err = openAPIBeyondImplied("minimum", s.Minimum, m.minimum, p, pointer); err != nil {
@@ -123,6 +145,68 @@ func openAPIBoundsFromSchema(s *DXOpenAPISchema, p *DXAPIEndPointParameter, poin
 	if s.Const != nil {
 		v := *s.Const
 		p.Const = &v
+	}
+	return nil
+}
+
+// openAPINoBoundsBelow refuses a bound anywhere in a schema that becomes no
+// parameter, following references.
+func openAPINoBoundsBelow(s *DXOpenAPISchema, r *openAPISchemaResolver, pointer string) error {
+	resolved, release, err := r.resolve(s, pointer)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if what := openAPISchemaBoundNames(resolved); what != "" {
+		return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRAINT:%s:NOT_CHECKED_HERE:%s", what, pointer)
+	}
+	if resolved.Items != nil {
+		if err := openAPINoBoundsBelow(resolved.Items, r, pointer+"/items"); err != nil {
+			return err
+		}
+	}
+	if resolved.AdditionalProperties != nil {
+		if err := openAPINoBoundsBelow(resolved.AdditionalProperties, r, pointer+"/additionalProperties"); err != nil {
+			return err
+		}
+	}
+	if resolved.Properties != nil {
+		for _, name := range resolved.Properties.Keys() {
+			child, _ := resolved.Properties.Get(name)
+			if err := openAPINoBoundsBelow(child, r, pointer+"/properties/"+openAPIPointerEscape(name)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// openAPIConstFits refuses a const of another JSON type than the value's:
+// a string const on an integer would never equal a resolved number.
+func openAPIConstFits(c any, jsonType string) error {
+	ok := false
+	switch jsonType {
+	case "string":
+		_, ok = c.(string)
+	case "boolean":
+		_, ok = c.(bool)
+	case "integer":
+		switch v := c.(type) {
+		case int, int32, int64:
+			ok = true
+		case float32:
+			ok = float64(v) == math.Trunc(float64(v))
+		case float64:
+			ok = v == math.Trunc(v)
+		}
+	case "number":
+		switch c.(type) {
+		case int, int32, int64, float32, float64:
+			ok = true
+		}
+	}
+	if !ok {
+		return errors.Errorf("OPENAPI_CONST_OF_ANOTHER_TYPE:%v(%T):ON_%s", c, c, jsonType)
 	}
 	return nil
 }
@@ -197,6 +281,11 @@ func (p *DXAPIEndPointParameter) checkBounds(jsonType string) error {
 			return errors.Errorf("OPENAPI_NEGATIVE_BOUND:%s=%d:%s", name, *v, p.NameId)
 		}
 	}
+	for name, v := range map[string]*float64{"minimum": p.Minimum, "exclusiveMinimum": p.ExclusiveMinimum, "maximum": p.Maximum, "exclusiveMaximum": p.ExclusiveMaximum, "multipleOf": p.MultipleOf} {
+		if v != nil && (math.IsNaN(*v) || math.IsInf(*v, 0)) {
+			return errors.Errorf("OPENAPI_BOUND_NOT_FINITE:%s=%v:%s", name, *v, p.NameId)
+		}
+	}
 	if p.MultipleOf != nil && !(*p.MultipleOf > 0) {
 		return errors.Errorf("OPENAPI_MULTIPLE_OF_NOT_POSITIVE:%v:%s", *p.MultipleOf, p.NameId)
 	}
@@ -210,6 +299,9 @@ func (p *DXAPIEndPointParameter) checkBounds(jsonType string) error {
 		case string, bool, int, int32, int64, float32, float64:
 		default:
 			return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:const-%s:%s", fmt.Sprintf("%T", *p.Const), p.NameId)
+		}
+		if err := openAPIConstFits(*p.Const, jsonType); err != nil {
+			return errors.Wrapf(err, "OPENAPI_PARAMETER:%s", p.NameId)
 		}
 	}
 	return nil

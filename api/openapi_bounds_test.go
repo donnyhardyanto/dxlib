@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 
@@ -112,6 +113,36 @@ func TestOpenAPIBindCarriesBounds(t *testing.T) {
 			p := a.FindEndPointByURI("/x").Parameters[0]
 			if !c.check(p) {
 				t.Errorf("parameter = %+v", p)
+			}
+		})
+	}
+}
+
+// A bound anywhere under a schema that becomes no parameter -- array items,
+// map values, the properties of a free-form object -- is never checked, and is
+// refused, through references too.
+func TestOpenAPIBindRefusesBoundsBelowNonParameters(t *testing.T) {
+	for name, schema := range map[string]string{
+		"items by ref":              `{type: array, x-dxlib-type: array-string, items: {$ref: '#/components/schemas/S'}}`,
+		"items by ref chain":        `{type: array, x-dxlib-type: array, items: {$ref: '#/components/schemas/R'}}`,
+		"int items by ref":          `{type: array, x-dxlib-type: array-int64, items: {$ref: '#/components/schemas/I'}}`,
+		"map values by ref":         `{type: object, x-dxlib-type: map-string-string, additionalProperties: {$ref: '#/components/schemas/S'}}`,
+		"passthrough properties":    `{type: object, x-dxlib-type: json-passthrough, properties: {a: {type: string, maxLength: 3}}}`,
+		"nested under string items": `{type: array, x-dxlib-type: array-string, items: {type: object, properties: {a: {type: string, maxLength: 3}}}}`,
+		"string const on integer":   `{type: integer, const: "7"}`,
+		"integer const on string":   `{type: string, const: 7}`,
+		"fractional const on int":   `{type: integer, const: 1.5}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			a := openAPITestAPI(t, "openapi-bind-bounds-below-"+name)
+			doc := openAPIMustRead(t, "openapi: 3.1.0\ninfo: {title: a, version: '1'}\npaths:\n  /x:\n    post:\n      operationId: x\n      requestBody:\n        content:\n          application/json:\n            schema: {type: object, properties: {q: "+schema+"}}\ncomponents:\n  schemas:\n    S: {type: string, maxLength: 3}\n    R: {$ref: '#/components/schemas/S'}\n    I: {type: integer, minimum: 5}\n")
+			a.RegisterHandler("x", noop)
+			err := a.BindOpenAPI(doc)
+			if err == nil {
+				t.Fatal("bound a bound nothing checks")
+			}
+			if !strings.Contains(err.Error(), "OPENAPI_UNSUPPORTED_CONSTRAINT") && !strings.Contains(err.Error(), "OPENAPI_CONST_OF_ANOTHER_TYPE") {
+				t.Fatalf("err = %v", err)
 			}
 		})
 	}
@@ -233,6 +264,8 @@ func TestOpenAPIEmitRefusesUncheckableBounds(t *testing.T) {
 		"negative maxItems":       {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeArray, MaxItems: boundsInt(-1)}, "OPENAPI_NEGATIVE_BOUND:maxItems=-1"},
 		"zero multipleOf":         {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeFloat64, MultipleOf: boundsFloat(0)}, "OPENAPI_MULTIPLE_OF_NOT_POSITIVE"},
 		"bad pattern":             {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeString, Pattern: "(?=a)"}, "OPENAPI_PATTERN_NOT_GO_RE2"},
+		"NaN maximum":             {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeFloat64, Maximum: boundsFloat(math.NaN())}, "OPENAPI_BOUND_NOT_FINITE:maximum"},
+		"string const on integer": {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeInt64, Const: boundsConst("7")}, "OPENAPI_CONST_OF_ANOTHER_TYPE"},
 		"nil const":               {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeString, Const: boundsConst(nil)}, "OPENAPI_UNSUPPORTED_CONSTRUCT:const-<nil>"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -268,7 +301,8 @@ func TestValidateChecksBounds(t *testing.T) {
 		{"length counts characters", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeString, MaxLength: boundsInt(3)}, "äöü", ""},
 		{"too long", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeString, MaxLength: boundsInt(3)}, "abcd", "STRING_TOO_LONG:n, length=4, maxLength=3"},
 		{"too short", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeString, MinLength: boundsInt(3)}, "ab", "STRING_TOO_SHORT:n, length=2, minLength=3"},
-		{"length of the trimmed value", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeNonEmptyString, MinLength: boundsInt(3)}, "  ab  ", "STRING_TOO_SHORT:n, length=2"},
+		{"length of the string as sent", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeNonEmptyString, MaxLength: boundsInt(3)}, "abc ", "STRING_TOO_LONG:n, length=4"},
+		{"pattern on the string as sent", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeNonEmptyString, Pattern: `^\S+$`}, " a", "STRING_DOES_NOT_MATCH_PATTERN"},
 		{"length of a date as sent", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeDate, MaxLength: boundsInt(9)}, "2026-10-08", "STRING_TOO_LONG:n, length=10"},
 		{"pattern matches", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeString, Pattern: "^[A-Z]{2}[0-9]+$"}, "AB12", ""},
 		{"pattern is a search", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeString, Pattern: "[0-9]"}, "ab1c", ""},
@@ -281,6 +315,16 @@ func TestValidateChecksBounds(t *testing.T) {
 			[]any{map[string]any{"a": 1.0, "b": "x"}, map[string]any{"b": "x", "a": 1.0}}, "ARRAY_ITEMS_NOT_UNIQUE:n[1]"},
 		{"const holds", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeInt64, Const: boundsConst(int64(7))}, "7", ""},
 		{"const differs", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeString, Const: boundsConst("member")}, "Member", "VALUE_NOT_CONST:n, const=member"},
+		{"const on a float", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeFloat64, Const: boundsConst(int64(1000000))}, float64(1000000), ""},
+		{"const on an integer from a float", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeInt64, Const: boundsConst(1e6)}, "1000000", ""},
+		{"const on a float differs", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeFloat64, Const: boundsConst(0.5)}, 0.25, "VALUE_NOT_CONST:n=0.25"},
+		{"const on a date", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeDate, Const: boundsConst("2026-01-01")}, "2026-01-01", ""},
+		{"const on money as sent", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeMoney, Const: boundsConst("12.50")}, "12.50", ""},
+		{"const on money differs in text", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeMoney, Const: boundsConst("12.5")}, "12.50", "VALUE_NOT_CONST"},
+		{"const on a boolean holds", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeBoolean, Const: boundsConst(true)}, true, ""},
+		{"const on a boolean differs", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeBoolean, Const: boundsConst(true)}, false, "VALUE_NOT_CONST:n=false"},
+		{"NaN bound is a declaration error", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeFloat64, Maximum: boundsFloat(math.NaN())}, 1.0, "INVALID_BOUND_DECLARED"},
+		{"infinite multipleOf is a declaration error", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeFloat64, MultipleOf: boundsFloat(math.Inf(1))}, 1.0, "INVALID_BOUND_DECLARED"},
 		{"no bounds", DXAPIEndPointParameter{Type: dxlibTypes.APIParameterTypeString}, "anything", ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {

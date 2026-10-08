@@ -281,7 +281,7 @@ func openAPIParameterFromSchema(name string, s *DXOpenAPISchema, isMustExist boo
 		p.Type = t
 	}
 
-	if err := openAPIBoundsFromSchema(s, &p, pointer); err != nil {
+	if err := openAPIBoundsFromSchema(s, &p, r, pointer); err != nil {
 		return p, err
 	}
 

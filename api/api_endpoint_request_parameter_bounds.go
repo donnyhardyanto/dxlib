@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
+	"math"
 	"regexp"
 	"sync"
 	"unicode/utf8"
@@ -19,6 +19,8 @@ import (
 //
 // A refusal names the parameter's path and the bound, never the string value
 // itself: a string parameter may carry a secret.
+// A bound is compared with the value of its own JSON type: a number in
+// decimal, a string and a boolean exactly.
 func (aeprpv *DXAPIEndPointRequestParameterValue) validateBounds(nameIdPath string) error {
 	m := aeprpv.Metadata
 	switch openAPITypeTable[m.Type].jsonType {
@@ -27,32 +29,52 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateBounds(nameIdPath stri
 		if !ok {
 			return nil
 		}
-		if m.Minimum != nil && d.LessThan(decimal.NewFromFloat(*m.Minimum)) {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_BELOW_MINIMUM:%s=%v, minimum=%v", nameIdPath, aeprpv.Value, *m.Minimum)
-		}
-		if m.ExclusiveMinimum != nil && d.LessThanOrEqual(decimal.NewFromFloat(*m.ExclusiveMinimum)) {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_ABOVE_EXCLUSIVE_MINIMUM:%s=%v, exclusiveMinimum=%v", nameIdPath, aeprpv.Value, *m.ExclusiveMinimum)
-		}
-		if m.Maximum != nil && d.GreaterThan(decimal.NewFromFloat(*m.Maximum)) {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_ABOVE_MAXIMUM:%s=%v, maximum=%v", nameIdPath, aeprpv.Value, *m.Maximum)
-		}
-		if m.ExclusiveMaximum != nil && d.GreaterThanOrEqual(decimal.NewFromFloat(*m.ExclusiveMaximum)) {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_BELOW_EXCLUSIVE_MAXIMUM:%s=%v, exclusiveMaximum=%v", nameIdPath, aeprpv.Value, *m.ExclusiveMaximum)
+		for _, c := range []struct {
+			bound   *float64
+			refused func(d, b decimal.Decimal) bool
+			code    string
+			name    string
+		}{
+			{m.Minimum, decimal.Decimal.LessThan, "VALUE_BELOW_MINIMUM", "minimum"},
+			{m.ExclusiveMinimum, decimal.Decimal.LessThanOrEqual, "VALUE_NOT_ABOVE_EXCLUSIVE_MINIMUM", "exclusiveMinimum"},
+			{m.Maximum, decimal.Decimal.GreaterThan, "VALUE_ABOVE_MAXIMUM", "maximum"},
+			{m.ExclusiveMaximum, decimal.Decimal.GreaterThanOrEqual, "VALUE_NOT_BELOW_EXCLUSIVE_MAXIMUM", "exclusiveMaximum"},
+		} {
+			if c.bound == nil {
+				continue
+			}
+			b, ok := boundsDecimalOfBound(*c.bound)
+			if !ok {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_BOUND_DECLARED:%s, %s=%v", nameIdPath, c.name, *c.bound)
+			}
+			if c.refused(d, b) {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("%s:%s=%v, %s=%v", c.code, nameIdPath, aeprpv.Value, c.name, *c.bound)
+			}
 		}
 		// In decimal, not float: 0.3 is a multiple of 0.1 here, as a reader
 		// of the document expects, and not by math.Mod.
-		if m.MultipleOf != nil && *m.MultipleOf > 0 && !d.Mod(decimal.NewFromFloat(*m.MultipleOf)).IsZero() {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_MULTIPLE_OF:%s=%v, multipleOf=%v", nameIdPath, aeprpv.Value, *m.MultipleOf)
+		if m.MultipleOf != nil {
+			b, ok := boundsDecimalOfBound(*m.MultipleOf)
+			if !ok || !b.IsPositive() {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_BOUND_DECLARED:%s, multipleOf=%v", nameIdPath, *m.MultipleOf)
+			}
+			if !d.Mod(b).IsZero() {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_MULTIPLE_OF:%s=%v, multipleOf=%v", nameIdPath, aeprpv.Value, *m.MultipleOf)
+			}
+		}
+		if m.Const != nil {
+			c, ok := boundsDecimal(*m.Const)
+			if !ok || !d.Equal(c) {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_CONST:%s=%v, const=%v", nameIdPath, aeprpv.Value, *m.Const)
+			}
 		}
 	case "string":
-		// The string the handler receives: trimmed for the non-empty types.
-		// The date and time types resolve to a time.Time, so their bounds
-		// apply to the string that was sent.
-		s, ok := aeprpv.Value.(string)
+		// The string as sent, as JSON Schema reads it: untrimmed for the
+		// non-empty types, the text of a date or a money amount rather than
+		// the time.Time or decimal it resolves to.
+		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			if s, ok = aeprpv.RawValue.(string); !ok {
-				return nil
-			}
+			return nil
 		}
 		n := utf8.RuneCountInString(s)
 		if m.MinLength != nil && n < *m.MinLength {
@@ -68,6 +90,18 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateBounds(nameIdPath stri
 			}
 			if !re.MatchString(s) {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf("STRING_DOES_NOT_MATCH_PATTERN:%s, pattern=%s", nameIdPath, m.Pattern)
+			}
+		}
+		if m.Const != nil {
+			if c, ok := (*m.Const).(string); !ok || s != c {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_CONST:%s, const=%v", nameIdPath, *m.Const)
+			}
+		}
+	case "boolean":
+		if m.Const != nil {
+			v, ok := aeprpv.Value.(bool)
+			if c, isBool := (*m.Const).(bool); !ok || !isBool || v != c {
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_CONST:%s=%v, const=%v", nameIdPath, aeprpv.Value, *m.Const)
 			}
 		}
 	case "array":
@@ -96,17 +130,17 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateBounds(nameIdPath stri
 				seen[string(b)] = i
 			}
 		}
-		return nil
-	default:
-		return nil
-	}
-	if m.Const != nil && aeprpv.Value != nil {
-		// Compared by formatted text, as Enum members are, but exactly.
-		if fmt.Sprintf("%v", aeprpv.Value) != fmt.Sprintf("%v", *m.Const) {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_CONST:%s, const=%v", nameIdPath, *m.Const)
-		}
 	}
 	return nil
+}
+
+// boundsDecimalOfBound reads a declared bound; NaN and the infinities have no
+// decimal and are a broken declaration, not a client error.
+func boundsDecimalOfBound(f float64) (decimal.Decimal, bool) {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return decimal.Decimal{}, false
+	}
+	return decimal.NewFromFloat(f), true
 }
 
 // boundsDecimal reads a resolved numeric value exactly.
@@ -117,9 +151,14 @@ func boundsDecimal(v any) (decimal.Decimal, bool) {
 	case int32:
 		return decimal.NewFromInt32(x), true
 	case float64:
-		return decimal.NewFromFloat(x), true
+		return boundsDecimalOfBound(x)
 	case float32:
+		if math.IsNaN(float64(x)) || math.IsInf(float64(x), 0) {
+			return decimal.Decimal{}, false
+		}
 		return decimal.NewFromFloat32(x), true
+	case int:
+		return decimal.NewFromInt(int64(x)), true
 	case decimal.Decimal:
 		return x, true
 	}
