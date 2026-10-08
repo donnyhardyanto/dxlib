@@ -45,7 +45,7 @@ func TestDecryptedDumpMasksNestedFields(t *testing.T) {
 			t.Errorf("dump carries %q in clear:\n%s", raw, dump)
 		}
 	}
-	for _, masked := range []string{"B*** S***", "3175****01", "bu***@ma***.com", "********", "-6.91", "107.61", "S*** A***", "3175****10", "9007199254740993"} {
+	for _, masked := range []string{"B*** S***", "3175***01", "b***@ma***.com", "********", "-6.91", "107.61", "S*** A***", "3175***10", "9007199254740993"} {
 		if !strings.Contains(dump, masked) {
 			t.Errorf("dump should carry %q:\n%s", masked, dump)
 		}

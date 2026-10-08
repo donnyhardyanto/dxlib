@@ -28,11 +28,11 @@ func TestMaskForLog_HostRulesApplyAtEveryDepth(t *testing.T) {
 	out := MaskForLog(in)
 
 	applicant := out["params"].(JSON)["applicant"].(JSON)
-	if got := applicant["full_name"]; got != "B****" {
-		t.Errorf("depth-3 PII rule: got %v, want B****", got)
+	if got := applicant["full_name"]; got != "B***" {
+		t.Errorf("depth-3 PII rule: got %v, want B***", got)
 	}
-	if got := applicant["national_id"]; got != "3175****01" {
-		t.Errorf("depth-3 PII rule: got %v, want 3175****01", got)
+	if got := applicant["national_id"]; got != "3175***01" {
+		t.Errorf("depth-3 PII rule: got %v, want 3175***01", got)
 	}
 	if got := applicant["password"]; got != "********" {
 		t.Errorf("depth-3 credential: got %v, want ********", got)
@@ -42,11 +42,11 @@ func TestMaskForLog_HostRulesApplyAtEveryDepth(t *testing.T) {
 	}
 
 	relatives := out["params"].(JSON)["relatives"].([]any)
-	if got := relatives[0].(JSON)["national_id"]; got != "3175****10" {
-		t.Errorf("object inside array: got %v, want 3175****10", got)
+	if got := relatives[0].(JSON)["national_id"]; got != "3175***10" {
+		t.Errorf("object inside array: got %v, want 3175***10", got)
 	}
-	if got := relatives[1].(JSON)["full_name"]; got != "********" {
-		t.Errorf("short value under a partial rule must be fully masked: got %v", got)
+	if got := relatives[1].(JSON)["full_name"]; got != "A***" {
+		t.Errorf("short value under a partial rule keeps only its first rune: got %v", got)
 	}
 	if got := relatives[1].(JSON)["api_token"]; got != "********" {
 		t.Errorf("credential inside array: got %v, want ********", got)
@@ -71,7 +71,7 @@ func TestMaskForLog_ArrayElementsTakeTheArraysKey(t *testing.T) {
 	})
 
 	phones := out["phone_numbers"].([]any)
-	if phones[0] != "081****90" || phones[1] != "********" {
+	if phones[0] != "081***90" || phones[1] != "0***" {
 		t.Errorf("array leaves should be masked under the array's key: got %v", phones)
 	}
 	notes := out["notes"].([]any)
@@ -107,8 +107,8 @@ func TestMaskForLog_ArrayUnderARuleKeyMasksEachElement(t *testing.T) {
 		"addresses": []any{"Jl. Merdeka 1, Bandung", JSON{"street": "Jl. Merdeka 1"}},
 	})
 	got := out["addresses"].([]any)
-	if got[0] != "Jl****ng" || got[1] != "********" {
-		t.Errorf("got %v, want [Jl****ng ********]", got)
+	if got[0] != "Jl***ng" || got[1] != "********" {
+		t.Errorf("got %v, want [Jl***ng ********]", got)
 	}
 }
 
@@ -152,7 +152,7 @@ func TestMaskForLog_TypedSliceOfObjects(t *testing.T) {
 		"rows": []map[string]any{{"national_id": "3175012345678901"}},
 	})
 	rows := out["rows"].([]any)
-	if got := rows[0].(JSON)["national_id"]; got != "3175****01" {
+	if got := rows[0].(JSON)["national_id"]; got != "3175***01" {
 		t.Errorf("[]map[string]any should be walked: got %v", got)
 	}
 }

@@ -25,12 +25,12 @@ func TestMaskKind_Email(t *testing.T) {
 	SetMaskRules(kindRules())
 
 	cases := map[string]any{
-		"adi.darma@dana.co.id": "ad***@da***.id",
-		"budi@mail.com":        "bu***@ma***.com",
-		"a@b.co":               "a***@b***.co",
-		"üñí@dömain.de":        "üñ***@dö***.de",
-		"not-an-email":         "********",
-		"":                     "********",
+		"adi.darma@example.co.id": "ad***ma@ex***.co.id",
+		"budi@mail.com":           "b***@ma***.com",
+		"a@b.co":                  "a***@b***.co",
+		"üñíçø@dömain.com":        "üñ***çø@dö***.com",
+		"not-an-email":            "***",
+		"":                        "***",
 	}
 	for in, want := range cases {
 		if got := MaskSensitiveValue("email", in); got != want {
@@ -120,7 +120,7 @@ func TestMaskKind_ReachDepthThreeUnderParams(t *testing.T) {
 	out := MaskForLog(JSON{
 		"params": JSON{
 			"applicant": JSON{
-				"email":     "adi.darma@dana.co.id",
+				"email":     "adi.darma@example.co.id",
 				"full_name": "Budi Santoso",
 				"latitude":  -6.914744,
 				"longitude": json.Number("107.609810"),
@@ -132,14 +132,14 @@ func TestMaskKind_ReachDepthThreeUnderParams(t *testing.T) {
 	})
 
 	applicant := out["params"].(JSON)["applicant"].(JSON)
-	want := JSON{"email": "ad***@da***.id", "full_name": "B*** S***", "latitude": -6.91, "longitude": 107.61}
+	want := JSON{"email": "ad***ma@ex***.co.id", "full_name": "B*** S***", "latitude": -6.91, "longitude": 107.61}
 	for k, w := range want {
 		if applicant[k] != w {
 			t.Errorf("depth-3 %s: got %v, want %v", k, applicant[k], w)
 		}
 	}
 	relative := out["params"].(JSON)["relatives"].([]any)[0].(JSON)
-	want = JSON{"email": "si***@ma***.com", "full_name": "S*** A***", "location": "-6.91,107.61"}
+	want = JSON{"email": "s***@ma***.com", "full_name": "S*** A***", "location": "-6.91,107.61"}
 	for k, w := range want {
 		if relative[k] != w {
 			t.Errorf("depth-3 in array %s: got %v, want %v", k, relative[k], w)
@@ -181,7 +181,7 @@ func TestMaskKind_DebugOverrideShowsEveryKindRaw(t *testing.T) {
 func TestMaskKind_ZeroValueIsPartial(t *testing.T) {
 	resetMaskState(t)
 	SetMaskRules(map[string]MaskRule{"nik": {Front: 5, Back: 2}})
-	if got := MaskSensitiveValue("nik", "3175012345678901"); got != "31750****01" {
-		t.Errorf("got %v, want 31750****01", got)
+	if got := MaskSensitiveValue("nik", "3175012345678901"); got != "31750***01" {
+		t.Errorf("got %v, want 31750***01", got)
 	}
 }

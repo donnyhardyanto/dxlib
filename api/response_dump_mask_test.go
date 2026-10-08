@@ -63,7 +63,7 @@ func TestWriteResponseAsJSONDumpsNon200MaskedAtEveryDepth(t *testing.T) {
 	}
 	// Numbers keep every digit: 9007199254740993 is one past what a float64 can hold, and a
 	// numeric field under a PII rule is masked on its digits, not on an exponent form.
-	for _, masked := range []string{"3175****01", "3175****10", "3175****99", "********", "status_code=201", "9007199254740993"} {
+	for _, masked := range []string{"3175***01", "3175***10", "3175***99", "********", "status_code=201", "9007199254740993"} {
 		if !strings.Contains(log, masked) {
 			t.Errorf("log should carry %q:\n%s", masked, log)
 		}

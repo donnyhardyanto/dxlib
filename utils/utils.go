@@ -1444,12 +1444,11 @@ func IsSensitiveField(fieldName string) bool {
 type MaskKind int
 
 const (
-	// MaskKindPartial reveals Front leading and Back trailing characters and masks the middle.
-	// {Front: 0, Back: 0} (or MaskStrict) is the full "********".
+	// MaskKindPartial keeps Front leading and Back trailing characters of the whole value with a
+	// fixed "***" between them (MaskFrontBack). {Front: 0, Back: 0} (or MaskStrict) is the full
+	// "********".
 	MaskKindPartial MaskKind = iota
-	// MaskKindEmail keeps the first two characters of the local part and of the domain and the
-	// top-level domain: "adi.darma@dana.co.id" becomes "ad***@da***.id". A value with no "@"
-	// is fully masked.
+	// MaskKindEmail is MaskEmail2by2: "adinda@mail.example.co.id" becomes "ad***da@ma***.co.id".
 	MaskKindEmail
 	// MaskKindInitials keeps the first letter of each word and masks the rest of it with three
 	// asterisks, three whatever the word's length: "Budi Santoso" becomes "B*** S***". Words
@@ -1463,10 +1462,16 @@ const (
 	// "lng": ..}} is walked rather than masked whole. A value that is not a coordinate is fully
 	// masked.
 	MaskKindLocation
+	// MaskKindNumber is MaskKindPartial for a number written with spaces or dashes: they are
+	// dropped first, so only digits are kept at the ends (MaskNumber).
+	MaskKindNumber
+	// MaskKindRedacted replaces the value with "***REDACTED***", the marker for a secret.
+	MaskKindRedacted
 )
 
-// MaskRule says how a PII field is masked for a log. Front and Back belong to MaskKindPartial;
-// the other kinds ignore them. Build it with keyed fields.
+// MaskRule says how a PII field is masked for a log. Front and Back belong to MaskKindPartial and
+// MaskKindNumber; the other kinds ignore them. Build it with keyed fields, or take a named rule
+// (RuleMask2by2, RuleMaskEmail2by2 and the others in mask_rules.go).
 type MaskRule struct {
 	Front, Back int
 	Kind        MaskKind
@@ -1540,105 +1545,28 @@ func piiRuleFor(fieldName string) (MaskRule, bool) {
 	return best, found
 }
 
-// partialMask keeps r.Front leading + r.Back trailing runes, masking the middle with "****".
-// Short-value guard: if the value can't hide at least 2 chars, it is FULLY masked.
-func partialMask(s string, r MaskRule) string {
-	runes := []rune(s)
-	if r.Front <= 0 && r.Back <= 0 {
-		return "********"
-	}
-	if len(runes) < r.Front+r.Back+2 { // not enough to hide ≥2 chars → full mask
-		return "********"
-	}
-	return string(runes[:r.Front]) + "****" + string(runes[len(runes)-r.Back:])
-}
-
 // applyMaskRule masks one leaf value under rule r, by its kind. MaskStrict wins over every kind.
 func applyMaskRule(value any, r MaskRule) any {
 	if maskStrict {
-		return "********"
+		return maskFull
 	}
 	switch r.Kind {
 	case MaskKindEmail:
-		return maskEmail(fmt.Sprintf("%v", value))
+		return MaskEmail2by2(fmt.Sprintf("%v", value))
 	case MaskKindInitials:
-		return maskInitials(fmt.Sprintf("%v", value))
+		return MaskInitials(fmt.Sprintf("%v", value))
 	case MaskKindLocation:
-		return maskLocation(value)
+		return MaskLocation2Decimals(value)
+	case MaskKindNumber:
+		return MaskNumber(fmt.Sprintf("%v", value), r.Front, r.Back)
+	case MaskKindRedacted:
+		return maskRedacted
 	default:
-		return partialMask(fmt.Sprintf("%v", value), r)
-	}
-}
-
-// maskEmail keeps the first two runes of the local part and of the domain, and the top-level
-// domain: "adi.darma@dana.co.id" → "ad***@da***.id". Without an "@" the value is fully masked.
-func maskEmail(s string) string {
-	at := strings.LastIndex(s, "@")
-	if at < 0 {
-		return "********"
-	}
-	local, domain := s[:at], s[at+1:]
-	tld := ""
-	if dot := strings.LastIndex(domain, "."); dot >= 0 {
-		tld = domain[dot:]
-		domain = domain[:dot]
-	}
-	return firstRunes(local, 2) + "***@" + firstRunes(domain, 2) + "***" + tld
-}
-
-// maskInitials keeps the first rune of each word followed by a fixed "***": "Budi Santoso"
-// → "B*** S***". The rest of the word, however long, is three asterisks, so the mask gives
-// away neither the word nor its length. An empty or all-whitespace value is fully masked.
-func maskInitials(s string) string {
-	words := strings.Fields(s)
-	if len(words) == 0 {
-		return "********"
-	}
-	initials := make([]string, len(words))
-	for i, w := range words {
-		initials[i] = firstRunes(w, 1) + "***"
-	}
-	return strings.Join(initials, " ")
-}
-
-// maskLocation rounds a coordinate to two decimals. A number stays a number (as a float64); a
-// string is read as comma-separated coordinates and rounded term by term, keeping the string
-// form. Anything that is not a coordinate is fully masked.
-func maskLocation(value any) any {
-	switch v := value.(type) {
-	case float64:
-		return roundCoordinate(v)
-	case float32:
-		return roundCoordinate(float64(v))
-	case int:
-		return float64(v)
-	case int32:
-		return float64(v)
-	case int64:
-		return float64(v)
-	case json.Number:
-		f, err := v.Float64()
-		if err != nil {
-			return "********"
+		if r.Front <= 0 && r.Back <= 0 {
+			return maskFull
 		}
-		return roundCoordinate(f)
-	case string:
-		parts := strings.Split(v, ",")
-		for i, p := range parts {
-			f, err := strconv.ParseFloat(strings.TrimSpace(p), 64)
-			if err != nil {
-				return "********"
-			}
-			parts[i] = strconv.FormatFloat(roundCoordinate(f), 'f', 2, 64)
-		}
-		return strings.Join(parts, ",")
-	default:
-		return "********"
+		return MaskFrontBack(fmt.Sprintf("%v", value), r.Front, r.Back)
 	}
-}
-
-func roundCoordinate(f float64) float64 {
-	return math.Round(f*100) / 100
 }
 
 // firstRunes returns the first n runes of s, or all of s when it is shorter.
