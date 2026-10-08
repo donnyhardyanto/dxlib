@@ -100,9 +100,7 @@ func TestNewProblemDetails(t *testing.T) {
 		}
 	})
 	t.Run("no detail and no instance leave the members out", func(t *testing.T) {
-		p := NewProblemDetails(http.StatusBadRequest, utils.JSON{
-			"reason": "X", "reason_message": " ", "detail": "kept?", "instance": "kept?",
-		}, "", "")
+		p := NewProblemDetails(http.StatusBadRequest, utils.JSON{"reason": "X", "reason_message": " "}, "", "")
 		if _, ok := p["detail"]; ok {
 			t.Fatalf("detail = %v, want none", p["detail"])
 		}
@@ -113,10 +111,49 @@ func TestNewProblemDetails(t *testing.T) {
 			t.Fatalf("type = %v, want the bare code with no base", p["type"])
 		}
 	})
-	t.Run("the problem members win over extension members of the same name", func(t *testing.T) {
-		p := NewProblemDetails(http.StatusNotFound, utils.JSON{"reason": "GONE", "type": "x", "title": "x"}, testProblemTypeBaseURI, "")
-		if p["type"] != testProblemTypeBaseURI+"GONE" || p["title"] != "Not Found" {
-			t.Fatalf("got type=%v title=%v", p["type"], p["title"])
+	t.Run("a detail that repeats the status text is left out", func(t *testing.T) {
+		for _, reasonMessage := range []string{"Bad Request", "BAD REQUEST"} {
+			p := NewProblemDetails(http.StatusBadRequest, utils.JSON{"reason": reasonMessage, "reason_message": reasonMessage}, "", "")
+			if _, ok := p["detail"]; ok {
+				t.Fatalf("detail = %v next to title %v, want none", p["detail"], p["title"])
+			}
+		}
+	})
+	t.Run("a status with no text has no title", func(t *testing.T) {
+		p := NewProblemDetails(499, utils.JSON{"reason": "CLIENT_CLOSED"}, "", "")
+		if _, ok := p["title"]; ok {
+			t.Fatalf("title = %q, want none", p["title"])
+		}
+		if p["status"] != 499 {
+			t.Fatalf("status = %v", p["status"])
+		}
+	})
+	t.Run("a reason_message that is not a string is kept", func(t *testing.T) {
+		p := NewProblemDetails(http.StatusUnprocessableEntity, utils.JSON{"reason": "X", "reason_message": utils.JSON{"field": "name"}}, "", "")
+		if _, ok := p["reason_message"].(utils.JSON); !ok {
+			t.Fatalf("reason_message = %v, want it kept as an extension member", p["reason_message"])
+		}
+		if _, ok := p["detail"]; ok {
+			t.Fatalf("detail = %v, want none", p["detail"])
+		}
+	})
+	t.Run("a handler's own problem members are kept", func(t *testing.T) {
+		p := NewProblemDetails(http.StatusUnprocessableEntity, utils.JSON{
+			"reason":         "Unprocessable Entity",
+			"reason_message": "Unprocessable Entity",
+			"type":           "https://example.com/problems/out-of-stock",
+			"title":          "Out of stock",
+			"detail":         utils.JSON{"sku": "A1"},
+			"instance":       "/orders/7",
+		}, testProblemTypeBaseURI, "/probe")
+		if p["type"] != "https://example.com/problems/out-of-stock" || p["title"] != "Out of stock" || p["instance"] != "/orders/7" {
+			t.Fatalf("got %v", p)
+		}
+		if _, ok := p["detail"].(utils.JSON); !ok {
+			t.Fatalf("detail = %v, want the handler's own", p["detail"])
+		}
+		if p["status"] != http.StatusUnprocessableEntity {
+			t.Fatalf("status = %v", p["status"])
 		}
 	})
 }
@@ -235,5 +272,11 @@ func TestProblemDetailsEncryptedSessionFallback(t *testing.T) {
 		aepr, rec := newProblemRequest(true, EndPointTypeHTTPEndToEndEncryptionV2)
 		aepr.WriteResponseAsJSON(http.StatusUnauthorized, nil, utils.JSON{"reason": "PREKEY_NOT_FOUND"})
 		wantProblem(t, rec, http.StatusUnauthorized, testProblemTypeBaseURI+"REFRESH_PREKEY")
+	})
+	t.Run("captcha", func(t *testing.T) {
+		aepr, rec := newProblemRequest(true, EndPointTypeHTTPEndToEndEncryptionV2)
+		aepr.EndPoint.Uri = "/prekey_captcha"
+		aepr.WriteResponseAsJSON(http.StatusUnauthorized, nil, utils.JSON{"reason": "PREKEY_NOT_FOUND"})
+		wantProblem(t, rec, http.StatusUnauthorized, testProblemTypeBaseURI+"REFRESH_CAPTCHA")
 	})
 }

@@ -270,9 +270,7 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 
 	a.EnableBrowserSecurityHeaders = utilsJSON.GetBoolWithDefault(c1, "enable-browser-security-headers", false)
 	a.ProblemDetailsEnabled = utilsJSON.GetBoolWithDefault(c1, "problem-details", false)
-	if problemTypeBaseURI, err := utilsJSON.GetString(c1, "problem-type-base-uri"); err == nil {
-		a.ProblemTypeBaseURI = problemTypeBaseURI
-	}
+	a.ProblemTypeBaseURI, _ = utilsJSON.GetString(c1, "problem-type-base-uri")
 
 	// The tls block. Absent means plaintext, said out loud so that "no TLS" is
 	// a line in the log and not the absence of one. Present means every key in

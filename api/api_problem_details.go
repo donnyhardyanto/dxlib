@@ -61,9 +61,12 @@ func problemType(typeBaseURI string, reason any) string {
 // ({status, status_code, reason, reason_message, ...}) into an RFC 9457
 // problem document: type from reason (see problemType), title from the status
 // text, status as the number, detail from reason_message, and instance when it
-// is not empty. Every other member, such as fields or error_log_ref, is kept
-// as an extension member; a member named like one of the problem members is
-// replaced by it.
+// is not empty. A detail that only repeats the status text, as it does when a
+// refusal names no message of its own, is left out, and so is a title for a
+// status Go has no text for. A body that already carries its own type, title,
+// detail or instance, as a handler that writes a problem document does, keeps
+// it. Every other member, such as fields or error_log_ref, is kept as an
+// extension member, and so is a reason_message that is not a string.
 func NewProblemDetails(statusCode int, body utils.JSON, typeBaseURI string, instance string) utils.JSON {
 	problem := utils.JSON{}
 	for k, v := range body {
@@ -71,18 +74,34 @@ func NewProblemDetails(statusCode int, body utils.JSON, typeBaseURI string, inst
 			problem[k] = v
 		}
 	}
-	problem["type"] = problemType(typeBaseURI, body["reason"])
-	problem["title"] = http.StatusText(statusCode)
-	problem["status"] = statusCode
-	if detail, ok := body["reason_message"].(string); ok && strings.TrimSpace(detail) != "" {
-		problem["detail"] = detail
-	} else {
-		delete(problem, "detail")
+	if own, ok := body["type"].(string); !ok || own == "" {
+		problem["type"] = problemType(typeBaseURI, body["reason"])
 	}
-	if instance != "" {
-		problem["instance"] = instance
-	} else {
-		delete(problem, "instance")
+	if own, ok := body["title"].(string); !ok || own == "" {
+		if title := http.StatusText(statusCode); title != "" {
+			problem["title"] = title
+		} else {
+			delete(problem, "title")
+		}
+	}
+	problem["status"] = statusCode
+	if _, own := body["detail"]; !own {
+		switch reasonMessage := body["reason_message"].(type) {
+		case string:
+			if strings.TrimSpace(reasonMessage) != "" && !strings.EqualFold(reasonMessage, http.StatusText(statusCode)) {
+				problem["detail"] = reasonMessage
+			}
+		case nil:
+		default:
+			problem["reason_message"] = reasonMessage
+		}
+	}
+	if own, ok := body["instance"].(string); !ok || own == "" {
+		if instance != "" {
+			problem["instance"] = instance
+		} else {
+			delete(problem, "instance")
+		}
 	}
 	return problem
 }
@@ -92,7 +111,7 @@ func NewProblemDetails(statusCode int, body utils.JSON, typeBaseURI string, inst
 // shape the API is set to answer with, and the Content-Type it goes with.
 func (aepr *DXAPIEndPointRequest) plainRefusal(statusCode int, body utils.JSON) (utils.JSON, string) {
 	enabled, typeBaseURI := aepr.problemDetailsSetting()
-	if !enabled {
+	if !enabled || statusCode < http.StatusBadRequest {
 		return body, "application/json"
 	}
 	return NewProblemDetails(statusCode, body, typeBaseURI, aepr.problemInstance()), ContentTypeProblemJSON

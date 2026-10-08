@@ -603,12 +603,12 @@ By default a refusal (status 400 and above) is answered as `application/json` wi
 | Problem member | Taken from |
 |---|---|
 | `type` | The base URI and `reason`, when `reason` is a code (upper case letters, digits and underscores), so a client branches on the type's last segment. Otherwise `about:blank`: a refusal written with `WriteResponseAndNewErrorf` and no response message has only the status text as its reason, so its code (`REQUEST_FIELD_VALUE_IS_NOT_STRING:...`) is at the front of `detail` |
-| `title` | The status text, translated like `status` was |
+| `title` | The status text, translated like `status` was; left out for a status Go has no text for |
 | `status` | The status code, as a number |
-| `detail` | `reason_message`, translated like it was; left out when empty |
+| `detail` | `reason_message`, translated like it was; left out when it is empty or only repeats the status text, as it does for a refusal that names no message of its own |
 | `instance` | The request path, without its query string |
 
-`status_code`, `reason` and `reason_message` are not sent; every other member (`fields`, `error_log_ref`, anything a handler put in its refusal) is kept as an extension member. `NewProblemDetails(statusCode, body, typeBaseURI, instance)` does the same conversion for a caller that builds its own answer. Success bodies are not changed. An encrypted endpoint (V2, V3, V4) whose keys are gone answers `REFRESH_PREKEY`, `REFRESH_CAPTCHA` or `REFRESH_SESSION` in plain JSON, and with the setting on that answer is a problem document too. An encrypted answer keeps its outer envelope and Content-Type as before; the problem document and its Content-Type travel inside the envelope.
+`status_code`, `reason` and a string `reason_message` are not sent; every other member (`fields`, `error_log_ref`, anything a handler put in its refusal) is kept as an extension member. A handler that writes its own `type`, `title`, `detail` or `instance` keeps them; `status` is always the status code. `NewProblemDetails(statusCode, body, typeBaseURI, instance)` does the same conversion for a caller that builds its own answer. Success bodies are not changed. An encrypted endpoint (V2, V3, V4) whose keys are gone answers `REFRESH_PREKEY`, `REFRESH_CAPTCHA` or `REFRESH_SESSION` in plain JSON, and with the setting on that answer is a problem document too, untranslated as before. An encrypted answer keeps its outer envelope and Content-Type as before; the problem document and its Content-Type travel inside the envelope.
 
 ### Types
 
