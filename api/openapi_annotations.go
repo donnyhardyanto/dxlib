@@ -2,13 +2,14 @@ package api
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/donnyhardyanto/dxlib/errors"
 )
 
 // The JSON Schema annotations a parameter carries: title, default, readOnly
 // and writeOnly. Unlike the bounds they promise no check, so they are carried
-// both ways and never enforced: Validate ignores them, a default is not filled
+// both ways and never enforced: request validation ignores them, a default is not filled
 // in, and a writeOnly value is not stripped from a response. What is refused
 // is only what no reader could make sense of: a default that is not a value of
 // the parameter's own JSON type, a null or non-scalar default, and readOnly
@@ -24,7 +25,11 @@ func openAPIAnnotationsFromSchema(s *DXOpenAPISchema, p *DXAPIEndPointParameter,
 		p.Default = &v
 	}
 	if err := p.checkAnnotations(openAPITypeTable[p.Type].jsonType); err != nil {
-		return errors.Wrapf(err, "OPENAPI_AT:%s", pointer)
+		where := pointer
+		if p.Default != nil && !(p.ReadOnly && p.WriteOnly) {
+			where += "/default"
+		}
+		return errors.Wrapf(err, "OPENAPI_AT:%s", where)
 	}
 	return nil
 }
@@ -57,6 +62,12 @@ func (p *DXAPIEndPointParameter) checkAnnotations(jsonType string) error {
 		return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:default-null:%s", p.NameId)
 	default:
 		return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:default-%s:%s", fmt.Sprintf("%T", *p.Default), p.NameId)
+	}
+	if f, ok := (*p.Default).(float64); ok && (math.IsNaN(f) || math.IsInf(f, 0)) {
+		return errors.Errorf("OPENAPI_DEFAULT_NOT_FINITE:%v:%s", f, p.NameId)
+	}
+	if f, ok := (*p.Default).(float32); ok && (math.IsNaN(float64(f)) || math.IsInf(float64(f), 0)) {
+		return errors.Errorf("OPENAPI_DEFAULT_NOT_FINITE:%v:%s", f, p.NameId)
 	}
 	if !openAPIScalarFits(*p.Default, jsonType) {
 		return errors.Errorf("OPENAPI_DEFAULT_OF_ANOTHER_TYPE:%v(%T):ON_%s:%s", *p.Default, *p.Default, jsonType, p.NameId)

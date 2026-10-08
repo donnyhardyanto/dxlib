@@ -1384,6 +1384,8 @@ func (v *openAPIValidator) schema(s *DXOpenAPISchema, pointer string) error {
 	if s.Default != nil {
 		switch (*s.Default).(type) {
 		case string, bool, int, int32, int64, float32, float64:
+		case nil:
+			return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:default-null:%s/default", pointer)
 		default:
 			return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:default-%T:%s/default", *s.Default, pointer)
 		}

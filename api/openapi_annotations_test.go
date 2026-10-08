@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -93,7 +94,7 @@ func TestOpenAPIBindCarriesAnnotations(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), c.want) {
 				t.Fatalf("err = %v, want %s", err, c.want)
 			}
-			if !strings.Contains(err.Error(), "/paths/~1x/get/parameters/0/schema") {
+			if !strings.Contains(err.Error(), "/paths/~1x/get/parameters/0/schema/default") {
 				t.Errorf("error does not point at the schema: %v", err)
 			}
 		})
@@ -172,6 +173,7 @@ func TestOpenAPIEmitRefusesBadAnnotations(t *testing.T) {
 		"string default on an integer": {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeInt64, Default: boundsConst("7")}, "OPENAPI_DEFAULT_OF_ANOTHER_TYPE"},
 		"default on an object":         {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeJSON, Default: boundsConst("{}")}, "OPENAPI_DEFAULT_OF_ANOTHER_TYPE"},
 		"nil default":                  {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeString, Default: boundsConst(nil)}, "OPENAPI_UNSUPPORTED_CONSTRUCT:default-null"},
+		"infinite default":             {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeFloat64, Default: boundsConst(math.Inf(1))}, "OPENAPI_DEFAULT_NOT_FINITE"},
 		"slice default":                {DXAPIEndPointParameter{NameId: "a", Type: dxlibTypes.APIParameterTypeArrayString, Default: boundsConst([]string{})}, "OPENAPI_UNSUPPORTED_CONSTRUCT:default-[]string"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -192,7 +194,7 @@ func TestOpenAPIValidateChecksAnnotations(t *testing.T) {
 	}{
 		"readOnly and writeOnly": {&DXOpenAPISchema{Type: DXOpenAPISchemaType{"string"}, ReadOnly: true, WriteOnly: true}, "OPENAPI_READ_ONLY_AND_WRITE_ONLY:/components/schemas/X"},
 		"map default":            {&DXOpenAPISchema{Type: DXOpenAPISchemaType{"object"}, Default: boundsConst(map[string]any{})}, "OPENAPI_UNSUPPORTED_CONSTRUCT:default-map"},
-		"nil default":            {&DXOpenAPISchema{Type: DXOpenAPISchemaType{"string"}, Default: boundsConst(nil)}, "OPENAPI_UNSUPPORTED_CONSTRUCT:default-<nil>"},
+		"nil default":            {&DXOpenAPISchema{Type: DXOpenAPISchemaType{"string"}, Default: boundsConst(nil)}, "OPENAPI_UNSUPPORTED_CONSTRUCT:default-null:/components/schemas/X/default"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			schemas := NewDXOpenAPIOrderedMap[*DXOpenAPISchema]()

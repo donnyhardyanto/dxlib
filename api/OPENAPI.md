@@ -265,7 +265,8 @@ no check, and dxlib applies none of them:
   (`OPENAPI_READ_ONLY_AND_WRITE_ONLY`).
 
 Where a schema becomes no parameter (array `items`, a map's
-`additionalProperties`, a request body object), the annotations are read into
+`additionalProperties`, a request or response body object, a response
+header), the annotations are read into
 the document model and dropped when the endpoints are built, as `description`
 is there. The endpoint's own `Title` is the operation's `summary`, not a
 schema `title`.
@@ -496,7 +497,8 @@ rather than tolerated by a looser comparison:
 - A hand-written `uniqueItems: false` is the default and is not re-emitted,
   and so are `readOnly: false` and `writeOnly: false`.
 - `title`, `default`, `readOnly` and `writeOnly` below a parameter (array
-  `items`, a map's values, a request body object) are dropped on binding,
+  `items`, a map's values, a request or response body object, a response
+  header) are dropped on binding,
   as `description` is there (section 2.4). A `default` written as an
   integral float (`2.0`) re-emits as `2`.
 

@@ -96,7 +96,7 @@ type DXAPIEndPointParameter struct {
 	Const *any
 
 	// The JSON Schema annotations. They describe the parameter to a reader of
-	// the generated document and promise no check: Validate ignores them, a
+	// the generated document and promise no check: request validation ignores them, a
 	// Default is not filled in for a parameter left out, a ReadOnly parameter
 	// is still read from the request (and still required when IsMustExist),
 	// and nothing strips a WriteOnly value from a response. Default is a
