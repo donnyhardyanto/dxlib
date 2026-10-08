@@ -102,7 +102,7 @@ func PrepareArrayArgs(keyValues map[string]any, driverName string) (fieldNames s
 // characters -- which is also PostgreSQL's identifier limit.
 //
 // The dot is there because a per-tenant database is named after an app-instance
-// nameid, and those carry dots in practice (dcc.mareca.vc-development). It is
+// nameid, and those carry dots in practice (demo.example.vc-development). It is
 // safe in every quoted context: a dot is not a delimiter in any of the four
 // engines' identifier quoting, so it cannot end the quoting early. It is NOT
 // safe unquoted in Oracle, where a dot separates schema from object -- which is

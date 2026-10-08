@@ -48,8 +48,8 @@ func newAPIPKI(t *testing.T) *apiPKI {
 	p.serverCert, p.serverKey = tlstest.WriteLeaf(t, p.dir, "server", server)
 	client := p.root.Issue(t, tlstest.LeafOptions{
 		CommonName: "queue-scheduler",
-		DNSNames:   []string{"queue-scheduler.dcc.svc"},
-		URIs:       []string{"spiffe://cluster.local/ns/dcc/sa/queue-scheduler"},
+		DNSNames:   []string{"queue-scheduler.demo.svc"},
+		URIs:       []string{"spiffe://cluster.local/ns/demo/sa/queue-scheduler"},
 	})
 	p.clientCert, p.clientKey = tlstest.WriteLeaf(t, p.dir, "client", client)
 	return p
@@ -63,7 +63,7 @@ func (p *apiPKI) serverBlock(overrides utils.JSON) utils.JSON {
 		"mode":                utilsTLS.ModeMTLS,
 		"ca-trust":            utilsTLS.CATrustCustom,
 		"ca-files":            []string{p.rootFile},
-		"allowed-client-sans": []string{"spiffe://cluster.local/ns/dcc/sa/queue-scheduler"},
+		"allowed-client-sans": []string{"spiffe://cluster.local/ns/demo/sa/queue-scheduler"},
 	}
 	for k, v := range overrides {
 		if v == nil {
@@ -207,10 +207,10 @@ func TestDXAPIServesMTLSAndExposesThePeer(t *testing.T) {
 		t.Fatalf("status %d: %s", resp.StatusCode, resp.BodyAsString())
 	}
 	body := resp.BodyAsString()
-	if !strings.Contains(body, "spiffe://cluster.local/ns/dcc/sa/queue-scheduler") || !strings.Contains(body, `"queue-scheduler"`) {
+	if !strings.Contains(body, "spiffe://cluster.local/ns/demo/sa/queue-scheduler") || !strings.Contains(body, `"queue-scheduler"`) {
 		t.Errorf("the handler did not see the verified peer: %s", body)
 	}
-	if len(audited) == 0 || audited[0] != "spiffe://cluster.local/ns/dcc/sa/queue-scheduler" {
+	if len(audited) == 0 || audited[0] != "spiffe://cluster.local/ns/demo/sa/queue-scheduler" {
 		t.Errorf("audit entry peer identity = %v, want the SPIFFE ID", audited)
 	}
 
@@ -276,7 +276,7 @@ func TestDXAPIWebSocketOverMTLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(reply) != "spiffe://cluster.local/ns/dcc/sa/queue-scheduler:ping" {
+	if string(reply) != "spiffe://cluster.local/ns/demo/sa/queue-scheduler:ping" {
 		t.Errorf("reply %q: the WebSocket request did not carry the peer identity", reply)
 	}
 
@@ -397,7 +397,7 @@ func TestTLSPreflightReportCoversEveryBlock(t *testing.T) {
 	if !ok {
 		t.Errorf("preflight failed:\n%s", report)
 	}
-	for _, want := range []string{"server plain: no tls block", "server secure:", "http-client:", "chains to the configured ca-trust pool: yes", "allowed-client-sans=[spiffe://cluster.local/ns/dcc/sa/queue-scheduler] (enforce)"} {
+	for _, want := range []string{"server plain: no tls block", "server secure:", "http-client:", "chains to the configured ca-trust pool: yes", "allowed-client-sans=[spiffe://cluster.local/ns/demo/sa/queue-scheduler] (enforce)"} {
 		if !strings.Contains(report, want) {
 			t.Errorf("report lacks %q:\n%s", want, report)
 		}

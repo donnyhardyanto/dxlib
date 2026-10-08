@@ -58,7 +58,7 @@ func newMultipartRequestContext(t *testing.T, r *http.Request, params []DXAPIEnd
 }
 
 var multipartParams = []DXAPIEndPointParameter{
-	{NameId: "contactcenter_session_id", Type: dxlibTypes.APIParameterTypeInt64, IsMustExist: true},
+	{NameId: "session_id", Type: dxlibTypes.APIParameterTypeInt64, IsMustExist: true},
 	{NameId: "caption_text", Type: dxlibTypes.APIParameterTypeString, IsMustExist: false},
 }
 
@@ -66,7 +66,7 @@ var multipartParams = []DXAPIEndPointParameter{
 // before the handler ran, which left every file upload endpoint dead.
 func TestMultiPartFormDataResolvesValuePartsAndLeavesTheFile(t *testing.T) {
 	r := newMultipartRequest(t, "/probe", map[string]string{
-		"contactcenter_session_id": "42",
+		"session_id": "42",
 		// All digits, but declared a string: it has to stay text.
 		"caption_text": "12345",
 		// Matches no declared parameter, so it must be dropped rather than bound.
@@ -78,7 +78,7 @@ func TestMultiPartFormDataResolvesValuePartsAndLeavesTheFile(t *testing.T) {
 		t.Fatalf("multipart request rejected: %v", err)
 	}
 
-	_, sessionId, err := aepr.GetParameterValueAsInt64("contactcenter_session_id")
+	_, sessionId, err := aepr.GetParameterValueAsInt64("session_id")
 	if err != nil || sessionId != 42 {
 		t.Fatalf("session id resolved to %v (%v), want 42", sessionId, err)
 	}
@@ -103,15 +103,15 @@ func TestMultiPartFormDataResolvesValuePartsAndLeavesTheFile(t *testing.T) {
 
 // A query string must not be able to supply a body parameter.
 func TestMultiPartFormDataIgnoresTheQueryString(t *testing.T) {
-	r := newMultipartRequest(t, "/probe?contactcenter_session_id=999", map[string]string{
-		"contactcenter_session_id": "42",
+	r := newMultipartRequest(t, "/probe?session_id=999", map[string]string{
+		"session_id": "42",
 	}, false)
 	aepr := newMultipartRequestContext(t, r, multipartParams)
 
 	if err := aepr.preProcessRequestAsMultiPartFormData(); err != nil {
 		t.Fatal(err)
 	}
-	_, sessionId, err := aepr.GetParameterValueAsInt64("contactcenter_session_id")
+	_, sessionId, err := aepr.GetParameterValueAsInt64("session_id")
 	if err != nil || sessionId != 42 {
 		t.Fatalf("session id resolved to %v (%v), want the body value 42", sessionId, err)
 	}
@@ -123,15 +123,15 @@ func TestMultiPartFormDataRejectsMissingMandatoryParameter(t *testing.T) {
 	aepr := newMultipartRequestContext(t, r, multipartParams)
 
 	if err := aepr.preProcessRequestAsMultiPartFormData(); err == nil {
-		t.Fatal("a form with no contactcenter_session_id was accepted")
+		t.Fatal("a form with no session_id was accepted")
 	}
 }
 
 // Past the ceiling the request is refused while it is read, not after.
 func TestMultiPartFormDataRefusesAnOversizeBody(t *testing.T) {
 	r := newMultipartRequest(t, "/probe", map[string]string{
-		"contactcenter_session_id": "42",
-		"caption_text":             string(bytes.Repeat([]byte("x"), 4096)),
+		"session_id":   "42",
+		"caption_text": string(bytes.Repeat([]byte("x"), 4096)),
 	}, true)
 	aepr := newMultipartRequestContext(t, r, multipartParams)
 	aepr.EndPoint.RequestMaxContentLength = 512

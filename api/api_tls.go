@@ -95,7 +95,7 @@ func TLSPreflightReport(dialAddr string) (report string, ok bool) {
 // with OAMCommandConfigurationErrorMethodEmpty; a route that exists only to be
 // called when something is wrong must not itself be the thing that is wrong.
 // This is the shape the services' working ping route uses
-// (service-contact-center-queue-scheduler/module_instance/define_oam_system.go),
+// (a service's module_instance/define_oam_system.go),
 // with only the title, path and handler changed:
 //
 //	oam := dxlibAPI.Manager.APIs["oam"]

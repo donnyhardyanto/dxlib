@@ -14,10 +14,10 @@ import (
 
 func TestValidateDatabaseNameAcceptsTheNamesThisProjectUses(t *testing.T) {
 	for _, name := range []string{
-		"dcc_system",
-		"myorganization1contactcenter",
+		"demo_system",
+		"myorganization1helpdesk",
 		"pushnotification",
-		"dcc_pushnotification",
+		"demo_pushnotification",
 		"postgres",
 		"a",
 		"_leading_underscore",
@@ -27,7 +27,7 @@ func TestValidateDatabaseNameAcceptsTheNamesThisProjectUses(t *testing.T) {
 		"MixedCase123",
 		// A per-tenant database is named after an app-instance nameid, and
 		// those carry dots in practice.
-		"dcc.mareca.vc-development",
+		"demo.example.vc-development",
 		"with.dots.and-hyphens",
 		strings.Repeat("a", 63),
 	} {
@@ -77,13 +77,13 @@ func TestQuoteDatabaseIdentifierPerEngine(t *testing.T) {
 		in     string
 		want   string
 	}{
-		{"postgres", "dcc_system", `"dcc_system"`},
-		{"sqlserver", "dcc_system", "[dcc_system]"},
-		{"mariadb", "dcc_system", "`dcc_system`"},
+		{"postgres", "demo_system", `"demo_system"`},
+		{"sqlserver", "demo_system", "[demo_system]"},
+		{"mariadb", "demo_system", "`demo_system`"},
 		// Oracle folds to upper case before quoting, because its DDL creates
 		// upper-case objects and a quoted lower-case name never resolves.
-		{"oracle", "dcc_system", `"DCC_SYSTEM"`},
-		{"godror", "dcc_system", `"DCC_SYSTEM"`},
+		{"oracle", "demo_system", `"DEMO_SYSTEM"`},
+		{"godror", "demo_system", `"DEMO_SYSTEM"`},
 		{"oracle", "MixedCase", `"MIXEDCASE"`},
 		{"postgres", "MixedCase", `"MixedCase"`},
 	} {
@@ -99,7 +99,7 @@ func TestQuoteDatabaseIdentifierPerEngine(t *testing.T) {
 }
 
 func TestQuoteDatabaseIdentifierRefusesAnUnknownDriver(t *testing.T) {
-	if _, err := quoteDatabaseIdentifier("db2", "dcc_system"); err == nil {
+	if _, err := quoteDatabaseIdentifier("db2", "demo_system"); err == nil {
 		t.Error("an unsupported driver was quoted rather than refused")
 	}
 }
@@ -119,7 +119,7 @@ func TestQuoteDatabaseIdentifierRevalidates(t *testing.T) {
 // stated directly: for every engine, an accepted name produces exactly one
 // balanced quoted token containing no unescaped delimiter.
 func TestQuotedIdentifierCannotEscapeItsQuoting(t *testing.T) {
-	names := []string{"dcc_system", "with-hyphen", "with$dollar", "with#hash", "A", strings.Repeat("z", 63)}
+	names := []string{"demo_system", "with-hyphen", "with$dollar", "with#hash", "A", strings.Repeat("z", 63)}
 	for _, driver := range []string{"postgres", "sqlserver", "mariadb", "oracle"} {
 		var open, close string
 		switch driver {

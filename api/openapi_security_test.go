@@ -145,7 +145,7 @@ func TestUnsupportedSecuritySchemesAreRefusedByName(t *testing.T) {
 func TestSecurityScopesAreRefused(t *testing.T) {
 	doc := `{"openapi":"3.1.0","info":{"title":"t","version":"1"},"paths":{},` +
 		`"components":{"securitySchemes":{"mutualTLS":{"type":"mutualTLS"}}},` +
-		`"security":[{"mutualTLS":["contactcenter-session-list"]}]}`
+		`"security":[{"mutualTLS":["session-list"]}]}`
 	_, err := ReadOpenAPI([]byte(doc))
 	if err == nil {
 		t.Fatal("a scope array was accepted")

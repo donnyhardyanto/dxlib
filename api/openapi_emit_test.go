@@ -71,10 +71,10 @@ func noop(aepr *DXAPIEndPointRequest) error { return nil }
 
 func TestOpenAPIOperationIdIsDerivedFromTheURI(t *testing.T) {
 	for uri, want := range map[string]string{
-		"/cmdContactCenterUserSessionList":    "cmdContactCenterUserSessionList",
-		"/v2/cmdContactCenterUserSessionList": "v2_cmdContactCenterUserSessionList",
-		"/users/{id}":                         "users_id",
-		"/ws":                                 "ws",
+		"/cmdUserSessionList":    "cmdUserSessionList",
+		"/v2/cmdUserSessionList": "v2_cmdUserSessionList",
+		"/users/{id}":            "users_id",
+		"/ws":                    "ws",
 	} {
 		if got := OpenAPIOperationId(uri); got != want {
 			t.Errorf("%s: got %q want %q", uri, got, want)
@@ -103,7 +103,7 @@ func TestOpenAPITypeTableCoversEveryDeclaredType(t *testing.T) {
 
 func TestOpenAPIEmitsAPostWithJSONBodyAsARequestBody(t *testing.T) {
 	a := openAPITestAPI(t, "openapi-emit-post")
-	a.NewEndPoint("cmdRoutingEdit", "contactcenter-routing-edit", "/cmdRoutingEdit", "POST",
+	a.NewEndPoint("cmdRoutingEdit", "routing-edit", "/cmdRoutingEdit", "POST",
 		EndPointTypeHTTPJSON, utilsHttp.RequestContentTypeApplicationJSON,
 		[]DXAPIEndPointParameter{
 			{NameId: "token", Type: dxlibTypes.APIParameterTypeString, IsMustExist: true},
@@ -120,7 +120,7 @@ func TestOpenAPIEmitsAPostWithJSONBodyAsARequestBody(t *testing.T) {
 			}},
 			{NameId: "labels", Type: dxlibTypes.APIParameterTypeMapStringString},
 		},
-		noop, nil, nil, nil, []string{"contactcenter-routing-setup"}, 2048, "writes")
+		noop, nil, nil, nil, []string{"routing-setup"}, 2048, "writes")
 
 	b, err := a.OpenAPIAsJSON()
 	if err != nil {
@@ -131,13 +131,13 @@ func TestOpenAPIEmitsAPostWithJSONBodyAsARequestBody(t *testing.T) {
 		t.Errorf("openapi = %v", got)
 	}
 	op := openAPIProbe(t, doc, "paths", "/cmdRoutingEdit", "post").(map[string]any)
-	if op["operationId"] != "cmdRoutingEdit" || op["summary"] != "cmdRoutingEdit" || op["description"] != "contactcenter-routing-edit" {
+	if op["operationId"] != "cmdRoutingEdit" || op["summary"] != "cmdRoutingEdit" || op["description"] != "routing-edit" {
 		t.Errorf("operation header wrong: %v", op)
 	}
 	if op["x-dxlib-endpoint-type"] != "EndPointTypeHTTPJSON" {
 		t.Errorf("endpoint type = %v", op["x-dxlib-endpoint-type"])
 	}
-	if p, _ := op["x-dxlib-privileges"].([]any); len(p) != 1 || p[0] != "contactcenter-routing-setup" {
+	if p, _ := op["x-dxlib-privileges"].([]any); len(p) != 1 || p[0] != "routing-setup" {
 		t.Errorf("privileges = %v", op["x-dxlib-privileges"])
 	}
 	if op["x-dxlib-rate-limit-group"] != "writes" || op["x-dxlib-max-content-length"] != float64(2048) {

@@ -861,17 +861,17 @@ func TestIntermediateChainIsAccepted(t *testing.T) {
 func TestAllowedClientSANsRejectAtHandshake(t *testing.T) {
 	p := newPKI(t)
 	_, allowedCert, allowedKey := p.clientLeaf(t, "allowed", tlstest.LeafOptions{
-		DNSNames: []string{"queue-scheduler.dcc.svc"},
-		URIs:     []string{"spiffe://cluster.local/ns/dcc/sa/queue-scheduler"},
+		DNSNames: []string{"queue-scheduler.demo.svc"},
+		URIs:     []string{"spiffe://cluster.local/ns/demo/sa/queue-scheduler"},
 	})
-	_, strangerCert, strangerKey := p.clientLeaf(t, "stranger", tlstest.LeafOptions{DNSNames: []string{"stranger.dcc.svc"}})
+	_, strangerCert, strangerKey := p.clientLeaf(t, "stranger", tlstest.LeafOptions{DNSNames: []string{"stranger.demo.svc"}})
 	allowed := mustBuildClient(t, p.clientBlock(allowedCert, allowedKey, nil))
 	stranger := mustBuildClient(t, p.clientBlock(strangerCert, strangerKey, nil))
 
 	var hits atomic.Int32
 	t.Run("enforce", func(t *testing.T) {
 		hits.Store(0)
-		s := mustBuildServer(t, p.serverBlock(utils.JSON{"allowed-client-sans": []string{"spiffe://cluster.local/ns/dcc/sa/queue-scheduler"}}))
+		s := mustBuildServer(t, p.serverBlock(utils.JSON{"allowed-client-sans": []string{"spiffe://cluster.local/ns/demo/sa/queue-scheduler"}}))
 		addr, _, errorLog := startServer(t, s.Config, okHandler(&hits))
 
 		err := handshakeRefusal(t, stranger, addr)
@@ -884,7 +884,7 @@ func TestAllowedClientSANsRejectAtHandshake(t *testing.T) {
 		if class, _ := ClassifyHandshakeError(err); class != HandshakeClassPeerRejectedUs {
 			t.Errorf("client saw class %s, want %s (%v)", class, HandshakeClassPeerRejectedUs, err)
 		}
-		if !errorLog.contains(t, "TLS_PEER_NOT_ALLOWED:stranger.dcc.svc") {
+		if !errorLog.contains(t, "TLS_PEER_NOT_ALLOWED:stranger.demo.svc") {
 			t.Errorf("server error log does not name the refused identity: %v", errorLog.lines)
 		}
 
@@ -898,7 +898,7 @@ func TestAllowedClientSANsRejectAtHandshake(t *testing.T) {
 	})
 
 	t.Run("dns entries match case-insensitively", func(t *testing.T) {
-		s := mustBuildServer(t, p.serverBlock(utils.JSON{"allowed-client-sans": []string{"Queue-Scheduler.DCC.svc"}}))
+		s := mustBuildServer(t, p.serverBlock(utils.JSON{"allowed-client-sans": []string{"Queue-Scheduler.DEMO.svc"}}))
 		addr, _, _ := startServer(t, s.Config, okHandler(nil))
 		if _, err := get(t, httpsClient(allowed), addr); err != nil {
 			t.Errorf("DNS SAN should match case-insensitively: %v", err)
@@ -908,7 +908,7 @@ func TestAllowedClientSANsRejectAtHandshake(t *testing.T) {
 	t.Run("log-only admits and records", func(t *testing.T) {
 		hits.Store(0)
 		s := mustBuildServer(t, p.serverBlock(utils.JSON{
-			"allowed-client-sans":          []string{"spiffe://cluster.local/ns/dcc/sa/queue-scheduler"},
+			"allowed-client-sans":          []string{"spiffe://cluster.local/ns/demo/sa/queue-scheduler"},
 			"allowed-client-sans-log-only": true,
 		}))
 		addr, _, _ := startServer(t, s.Config, okHandler(&hits))
@@ -2064,7 +2064,7 @@ func TestClassifyHandshakeTextByMessage(t *testing.T) {
 		{"remote error: tls: bad certificate", HandshakeClassPeerRejectedUs, "refused our certificate"},
 		{"http: TLS handshake error from 10.0.0.9:51234: tls: client didn't provide a certificate", HandshakeClassNoClientCert, "mode=mtls"},
 		{"remote error: tls: handshake failure", HandshakeClassPolicy, "tls-policy"},
-		{"http: TLS handshake error from 10.0.0.9:51234: TLS_PEER_NOT_ALLOWED:stranger.dcc.svc", HandshakeClassIdentity, "allowed-client-sans"},
+		{"http: TLS handshake error from 10.0.0.9:51234: TLS_PEER_NOT_ALLOWED:stranger.demo.svc", HandshakeClassIdentity, "allowed-client-sans"},
 		{`http: TLS handshake error from 10.0.0.9:51234: TLS_PEER_REVOKED:victim.test:chain[0]="CN=victim":spki-sha256=00`, HandshakeClassRevoked, "deny list"},
 		{"http: TLS handshake error from 10.0.0.9:51234: KEY_TOO_WEAK:RSA-1024", HandshakeClassKeyStrength, "key-strength"},
 		{"http: TLS handshake error from 10.0.0.9:51234: tls: first record does not look like a TLS handshake", HandshakeClassTransport, "plaintext"},

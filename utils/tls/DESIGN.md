@@ -39,13 +39,13 @@ The server side, in configuration:
     "address": "0.0.0.0:58081",
     "tls": {
       "mode":        "mtls",
-      "cert-file":   "/etc/dcc/tls/tls.crt",
-      "key-file":    "/etc/dcc/tls/tls.key",
+      "cert-file":   "/etc/demo/tls/tls.crt",
+      "key-file":    "/etc/demo/tls/tls.key",
       "tls-policy":  "intermediate",
       "ca-trust":    "custom",
-      "ca-files":    ["/etc/dcc/tls/ca.crt"],
-      "deny-file":   "/etc/dcc/tls/deny.json",
-      "allowed-client-sans": ["spiffe://cluster.local/ns/dcc/sa/queue-scheduler"],
+      "ca-files":    ["/etc/demo/tls/ca.crt"],
+      "deny-file":   "/etc/demo/tls/deny.json",
+      "allowed-client-sans": ["spiffe://cluster.local/ns/demo/sa/queue-scheduler"],
       "allowed-client-sans-log-only": true
     }
   },
@@ -58,12 +58,12 @@ The client side:
 ```json
 "http-client": {
   "tls": {
-    "cert-file":  "/etc/dcc/tls/tls.crt",
-    "key-file":   "/etc/dcc/tls/tls.key",
+    "cert-file":  "/etc/demo/tls/tls.crt",
+    "key-file":   "/etc/demo/tls/tls.key",
     "tls-policy": "intermediate",
     "ca-trust":   "custom",
-    "ca-files":   ["/etc/dcc/tls/ca.crt"],
-    "deny-file":  "/etc/dcc/tls/deny.json"
+    "ca-files":   ["/etc/demo/tls/ca.crt"],
+    "deny-file":  "/etc/demo/tls/deny.json"
   }
 }
 ```
@@ -572,7 +572,7 @@ not taken from a summary.
 At every start, one line per side:
 
 ```
-TLS server: mode=mtls cert=... key=... subject="api.test" not-after=2027-09-03T06:35:10Z client-auth=require-and-verify ca-trust=custom ca-certs=1 ca-files=[/etc/dcc/tls/ca.crt] allowed-client-sans=1 entries (log-only) deny-file=/etc/dcc/tls/deny.json deny-in-force=[cipher-suites=CHACHA20] tls-policy=intermediate versions=1.2..1.3 suites-1.2=[TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,...] curves=[X25519MLKEM768,X25519,P-256,P-384] min-rsa-bits=2048 min-ecdsa-bits=256
+TLS server: mode=mtls cert=... key=... subject="api.test" not-after=2027-09-03T06:35:10Z client-auth=require-and-verify ca-trust=custom ca-certs=1 ca-files=[/etc/demo/tls/ca.crt] allowed-client-sans=1 entries (log-only) deny-file=/etc/demo/tls/deny.json deny-in-force=[cipher-suites=CHACHA20] tls-policy=intermediate versions=1.2..1.3 suites-1.2=[TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,...] curves=[X25519MLKEM768,X25519,P-256,P-384] min-rsa-bits=2048 min-ecdsa-bits=256
 ```
 
 `suites-1.2` and `curves` are what is offered after every override and every
@@ -1189,8 +1189,8 @@ Changed:
 | `websocket/client/client.go` (+37/-1) | `NewDialer`, `Dial` -- the file was a 30-line manager stub with no dial code at all, so the WebSocket client call site was created rather than modified |
 | `app/app.go` (+14/-0) | `IsHTTPClientExist`; loads `http-client` before `api` |
 
-Every consumer builds unchanged. The nine modules under
-`digital-contact-center/src/cmd/*` and `src/library/contact-center-common` reach dxlib
+Every consumer builds unchanged. The nine modules of a private multi-service
+application (its service commands and their shared library) reach dxlib
 through `replace` directives, not `go.work` (which does not list it, despite the
 repository's working notes saying otherwise), and all nine compile against the modified
 library with no edit of their own. That is the proof of "additive"; the library's own
@@ -1396,16 +1396,16 @@ certificate, a shared deny-file, OAM plaintext by an explicit word:
       "address": "0.0.0.0:58081",
       "tls": {
         "mode":        "mtls",
-        "cert-file":   "/etc/dcc/tls/tls.crt",
-        "key-file":    "/etc/dcc/tls/tls.key",
+        "cert-file":   "/etc/demo/tls/tls.crt",
+        "key-file":    "/etc/demo/tls/tls.key",
         "tls-policy":  "intermediate",
         "min-version": "1.2",
         "ca-trust":    "custom",
-        "ca-files":    ["/etc/dcc/tls/ca.crt"],
-        "deny-file":   "/etc/dcc/tls/deny.json",
+        "ca-files":    ["/etc/demo/tls/ca.crt"],
+        "deny-file":   "/etc/demo/tls/deny.json",
         "allowed-client-sans": [
-          "spiffe://cluster.local/ns/dcc/sa/queue-scheduler",
-          "spiffe://cluster.local/ns/dcc/sa/push-notification-server"
+          "spiffe://cluster.local/ns/demo/sa/queue-scheduler",
+          "spiffe://cluster.local/ns/demo/sa/push-notification-server"
         ],
         "allowed-client-sans-log-only": true
       }
@@ -1414,12 +1414,12 @@ certificate, a shared deny-file, OAM plaintext by an explicit word:
   },
   "http-client": {
     "tls": {
-      "cert-file":  "/etc/dcc/tls/tls.crt",
-      "key-file":   "/etc/dcc/tls/tls.key",
+      "cert-file":  "/etc/demo/tls/tls.crt",
+      "key-file":   "/etc/demo/tls/tls.key",
       "tls-policy": "intermediate",
       "ca-trust":   "custom",
-      "ca-files":   ["/etc/dcc/tls/ca.crt"],
-      "deny-file":  "/etc/dcc/tls/deny.json"
+      "ca-files":   ["/etc/demo/tls/ca.crt"],
+      "deny-file":  "/etc/demo/tls/deny.json"
     }
   }
 }
@@ -1457,11 +1457,11 @@ refuse PKCS#1 v1.5 certificate signatures:
 ```json
 "tls": {
   "mode":        "mtls",
-  "cert-file":   "/etc/dcc/tls/tls.crt",
-  "key-file":    "/etc/dcc/tls/tls.key",
+  "cert-file":   "/etc/demo/tls/tls.crt",
+  "key-file":    "/etc/demo/tls/tls.key",
   "tls-policy":  "intermediate",
   "ca-trust":    "custom",
-  "ca-files":    ["/etc/dcc/tls/ca.crt"],
+  "ca-files":    ["/etc/demo/tls/ca.crt"],
   "deny-cipher-suites": ["AES-128"],
   "deny-certificate-signature-algorithms": ["SHA256-RSA", "SHA384-RSA", "SHA512-RSA"]
 }
@@ -1472,11 +1472,11 @@ TLS 1.3 only, once every peer is known to speak it:
 ```json
 "tls": {
   "mode":        "mtls",
-  "cert-file":   "/etc/dcc/tls/tls.crt",
-  "key-file":    "/etc/dcc/tls/tls.key",
+  "cert-file":   "/etc/demo/tls/tls.crt",
+  "key-file":    "/etc/demo/tls/tls.key",
   "tls-policy":  "modern",
   "ca-trust":    "custom",
-  "ca-files":    ["/etc/dcc/tls/ca.crt"]
+  "ca-files":    ["/etc/demo/tls/ca.crt"]
 }
 ```
 
@@ -1487,11 +1487,11 @@ warn-logged on every start:
 "tls": {
   "mode":                  "mtls",
   "client-auth-migration": "request",
-  "cert-file":             "/etc/dcc/tls/tls.crt",
-  "key-file":              "/etc/dcc/tls/tls.key",
+  "cert-file":             "/etc/demo/tls/tls.crt",
+  "key-file":              "/etc/demo/tls/tls.key",
   "tls-policy":            "intermediate",
   "ca-trust":              "custom",
-  "ca-files":              ["/etc/dcc/tls/ca.crt"]
+  "ca-files":              ["/etc/demo/tls/ca.crt"]
 }
 ```
 
@@ -1501,8 +1501,8 @@ passthrough, where the browser has no client certificate:
 ```json
 "tls": {
   "mode":        "https",
-  "cert-file":   "/etc/dcc/tls/tls.crt",
-  "key-file":    "/etc/dcc/tls/tls.key",
+  "cert-file":   "/etc/demo/tls/tls.crt",
+  "key-file":    "/etc/demo/tls/tls.key",
   "tls-policy":  "intermediate"
 }
 ```
@@ -1514,7 +1514,7 @@ Outbound to a public upstream as well as internal services:
   "tls": {
     "tls-policy": "intermediate",
     "ca-trust":   "system-and-custom",
-    "ca-files":   ["/etc/dcc/tls/ca.crt"]
+    "ca-files":   ["/etc/demo/tls/ca.crt"]
   }
 }
 ```
@@ -1526,10 +1526,10 @@ force:
 "tls": {
   "enabled":     false,
   "mode":        "mtls",
-  "cert-file":   "/etc/dcc/tls/tls.crt",
-  "key-file":    "/etc/dcc/tls/tls.key",
+  "cert-file":   "/etc/demo/tls/tls.crt",
+  "key-file":    "/etc/demo/tls/tls.key",
   "tls-policy":  "intermediate",
   "ca-trust":    "custom",
-  "ca-files":    ["/etc/dcc/tls/ca.crt"]
+  "ca-files":    ["/etc/demo/tls/ca.crt"]
 }
 ```

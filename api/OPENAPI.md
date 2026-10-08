@@ -37,7 +37,7 @@ api.NewEndPoint("openapi", "OpenAPI document", "/openapi.json", "GET",
 b, err := api.OpenAPIAsJSON()
 
 // Bind a document: the handlers are the FIXED half, the file the FLUID half.
-api.RegisterHandler("cmdContactCenterUserSessionList", handler.SessionList, handler.MiddlewareTokenAuthAndPrivilegeCheck)
+api.RegisterHandler("cmdUserSessionList", handler.SessionList, handler.MiddlewareTokenAuthAndPrivilegeCheck)
 api.RegisterWSHandler("ws", dxlibAPI.DXOpenAPIWSHandler{OnOpen: ws.Open, OnMessage: ws.Message, OnClose: ws.Close})
 err = api.LoadOpenAPIFile("etc/api.openapi.yaml") // fatal on any disagreement
 ```
@@ -121,8 +121,8 @@ round-trip comparison in section 4 rests on.
 
 **operationId** is derived from the URI: the leading slash goes, every other
 slash becomes an underscore, and the braces of a path template are dropped.
-`/cmdContactCenterUserSessionList` is `cmdContactCenterUserSessionList`;
-`/v2/cmdContactCenterUserSessionList` is `v2_cmdContactCenterUserSessionList`,
+`/cmdUserSessionList` is `cmdUserSessionList`;
+`/v2/cmdUserSessionList` is `v2_cmdUserSessionList`,
 which is what keeps a v1 and a v2 form of one command distinct when both carry
 the same `Title`. Handlers register against this id, so the rule is part of the
 contract; two endpoints whose URIs derive to one id are an emission error
@@ -460,8 +460,8 @@ of its range is not rounded through a float.
 
 The correctness argument for the reader and the binder is a round trip over
 real endpoints, not invented ones. `api/testdata/openapi/` holds the emitter's
-output over the endpoint definitions of every service in
-`digital-contact-center`: 105 operations across eight documents, one per API
+output over the endpoint definitions of every service in a private
+multi-service application: 105 operations across eight documents, one per API
 of six services. `TestOpenAPIRoundTripOverTheServiceCorpus` runs three legs
 over each:
 
@@ -595,8 +595,8 @@ does not change them.
 
 ## 6. The corpus and how it was made
 
-The eight documents under `digital-contact-center/src/cmd/<service>/openapi/`
-(`api.openapi.json`, `oam.openapi.json`, `ws_api.openapi.json` as each service
+The eight documents, kept in each service's `openapi/` folder in the private
+application the corpus comes from (section 4) (`api.openapi.json`, `oam.openapi.json`, `ws_api.openapi.json` as each service
 has them) were written by a small program that creates the APIs a service's
 configuration would (`api`, `oam`, `ws_api`), calls the same `Define*`
 functions the service's `main.go` calls, and calls `OpenAPIAsJSON` on each
@@ -703,7 +703,7 @@ WebSocket hooks. A document cannot carry a function, and naming middlewares as
 strings would be a second registry to keep in step with the first.
 
 **The honest size of this.** One OAM API with a handful of endpoints is an
-afternoon. `service-contact-center-api` is 83 operations, and converting it is
+afternoon. The largest API in the corpus is 83 operations, and converting it is
 a real project whose payoff arrives only when a team stops editing Go to change
 a parameter -- so it is worth doing per API, one at a time, with the drift check
 catching every mistake, and not worth doing as a single change. A service may
