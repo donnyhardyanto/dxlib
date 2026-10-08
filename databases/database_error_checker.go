@@ -11,6 +11,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
 	mssql "github.com/microsoft/go-mssqldb"
+	"github.com/sijms/go-ora/v2/network"
 )
 
 // StackTraceError is a custom error type that preserves stack traces
@@ -168,26 +169,33 @@ func IsDuplicateKeyError(err error) bool {
 		return mssqlErr.Number == 2627 || mssqlErr.Number == 2601 // Unique constraint/index violation
 	}
 
-	// Error string pattern matching
+	// Oracle (go-ora)
+	if oraErr, ok := errors.Cause(err).(*network.OracleError); ok {
+		return oraErr.ErrCode == 1 // ORA-00001 unique constraint violated
+	}
+
+	// Error string pattern matching. A bare error number is never matched on
+	// its own: "2601" sits inside PostgreSQL SQLSTATE 42601 (a syntax error) and
+	// any id or amount may carry such digits, so each number is taken only in
+	// the framing its driver prints.
 	errMsg := err.Error()
 
 	// PostgreSQL
 	if strings.Contains(errMsg, "duplicate key") ||
-		strings.Contains(errMsg, "23505") ||
+		strings.Contains(errMsg, "SQLSTATE 23505") ||
 		strings.Contains(errMsg, "violates unique constraint") {
 		return true
 	}
 
 	// MySQL/MariaDB
 	if strings.Contains(errMsg, "Duplicate entry") ||
-		strings.Contains(errMsg, "1062") {
+		strings.Contains(errMsg, "Error 1062 ") {
 		return true
 	}
 
 	// SQL Server
 	if strings.Contains(errMsg, "Violation of UNIQUE KEY constraint") ||
-		strings.Contains(errMsg, "2627") ||
-		strings.Contains(errMsg, "2601") {
+		strings.Contains(errMsg, "Cannot insert duplicate key row") {
 		return true
 	}
 
@@ -198,8 +206,7 @@ func IsDuplicateKeyError(err error) bool {
 	}
 
 	// SQLite
-	if strings.Contains(errMsg, "UNIQUE constraint failed") ||
-		strings.Contains(errMsg, "1555") {
+	if strings.Contains(errMsg, "UNIQUE constraint failed") {
 		return true
 	}
 
@@ -207,6 +214,106 @@ func IsDuplicateKeyError(err error) bool {
 	if strings.Contains(strings.ToLower(errMsg), "duplicate") &&
 		(strings.Contains(strings.ToLower(errMsg), "key") ||
 			strings.Contains(strings.ToLower(errMsg), "unique")) {
+		return true
+	}
+
+	return false
+}
+
+// IsConstraintViolationError detects a row the database refused for a reason
+// other than a duplicate key: a foreign-key, check or not-null violation. Such
+// an error says the request carried a value the schema cannot take, which is
+// the caller's problem, where a duplicate key is a conflict and anything else
+// (a lost connection, a syntax error) is the server's. Checked by driver type
+// first, then by message, in the same way as IsDuplicateKeyError.
+func IsConstraintViolationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if IsDuplicateKeyError(err) {
+		return false
+	}
+
+	cause := errors.Cause(err)
+
+	// PostgreSQL: SQLSTATE class 23 is "integrity constraint violation";
+	// 23505 (unique) is taken above, so what is left is 23503 foreign key,
+	// 23514 check, 23502 not null, 23000 generic, 23P01 exclusion.
+	if pgErr, ok := cause.(*pgconn.PgError); ok {
+		return strings.HasPrefix(pgErr.Code, "23")
+	}
+
+	// MySQL/MariaDB
+	if mariaDbErr, ok := cause.(*mysql.MySQLError); ok {
+		switch mariaDbErr.Number {
+		case 1048, // column cannot be null
+			1216, 1217, // foreign key constraint fails (older servers)
+			1364,       // field has no default value
+			1451, 1452, // foreign key constraint fails
+			3819: // check constraint violated
+			return true
+		}
+		return false
+	}
+
+	// SQL Server: 547 is both FOREIGN KEY and CHECK, 515 is NOT NULL.
+	if mssqlErr, ok := cause.(mssql.Error); ok {
+		return mssqlErr.Number == 547 || mssqlErr.Number == 515
+	}
+
+	// Oracle (go-ora)
+	if oraErr, ok := cause.(*network.OracleError); ok {
+		switch oraErr.ErrCode {
+		case 1400, // cannot insert NULL
+			2290, // check constraint violated
+			2291, // integrity constraint violated - parent key not found
+			2292: // integrity constraint violated - child record found
+			return true
+		}
+		return false
+	}
+
+	// Error string pattern matching
+	errMsg := err.Error()
+
+	// PostgreSQL
+	if strings.Contains(errMsg, "violates foreign key constraint") ||
+		strings.Contains(errMsg, "violates check constraint") ||
+		strings.Contains(errMsg, "violates not-null constraint") ||
+		strings.Contains(errMsg, "SQLSTATE 23503") ||
+		strings.Contains(errMsg, "SQLSTATE 23514") ||
+		strings.Contains(errMsg, "SQLSTATE 23502") {
+		return true
+	}
+
+	// MySQL/MariaDB
+	if strings.Contains(errMsg, "a foreign key constraint fails") ||
+		(strings.Contains(strings.ToLower(errMsg), "constraint") && strings.Contains(errMsg, "is violated")) ||
+		strings.Contains(errMsg, "cannot be null") ||
+		strings.Contains(errMsg, "doesn't have a default value") {
+		return true
+	}
+
+	// SQL Server
+	if strings.Contains(errMsg, "conflicted with the FOREIGN KEY constraint") ||
+		strings.Contains(errMsg, "conflicted with the REFERENCE constraint") ||
+		strings.Contains(errMsg, "conflicted with the CHECK constraint") ||
+		strings.Contains(errMsg, "Cannot insert the value NULL") {
+		return true
+	}
+
+	// Oracle
+	if strings.Contains(errMsg, "ORA-01400") ||
+		strings.Contains(errMsg, "ORA-02290") ||
+		strings.Contains(errMsg, "ORA-02291") ||
+		strings.Contains(errMsg, "ORA-02292") {
+		return true
+	}
+
+	// SQLite
+	if strings.Contains(errMsg, "FOREIGN KEY constraint failed") ||
+		strings.Contains(errMsg, "CHECK constraint failed") ||
+		strings.Contains(errMsg, "NOT NULL constraint failed") {
 		return true
 	}
 

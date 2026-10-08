@@ -91,6 +91,27 @@ func (t *DXRawTable) DoInsert(aepr *api.DXAPIEndPointRequest, data utils.JSON) (
 	return newId, nil
 }
 
+// insertErrorStatusCode picks the status for a failed insert. 409 Conflict is
+// for a duplicate key only. A foreign-key, check or not-null violation means
+// the request carried a value the schema cannot take, so it answers 422 like
+// a parameter PreProcessRequest cannot accept. Everything else (a lost
+// connection, a syntax error, an unknown driver error) is the server's and
+// answers 500.
+func insertErrorStatusCode(err error) int {
+	switch {
+	case databases.IsDuplicateKeyError(err):
+		return http.StatusConflict
+	case databases.IsConstraintViolationError(err):
+		return http.StatusUnprocessableEntity
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func writeInsertError(aepr *api.DXAPIEndPointRequest, err error) {
+	aepr.WriteResponseAsError(insertErrorStatusCode(err), err)
+}
+
 // DoCreate inserts a row and writes API response (suppresses errors)
 func (t *DXRawTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (int64, error) {
 	returningFields := []string{t.FieldNameForRowId}
@@ -100,7 +121,7 @@ func (t *DXRawTable) DoCreate(aepr *api.DXAPIEndPointRequest, data utils.JSON) (
 
 	_, returningValues, err := t.Insert(aepr.Context, &aepr.Log, data, returningFields)
 	if err != nil {
-		aepr.WriteResponseAsError(http.StatusConflict, err)
+		writeInsertError(aepr, err)
 		return 0, nil
 	}
 
