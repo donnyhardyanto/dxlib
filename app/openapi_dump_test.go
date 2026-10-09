@@ -12,7 +12,9 @@ import (
 
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/configuration"
+	"github.com/donnyhardyanto/dxlib/databases/models"
 	"github.com/donnyhardyanto/dxlib/errors"
+	"github.com/donnyhardyanto/dxlib/types"
 	"github.com/donnyhardyanto/dxlib/utils"
 	utilsHttp "github.com/donnyhardyanto/dxlib/utils/http"
 )
@@ -32,11 +34,33 @@ func dumpTestMiddlewareAuth(aepr *api.DXAPIEndPointRequest) error  { return nil 
 func dumpTestMiddlewareAudit(aepr *api.DXAPIEndPointRequest) error { return nil }
 func dumpTestHandler(aepr *api.DXAPIEndPointRequest) error         { return nil }
 
+const (
+	dumpTestCataloguePath   = "service/model"
+	dumpTestCatalogueCommit = "89abcdef0123456789abcdef0123456789abcdef"
+)
+
+// dumpTestModelDB is a one-table model, named so that its file sorts by
+// name: "inventory" is written as inventory.catalogue.json.
+func dumpTestModelDB(name string) *models.ModelDB {
+	db := models.NewModelDB(name, nil)
+	models.NewModelDBTable(models.NewModelDBSchema(db, "public", 1), "items", 1, map[string]*models.ModelDBField{
+		"id":   {Order: 1, Type: types.DataTypeBigSerial, IsPrimaryKey: true},
+		"code": {Order: 2, Type: types.DataTypeString20, IsNotNull: true, IsUnique: true},
+	}, models.ModelDBTDEConfig{})
+	return db
+}
+
 // openAPIDumpChild is the child's service: two APIs from an in-code "api"
-// configuration, a storage configuration that dump mode must not load, and
-// every hook dump mode skips wired to exit.
+// configuration, two data models (one declared before Run, one in OnDefine),
+// a storage configuration that dump mode must not load, and every hook dump
+// mode skips wired to exit.
 func openAPIDumpChild(failDefinition bool) {
 	Set("openapi-dump-child", "child", "child", true, "", "")
+	App.ModelDBs = []*models.ModelDB{dumpTestModelDB("inventory")}
+	App.OnDefine = func() error {
+		App.ModelDBs = append(App.ModelDBs, dumpTestModelDB("archive"))
+		return nil
+	}
 	App.OnDefineConfiguration = func() error {
 		configuration.Manager.NewConfiguration("api", "", "", false, false, utils.JSON{
 			"public": utils.JSON{"address": "127.0.0.1:0"},
@@ -72,7 +96,8 @@ func openAPIDumpChild(failDefinition bool) {
 func runDumpChild(t *testing.T, mode, dir string) (int, string) {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "-test.run=TestNothingMatchesThisName")
-	cmd.Env = append(os.Environ(), runAndExitChildMarker+"="+mode, OpenAPIDumpEnv+"="+dir)
+	cmd.Env = append(os.Environ(), runAndExitChildMarker+"="+mode, OpenAPIDumpEnv+"="+dir,
+		CatalogueDumpPathEnv+"="+dumpTestCataloguePath, CatalogueDumpCommitEnv+"="+dumpTestCatalogueCommit)
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		return 0, string(out)
@@ -107,7 +132,7 @@ func TestOpenAPIDumpWritesEveryAPIAndExits(t *testing.T) {
 		names = append(names, e.Name())
 	}
 	sort.Strings(names)
-	if want := []string{"admin.openapi.json", "public.openapi.json"}; !reflect.DeepEqual(names, want) {
+	if want := []string{"admin.openapi.json", "archive.catalogue.json", "inventory.catalogue.json", "public.openapi.json"}; !reflect.DeepEqual(names, want) {
 		t.Fatalf("files %v, want %v", names, want)
 	}
 
@@ -133,6 +158,20 @@ func TestOpenAPIDumpWritesEveryAPIAndExits(t *testing.T) {
 		t.Errorf("an endpoint with no middlewares carries x-dxlib-middlewares:\n%s", b)
 	}
 
+	// Each model's catalogue is the model's own document, with the path and
+	// commit the environment gave.
+	catalogue, err := os.ReadFile(filepath.Join(dir, "inventory.catalogue.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantCatalogue, err := dumpTestModelDB("inventory").CatalogueAsJSON(dumpTestCataloguePath, dumpTestCatalogueCommit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(catalogue) != string(wantCatalogue) {
+		t.Errorf("inventory.catalogue.json is not the model's catalogue:\n%s", catalogue)
+	}
+
 	// The same service dumped again gives the same bytes.
 	dir2 := filepath.Join(t.TempDir(), "again")
 	if code, out := runDumpChild(t, "openapi-dump", dir2); code != 0 {
@@ -144,6 +183,32 @@ func TestOpenAPIDumpWritesEveryAPIAndExits(t *testing.T) {
 	}
 	if string(b) != string(b2) {
 		t.Errorf("two dumps of one service differ:\n%s\n---\n%s", b, b2)
+	}
+	c2, err := os.ReadFile(filepath.Join(dir2, "inventory.catalogue.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(catalogue) != string(c2) {
+		t.Errorf("two catalogues of one model differ")
+	}
+}
+
+// Two models with one name, or a name that is not a file name, are refused
+// before anything is written.
+func TestDumpRefusesModelNamesThatAreNotFileNames(t *testing.T) {
+	for what, list := range map[string][]*models.ModelDB{
+		"duplicate": {dumpTestModelDB("core"), dumpTestModelDB("core")},
+		"empty":     {dumpTestModelDB("")},
+		"path":      {dumpTestModelDB("../core")},
+		"dot-dot":   {dumpTestModelDB("..")},
+	} {
+		dir := filepath.Join(t.TempDir(), "out")
+		if err := writeDumpDocuments(dir, list, "", ""); err == nil {
+			t.Errorf("%s: accepted", what)
+		}
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			t.Errorf("%s: %s written (stat: %v)", what, dir, err)
+		}
 	}
 }
 

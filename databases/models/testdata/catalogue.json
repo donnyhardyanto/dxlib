@@ -1,0 +1,381 @@
+{
+    "path": "examples/library/model",
+    "enums": [
+    ],
+    "views": [
+        {
+            "name": "author_names",
+            "schema": "public",
+            "materialized": false
+        },
+        {
+            "name": "shelf_count",
+            "schema": "stock",
+            "materialized": false
+        }
+    ],
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "tables": [
+        {
+            "name": "authors",
+            "schema": "public",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "comment": null,
+                    "default": "nextval('authors_id_seq'::regclass)",
+                    "notNull": true,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "name",
+                    "type": "character varying(255)",
+                    "comment": null,
+                    "default": null,
+                    "notNull": true,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "status",
+                    "type": "character varying(50)",
+                    "comment": null,
+                    "default": "'active'::character varying",
+                    "notNull": true,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "is_deleted",
+                    "type": "boolean",
+                    "comment": null,
+                    "default": "false",
+                    "notNull": true,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp with time zone",
+                    "comment": null,
+                    "default": "CURRENT_TIMESTAMP",
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "tags",
+                    "type": "text[]",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "fee",
+                    "type": "numeric(23,4)",
+                    "comment": null,
+                    "default": "0",
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                }
+            ],
+            "comment": null,
+            "indexes": [
+                {
+                    "name": "authors_name_key",
+                    "unique": true,
+                    "primary": false,
+                    "definition": "CREATE UNIQUE INDEX authors_name_key ON public.authors USING btree (name)",
+                    "backsConstraint": true
+                },
+                {
+                    "name": "authors_pkey",
+                    "unique": true,
+                    "primary": true,
+                    "definition": "CREATE UNIQUE INDEX authors_pkey ON public.authors USING btree (id)",
+                    "backsConstraint": true
+                }
+            ],
+            "constraints": [
+                {
+                    "kind": "unique",
+                    "name": "authors_name_key",
+                    "columns": [
+                        "name"
+                    ],
+                    "onDelete": null,
+                    "definition": "UNIQUE (name)",
+                    "referencesTable": null,
+                    "referencesSchema": null,
+                    "referencesColumns": null
+                },
+                {
+                    "kind": "primary",
+                    "name": "authors_pkey",
+                    "columns": [
+                        "id"
+                    ],
+                    "onDelete": null,
+                    "definition": "PRIMARY KEY (id)",
+                    "referencesTable": null,
+                    "referencesSchema": null,
+                    "referencesColumns": null
+                }
+            ]
+        },
+        {
+            "name": "books_t",
+            "schema": "public",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "integer",
+                    "comment": null,
+                    "default": "nextval('books_t_id_seq'::regclass)",
+                    "notNull": true,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "author_id",
+                    "type": "bigint",
+                    "comment": null,
+                    "default": null,
+                    "notNull": true,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "order",
+                    "type": "character varying(20)",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "title",
+                    "type": "character varying(1024)",
+                    "comment": null,
+                    "default": null,
+                    "notNull": true,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "opened_on",
+                    "type": "date",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "opens_at",
+                    "type": "time without time zone",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "meta",
+                    "type": "jsonb",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "cover",
+                    "type": "bytea",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "weight",
+                    "type": "double precision",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                }
+            ],
+            "comment": null,
+            "indexes": [
+                {
+                    "name": "books_t_author_title_idx",
+                    "unique": false,
+                    "primary": false,
+                    "definition": "CREATE INDEX books_t_author_title_idx ON public.books_t USING btree (author_id, title DESC)",
+                    "backsConstraint": false
+                },
+                {
+                    "name": "books_t_order_key",
+                    "unique": true,
+                    "primary": false,
+                    "definition": "CREATE UNIQUE INDEX books_t_order_key ON public.books_t USING btree (\"order\")",
+                    "backsConstraint": true
+                },
+                {
+                    "name": "books_t_pkey",
+                    "unique": true,
+                    "primary": true,
+                    "definition": "CREATE UNIQUE INDEX books_t_pkey ON public.books_t USING btree (id)",
+                    "backsConstraint": true
+                },
+                {
+                    "name": "books_t_title_uidx",
+                    "unique": true,
+                    "primary": false,
+                    "definition": "CREATE UNIQUE INDEX books_t_title_uidx ON public.books_t USING btree (title)",
+                    "backsConstraint": false
+                }
+            ],
+            "constraints": [
+                {
+                    "kind": "foreign",
+                    "name": "books_t_author_id_fkey",
+                    "columns": [
+                        "author_id"
+                    ],
+                    "onDelete": "no action",
+                    "definition": "FOREIGN KEY (author_id) REFERENCES authors(id)",
+                    "referencesTable": "authors",
+                    "referencesSchema": "public",
+                    "referencesColumns": [
+                        "id"
+                    ]
+                },
+                {
+                    "kind": "unique",
+                    "name": "books_t_order_key",
+                    "columns": [
+                        "order"
+                    ],
+                    "onDelete": null,
+                    "definition": "UNIQUE (\"order\")",
+                    "referencesTable": null,
+                    "referencesSchema": null,
+                    "referencesColumns": null
+                },
+                {
+                    "kind": "primary",
+                    "name": "books_t_pkey",
+                    "columns": [
+                        "id"
+                    ],
+                    "onDelete": null,
+                    "definition": "PRIMARY KEY (id)",
+                    "referencesTable": null,
+                    "referencesSchema": null,
+                    "referencesColumns": null
+                }
+            ]
+        },
+        {
+            "name": "shelf_locations_of_the_central_reading_room",
+            "schema": "stock",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "bigint",
+                    "comment": null,
+                    "default": "nextval('stock.shelf_locations_of_the_central_reading_room_id_seq'::regclass)",
+                    "notNull": true,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "author_id",
+                    "type": "bigint",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                },
+                {
+                    "name": "position_label_printed_on_the_tag",
+                    "type": "character varying(100)",
+                    "comment": null,
+                    "default": null,
+                    "notNull": false,
+                    "identity": null,
+                    "generated": null
+                }
+            ],
+            "comment": null,
+            "indexes": [
+                {
+                    "name": "shelf_locations_of_the_centra_position_label_printed_on_the_key",
+                    "unique": true,
+                    "primary": false,
+                    "definition": "CREATE UNIQUE INDEX shelf_locations_of_the_centra_position_label_printed_on_the_key ON stock.shelf_locations_of_the_central_reading_room USING btree (position_label_printed_on_the_tag)",
+                    "backsConstraint": true
+                },
+                {
+                    "name": "shelf_locations_of_the_central_reading_room_pkey",
+                    "unique": true,
+                    "primary": true,
+                    "definition": "CREATE UNIQUE INDEX shelf_locations_of_the_central_reading_room_pkey ON stock.shelf_locations_of_the_central_reading_room USING btree (id)",
+                    "backsConstraint": true
+                }
+            ],
+            "constraints": [
+                {
+                    "kind": "unique",
+                    "name": "shelf_locations_of_the_centra_position_label_printed_on_the_key",
+                    "columns": [
+                        "position_label_printed_on_the_tag"
+                    ],
+                    "onDelete": null,
+                    "definition": "UNIQUE (position_label_printed_on_the_tag)",
+                    "referencesTable": null,
+                    "referencesSchema": null,
+                    "referencesColumns": null
+                },
+                {
+                    "kind": "foreign",
+                    "name": "shelf_locations_of_the_central_reading_room_author_id_fkey",
+                    "columns": [
+                        "author_id"
+                    ],
+                    "onDelete": "no action",
+                    "definition": "FOREIGN KEY (author_id) REFERENCES authors(id)",
+                    "referencesTable": "authors",
+                    "referencesSchema": "public",
+                    "referencesColumns": [
+                        "id"
+                    ]
+                },
+                {
+                    "kind": "primary",
+                    "name": "shelf_locations_of_the_central_reading_room_pkey",
+                    "columns": [
+                        "id"
+                    ],
+                    "onDelete": null,
+                    "definition": "PRIMARY KEY (id)",
+                    "referencesTable": null,
+                    "referencesSchema": null,
+                    "referencesColumns": null
+                }
+            ]
+        }
+    ],
+    "catalogue": "postgresql"
+}

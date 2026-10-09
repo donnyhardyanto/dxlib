@@ -8,6 +8,7 @@ import (
 
 	"github.com/donnyhardyanto/dxlib"
 	"github.com/donnyhardyanto/dxlib/databases"
+	"github.com/donnyhardyanto/dxlib/databases/models"
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/object_storage"
 	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
@@ -85,11 +86,16 @@ type DXApp struct {
 	OnStopping                   DXAppEvent
 	InitVault                    *vault.DXHashicorpVault
 	EncryptionVault              *vault.DXHashicorpVault
+
+	// ModelDBs are the data models the service declares, one per database.
+	// The OpenAPI dump writes each as a catalogue document; see
+	// runOpenAPIDump. Nothing else reads them.
+	ModelDBs []*models.ModelDB
 }
 
 // Run starts the application and returns when it stops. With OpenAPIDumpEnv
-// set it writes the OpenAPI documents instead and ends the process; see
-// runOpenAPIDump.
+// set it writes the OpenAPI documents and the models' catalogues instead and
+// ends the process; see runOpenAPIDump.
 func (a *DXApp) Run() (err error) {
 	if dir := os.Getenv(OpenAPIDumpEnv); dir != "" {
 		a.runOpenAPIDump(dir)

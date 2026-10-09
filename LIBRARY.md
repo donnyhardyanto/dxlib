@@ -483,6 +483,17 @@ Constants: `LevelDefault`, `LevelReadUncommitted`, `LevelReadCommitted`, `LevelW
 |---|---|
 | `Manager` | `var DXDatabaseManager` — Global instance. |
 
+### `databases/models`: the catalogue of a declared model
+
+`ModelDB.CatalogueAsJSON(path, commit string) ([]byte, error)` writes the model as the catalogue document of the PostgreSQL database its DDL makes: the JSON that SpecArch's catalogue query (`tools/catalogue/catalogue.sql`) prints from `pg_catalog` after the DDL is applied, in `jsonb_pretty`'s layout, so a declared model and a live database can be compared with `diff`. `"catalogue"` is `"postgresql"` (`models.CatalogueFormat`); `path` and `commit` are written as given.
+
+- Types are `format_type`'s (`VARCHAR(255)` → `character varying(255)`, `SERIAL` → `integer` with a `nextval(...)` default); keys, their backing indexes and sequences get PostgreSQL's own names (`<table>_pkey`, `<table>_<col>_key`, `<table>_<col>_fkey`), cut to 63 bytes as PostgreSQL cuts them; explicit indexes are written as `pg_get_indexdef` prints them.
+- A literal default gets PostgreSQL's cast (`'active'::character varying`). Any other default, a generated column's expression and a partial index's condition are written as declared, where PostgreSQL may add casts and parentheses.
+- Every foreign key is `on delete no action`, comments are null and `enums` is empty, because the model declares none of them.
+- Tables are listed by schema and name, columns by `Order` and then name, constraints and indexes by name; the same model gives the same bytes. Two primary-key fields in one table, or one table declared twice, are refused, as PostgreSQL would refuse the DDL.
+
+`databases/models/testdata/catalogue.json` was printed by the catalogue query against PostgreSQL 18.6 after the test model's DDL was applied. The test requires the model to write the same bytes; `TestCatalogueFixtureDDL` writes that DDL, so the file can be printed again.
+
 ---
 
 ## `tables`
@@ -768,7 +779,7 @@ Background task scheduler. Tasks run in goroutines managed by `errgroup`. Integr
 
 Application lifecycle orchestrator. One `DXApp` per process. `app.Run()` calls lifecycle hooks in order: `OnDefine` → `OnDefineConfiguration` → load configs → connect databases/redis/api → `OnDefineSetVariables` → `OnDefineAPIEndPoints` → start API/tasks → `OnAfterConfigurationStartAll` → `OnExecute` → wait → `OnStopping` → stop everything.
 
-**OpenAPI dump.** With `DXLIB_OPENAPI_DUMP=<dir>` in the environment (`app.OpenAPIDumpEnv`), `Run` only defines: vault clients created, `OnDefine` → `OnDefineConfiguration` → configuration loaded → APIs created from the `"api"` configuration → `OnDefineAPIEndPoints`. It then writes `<dir>/<NameId>.openapi.json` (`DXAPI.OpenAPIAsJSON`) for every API in `NameId` order and ends the process with status 0, or 1 with the reason logged. Nothing is connected or served, and `OnDefineSetVariables`, `OnStartStorageReady`, `OnAfterConfigurationStartAll` and `OnExecute` do not run. See `api/OPENAPI.md`.
+**OpenAPI dump.** With `DXLIB_OPENAPI_DUMP=<dir>` in the environment (`app.OpenAPIDumpEnv`), `Run` only defines: vault clients created, `OnDefine` → `OnDefineConfiguration` → configuration loaded → APIs created from the `"api"` configuration → `OnDefineAPIEndPoints`. It then writes `<dir>/<NameId>.openapi.json` (`DXAPI.OpenAPIAsJSON`) for every API in `NameId` order, and `<dir>/<Name>.catalogue.json` (`models.ModelDB.CatalogueAsJSON`) for every model in `ModelDBs` in `Name` order, and ends the process with status 0, or 1 with the reason logged. A catalogue's `path` and `commit` come from `DXLIB_CATALOGUE_PATH` and `DXLIB_CATALOGUE_COMMIT` (`app.CatalogueDumpPathEnv`, `app.CatalogueDumpCommitEnv`), `""` when unset. A model is dumped only when `ModelDBs` holds it once `OnDefineAPIEndPoints` has returned: set it before `Run` or in `OnDefine`, `OnDefineConfiguration` or `OnDefineAPIEndPoints`. Nothing is connected or served, and `OnDefineSetVariables`, `OnStartStorageReady`, `OnAfterConfigurationStartAll` and `OnExecute` do not run. See `api/OPENAPI.md`.
 
 ### Types
 
@@ -798,6 +809,7 @@ Application lifecycle orchestrator. One `DXApp` per process. `app.Run()` calls l
 | `OnStopping` | `DXAppEvent` | Called before shutdown; save state here |
 | `InitVault` | `*vault.DXHashicorpVault` | Optional Vault for init-time secrets |
 | `EncryptionVault` | `*vault.DXHashicorpVault` | Optional Vault for encryption keys |
+| `ModelDBs` | `[]*models.ModelDB` | The service's data models, one per database; read only by the OpenAPI dump, which writes each one's catalogue |
 
 | Method | Description |
 |---|---|

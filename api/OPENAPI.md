@@ -662,7 +662,10 @@ own `main` (see `app.OpenAPIDumpEnv`). Run defines the configuration, creates
 the APIs from the `api` configuration, calls `OnDefineAPIEndPoints`, writes
 `<dir>/<NameId>.openapi.json` for every API in `NameId` order, and ends the
 process: status 0 when every file was written, 1 with the reason logged
-otherwise. It connects nothing, opens no listener, starts no task, and skips
+otherwise. The same run writes `<dir>/<Name>.catalogue.json` for every data
+model in `DXApp.ModelDBs`: the model as a PostgreSQL catalogue document
+(`models.ModelDB.CatalogueAsJSON`, see `LIBRARY.md`), with the `path` and
+`commit` that `DXLIB_CATALOGUE_PATH` and `DXLIB_CATALOGUE_COMMIT` give. It connects nothing, opens no listener, starts no task, and skips
 `OnDefineSetVariables`, `OnStartStorageReady`,
 `OnAfterConfigurationStartAll` and `OnExecute`. The `api` configuration is
 applied as on a real start, `tls` block included, because the TLS mode decides
@@ -805,4 +808,4 @@ application's own.
 | `openapi_bind.go` | document + registry → endpoints; the drift check, the mux dry run, the path-parameter middleware, the fatal entry points |
 | `openapi_*_test.go` | the emitter, the refusal table, the round trip over the corpus and over every type, and the bound endpoints served through the real listener |
 | `testdata/openapi/` | the corpus, section 6 |
-| `../app/openapi_dump.go` | `DXLIB_OPENAPI_DUMP`: a `DXApp` service writes every API's document and exits, section 6 |
+| `../app/openapi_dump.go` | `DXLIB_OPENAPI_DUMP`: a `DXApp` service writes every API's document and every model's catalogue, and exits, section 6 |
