@@ -12,7 +12,8 @@ reads one, so none is reachable, and they are accepted in
 `.dependency-allowlist.json` and `.trivyignore` only until 2026-10-23.
 
 The decision: drop excelize and write a small writer of our own, `utils/xlsx`,
-that produces exactly what dxlib produces today and nothing else. It is our own
+that produces what dxlib produces today and nothing else (two deliberate
+encoding fixes aside, §8). It is our own
 code, built on `archive/zip` and hand-written XML, not a copy of excelize.
 
 The public surface of `databases/export` (`ExportFormat`, `ExportOptions`,
@@ -49,8 +50,13 @@ downloaded today contain:
 - truncated to 32,767 UTF-16 code units (`TotalCellChars`) without an error;
 - `xml:space="preserve"` when the value starts or ends with a tab, LF, CR or
   space;
-- a literal `_xHHHH_` in the value escaped as `_x005F_xHHHH_`, so that Excel
-  does not decode it (`bstrMarshal`).
+- a literal `_xHHHH_` left as it is: `setSharedString` builds the `<si>` from
+  the raw value and uses the `bstrMarshal` form only as the dedup key, so
+  Excel shows `_x0041_` as `A`;
+- a character XML 1.0 forbids (U+0001 and the like) replaced with U+FFFD by
+  `encoding/xml`, so it does not survive;
+- CR written as `&#xD;`;
+- an empty value stored as a shared string `""`.
 
 A string is never written as a formula, which is why the XLSX path needs no
 CSV-style formula neutralising (`TestXLSXKeepsRawValue`).
@@ -76,8 +82,8 @@ Searched on 2026-10-09 (Go sources and every other file):
   `// indirect`.
 - `dx-erp` backends (outside its nested `libraries/` copies): no reference.
   excelize is `// indirect` in `src/backends/go.mod` and
-  `src/tools/tool-system0-reset/go.mod`; its nested dxlib copy requires it
-  directly.
+  `src/tools/tool-system0-reset/go.mod`, and in its nested `dxlib_module`
+  copy; its nested `dxlib` copy requires it directly.
 - `dx-service-push-notification`: no reference; `// indirect` in `go.mod`.
 
 So no consumer changes code. Each one loses excelize from its `go.mod` and
@@ -159,7 +165,7 @@ After an error, every later call returns the same error.
 ```go
 xw, err := xlsx.NewWriter(out, xlsx.Options{
 	SheetName:    sheetName,                       // "Sheet1" when empty, as now
-	ColumnWidths: repeat(15, len(rowsInfo.Columns)),
+	ColumnWidths: widths,                          // 15 for each column
 	HeaderStyle:  &xlsx.Style{Bold: true, Center: true, FillRGB: "E0EBF5"},
 })
 // WriteHeader(translated headers), WriteRow(formatValue(...)) per row, Close.
@@ -184,7 +190,14 @@ the whole sheet. Today's caller already holds every row in memory, so this is
 no worse than excelize and needs no temp files.
 
 Column widths go in `<cols>`, which the schema puts before `<sheetData>`;
-that is why they are given in `Options` and not set later.
+that is why they are given in `Options` and not set later. `<cols>` is written
+only when at least one width is non-zero, because the schema requires at least
+one `<col>` in it and Excel offers to repair a file with an empty one; adjacent
+equal widths share one `<col min max>`.
+
+`<dimension>` is left out. The schema also puts it before `<sheetData>`, and the
+row count is not known until `Close`. It is optional and Excel does not need
+it; a placeholder would be wrong for every sheet.
 
 ### 3.4 Shared strings, not inline strings
 
@@ -202,27 +215,32 @@ reads the same everywhere the old one did.
 | `_rels/.rels` | officeDocument → `xl/workbook.xml` |
 | `xl/workbook.xml` | one `<sheet name="…" sheetId="1" r:id="rId1"/>`, name XML-escaped |
 | `xl/_rels/workbook.xml.rels` | rId1 → worksheet, rId2 → styles, rId3 → sharedStrings |
-| `xl/worksheets/sheet1.xml` | `<dimension>`, `<cols>`, `<sheetData>` |
+| `xl/worksheets/sheet1.xml` | `<cols>` (only when a width is set), `<sheetData>` |
 | `xl/styles.xml` | see below |
 | `xl/sharedStrings.xml` | `<sst count uniqueCount>` with one `<si><t>` per string |
 
 `styles.xml` holds the minimum the schema and Excel need: two fonts (default
-Calibri 11, and the same bold), two fills (`none` and `gray125`, which Excel
+Calibri 11, and the same bold, each with an explicit `<color rgb="FF000000"/>`
+and no `<scheme>`, since there is no theme part to point `theme="1"` or
+`minor` at), two fills (`none` and `gray125`, which Excel
 expects at indices 0 and 1) plus one solid fill for the header colour, one
 empty border, the default `cellStyleXfs`/`cellStyles` entry, and two `cellXfs`
 (0 default, 1 header: bold font, solid fill, `<alignment horizontal="center"/>`).
 
-Rows: `<row r="N">` with `<c r="A1" t="s"><v>i</v></c>` per cell. The header
+Rows: `<row r="N">` with `<c r="A1" t="s"><v>i</v></c>` per cell. An empty
+cell is written as a shared string `""`, as excelize does, so every row has
+one `<c>` per column. The header
 row also carries `s="1" customFormat="1"`, and each of its cells `s="1"`, which
 is what `SetRowStyle` produced. Cell references are written out (`r=`) because
 some readers require them.
 
 Left out: `docProps/core.xml`, `docProps/app.xml` and `xl/theme/theme1.xml`.
 None is required by the package rules. Leaving them out keeps the output
-deterministic (no creation time) and smaller. Whether Excel-compatible readers
-accept the file without them is checked, not assumed: the LibreOffice test in
-§6.3 is the proof, and if it fails, `docProps` goes back in with a fixed
-timestamp.
+deterministic (no creation time) and smaller. Excel accepts a package without them. That is
+checked, not assumed: LibreOffice (§6.3) is more lenient than Excel, so it is
+not the proof; one manual open in Excel itself, with no repair prompt, is
+required before step 2 lands. If Excel complains, `docProps` goes back in with
+a fixed timestamp.
 
 Zip entries are deflated and carry a fixed modification time, so the same
 input gives the same entries.
@@ -235,7 +253,7 @@ input gives the same entries.
 |---|---|---|
 | rows per sheet | 1,048,576 (header included) | Excel's sheet size |
 | cells per row | 16,384 (column `XFD`) | Excel's sheet size |
-| sheet name | 1 to 31 UTF-16 units; none of `[ ] : * ? / \`; not starting or ending with `'`; not `History` | Excel's rules for sheet names |
+| sheet name | 1 to 31 UTF-16 units; none of `[ ] : * ? / \`; not starting or ending with `'`; not `History` in any letter case | Excel's rules for sheet names |
 | `ColumnWidths` | at most 16,384 entries, each 0 or in (0, 255] | Excel's column width range |
 | `FillRGB` | exactly six hex digits | |
 | `WriteHeader` | once, before the first `WriteRow` | |
@@ -252,11 +270,15 @@ In this order:
 2. **Length**: a value longer than 32,767 UTF-16 units is cut to 32,767,
    never between the two halves of a surrogate pair. Silent, as today, so an
    export that works now keeps working.
-3. **`_xHHHH_`**: a literal occurrence (HHHH four hex digits) has its leading
-   `_` written as `_x005F_`, so Excel shows it as typed.
+3. **`_xHHHH_`**: every `_` at which `_x[0-9A-Fa-f]{4}_` starts, overlapping
+   matches included, is written as `_x005F_`, so Excel shows the text as
+   typed. Overlaps matter: in `_x0041_x0042_` the middle `_` starts the second
+   sequence, and escaping only non-overlapping matches leaves Excel decoding
+   it. This is a change from today (§1.1), where such text is not escaped.
 4. **Characters XML 1.0 forbids** (U+0000–U+0008, U+000B, U+000C,
    U+000E–U+001F, U+FFFE, U+FFFF) are written as `_xHHHH_` (ECMA-376 Part 1,
    ST_Xstring), so they are never raw in the XML and Excel restores them.
+   Today they become U+FFFD (§1.1); this is a change, and a better one.
 5. **XML escaping**: `&`, `<`, `>` as entities; CR as `&#xD;` so a parser does
    not fold it into LF. Tab and LF stay literal.
 6. **`xml:space="preserve"`** on `<t>` when the value starts or ends with a
@@ -300,19 +322,21 @@ entry.
   refused.
 - Text encoding, table-driven, one case per rule in §5.2: `<>&`, leading and
   trailing whitespace, each forbidden control character, a literal `_x0041_`,
-  invalid UTF-8, CR, a 32,768-unit string, a string whose 32,767th unit is the
+  `_x0041_x0042_` (overlapping), invalid UTF-8, CR, a 32,768-unit string, a string whose 32,767th unit is the
   first half of an emoji.
-- Sheet names: each forbidden character, 31 and 32 units, `'a`, `History`,
-  empty.
+- Sheet names: each forbidden character, 31 and 32 units, `'a`, `History` and
+  `HISTORY`, empty.
 - Limits: the 16,385th cell and the 1,048,577th row are refused (the row test
   writes empty rows into `io.Discard` so it stays fast).
 - State: `WriteHeader` twice, `WriteHeader` after `WriteRow`, any call after
   `Close`, a failing `io.Writer` (the error comes back, no panic).
 - Parts: unzip the output; every part parses with `encoding/xml`; every part
   named in `[Content_Types].xml` and every relationship target exists.
-- Fuzz: `FuzzCellText` writes arbitrary strings, then reads them back through
-  the test parser; the file must parse and each value must equal the expected
-  encoding of its input.
+- Fuzz: `FuzzCellText` writes arbitrary strings and reads them back through
+  the test parser, which decodes `_xHHHH_` (including `_x005F_`) the way Excel
+  does. The file must parse, and each decoded value must equal the input after
+  only the lossy steps: invalid UTF-8 to U+FFFD and truncation to 32,767 units.
+  Comparing against the encoder's own output would prove nothing.
 
 ### 6.2 Round trip
 
@@ -334,16 +358,18 @@ independent reader agreeing with ours. It goes away with the dependency.
 Behind a build tag, `//go:build libreoffice`, so `go test ./...` stays fast and
 needs nothing installed: write a workbook covering every case in §6.1, then
 
-    soffice --headless --convert-to csv --outdir <tmp> <file>.xlsx
+    soffice -env:UserInstallation=file://<tmp>/profile --headless \
+        --convert-to csv --outdir <tmp> <file>.xlsx
 
 and compare the CSV with the expected values. The test looks for `soffice` on
 `PATH` and at `/Applications/LibreOffice.app/Contents/MacOS/soffice`, and skips
-when neither exists. On this Mac it runs as
+when neither exists. Its own profile directory keeps it from failing or hanging
+when another LibreOffice instance is running. Run it as
 
-    heavy-lock dxlib:libreoffice -- go test -tags libreoffice ./utils/xlsx/
+    go test -tags libreoffice ./utils/xlsx/
 
-Opening a file by hand in Excel and Numbers once before the switch-over is
-worth doing and is listed in step 2, but is not automated.
+LibreOffice passing does not mean Excel will open the file without a repair
+prompt. One manual open in Excel is required in step 2 (§4).
 
 ### 6.4 `databases/export`
 
@@ -371,14 +397,19 @@ to land before 2026-10-23, when the advisory acceptance runs out.
    from `.dependency-allowlist.json` and the excelize block from `.trivyignore`.
    SBOM scan and licence check as in `CLAUDE.md`. Update `LIBRARY.md`
    (`tables` and `databases` sections; add `utils/xlsx`). Open one file by hand
-   in Excel or Numbers.
+   in Excel and check there is no repair prompt.
 3. **Tag a dxlib release.** The owner's call (version and when).
 4. **Move the pins** in `dxlib_module` and `dx-service-push-notification` to
    that tag (an item for each of those repos), `go mod tidy`, SBOM scan; their
    indirect excelize goes away.
-5. **dx-erp's nested dxlib copy** (`src/backends/libraries/dxlib`): move it to
-   the tag. An item for dx-erp, which waits while dx-erp is outside the current
-   focus.
+5. **dx-erp's nested copies** (`src/backends/libraries/dxlib` and
+   `dxlib_module`): move them to the tag, in an item for dx-erp.
+
+Steps 1 and 2 clear dxlib itself by 2026-10-23. The other repos carry excelize
+as an indirect dependency until their pins move (steps 4 and 5), and none of
+them records an acceptance of the advisories. So either steps 3 and 4 also land
+before 2026-10-23, or each of those repos records a temporary acceptance until
+its pin moves. dx-erp's step has no date yet and needs one of the two.
 
 ## 8. Decisions worth flagging
 
@@ -390,7 +421,11 @@ to land before 2026-10-23, when the advisory acceptance runs out.
   `[]string`), with its own tests.
 - **Silent truncation at 32,767** units, matching excelize, so the switch does
   not turn a working export into an error.
-- **No `docProps` or theme**, pending the LibreOffice check.
+- **Two encoding changes from today's files**: a literal `_xHHHH_` is escaped
+  and shows as typed (today Excel decodes it), and forbidden control characters
+  survive as `_xHHHH_` (today they become U+FFFD). Cells holding either will
+  read differently after the switch, and more faithfully.
+- **No `docProps` or theme**, pending the manual open in Excel.
 - **Two defects fixed on the way** (§1.4): `SheetName` is honoured, and
   `ExportQueryResults` writes `xlsx`.
 
