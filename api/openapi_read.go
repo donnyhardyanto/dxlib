@@ -490,6 +490,25 @@ func openAPIStringList(parent *openAPINode, pointer, field string) ([]string, er
 	return out, nil
 }
 
+// openAPIMiddlewareList reads x-dxlib-middlewares: a list of non-empty
+// strings. An empty list is what the emitter never writes, so it reads back as
+// nil and the key is omitted again.
+func openAPIMiddlewareList(parent *openAPINode, pointer, field string) ([]string, error) {
+	names, err := openAPIStringList(parent, pointer, field)
+	if err != nil {
+		return nil, err
+	}
+	for i, name := range names {
+		if name == "" {
+			return nil, errors.Errorf("OPENAPI_EMPTY_MIDDLEWARE_NAME:%s/%s/%d", pointer, field, i)
+		}
+	}
+	if len(names) == 0 {
+		return nil, nil
+	}
+	return names, nil
+}
+
 // openAPIScalar turns an enum member into the Go value dxlib compares
 // against. Numbers become int64 when they have no fraction, so an enum of
 // codes stays integral; Validate compares by formatted text anyway.
@@ -677,7 +696,8 @@ func openAPIReadPathItem(n *openAPINode, pointer string) (*DXOpenAPIPathItem, er
 func openAPIReadOperation(n *openAPINode, pointer string) (*DXOpenAPIOperation, error) {
 	if err := openAPIFields(n, pointer, "operationId", "summary", "description", "parameters", "requestBody", "responses",
 		OpenAPIExtensionEndPointType, OpenAPIExtensionPrivileges, OpenAPIExtensionRateLimitGroup,
-		OpenAPIExtensionMaxContentLength, OpenAPIExtensionRequestContentType, OpenAPIExtensionParameters); err != nil {
+		OpenAPIExtensionMaxContentLength, OpenAPIExtensionRequestContentType, OpenAPIExtensionParameters,
+		OpenAPIExtensionMiddlewares); err != nil {
 		return nil, err
 	}
 	op := &DXOpenAPIOperation{}
@@ -717,6 +737,12 @@ func openAPIReadOperation(n *openAPINode, pointer string) (*DXOpenAPIOperation, 
 		return nil, err
 	}
 	if op.Privileges, err = openAPIStringList(n, pointer, OpenAPIExtensionPrivileges); err != nil {
+		return nil, err
+	}
+	// Carried so the document re-emits as read, and checked only for shape:
+	// the names are never matched against the registered chain, which is
+	// what runs.
+	if op.Middlewares, err = openAPIMiddlewareList(n, pointer, OpenAPIExtensionMiddlewares); err != nil {
 		return nil, err
 	}
 	if op.RateLimitGroup, _, err = openAPIString(n, pointer, OpenAPIExtensionRateLimitGroup); err != nil {
@@ -1063,7 +1089,7 @@ func openAPIReadSchema(n *openAPINode, pointer string) (*DXOpenAPISchema, error)
 }
 
 func openAPIReadWebSocketEndPoint(n *openAPINode, pointer string) (*DXOpenAPIWebSocketEndPoint, error) {
-	if err := openAPIFields(n, pointer, "operationId", "path", "method", "summary", "description", "privileges", "rateLimitGroup", "periodicInterval"); err != nil {
+	if err := openAPIFields(n, pointer, "operationId", "path", "method", "summary", "description", "privileges", "rateLimitGroup", "periodicInterval", "middlewares"); err != nil {
 		return nil, err
 	}
 	e := &DXOpenAPIWebSocketEndPoint{}
@@ -1090,6 +1116,9 @@ func openAPIReadWebSocketEndPoint(n *openAPINode, pointer string) (*DXOpenAPIWeb
 		return nil, err
 	}
 	if e.PeriodicInterval, _, err = openAPIString(n, pointer, "periodicInterval"); err != nil {
+		return nil, err
+	}
+	if e.Middlewares, err = openAPIMiddlewareList(n, pointer, "middlewares"); err != nil {
 		return nil, err
 	}
 	return e, nil

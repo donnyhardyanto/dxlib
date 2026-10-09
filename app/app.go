@@ -87,7 +87,13 @@ type DXApp struct {
 	EncryptionVault              *vault.DXHashicorpVault
 }
 
+// Run starts the application and returns when it stops. With OpenAPIDumpEnv
+// set it writes the OpenAPI documents instead and ends the process; see
+// runOpenAPIDump.
 func (a *DXApp) Run() (err error) {
+	if dir := os.Getenv(OpenAPIDumpEnv); dir != "" {
+		a.runOpenAPIDump(dir)
+	}
 
 	if a.InitVault != nil {
 		err = a.InitVault.Start()

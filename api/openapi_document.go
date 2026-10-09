@@ -31,6 +31,7 @@ const (
 
 	OpenAPIExtensionEndPointType       = "x-dxlib-endpoint-type"
 	OpenAPIExtensionPrivileges         = "x-dxlib-privileges"
+	OpenAPIExtensionMiddlewares        = "x-dxlib-middlewares"
 	OpenAPIExtensionRateLimitGroup     = "x-dxlib-rate-limit-group"
 	OpenAPIExtensionMaxContentLength   = "x-dxlib-max-content-length"
 	OpenAPIExtensionRequestContentType = "x-dxlib-request-content-type"
@@ -238,6 +239,11 @@ type DXOpenAPIOperation struct {
 	Privileges       []string `json:"x-dxlib-privileges,omitempty"`
 	RateLimitGroup   string   `json:"x-dxlib-rate-limit-group,omitempty"`
 	MaxContentLength int64    `json:"x-dxlib-max-content-length,omitempty"`
+	// Middlewares names the middleware chain wrapping the handler, in the
+	// order it runs, by Go function name. It is written for a reader of the
+	// document and never bound: the chain is code, registered with the
+	// handler, and that registration is what runs.
+	Middlewares []string `json:"x-dxlib-middlewares,omitempty"`
 	// RequestContentType is written only where the request body cannot carry
 	// it: a GET or DELETE declared with a content type, which dxlib ignores at
 	// request time but which the declaration still holds.
@@ -366,6 +372,9 @@ type DXOpenAPIWebSocketEndPoint struct {
 	// PeriodicInterval is a Go duration string ("5s"); empty means the
 	// library default of thirty seconds.
 	PeriodicInterval string `json:"periodicInterval,omitempty"`
+	// Middlewares is x-dxlib-middlewares for a WebSocket endpoint, under the
+	// unprefixed name this block uses for every field.
+	Middlewares []string `json:"middlewares,omitempty"`
 }
 
 // OpenAPIWebSocketExtensionDescription is written into every emitted

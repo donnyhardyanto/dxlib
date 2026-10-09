@@ -61,6 +61,13 @@ middlewares as strings would be a second registry to keep in step with the
 first. `RegisterHandler` takes the middleware chain in the order `NewEndPoint`
 would, so the chain sits beside the handler it guards.
 
+The emitter does name the chain, for whoever reads the document: each
+operation lists its middlewares' Go function names, in the order they run, in
+`x-dxlib-middlewares` (section 2.6). That list is a report, not a binding. The
+reader keeps it so a document re-emits as read, but `BindOpenAPI` never looks
+it up: the chain registered with the handler is what runs, and what the next
+emission names.
+
 The join is checked at load, both ways, in one message:
 
 ```
@@ -369,6 +376,7 @@ describe what the handler sends.
 |---|---|---|
 | `x-dxlib-endpoint-type` | operation | `EndPointType.String()`, always written so it is read and never defaulted; `EndPointTypeWS` under `paths` is refused, see 2.7 |
 | `x-dxlib-privileges` | operation | `Privileges`; omitted when empty, read back as nil |
+| `x-dxlib-middlewares` | operation | the middleware chain, see below; omitted when empty; never bound |
 | `x-dxlib-rate-limit-group` | operation | `RateLimitGroupNameId`; omitted when empty |
 | `x-dxlib-max-content-length` | operation | `RequestMaxContentLength`; omitted when zero; a negative value is refused |
 | `x-dxlib-request-content-type` | operation | the declared content type of a non-body method, see 2.3; refused beside a `requestBody` |
@@ -376,6 +384,18 @@ describe what the handler sends.
 | `x-dxlib-type` | schema | the exact dxlib parameter type, see 2.4 |
 | `x-dxlib-response-name` | response | the `ResponsePossibilities` key, see 2.5 |
 | `x-dxlib-websocket-endpoints` | document | the WebSocket endpoints, see 2.7 |
+
+`x-dxlib-middlewares` is the endpoint's `Middlewares`, one Go function name
+each, in the order they run, package path included
+(`github.com/acme/svc/handler.MiddlewareTokenAuth`). A method value is named
+without the `-fm` suffix the compiler adds; a closure keeps its `.funcN`
+suffix, which still names the function that built it; a nil entry is left
+out. On a path template bound from a document the binder runs its own
+path-parameter step first; that step is library plumbing and is not listed.
+The names are what the Go runtime reports for the running binary, so they are
+stable from one emission to the next and change only when the code does. The
+reader accepts a list of non-empty strings and carries it; binding ignores it
+(section 1).
 
 Any other `x-dxlib-*` key is an error (`OPENAPI_UNKNOWN_DXLIB_EXTENSION`): a
 misspelled one of ours must not be taken for somebody else's. Any `x-*` key
@@ -407,8 +427,9 @@ ordinary GET to every reader. So they are listed in one top-level extension:
 The description is written into every emitted document so a reader who has
 never seen dxlib learns from the file why the list is where it is. Each entry
 carries `operationId`, `path`, `method`, `summary`, `description`,
-`privileges`, `rateLimitGroup` and `periodicInterval` (a Go duration; absent
-means the library's thirty seconds). An entry binds through
+`privileges`, `rateLimitGroup`, `periodicInterval` (a Go duration; absent
+means the library's thirty seconds) and `middlewares` (as
+`x-dxlib-middlewares` in section 2.6, and likewise never bound). An entry binds through
 `RegisterWSHandler` to the hooks `NewWSEndPoint` takes, or to `OnLoop` for an
 endpoint that runs its own lifecycle.
 
@@ -510,7 +531,10 @@ The edges where the loop is lossy, each deliberate and each asserted in a test
 rather than tolerated by a looser comparison:
 
 - Code: `OnExecute`, `Middlewares` and the WebSocket hooks are not in the
-  document; the registry supplies them (section 1).
+  document; the registry supplies them (section 1). The middlewares are
+  named in `x-dxlib-middlewares`, but binding takes the registered chain, so
+  a bound document re-emits the names of what was registered, not what the
+  file said.
 - WebSocket `Parameters`, `RequestContentType` and `RequestMaxContentLength`
   (section 2.7).
 - An enum written from Go `int` values reads back as `int64`. The bytes are
@@ -631,6 +655,19 @@ non-empty API. Nothing is started and no database is touched. The copies in
 `api/testdata/openapi/` are the test fixture; refresh them from the service
 documents when the definitions change, and the round-trip test's operation
 count with them.
+
+That program is no longer needed for a service built on `DXApp`: running the
+service with `DXLIB_OPENAPI_DUMP=<dir>` does the same thing from the service's
+own `main` (see `app.OpenAPIDumpEnv`). Run defines the configuration, creates
+the APIs from the `api` configuration, calls `OnDefineAPIEndPoints`, writes
+`<dir>/<NameId>.openapi.json` for every API in `NameId` order, and ends the
+process: status 0 when every file was written, 1 with the reason logged
+otherwise. It connects nothing, opens no listener, starts no task, and skips
+`OnDefineSetVariables`, `OnStartStorageReady`,
+`OnAfterConfigurationStartAll` and `OnExecute`. The `api` configuration is
+applied as on a real start, `tls` block included, because the TLS mode decides
+whether the document declares `mutualTLS`; a certificate file the dump cannot
+read fails it the way it would fail the service.
 
 It has to be one binary per service: two services' handler trees in one
 binary register the `postgres` driver twice and panic at init. And
@@ -768,3 +805,4 @@ application's own.
 | `openapi_bind.go` | document + registry → endpoints; the drift check, the mux dry run, the path-parameter middleware, the fatal entry points |
 | `openapi_*_test.go` | the emitter, the refusal table, the round trip over the corpus and over every type, and the bound endpoints served through the real listener |
 | `testdata/openapi/` | the corpus, section 6 |
+| `../app/openapi_dump.go` | `DXLIB_OPENAPI_DUMP`: a `DXApp` service writes every API's document and exits, section 6 |

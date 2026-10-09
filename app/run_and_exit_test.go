@@ -42,6 +42,10 @@ func TestMain(m *testing.M) {
 		Set("run-and-exit-child-ok", "child", "child", false, "", "")
 		App.RunAndExit()
 		os.Exit(0)
+	case "openapi-dump":
+		openAPIDumpChild(false)
+	case "openapi-dump-fails":
+		openAPIDumpChild(true)
 	}
 	os.Exit(m.Run())
 }

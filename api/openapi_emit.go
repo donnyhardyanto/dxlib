@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,7 +20,9 @@ import (
 // where OpenAPI has no place for a fact the fact goes in an x-dxlib-*
 // extension. What is not written is code: OnExecute, the middleware chain and
 // the WebSocket hooks, which a document cannot carry and the handler registry
-// in openapi_bind.go supplies instead.
+// in openapi_bind.go supplies instead. The chain is named, though: each
+// operation lists its middlewares' function names in x-dxlib-middlewares, for
+// a reader of the document. Binding never reads that list back.
 
 // OpenAPIOperationId is the operationId of an endpoint, derived from its URI:
 // the leading slash goes, every other slash becomes an underscore, and the
@@ -108,6 +112,7 @@ func (a *DXAPI) OpenAPIDocument() (*DXOpenAPIDocument, error) {
 		operationId := openAPIEmittedOperationId(state, ep, endPointsOnURI[ep.Uri])
 		if ep.EndPointType == EndPointTypeWS {
 			ws := openAPIWebSocketFromEndPoint(ep, operationId)
+			ws.Middlewares = openAPIMiddlewareNames(ep.Middlewares)
 			if err := claim(ws.OperationId, ep.Uri); err != nil {
 				return nil, err
 			}
@@ -125,6 +130,15 @@ func (a *DXAPI) OpenAPIDocument() (*DXOpenAPIDocument, error) {
 		if err != nil {
 			return nil, err
 		}
+		// A bound path template has the binder's path-parameter middleware in
+		// front of the registered chain (openapi_bind.go). It is the library's
+		// own plumbing, not part of the chain the service wrote, so it is left
+		// out; it is known by position, which the binder fixes, not by name.
+		middlewares := ep.Middlewares
+		if len(pathParameters) > 0 && len(middlewares) > 0 {
+			middlewares = middlewares[1:]
+		}
+		op.Middlewares = openAPIMiddlewareNames(middlewares)
 		if err := claim(op.OperationId, ep.Uri); err != nil {
 			return nil, err
 		}
@@ -165,6 +179,28 @@ func (a *DXAPI) APIHandlerOpenAPI(aepr *DXAPIEndPointRequest) error {
 	}
 	aepr.WriteResponseAsBytes(http.StatusOK, map[string]string{"Content-Type": "application/json"}, b)
 	return nil
+}
+
+// openAPIMiddlewareNames is the x-dxlib-middlewares list: the function name of
+// each middleware, in the order they run. The name is the one the Go runtime
+// gives the function, package path included
+// (github.com/acme/svc/handler.MiddlewareTokenAuth); a method value loses the
+// -fm suffix the compiler adds, and a closure keeps its .funcN suffix, which
+// still names the function that made it. A nil entry is skipped. An empty
+// chain is nil, so the key is omitted.
+func openAPIMiddlewareNames(middlewares []DXAPIEndPointExecuteFunc) []string {
+	var names []string
+	for _, m := range middlewares {
+		if m == nil {
+			continue
+		}
+		f := runtime.FuncForPC(reflect.ValueOf(m).Pointer())
+		if f == nil {
+			continue
+		}
+		names = append(names, strings.TrimSuffix(f.Name(), "-fm"))
+	}
+	return names
 }
 
 // openAPIBodyMethods are the methods for which PreProcessRequest reads a body.

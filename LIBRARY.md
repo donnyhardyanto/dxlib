@@ -768,6 +768,8 @@ Background task scheduler. Tasks run in goroutines managed by `errgroup`. Integr
 
 Application lifecycle orchestrator. One `DXApp` per process. `app.Run()` calls lifecycle hooks in order: `OnDefine` → `OnDefineConfiguration` → load configs → connect databases/redis/api → `OnDefineSetVariables` → `OnDefineAPIEndPoints` → start API/tasks → `OnAfterConfigurationStartAll` → `OnExecute` → wait → `OnStopping` → stop everything.
 
+**OpenAPI dump.** With `DXLIB_OPENAPI_DUMP=<dir>` in the environment (`app.OpenAPIDumpEnv`), `Run` only defines: vault clients created, `OnDefine` → `OnDefineConfiguration` → configuration loaded → APIs created from the `"api"` configuration → `OnDefineAPIEndPoints`. It then writes `<dir>/<NameId>.openapi.json` (`DXAPI.OpenAPIAsJSON`) for every API in `NameId` order and ends the process with status 0, or 1 with the reason logged. Nothing is connected or served, and `OnDefineSetVariables`, `OnStartStorageReady`, `OnAfterConfigurationStartAll` and `OnExecute` do not run. See `api/OPENAPI.md`.
+
 ### Types
 
 **`DXApp`** — The application.
