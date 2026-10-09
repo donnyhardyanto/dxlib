@@ -139,7 +139,8 @@ type Options struct {
 	HeaderStyle  *Style    // applied to the first row written with WriteHeader; nil for none
 }
 
-// NewWriter starts a workbook with one sheet. It writes to w as rows arrive.
+// NewWriter starts a workbook with one sheet. It writes the fixed parts at once
+// (§3.3), so an error from w can come back here, and then the rows as they arrive.
 func NewWriter(w io.Writer, opts Options) (*Writer, error)
 
 // WriteHeader writes the first row, in HeaderStyle. At most once, before any WriteRow.
@@ -178,13 +179,18 @@ xw, err := xlsx.NewWriter(out, xlsx.Options{
 
 The zip entries are written in this order:
 
-1. `xl/worksheets/sheet1.xml`, row by row as `WriteRow` is called;
-2. `xl/sharedStrings.xml`, after `Close`, from the table built while the rows
-   went by;
-3. the fixed parts (§4).
+1. `[Content_Types].xml`, `_rels/.rels`, `xl/workbook.xml`,
+   `xl/_rels/workbook.xml.rels` and `xl/styles.xml`, in `NewWriter`: everything
+   in them (the sheet name, the header style) is known from `Options`;
+2. `xl/worksheets/sheet1.xml`, row by row as `WriteRow` is called;
+3. `xl/sharedStrings.xml`, in `Close`, from the table built while the rows
+   went by. It is the only part that has to follow the sheet.
 
-Zip readers locate parts through the central directory, so the order inside
-the archive does not matter to them. Memory is the shared string table (one
+Random-access readers locate parts through the central directory and do not
+care about the order, but forward-only (streaming) readers read the local
+headers in order and expect the content types, the workbook and the styles
+before the sheet. Writing those first costs nothing, so the order above is
+fixed and a test checks it (§6.1). Memory is the shared string table (one
 copy of each distinct string plus an index map) and the deflate window, not
 the whole sheet. Today's caller already holds every row in memory, so this is
 no worse than excelize and needs no temp files.
@@ -253,7 +259,7 @@ input gives the same entries.
 |---|---|---|
 | rows per sheet | 1,048,576 (header included) | Excel's sheet size |
 | cells per row | 16,384 (column `XFD`) | Excel's sheet size |
-| sheet name | 1 to 31 UTF-16 units; none of `[ ] : * ? / \`; not starting or ending with `'`; not `History` in any letter case | Excel's rules for sheet names |
+| sheet name | 1 to 31 UTF-16 units; none of `[ ] : * ? / \`; no control character (U+0000–U+001F, tab, LF and CR included) and no U+FFFE or U+FFFF; no `_xHHHH_` sequence (§5.2); valid UTF-8; not starting or ending with `'`; not `History` in any letter case | Excel's rules for sheet names; XML attribute-value normalisation would turn tab, LF and CR into spaces |
 | `ColumnWidths` | at most 16,384 entries, each 0 or in (0, 255] | Excel's column width range |
 | `FillRGB` | exactly six hex digits | |
 | `WriteHeader` | once, before the first `WriteRow` | |
@@ -284,8 +290,17 @@ In this order:
 6. **`xml:space="preserve"`** on `<t>` when the value starts or ends with a
    space, tab, LF or CR.
 
-In the sheet name, step 4's characters and the forbidden punctuation are
-refused (§5.1) rather than encoded.
+The sheet name is different: it goes into an attribute
+(`<sheet name="…">` in `workbook.xml`), not element text, and §5.1 refuses
+rather than encodes what it cannot hold. So for the sheet name steps 1 to 4
+and 6 do not apply: invalid UTF-8, every C0 control character (tab, LF and CR
+included, which attribute-value normalisation would turn into spaces) and
+U+FFFE/U+FFFF are errors, and so is a name holding `_x[0-9A-Fa-f]{4}_`: the
+`name` attribute is ST_Xstring too, and rather than rely on whether Excel
+decodes it there, such a name is refused. Step 5 becomes attribute escaping: `&`, `<`, `>`,
+`"` and `'` as entities (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`). `"` and
+`'` are legal in a sheet name (`'` only inside it), so `a"b` and `it's` are
+written, not refused.
 
 Nothing is ever written as a formula or as a bare `<v>` number: a value such as
 `=HYPERLINK("http://x","y")` stays text, which `TestXLSXKeepsRawValue` checks.
@@ -325,7 +340,12 @@ entry.
   `_x0041_x0042_` (overlapping), invalid UTF-8, CR, a 32,768-unit string, a string whose 32,767th unit is the
   first half of an emoji.
 - Sheet names: each forbidden character, 31 and 32 units, `'a`, `History` and
-  `HISTORY`, empty.
+  `HISTORY`, empty, invalid UTF-8, each of U+0000–U+001F (tab, LF and CR among
+  them), U+FFFE, U+FFFF and `a_x0041_` refused; `a"b`, `it's` and `a&b` accepted and read
+  back from `workbook.xml` through `encoding/xml` unchanged.
+- Part order: the zip's local headers, read in order, give `[Content_Types].xml`,
+  `_rels/.rels`, `xl/workbook.xml`, `xl/_rels/workbook.xml.rels`,
+  `xl/styles.xml`, `xl/worksheets/sheet1.xml`, `xl/sharedStrings.xml`.
 - Limits: the 16,385th cell and the 1,048,577th row are refused (the row test
   writes empty rows into `io.Discard` so it stays fast).
 - State: `WriteHeader` twice, `WriteHeader` after `WriteRow`, any call after
