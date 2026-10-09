@@ -259,6 +259,23 @@ func openAPIOperationFromEndPoint(ep *DXAPIEndPoint, operationId string, pathPar
 		}
 	}
 
+	// The idempotency key next, as the header parameter it is, with the
+	// operation naming it so a reader can tell it from any other header.
+	if ep.IdempotencyKey != nil {
+		if err := checkIdempotencyKey(ep, ep.IdempotencyKey); err != nil {
+			return nil, err
+		}
+		s, err := openAPISchemaFromParameter(ep.IdempotencyKey)
+		if err != nil {
+			return nil, errors.Wrapf(err, "OPENAPI_IDEMPOTENCY_KEY:%s", ep.Uri)
+		}
+		op.Parameters = append(op.Parameters, &DXOpenAPIParameter{
+			Name: ep.IdempotencyKey.NameId, In: "header", Description: ep.IdempotencyKey.Description,
+			Required: ep.IdempotencyKey.IsMustExist, Schema: s,
+		})
+		op.IdempotencyKey = ep.IdempotencyKey.NameId
+	}
+
 	contentType, err := openAPIRequestContentTypeName(ep.RequestContentType)
 	if err != nil {
 		return nil, errors.Wrapf(err, "OPENAPI_ENDPOINT:%s", ep.Uri)

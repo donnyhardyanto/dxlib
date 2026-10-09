@@ -697,7 +697,7 @@ func openAPIReadOperation(n *openAPINode, pointer string) (*DXOpenAPIOperation, 
 	if err := openAPIFields(n, pointer, "operationId", "summary", "description", "parameters", "requestBody", "responses",
 		OpenAPIExtensionEndPointType, OpenAPIExtensionPrivileges, OpenAPIExtensionRateLimitGroup,
 		OpenAPIExtensionMaxContentLength, OpenAPIExtensionRequestContentType, OpenAPIExtensionParameters,
-		OpenAPIExtensionMiddlewares); err != nil {
+		OpenAPIExtensionMiddlewares, OpenAPIExtensionIdempotencyKey); err != nil {
 		return nil, err
 	}
 	op := &DXOpenAPIOperation{}
@@ -746,6 +746,9 @@ func openAPIReadOperation(n *openAPINode, pointer string) (*DXOpenAPIOperation, 
 		return nil, err
 	}
 	if op.RateLimitGroup, _, err = openAPIString(n, pointer, OpenAPIExtensionRateLimitGroup); err != nil {
+		return nil, err
+	}
+	if op.IdempotencyKey, _, err = openAPIString(n, pointer, OpenAPIExtensionIdempotencyKey); err != nil {
 		return nil, err
 	}
 	max, err := openAPIInt64(n, pointer, OpenAPIExtensionMaxContentLength)
@@ -1251,7 +1254,13 @@ func (v *openAPIValidator) operation(op *DXOpenAPIOperation, templateNames []str
 				return errors.Errorf("OPENAPI_PATH_PARAMETER_MUST_BE_REQUIRED:%s:%s", p.Name, pPointer)
 			}
 			pathParams[p.Name] = true
-		case "header", "cookie":
+		case "header":
+			// The one header the dialect carries is the idempotency key the
+			// operation names; dxlib reads no other header as a parameter.
+			if op.IdempotencyKey == "" || p.Name != op.IdempotencyKey {
+				return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:parameter-in-header:%s/in:ONLY_THE_%s_HEADER_IS_BOUND", pPointer, OpenAPIExtensionIdempotencyKey)
+			}
+		case "cookie":
 			return errors.Errorf("OPENAPI_UNSUPPORTED_CONSTRUCT:parameter-in-%s:%s/in:ONLY_query_AND_path_ARE_BOUND", p.In, pPointer)
 		default:
 			return errors.Errorf("OPENAPI_BAD_PARAMETER_LOCATION:%q:%s/in", p.In, pPointer)
@@ -1261,6 +1270,24 @@ func (v *openAPIValidator) operation(op *DXOpenAPIOperation, templateNames []str
 		}
 		if err := v.schema(p.Schema, pPointer+"/schema"); err != nil {
 			return err
+		}
+	}
+	if op.IdempotencyKey != "" {
+		kPointer := pointer + "/" + OpenAPIExtensionIdempotencyKey
+		if !openAPIIdempotencyKeyMethods[method] {
+			return errors.Errorf("OPENAPI_IDEMPOTENCY_KEY_ON_%s:%s:RFC_9110_MAKES_%s_IDEMPOTENT_ALREADY", method, kPointer, method)
+		}
+		if !isHTTPHeaderName(op.IdempotencyKey) {
+			return errors.Errorf("OPENAPI_IDEMPOTENCY_KEY_BAD_HEADER_NAME:%q:%s", op.IdempotencyKey, kPointer)
+		}
+		found := false
+		for _, p := range op.Parameters {
+			if p.In == "header" && p.Name == op.IdempotencyKey {
+				found = true
+			}
+		}
+		if !found {
+			return errors.Errorf("OPENAPI_IDEMPOTENCY_KEY_WITHOUT_HEADER_PARAMETER:%s:%s:DECLARE_in=header", op.IdempotencyKey, kPointer)
 		}
 	}
 	for _, name := range templateNames {

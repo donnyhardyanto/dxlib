@@ -365,6 +365,17 @@ func openAPIEndPointFromOperation(a *DXAPI, path, method string, op *DXOpenAPIOp
 			pathParams = append(pathParams, param)
 		case "query":
 			ep.Parameters = append(ep.Parameters, param)
+		case "header":
+			// The validator lets through only the header the operation names
+			// as its idempotency key. It stays out of Parameters, as a path
+			// parameter does: PreProcessRequest reads it from the header.
+			key := param
+			ep.IdempotencyKey = &key
+		}
+	}
+	if ep.IdempotencyKey != nil {
+		if err := checkIdempotencyKey(&ep, ep.IdempotencyKey); err != nil {
+			return ep, nil, errors.Wrapf(err, "OPENAPI_AT:%s/%s", pointer, OpenAPIExtensionIdempotencyKey)
 		}
 	}
 

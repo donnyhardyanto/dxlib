@@ -602,6 +602,8 @@ HTTP API server. Endpoints are registered with parameter definitions and handler
 
 An endpoint is keyed by its method and URI together: `GET /members` and `POST /members` are two endpoints. Registering the same method and URI twice stops the process. `FindEndPoint(method, uri)` returns the endpoint for a method; `FindEndPointByURI(uri)` the first registered on the URI. `OPTIONS` is answered with 200 as before; any other method no endpoint on the URI serves is refused with 405 by the first HTTP endpoint registered there. `api/OPENAPI.md` section 2.2 has the operationId rule for a URI with several methods.
 
+A POST or PATCH endpoint can take an idempotency key, a request header the client fills per request: `SetEndPointIdempotencyKey(method, uri, key)` declares it as a `DXAPIEndPointParameter` whose `NameId` is the header name (`Idempotency-Key`, say), `IsMustExist` whether it is required, `Type` `string` or `non-empty-string` and the string bounds its format. `PreProcessRequest` refuses a required key left out with 400 and a malformed one with 422, and the handler reads it from `aepr.IdempotencyKey`; remembering keys and answering a repeat is the handler's work. The OpenAPI document carries it as an `in: header` parameter named by `x-dxlib-idempotency-key`; `api/OPENAPI.md` section 2.8.
+
 ### Refusal bodies
 
 By default a refusal (status 400 and above) is answered as `application/json` with `{status, status_code, reason, reason_message}`, plus `fields` or `error_log_ref` where the refusal has them. An API can answer with an RFC 9457 problem document (`application/problem+json`) instead. It is off unless turned on, in the API's configuration beside `address` or on the `DXAPI` value:

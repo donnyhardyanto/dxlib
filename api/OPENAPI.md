@@ -123,6 +123,7 @@ round-trip comparison in section 4 rests on.
 | `summary` | `Title` |
 | `description` | `Description` |
 | `parameters`, `requestBody` | `Parameters` and `RequestContentType`, placed by method and content type, see 2.3 |
+| an `in: header` parameter | `IdempotencyKey`, see 2.8 |
 | `responses` | `ResponsePossibilities`, keyed by status code, see 2.5 |
 | `x-dxlib-*` | the rest of the endpoint, see 2.6 |
 
@@ -378,6 +379,7 @@ describe what the handler sends.
 | `x-dxlib-privileges` | operation | `Privileges`; omitted when empty, read back as nil |
 | `x-dxlib-middlewares` | operation | the middleware chain, see below; omitted when empty; never bound |
 | `x-dxlib-rate-limit-group` | operation | `RateLimitGroupNameId`; omitted when empty |
+| `x-dxlib-idempotency-key` | operation | the name of the header parameter that is `IdempotencyKey`, see 2.8; omitted when the endpoint takes none |
 | `x-dxlib-max-content-length` | operation | `RequestMaxContentLength`; omitted when zero; a negative value is refused |
 | `x-dxlib-request-content-type` | operation | the declared content type of a non-body method, see 2.3; refused beside a `requestBody` |
 | `x-dxlib-parameters` | operation | an object schema of the parameters when the body is not the parameter set, see 2.3 |
@@ -439,6 +441,73 @@ is deliberate and tested: `Parameters`, `RequestContentType` and
 endpoint, so none of the three has any effect, and the document says what the
 server does.
 
+### 2.8 Idempotency keys
+
+A POST or a PATCH is not idempotent (RFC 9110 9.2.2): a client that lost the
+answer cannot safely send it again. An endpoint makes the retry safe by
+taking an idempotency key, a request header the client fills with a value of
+its own per request, after the IETF HTTP API working group's Idempotency-Key
+draft. It is declared on the endpoint as a parameter:
+
+```go
+api.NewEndPoint("pay", "Pay an order", "/pay", "POST", ...)
+err := api.SetEndPointIdempotencyKey("POST", "/pay", dxlibAPI.DXAPIEndPointParameter{
+    NameId:      "Idempotency-Key",
+    Type:        dxlibTypes.APIParameterTypeString,
+    IsMustExist: true,
+    Pattern:     `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`,
+    Description: "a UUID the client makes per request",
+})
+```
+
+`NameId` is the header name, which the endpoint chooses; `IsMustExist` says
+whether every request must send it. The format is said with the string
+bounds (`Pattern`, `MinLength`, `MaxLength`, section 2.4), so a UUID key is a
+`string` with a UUID pattern. `SetEndPointIdempotencyKey` sets the field on
+the registered endpoint (`NewEndPoint` returns a copy) and refuses, by name:
+an unknown method and URI; a method other than POST or PATCH, which RFC 9110
+already makes idempotent or safe; a WebSocket endpoint, where
+`PreProcessRequest` never runs; a header name that is not an RFC 9110 token;
+a type other than `string` and `non-empty-string`; `IsNullable`, `Children`,
+`Default` or `Const` (a header is sent or not, and every request carries its
+own key); and bounds or annotations section 2.4 refuses.
+
+The document carries it as the one header parameter of the dialect, after
+the path parameters, with the operation naming it:
+
+```json
+"post": {
+  "operationId": "pay",
+  "parameters": [
+    {"name": "Idempotency-Key", "in": "header", "description": "a UUID the client makes per request", "required": true,
+     "schema": {"type": "string", "pattern": "^[0-9a-f]{8}-...$", "x-dxlib-type": "string"}}
+  ],
+  "x-dxlib-idempotency-key": "Idempotency-Key"
+}
+```
+
+The reader accepts an `in: header` parameter only when the operation's
+`x-dxlib-idempotency-key` names it; any other header is still refused
+(section 3). The extension without its header parameter, on a method other
+than POST or PATCH, or naming something that is not a header name, is
+refused. The binder puts the key in `IdempotencyKey` and not in
+`Parameters`, as it keeps path parameters out of them (5.3), and holds it to
+the same rules as `SetEndPointIdempotencyKey`. The Markdown spec prints it
+under `Idempotency Key (header)`.
+
+The key is checked on every request, in `PreProcessRequest`, before the body
+or the query string is read. A required key that is not sent (or sent empty)
+is refused with 400 `IDEMPOTENCY_KEY_MISSING:<header>`, the status the draft
+gives; a key that does not validate against its declaration is the usual
+422. The handler reads the checked value from `aepr.IdempotencyKey`, `""`
+when the endpoint takes none or an optional key was left out. What the draft
+asks beyond that is the handler's, because it needs the service's own store
+and its own idea of the same request: remembering the keys used, answering a
+repeat as the first request was answered, and refusing a key reused for
+another request (422) or still in flight (409). The library does not claim
+it in the document either: the extension says the endpoint takes a key, and
+nothing more.
+
 ## 3. What the reader refuses, and why
 
 The failure this design exists to prevent is a construct quietly skipped in a
@@ -484,8 +553,9 @@ Beyond the walker, `Validate` checks what a single node cannot show: the
 version is `3.1.x` (3.0 uses a different schema dialect and is refused rather
 than half-read); every `operationId` is present and unique across `paths` and
 the WebSocket list; every `{name}` in a path has an `in: path` parameter and
-every path parameter has a segment; `in` is `query` or `path` (`header` and
-`cookie` are not bound); a request body has exactly one media type and it is
+every path parameter has a segment; `in` is `query` or `path`, or `header` for
+the one parameter `x-dxlib-idempotency-key` names (section 2.8; no other
+header and no `cookie` is bound); a request body has exactly one media type and it is
 one dxlib reads; response codes are three digits; every `required` name is a
 property; every `$ref` resolves; `type` is one JSON Schema type plus an
 optional `"null"`; `format` is one the emitter writes. `Validate` runs in
@@ -584,8 +654,8 @@ anyway.
 
 For each operation, a `DXAPIEndPoint` with `Uri`, `Method`, `EndPointType`,
 `RequestContentType`, `Parameters` (built through the mapping in 2.4),
-`ResponsePossibilities`, `Privileges`, `RequestMaxContentLength` and
-`RateLimitGroupNameId` from the document, `OnExecute` and `Middlewares` from
+`ResponsePossibilities`, `Privileges`, `RequestMaxContentLength`,
+`RateLimitGroupNameId` and `IdempotencyKey` from the document, `OnExecute` and `Middlewares` from
 the registration, and `Owner` set. A method and URI already registered on the
 API, by `NewEndPoint` or by an earlier entry in the same document, is an error
 before anything is appended; `NewEndPoint` would have found it too, with a
@@ -806,6 +876,7 @@ application's own.
 | `openapi_emit.go` | endpoints → document; `OpenAPIDocument`, `OpenAPIAsJSON`, `APIHandlerOpenAPI`, `OpenAPIOperationId` |
 | `openapi_read.go` | file → document; the two parsers, the strict walker, `Validate` |
 | `openapi_bind.go` | document + registry → endpoints; the drift check, the mux dry run, the path-parameter middleware, the fatal entry points |
+| `api_endpoint_idempotency.go` | the idempotency key: `SetEndPointIdempotencyKey`, its rules, and the check on each request, section 2.8 |
 | `openapi_*_test.go` | the emitter, the refusal table, the round trip over the corpus and over every type, and the bound endpoints served through the real listener |
 | `testdata/openapi/` | the corpus, section 6 |
 | `../app/openapi_dump.go` | `DXLIB_OPENAPI_DUMP`: a `DXApp` service writes every API's document and every model's catalogue, and exits, section 6 |

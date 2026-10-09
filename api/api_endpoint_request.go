@@ -74,6 +74,10 @@ type DXAPIEndPointRequest struct {
 	// else first DNS SAN, else first IP SAN, else CN); "" when PeerCertificate
 	// is nil. It is what the audit log carries.
 	PeerIdentity string
+	// IdempotencyKey is the value of the endpoint's idempotency key header,
+	// checked against its declaration; "" when the endpoint takes none or the
+	// request did not send an optional one.
+	IdempotencyKey string
 }
 
 func (aepr *DXAPIEndPointRequest) GetParameterValues() (r utils.JSON) {
@@ -968,6 +972,9 @@ func (aepr *DXAPIEndPointRequest) PreProcessRequest() (err error) {
 			return nil
 		}
 		return aepr.WriteResponseAndNewErrorf(http.StatusMethodNotAllowed, "", "METHOD_NOT_ALLOWED:%s!=%s", aepr.Request.Method, aepr.EndPoint.Method)
+	}
+	if err := aepr.readIdempotencyKey(); err != nil {
+		return err
 	}
 	xVar := aepr.Request.Header.Get("X-Var")
 	var xVarJSON map[string]interface{}

@@ -221,6 +221,14 @@ type DXAPIEndPoint struct {
 	Privileges              []string
 	RequestMaxContentLength int64
 	RateLimitGroupNameId    string
+
+	// IdempotencyKey is the request header that carries the endpoint's
+	// idempotency key, nil when it takes none. NameId is the header name,
+	// IsMustExist whether every request must send it, Type a string type and
+	// the string bounds its format. It is set with SetEndPointIdempotencyKey
+	// or bound from a document, and checked by PreProcessRequest; see
+	// api_endpoint_idempotency.go.
+	IdempotencyKey *DXAPIEndPointParameter
 }
 
 func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
@@ -246,6 +254,10 @@ func (aep *DXAPIEndPoint) PrintSpec() (s string, err error) {
 		s += "####  Parameters:\n"
 		for _, p := range aep.Parameters {
 			s += p.PrintSpec(4)
+		}
+		if aep.IdempotencyKey != nil {
+			s += "####  Idempotency Key (header):\n"
+			s += aep.IdempotencyKey.PrintSpec(4)
 		}
 		s += "####  Response Possibilities:\n"
 		keys := make([]string, 0, len(*aep.ResponsePossibilities))

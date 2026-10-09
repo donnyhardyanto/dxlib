@@ -217,6 +217,9 @@ func TestOpenAPIRoundTripOverEveryType(t *testing.T) {
 		[]DXAPIEndPointParameter{{NameId: "name", Type: dxlibTypes.APIParameterTypeString, IsMustExist: true}}, noop, nil, nil, nil, nil, 0, "")
 	a.NewWSEndPoint("events", "event socket", "/events", "GET", nil,
 		func(aepr *DXAPIEndPointRequest, m []byte) ([]byte, error) { return m, nil }, nil, nil, 7*time.Second, nil, []string{"listen"}, "sockets")
+	if err := a.SetEndPointIdempotencyKey("POST", "/cmdEverything", idempotencyTestKey(true)); err != nil {
+		t.Fatal(err)
+	}
 
 	// A typed path parameter can only come from a bound document, so bind one
 	// onto the same API before emitting.
@@ -258,6 +261,9 @@ paths:
 	everything, _ := doc.Paths.Get("/cmdEverything")
 	if everything.Post.EndPointType != "EndPointTypeHTTPEndToEndEncryptionV4" || everything.Post.MaxContentLength != 1<<20 || everything.Post.RateLimitGroup != "heavy" {
 		t.Errorf("endpoint facts lost: %+v", everything.Post)
+	}
+	if everything.Post.IdempotencyKey != "Idempotency-Key" || len(everything.Post.Parameters) != 1 || everything.Post.Parameters[0].In != "header" {
+		t.Errorf("idempotency key lost: %q, %+v", everything.Post.IdempotencyKey, everything.Post.Parameters)
 	}
 	mt, _ := everything.Post.RequestBody.Content.Get("application/json")
 	if mt.Schema.Properties.Len() != len(openAPITypeTable) {

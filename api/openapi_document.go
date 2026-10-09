@@ -32,6 +32,7 @@ const (
 	OpenAPIExtensionEndPointType       = "x-dxlib-endpoint-type"
 	OpenAPIExtensionPrivileges         = "x-dxlib-privileges"
 	OpenAPIExtensionMiddlewares        = "x-dxlib-middlewares"
+	OpenAPIExtensionIdempotencyKey     = "x-dxlib-idempotency-key"
 	OpenAPIExtensionRateLimitGroup     = "x-dxlib-rate-limit-group"
 	OpenAPIExtensionMaxContentLength   = "x-dxlib-max-content-length"
 	OpenAPIExtensionRequestContentType = "x-dxlib-request-content-type"
@@ -244,6 +245,10 @@ type DXOpenAPIOperation struct {
 	// document and never bound: the chain is code, registered with the
 	// handler, and that registration is what runs.
 	Middlewares []string `json:"x-dxlib-middlewares,omitempty"`
+	// IdempotencyKey names the header parameter that is the endpoint's
+	// idempotency key. That parameter is the one in: header the dialect
+	// carries; any other is refused.
+	IdempotencyKey string `json:"x-dxlib-idempotency-key,omitempty"`
 	// RequestContentType is written only where the request body cannot carry
 	// it: a GET or DELETE declared with a content type, which dxlib ignores at
 	// request time but which the declaration still holds.
