@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 	_ "time/tzdata"
@@ -116,7 +117,7 @@ func exportToCSV(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts E
 	for _, row := range rows {
 		record := make([]string, len(rowsInfo.Columns))
 		for i, col := range rowsInfo.Columns {
-			record[i] = formatValue(row[col], opts.DateFormat, loc)
+			record[i] = neutraliseCSVFormula(formatValue(row[col], opts.DateFormat, loc))
 		}
 		if err := writer.Write(record); err != nil {
 			return errors.Errorf("failed to write CSV record: %+v", err)
@@ -144,7 +145,7 @@ func exportToCSVStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, 
 	for _, row := range rows {
 		record := make([]string, len(rowsInfo.Columns))
 		for i, col := range rowsInfo.Columns {
-			record[i] = formatValue(row[col], opts.DateFormat, loc)
+			record[i] = neutraliseCSVFormula(formatValue(row[col], opts.DateFormat, loc))
 		}
 		if err := writer.Write(record); err != nil {
 			return nil, errors.Errorf("failed to write CSV record: %+v", err)
@@ -274,4 +275,29 @@ func formatValue(v interface{}, dateFormat string, loc *time.Location) string {
 	default:
 		return fmt.Sprintf("%v", val)
 	}
+}
+
+// csvPlainNumber matches a plain decimal number such as -5, +1.5 or -2e3.
+var csvPlainNumber = regexp.MustCompile(`^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$`)
+
+// neutraliseCSVFormula prefixes a single quote to a CSV cell that a spreadsheet
+// would read as a formula: one starting with = + - @, a tab or a carriage return
+// (CSV formula injection, CWE-1236; OWASP CSV Injection). Rows such as security
+// events carry text the client chose, its User-Agent for one. A plain number
+// keeps its sign. The XLSX writer does not need this: excelize stores a string
+// as text, never as a formula.
+func neutraliseCSVFormula(s string) string {
+	if s == "" {
+		return s
+	}
+	switch s[0] {
+	case '=', '@', '\t', '\r':
+		return "'" + s
+	case '+', '-':
+		if csvPlainNumber.MatchString(s) {
+			return s
+		}
+		return "'" + s
+	}
+	return s
 }
