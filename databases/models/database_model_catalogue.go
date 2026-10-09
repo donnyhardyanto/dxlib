@@ -335,8 +335,8 @@ func (i *ModelDBIndex) postgresIndexDef(qualifiedOwner string) string {
 		if strings.EqualFold(c.Order, "DESC") {
 			sb.WriteString(" DESC")
 		}
-		if c.NullsOrder != "" {
-			sb.WriteString(" " + strings.ToUpper(c.NullsOrder))
+		if nulls := postgresNullsOrder(c.Order, c.NullsOrder); nulls != "" {
+			sb.WriteString(" " + nulls)
 		}
 	}
 	sb.WriteString(")")
@@ -351,6 +351,21 @@ func (i *ModelDBIndex) postgresIndexDef(qualifiedOwner string) string {
 		sb.WriteString(" WHERE (" + i.Where + ")")
 	}
 	return sb.String()
+}
+
+// postgresNullsOrder is the nulls order pg_get_indexdef writes after a
+// column: none when it is the default for the direction (NULLS LAST after
+// ASC, NULLS FIRST after DESC).
+func postgresNullsOrder(order, nulls string) string {
+	nulls = strings.ToUpper(strings.Join(strings.Fields(nulls), " "))
+	defaultNulls := "NULLS LAST"
+	if strings.EqualFold(order, "DESC") {
+		defaultNulls = "NULLS FIRST"
+	}
+	if nulls == defaultNulls {
+		return ""
+	}
+	return nulls
 }
 
 // postgresSerialTypes are the pseudo-types that make an integer column with a
@@ -430,6 +445,9 @@ func postgresFormatType(declared string) string {
 		}
 		return name + array
 	}
+	if t, ok := postgisFormatType(s); ok {
+		return t + array
+	}
 	if m := postgresTypeWithModifiers.FindStringSubmatch(s); m != nil {
 		base := strings.ToUpper(m[1])
 		rest := strings.ToUpper(strings.TrimSpace(m[4]))
@@ -467,6 +485,58 @@ func postgresFormatType(declared string) string {
 		}
 	}
 	return strings.ToLower(s) + array
+}
+
+// postgisGeometryTypes are PostGIS's geometry type names as its typmod
+// output writes them, keyed by their upper-case spelling.
+var postgisGeometryTypes = func() map[string]string {
+	m := map[string]string{}
+	for _, name := range []string{"Geometry", "Point", "LineString", "Polygon", "MultiPoint", "MultiLineString",
+		"MultiPolygon", "GeometryCollection", "CircularString", "CompoundCurve", "CurvePolygon", "MultiCurve",
+		"MultiSurface", "PolyhedralSurface", "Triangle", "Tin"} {
+		m[strings.ToUpper(name)] = name
+	}
+	return m
+}()
+
+var postgisTypeWithModifiers = regexp.MustCompile(`^(?i)(geometry|geography)\s*\(\s*([A-Za-z]+)\s*(?:,\s*(\d+)\s*)?\)$`)
+
+// postgisFormatType writes a PostGIS geometry or geography type with a
+// typmod as format_type prints it: geometry(Point, 4326) is
+// geometry(Point,4326). The subtype takes PostGIS's own case, a Z, M or ZM
+// suffix is upper-cased, an SRID of 0 is left out, and geography without an
+// SRID gets 4326. ok is false for anything else.
+func postgisFormatType(s string) (string, bool) {
+	m := postgisTypeWithModifiers.FindStringSubmatch(s)
+	if m == nil {
+		return "", false
+	}
+	base := strings.ToLower(m[1])
+	subtype := strings.ToUpper(m[2])
+	dims := ""
+	for _, suffix := range []string{"ZM", "Z", "M"} {
+		if trimmed := strings.TrimSuffix(subtype, suffix); trimmed != subtype {
+			if _, ok := postgisGeometryTypes[trimmed]; ok {
+				subtype, dims = trimmed, suffix
+				break
+			}
+		}
+	}
+	name, ok := postgisGeometryTypes[subtype]
+	if !ok {
+		return "", false
+	}
+	srid := strings.TrimLeft(m[3], "0")
+	if base == "geography" && srid == "" {
+		srid = "4326"
+	}
+	if name == "Geometry" && dims == "" && srid == "" {
+		return base, true
+	}
+	if srid != "" {
+		return base + "(" + name + dims + "," + srid + ")", true
+	}
+	return base + "(" + name + dims + ")", true
 }
 
 var postgresQuotedLiteral = regexp.MustCompile(`^'(?:[^']|'')*'$`)

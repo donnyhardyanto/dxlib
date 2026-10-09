@@ -273,10 +273,40 @@ func TestPostgresFormatType(t *testing.T) {
 		"TEXT[]":                      "text[]",
 		"BIGINT[]":                    "bigint[]",
 		"double  precision":           "double precision",
-		"geometry(Point, 4326)":       "geometry(point, 4326)",
+		// PostGIS 3.6.4 on PostgreSQL 18 prints these.
+		"geometry(Point, 4326)":         "geometry(Point,4326)",
+		"geometry(POINTZ,4326)":         "geometry(PointZ,4326)",
+		"geometry(pointzm)":             "geometry(PointZM)",
+		"geometry(Point,0)":             "geometry(Point)",
+		"geography(Point)":              "geography(Point,4326)",
+		"geography(MultiPolygon, 4269)": "geography(MultiPolygon,4269)",
+		"geometry(Geometry, 4326)":      "geometry(Geometry,4326)",
+		"geometry(Geometry)":            "geometry",
+		"geometry(LINESTRINGM, 3857)":   "geometry(LineStringM,3857)",
+		"geometry(tin)":                 "geometry(Tin)",
+		"GEOMETRY":                      "geometry",
+		"geometry(Point, 04326)":        "geometry(Point,4326)",
+		"geometry(GEOMETRYZ)":           "geometry(GeometryZ)",
 	} {
 		if got := postgresFormatType(declared); got != want {
 			t.Errorf("%q: %q, want %q", declared, got, want)
+		}
+	}
+}
+
+func TestPostgresNullsOrderLeavesOutTheDefault(t *testing.T) {
+	// PostgreSQL 18 prints (x DESC NULLS FIRST, y ASC NULLS LAST) as
+	// (x DESC, y) and (x DESC NULLS LAST, y NULLS FIRST) unchanged.
+	for _, c := range []struct{ order, nulls, want string }{
+		{"DESC", "NULLS FIRST", ""},
+		{"ASC", "NULLS LAST", ""},
+		{"", "nulls  last", ""},
+		{"DESC", "NULLS LAST", "NULLS LAST"},
+		{"", "nulls first", "NULLS FIRST"},
+		{"desc", "", ""},
+	} {
+		if got := postgresNullsOrder(c.order, c.nulls); got != c.want {
+			t.Errorf("%q %q: %q, want %q", c.order, c.nulls, got, c.want)
 		}
 	}
 }
