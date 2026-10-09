@@ -4,37 +4,3 @@
 # the vulnerable package is not called. Accepted by the owner on 2026-10-05; see GO-2026-5932 in
 # .dependency-allowlist.json. The entry expires on the review date.
 GO-2026-5932 exp:2027-04-05
-
-# github.com/xuri/excelize/v2 2.11.0: 15 GHSA advisories with no fixed release. Not reachable:
-# the only use writes a new workbook and never opens, parses or calculates one. Accepted
-# temporarily by the owner on 2026-10-09, review by 2026-10-23; see .dependency-allowlist.json.
-GHSA-2j4c-ffch-9f23 exp:2026-10-23
-CVE-2026-107214 exp:2026-10-23
-GHSA-jrfj-fhj2-jjvm exp:2026-10-23
-CVE-2026-107219 exp:2026-10-23
-GHSA-x2q3-8cjh-766f exp:2026-10-23
-CVE-2026-107215 exp:2026-10-23
-GHSA-fw94-4wwp-w8pw exp:2026-10-23
-CVE-2026-107224 exp:2026-10-23
-GHSA-jw42-f3rr-4cc3 exp:2026-10-23
-CVE-2026-107212 exp:2026-10-23
-GHSA-mx22-3794-2vpv exp:2026-10-23
-CVE-2026-107211 exp:2026-10-23
-GHSA-r7x5-4969-99p7 exp:2026-10-23
-CVE-2026-107213 exp:2026-10-23
-GHSA-rxcj-4pj5-74gr exp:2026-10-23
-CVE-2026-107222 exp:2026-10-23
-GHSA-5h23-36rv-pm65 exp:2026-10-23
-CVE-2026-107225 exp:2026-10-23
-GHSA-g27h-8qhm-6pff exp:2026-10-23
-CVE-2026-107220 exp:2026-10-23
-GHSA-8mcq-6wmr-jrjv exp:2026-10-23
-CVE-2026-107221 exp:2026-10-23
-GHSA-fq3v-74gv-27gm exp:2026-10-23
-CVE-2026-107223 exp:2026-10-23
-GHSA-c85p-xxjj-2r75 exp:2026-10-23
-CVE-2026-107217 exp:2026-10-23
-GHSA-8jjq-8j9w-m2v6 exp:2026-10-23
-CVE-2026-107218 exp:2026-10-23
-GHSA-wp2g-vpjj-g53r exp:2026-10-23
-CVE-2026-107216 exp:2026-10-23

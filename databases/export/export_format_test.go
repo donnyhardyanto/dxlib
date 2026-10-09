@@ -31,7 +31,7 @@ func TestExportToStreamAcceptsEveryFormatTheEnumOffers(t *testing.T) {
 	}
 }
 
-// xls and xlsx are the same bytes -- excelize writes OOXML for both -- so they
+// xls and xlsx are the same bytes -- utils/xlsx writes OOXML for both -- so they
 // have to answer with the same content type, or a browser is told one thing about
 // a file that is the other.
 func TestSpreadsheetFormatsAgreeOnContentType(t *testing.T) {

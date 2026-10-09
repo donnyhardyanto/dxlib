@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,7 +16,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/language"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/xuri/excelize/v2"
+	"github.com/donnyhardyanto/dxlib/utils/xlsx"
 )
 
 type ExportFormat string
@@ -27,7 +28,7 @@ const (
 	// tables.DXTableExportFormatEnumSetAll has offered it as a valid choice all
 	// along. It was missing here, so every request for it was answered
 	// "unsupported export format: xlsx" before a byte was written. It writes the
-	// same bytes as XLS: excelize produces OOXML either way, which is why the
+	// same bytes as XLS: utils/xlsx produces OOXML either way, which is why the
 	// content type for XLS is already the OOXML one.
 	XLSX ExportFormat = "xlsx"
 )
@@ -66,7 +67,7 @@ func ExportQueryResults(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON,
 	switch opts.Format {
 	case CSV:
 		return exportToCSV(rowsInfo, rows, opts)
-	case XLS:
+	case XLS, XLSX:
 		return exportToXLS(rowsInfo, rows, opts)
 	default:
 		return errors.Errorf("unsupported export format: %s", opts.Format)
@@ -157,91 +158,71 @@ func exportToCSVStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, 
 }
 
 func exportToXLS(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts ExportOptions) error {
-	f := excelize.NewFile()
-	defer func() {
-		if err := f.Close(); err != nil {
-			fmt.Printf("Error closing Excel file: %v\n", err)
-		}
-	}()
-
-	if err := writeXLSContent(f, rowsInfo, rows, opts); err != nil {
-		return err
+	file, err := os.Create(opts.FilePath)
+	if err != nil {
+		return errors.Errorf("failed to create Excel file: %+v", err)
 	}
-
-	return f.SaveAs(opts.FilePath)
+	// A half-written workbook is removed rather than left for someone to open.
+	err = writeXLSContent(file, rowsInfo, rows, opts)
+	if cerr := file.Close(); err == nil && cerr != nil {
+		err = errors.Errorf("failed to write Excel file: %+v", cerr)
+	}
+	if err != nil {
+		os.Remove(opts.FilePath)
+	}
+	return err
 }
 
 func exportToXLSStream(rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts ExportOptions) ([]byte, error) {
-	f := excelize.NewFile()
-	defer f.Close()
-
-	if err := writeXLSContent(f, rowsInfo, rows, opts); err != nil {
+	buf := new(bytes.Buffer)
+	if err := writeXLSContent(buf, rowsInfo, rows, opts); err != nil {
 		return nil, err
-	}
-
-	buf, err := f.WriteToBuffer()
-	if err != nil {
-		return nil, errors.Errorf("failed to write Excel to buffer: %+v", err)
 	}
 	return buf.Bytes(), nil
 }
 
-func writeXLSContent(f *excelize.File, rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts ExportOptions) error {
+func writeXLSContent(out io.Writer, rowsInfo *db.DXDatabaseTableRowsInfo, rows []utils.JSON, opts ExportOptions) error {
 	sheetName := opts.SheetName
 	if sheetName == "" {
 		sheetName = "Sheet1"
 	}
 
+	widths := make([]float64, len(rowsInfo.Columns))
+	for i := range widths {
+		widths[i] = 15
+	}
+	xw, err := xlsx.NewWriter(out, xlsx.Options{
+		SheetName:    sheetName,
+		ColumnWidths: widths,
+		HeaderStyle:  &xlsx.Style{Bold: true, Center: true, FillRGB: "E0EBF5"},
+	})
+	if err != nil {
+		return errors.Errorf("failed to start Excel file: %+v", err)
+	}
+
 	loc := resolveTimezone(opts.Timezone)
 
-	// Write headers
+	headers := make([]string, len(rowsInfo.Columns))
 	for i, col := range rowsInfo.Columns {
-		cellName, err := excelize.CoordinatesToCellName(i+1, 1)
-		if err != nil {
-			return errors.Errorf("invalid cell coordinates: %+v", err)
+		headers[i] = language.Translate(col, opts.Language, opts.TranslateFallback)
+	}
+	if err := xw.WriteHeader(headers); err != nil {
+		return errors.Errorf("failed to write header: %+v", err)
+	}
+
+	record := make([]string, len(rowsInfo.Columns))
+	for _, row := range rows {
+		for i, col := range rowsInfo.Columns {
+			record[i] = formatValue(row[col], opts.DateFormat, loc)
 		}
-		header := language.Translate(col, opts.Language, opts.TranslateFallback)
-		if err := f.SetCellValue(sheetName, cellName, header); err != nil {
-			return errors.Errorf("failed to write header: %+v", err)
+		if err := xw.WriteRow(record); err != nil {
+			return errors.Errorf("failed to write row: %+v", err)
 		}
 	}
 
-	// Write data rows
-	for rowIdx, row := range rows {
-		for colIdx, col := range rowsInfo.Columns {
-			cellName, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
-			if err != nil {
-				return errors.Errorf("invalid cell coordinates: %+v", err)
-			}
-			if err := f.SetCellValue(sheetName, cellName, formatValue(row[col], opts.DateFormat, loc)); err != nil {
-				return errors.Errorf("failed to write cell value: %+v", err)
-			}
-		}
+	if err := xw.Close(); err != nil {
+		return errors.Errorf("failed to finish Excel file: %+v", err)
 	}
-
-	// Apply styling
-	style, err := f.NewStyle(&excelize.Style{
-		Font:      &excelize.Font{Bold: true},
-		Alignment: &excelize.Alignment{Horizontal: "center"},
-		Fill:      excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"#E0EBF5"}},
-	})
-	if err == nil {
-		if err := f.SetRowStyle(sheetName, 1, 1, style); err != nil {
-			return errors.Errorf("failed to apply header style: %+v", err)
-		}
-	}
-
-	// Auto-fit columns
-	for i := range rowsInfo.Columns {
-		col, err := excelize.ColumnNumberToName(i + 1)
-		if err != nil {
-			return errors.Errorf("invalid column number: %+v", err)
-		}
-		if err := f.SetColWidth(sheetName, col, col, 15); err != nil {
-			return errors.Errorf("failed to set column width: %+v", err)
-		}
-	}
-
 	return nil
 }
 
@@ -284,7 +265,7 @@ var csvPlainNumber = regexp.MustCompile(`^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$
 // would read as a formula: one starting with = + - @, a tab or a carriage return
 // (CSV formula injection, CWE-1236; OWASP CSV Injection). Rows such as security
 // events carry text the client chose, its User-Agent for one. A plain number
-// keeps its sign. The XLSX writer does not need this: excelize stores a string
+// keeps its sign. The XLSX writer does not need this: utils/xlsx stores a string
 // as text, never as a formula.
 func neutraliseCSVFormula(s string) string {
 	if s == "" {

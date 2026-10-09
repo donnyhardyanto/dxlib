@@ -14,6 +14,7 @@ This document lists every exported identifier in dxlib — types, constants, var
 | `errors` | `github.com/donnyhardyanto/dxlib/errors` | Stack-traced error wrapping (drop-in for pkg/errors) |
 | `log` | `github.com/donnyhardyanto/dxlib/log` | Structured logging, file output, Telegram alerts |
 | `utils` | `github.com/donnyhardyanto/dxlib/utils` | JSON type, type conversions, collections, network utils |
+| `utils/xlsx` | `github.com/donnyhardyanto/dxlib/utils/xlsx` | Streaming one-sheet .xlsx writer of text cells (no reader) |
 | `secure_memory` | `github.com/donnyhardyanto/dxlib/secure_memory` | Secure in-memory storage for secrets (memguard-backed) |
 | `configuration` | `github.com/donnyhardyanto/dxlib/configuration` | JSON/YAML config files, dot-path access, sensitive masking |
 | `base` | `github.com/donnyhardyanto/dxlib/base` | Database type enum shared by databases and tables packages |
@@ -274,6 +275,26 @@ General utility functions. The most important export is `JSON = map[string]any`,
 
 ---
 
+## `utils/xlsx`
+
+**Import:** `github.com/donnyhardyanto/dxlib/utils/xlsx`
+
+Writes a one-sheet `.xlsx` workbook of text cells, streaming rows into an `io.Writer`. A writer only: dxlib never reads a workbook. `utils/xlsx/DESIGN.md` has the design, the limits and the text encoding.
+
+| Identifier | Kind | Description |
+|---|---|---|
+| `Style` | `struct` | `Bold`, `Center`, `FillRGB` (six hex digits): the only cell formatting known. |
+| `Options` | `struct` | `SheetName` (required, Excel's rules), `ColumnWidths` (0 leaves the default), `HeaderStyle` (nil for none). |
+| `NewWriter(w io.Writer, opts Options) (*Writer, error)` | `func` | Checks the options and writes the fixed parts. |
+| `(*Writer) WriteHeader(cells []string) error` | method | The first row, in `HeaderStyle`; at most once, before any `WriteRow`. |
+| `(*Writer) WriteRow(cells []string) error` | method | The next row; every cell is text, never a formula. |
+| `(*Writer) Close() error` | method | Writes the shared strings and the zip directory; does not close `w`. |
+| `MaxRows`, `MaxColumns`, `MaxCellUnits`, `MaxSheetNameUnits` | `const` | Excel's limits: 1,048,576 rows, 16,384 columns (more is an error), 32,767 UTF-16 units per cell (longer values are cut), 31 units per sheet name. |
+
+Errors stick: after one, every later call returns it. Characters XML cannot hold are written as `_xHHHH_`, and a literal `_xHHHH_` in a value is escaped so Excel shows it as typed.
+
+---
+
 ## `secure_memory`
 
 **Import:** `github.com/donnyhardyanto/dxlib/secure_memory`
@@ -494,6 +515,10 @@ Constants: `LevelDefault`, `LevelReadUncommitted`, `LevelReadCommitted`, `LevelW
 
 `databases/models/testdata/catalogue.json` was printed by the catalogue query against PostgreSQL 18.6 after the test model's DDL was applied. The test requires the model to write the same bytes; `TestCatalogueFixtureDDL` writes that DDL, so the file can be printed again.
 
+### `databases/export`: rows to CSV or a workbook
+
+`ExportToStream(rowsInfo, rows, opts) ([]byte, contentType string, error)` and `ExportQueryResults(rowsInfo, rows, opts) error` (to `opts.FilePath`) write a page of rows as `CSV`, `XLS` or `XLSX`; `XLS` and `XLSX` give the same OOXML workbook, written by `utils/xlsx`. The header row is the column names translated with `opts.Language`, bold, centred and filled `#E0EBF5`; every column is 15 wide; every cell is text from `formatValue` (dates in `opts.DateFormat` and `opts.Timezone`). `opts.SheetName` names the sheet (`Sheet1` when empty) and must follow Excel's sheet-name rules. CSV cells that a spreadsheet would read as a formula are prefixed with `'`; workbook cells need no such guard because they are never formulas.
+
 ---
 
 ## `tables`
@@ -520,8 +545,8 @@ ORM-like table abstraction over `databases`. Provides CRUD operations, auto-gene
 
 | Constant | Description |
 |---|---|
-| `DXTableExportFormatXLS` | Export format: legacy Excel |
-| `DXTableExportFormatXLSX` | Export format: modern Excel |
+| `DXTableExportFormatXLS` | Export format: Excel; writes the same OOXML workbook as XLSX (through `databases/export` and `utils/xlsx`) |
+| `DXTableExportFormatXLSX` | Export format: Excel (OOXML), written by `utils/xlsx` |
 | `DXTableExportFormatCSV` | Export format: CSV |
 
 ### Standard API response variables

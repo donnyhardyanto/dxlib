@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/donnyhardyanto/dxlib/databases/db"
+	"github.com/donnyhardyanto/dxlib/internal/xlsxtest"
 	"github.com/donnyhardyanto/dxlib/utils"
-	"github.com/xuri/excelize/v2"
 )
 
 // A spreadsheet reads a CSV cell that starts with = + - @, or a tab or carriage
@@ -65,7 +65,9 @@ func TestCSVKeepsNumbers(t *testing.T) {
 	}
 }
 
-// The XLSX writer stores strings as text, never as a formula, so it keeps the raw value.
+// The XLSX writer stores strings as text, never as a formula, so it keeps the
+// raw value. xlsxtest.Read refuses any cell that is not a shared string or
+// that carries a formula.
 func TestXLSXKeepsRawValue(t *testing.T) {
 	rowsInfo := &db.DXDatabaseTableRowsInfo{Columns: []string{"user_agent"}}
 	rows := []utils.JSON{{"user_agent": formulaCells[0]}}
@@ -73,20 +75,12 @@ func TestXLSXKeepsRawValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := excelize.OpenReader(bytes.NewReader(data))
+	wb, err := xlsxtest.Read(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
-	got, err := f.GetCellValue("Sheet1", "A2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != formulaCells[0] {
+	if got := wb.Rows[1][0]; got != formulaCells[0] {
 		t.Errorf("XLSX cell is %q, want %q", got, formulaCells[0])
-	}
-	if formula, _ := f.GetCellFormula("Sheet1", "A2"); formula != "" {
-		t.Errorf("XLSX cell holds a formula %q", formula)
 	}
 }
 
