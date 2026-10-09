@@ -82,13 +82,21 @@ func TestMaskNumberRules(t *testing.T) {
 		{"card with spaces", MaskNumber6by4, "4111 1111 1111 1234", "411111***1234"},
 		{"account with tab", MaskNumber2by4, "12 3456\t1234", "12***1234"},
 
-		// A value no longer than the kept characters keeps only its first.
+		// A value of front+back+3 digits or fewer keeps only its first (BUG-639).
 		{"short account", MaskNumber2by4, "123456", "1***"},
 		{"short national id", MaskNumber5by4, "320101234", "3***"},
 		{"short phone", MaskNumber4by3, "0812345", "0***"},
 		{"short card", MaskNumber6by4, "4111111234", "4***"},
 		{"short after separators", MaskNumber4by3, "08-12-345", "0***"},
-		{"one more than kept", MaskNumber4by3, "08123456", "0812***456"},
+		{"one more than kept", MaskNumber4by3, "08123456", "0***"},
+		{"account at the limit", MaskNumber2by4, "123456789", "1***"},
+		{"account one past", MaskNumber2by4, "1234567890", "12***7890"},
+		{"national id at the limit", MaskNumber5by4, "320101234567", "3***"},
+		{"national id one past", MaskNumber5by4, "3201012345678", "32010***5678"},
+		{"phone at the limit", MaskNumber4by3, "0812345678", "0***"},
+		{"phone one past", MaskNumber4by3, "08123456789", "0812***789"},
+		{"card at the limit", MaskNumber6by4, "4111111111123", "4***"},
+		{"card one past", MaskNumber6by4, "41111111111234", "411111***1234"},
 		{"empty", MaskNumber2by4, "", "***"},
 		{"only separators", MaskNumber2by4, " - ", "***"},
 	}
@@ -104,7 +112,11 @@ func TestMask2by2(t *testing.T) {
 		"Pegawai Swasta": "Pe***ta",
 		"Laki-laki":      "La***ki",
 		"Guru":           "G***",
-		"abcde":          "ab***de",
+		"abcde":          "a***",
+		"PNS":            "P***",
+		"PNS-1":          "P***",
+		"Pegawai":        "P***",
+		"Pegawai S":      "Pe*** S",
 		"Ä":              "Ä***",
 		"":               "***",
 		"Ünïvérsität":    "Ün***ät",
@@ -112,6 +124,40 @@ func TestMask2by2(t *testing.T) {
 	for in, want := range cases {
 		if got := Mask2by2(in); got != want {
 			t.Errorf("Mask2by2(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// BUG-639: a value just longer than the kept characters must still hide at least four of them.
+// At front+back+3 runes or fewer only the first rune is kept; past that, front and back.
+func TestMaskFrontBack_ShortValues(t *testing.T) {
+	cases := []struct {
+		in          string
+		front, back int
+		want        string
+	}{
+		{"PNS", 2, 2, "P***"},
+		{"PNS-1", 2, 2, "P***"},
+		{"abcdefg", 2, 2, "a***"},
+		{"abcdefgh", 2, 2, "ab***gh"},
+		{"abc", 1, 0, "a***"},
+		{"abcde", 1, 0, "a***"},
+		{"ab", 0, 0, "***"},
+		{"abcd", 0, 2, "***"},
+		{"abcdef", 0, 2, "***ef"},
+		{"", 2, 2, "***"},
+		{"ÄÖÜßéèà", 2, 2, "Ä***"},
+		{"ÄÖÜßéèàç", 2, 2, "ÄÖ***àç"},
+	}
+	for _, c := range cases {
+		if got := MaskFrontBack(c.in, c.front, c.back); got != c.want {
+			t.Errorf("MaskFrontBack(%q, %d, %d) = %q, want %q", c.in, c.front, c.back, got, c.want)
+		}
+	}
+	// The named rule a host configures for occupation goes the same way.
+	for in, want := range map[string]string{"PNS": "P***", "PNS-1": "P***"} {
+		if got := applyMaskRule(in, RuleMask2by2); got != want {
+			t.Errorf("RuleMask2by2(%q) = %v, want %q", in, got, want)
 		}
 	}
 }

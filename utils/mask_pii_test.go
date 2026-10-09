@@ -3,7 +3,7 @@ package utils
 import "testing"
 
 // BUG-SEC-122: PII partial-masking mechanism. Credentials stay FULL; PII partial (NIK 5+2, others
-// 2+2); short values keep their first rune; strict mode forces full; unknown fields untouched.
+// 2+2); values of front+back+3 runes or fewer keep their first rune; strict mode forces full; unknown fields untouched.
 func TestMaskSensitiveValue_PII(t *testing.T) {
 	SetMaskRules(map[string]MaskRule{
 		"nik": {Front: 5, Back: 2}, "ktp": {Front: 5, Back: 2},
@@ -23,9 +23,11 @@ func TestMaskSensitiveValue_PII(t *testing.T) {
 		{"credential stays FULL (not partial)", "password", "supersecret", "***REDACTED***"},
 		{"token stays FULL", "access_token", "abcdefങ12345", "***REDACTED***"},
 		{"unknown field untouched", "trx_type", "LOGIN", "LOGIN"},
-		{"short PII → first rune", "nama", "Budi", "B***"},   // len 4 <= 2+2
-		{"short nik → first rune", "nik", "1234567", "1***"}, // len 7 <= 5+2
-		{"one hidden rune", "nik", "12345678", "12345***78"},
+		{"short PII → first rune", "nama", "Budi", "B***"},                    // len 4 <= 2+2
+		{"short nik → first rune", "nik", "1234567", "1***"},                  // len 7 <= 5+2
+		{"one hidden rune → first rune (BUG-639)", "nik", "12345678", "1***"}, // len 8 <= 5+2+3
+		{"at the limit → first rune", "nik", "1234567890", "1***"},            // len 10
+		{"one past the limit keeps 5+2", "nik", "12345678901", "12345***01"},  // len 11
 	}
 	for _, c := range cases {
 		if got := MaskSensitiveValue(c.field, c.val); got != c.want {

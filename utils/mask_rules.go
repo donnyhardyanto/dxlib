@@ -30,7 +30,8 @@ const (
 var (
 	// RuleMaskFull hides the whole value: "********".
 	RuleMaskFull = MaskRule{}
-	// RuleMask2by2 keeps the first 2 and the last 2 of the whole value: "Pegawai" → "Pe***ai".
+	// RuleMask2by2 keeps the first 2 and the last 2 of the whole value: "Pegawai Swasta" →
+	// "Pe***ta"; a value of 7 or fewer is its first then "***" (MaskFrontBack).
 	RuleMask2by2 = MaskRule{Front: 2, Back: 2}
 	// RuleMaskNumber2by4 is an account number: "1234567890" → "12***7890".
 	RuleMaskNumber2by4 = MaskRule{Kind: MaskKindNumber, Front: 2, Back: 4}
@@ -58,14 +59,30 @@ func MaskFull(string) string { return maskFull }
 // MaskRedacted is the marker for a secret, a token or an image: "***REDACTED***".
 func MaskRedacted(string) string { return maskRedacted }
 
+// maskShortSlack is how many runes beyond front+back a value needs before front and back are
+// kept. At or below front+back+maskShortSlack the value keeps only its first rune, so a kept
+// front and back always hide at least four runes: "PNS-1" with 2 and 2 is "P***", not "PN***-1".
+const maskShortSlack = 3
+
 // MaskFrontBack keeps the first front and the last back runes of s with a fixed "***" between
-// them. A value no longer than front+back runes keeps only its first rune: "abc" with 2 and 2
-// is "a***". An empty value is "***".
+// them. A value of front+back+3 runes or fewer keeps only its first rune: "PNS-1" with 2 and 2
+// is "P***", "Pegawai" is "P***", "Pegawai S" is "Pe*** S". With front 0 a short value keeps
+// nothing. An empty value is "***".
 func MaskFrontBack(s string, front, back int) string {
-	runes := []rune(s)
 	front, back = max(front, 0), max(back, 0)
+	if len([]rune(s)) <= front+back+maskShortSlack {
+		return firstRunes(s, min(front, 1)) + maskHidden
+	}
+	return maskKeepFrontBack(s, front, back)
+}
+
+// maskKeepFrontBack keeps the first front and the last back runes of s with a fixed "***"
+// between them, or only the first rune when s has front+back runes or fewer. MaskEmail2by2 uses
+// it for the local part, whose short-value threshold is its own.
+func maskKeepFrontBack(s string, front, back int) string {
+	runes := []rune(s)
 	if len(runes) <= front+back {
-		return firstRunes(s, 1) + maskHidden
+		return firstRunes(s, min(front, 1)) + maskHidden
 	}
 	return string(runes[:front]) + maskHidden + string(runes[len(runes)-back:])
 }
@@ -123,7 +140,7 @@ func MaskEmail2by2(s string) string {
 	if len([]rune(local)) <= 4 {
 		maskedLocal = firstRunes(local, 1) + maskHidden
 	} else {
-		maskedLocal = MaskFrontBack(local, 2, 2)
+		maskedLocal = maskKeepFrontBack(local, 2, 2)
 	}
 
 	ending := knownEmailEnding(domain)
