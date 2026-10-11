@@ -1217,13 +1217,13 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		if tooLarge := aepr.writeIfBodyTooLarge(err); tooLarge != nil {
 			return tooLarge
 		}
-		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_READ:%v=%v", err.Error(), aepr.RequestBodyAsBytes)
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_READ:%v (content_type=%q, body_size=%d)", err.Error(), actualContentType, len(aepr.RequestBodyAsBytes))
 	}
 
 	if len(aepr.RequestBodyAsBytes) > 0 {
 		err = json.Unmarshal(aepr.RequestBodyAsBytes, &bodyAsJSON)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v", err.Error()+"="+string(aepr.RequestBodyAsBytes))
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v (content_type=%q, body_size=%d)", err.Error(), actualContentType, len(aepr.RequestBodyAsBytes))
 		}
 	}
 
