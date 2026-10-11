@@ -58,9 +58,35 @@ func TestRedactErrorText(t *testing.T) {
 			t.Errorf("RedactErrorText(%q) = %q, lost %q", c.in, out, c.kept)
 		}
 	}
-	plain := "dial tcp 10.0.0.5:5432: i/o timeout"
-	if out := RedactErrorText(plain); out != plain {
-		t.Errorf("text with no credential changed: %q", out)
+	// Error codes and prose that name a credential without carrying one keep
+	// every word: the real reason must not be hidden.
+	for _, plain := range []string{
+		"dial tcp 10.0.0.5:5432: i/o timeout",
+		"TOKEN_EXPIRED: session expired at 10:00",
+		"TOKEN_NOT_FOUND: token header missing from the request",
+		"SET_ENCRYPTION_SESSION_KEY_ERROR:app.session_key_name",
+		"SESSION_KEY_INVALID: unknown session",
+		"Basic authentication failed for user app",
+		"the session token mismatched for device 7",
+		"invalid token: signature mismatch",
+		"Bearer token missing",
+	} {
+		if out := RedactErrorText(plain); out != plain {
+			t.Errorf("text with no credential changed: %q became %q", plain, out)
+		}
+	}
+	more := []struct{ in, gone, kept string }{
+		{`Authorization: Bearer abcdefgh`, "abcdefgh", "Authorization: Bearer ***REDACTED***"},
+		{`sent Basic dXNlcjpwYXNzd29yZA== upstream`, "dXNlcjpwYXNzd29yZA", "sent Basic ***REDACTED*** upstream"},
+		{`login refused: password: letmein`, "letmein", "password: ***REDACTED***"},
+		{`API_TOKEN=plainword rejected`, "plainword", "API_TOKEN=***REDACTED***"},
+		{`refresh token: 9f8e7d6c5b4a rejected`, "9f8e7d6c5b4a", "token: ***REDACTED*** rejected"},
+	}
+	for _, c := range more {
+		out := RedactErrorText(c.in)
+		if strings.Contains(out, c.gone) || !strings.Contains(out, c.kept) {
+			t.Errorf("RedactErrorText(%q) = %q, want %q gone and %q kept", c.in, out, c.gone, c.kept)
+		}
 	}
 }
 
@@ -250,5 +276,67 @@ func TestAPIErrorBodyLeavesRowValuesInTheLog(t *testing.T) {
 	body := NewAPIError(http.StatusConflict, "", "saving the profile", &fakeDBError{cause: fmt.Errorf("pq: deadlock detected")}, "retry").ResponseBody()
 	if c := body["cause"].(string); strings.Contains(c, "Ana Putri") || !strings.Contains(c, "deadlock") {
 		t.Fatalf("cause = %q", c)
+	}
+}
+
+// helperRequest is a request on an endpoint of an API with the given
+// omit-server-error-cause setting, for the older answer helpers.
+func helperRequest(omit bool) (*DXAPIEndPointRequest, *httptest.ResponseRecorder) {
+	r := httptest.NewRequest(http.MethodPost, "/probe", strings.NewReader(`{}`))
+	r.Header.Set("Content-Type", "application/json")
+	return newPreProcessContext(r, &DXAPIEndPoint{
+		Owner:              &DXAPI{OmitServerErrorCause: omit},
+		Uri:                "/probe",
+		Method:             http.MethodPost,
+		EndPointType:       EndPointTypeHTTPJSON,
+		RequestContentType: utilsHttp.RequestContentTypeApplicationJSON,
+	})
+}
+
+// The older helpers answer through the same path as the route handler: no
+// member of the body carries a masked credential or a DB error's row values,
+// and with omit-server-error-cause a 5xx carries none of the error text.
+func TestHelperAnswersMaskAndWithhold(t *testing.T) {
+	dbErr := fmt.Errorf("saving the profile (password=hunter2): %w", &fakeDBError{cause: fmt.Errorf("pq: deadlock detected")})
+	helpers := map[string]func(*DXAPIEndPointRequest, int){
+		"WriteResponseAsError": func(a *DXAPIEndPointRequest, status int) { a.WriteResponseAsError(status, dbErr) },
+		"WriteResponseAndLogAsError": func(a *DXAPIEndPointRequest, status int) {
+			a.WriteResponseAndLogAsError(status, "", dbErr)
+		},
+		"WriteResponseAndNewErrorf": func(a *DXAPIEndPointRequest, status int) {
+			_ = a.WriteResponseAndNewErrorf(status, "", "%s", dbErr.Error())
+		},
+	}
+	for name, write := range helpers {
+		aepr, rec := helperRequest(false)
+		write(aepr, http.StatusBadGateway)
+		raw := rec.Body.String()
+		for _, secret := range []string{"hunter2", "Ana Putri"} {
+			if strings.Contains(raw, secret) {
+				t.Errorf("%s: the answer carries %q: %s", name, secret, raw)
+			}
+		}
+		if !strings.Contains(decodeBody(t, rec)["cause"].(string), "deadlock detected") {
+			t.Errorf("%s: the cause lost the driver error: %s", name, raw)
+		}
+
+		aepr, rec = helperRequest(true)
+		write(aepr, http.StatusBadGateway)
+		raw = rec.Body.String()
+		for _, text := range []string{"deadlock", "saving the profile", "member"} {
+			if strings.Contains(raw, text) {
+				t.Errorf("%s: with omit-server-error-cause the 5xx answer carries %q: %s", name, text, raw)
+			}
+		}
+		body := decodeBody(t, rec)
+		if c, _ := body["cause"].(string); !strings.Contains(c, "withheld") {
+			t.Errorf("%s: cause should say it was withheld: %v", name, body)
+		}
+
+		aepr, rec = helperRequest(true)
+		write(aepr, http.StatusBadRequest)
+		if !strings.Contains(rec.Body.String(), "deadlock detected") {
+			t.Errorf("%s: a 4xx answer should keep its cause with omit-server-error-cause: %s", name, rec.Body.String())
+		}
 	}
 }

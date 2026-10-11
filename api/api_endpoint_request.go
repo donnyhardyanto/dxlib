@@ -337,53 +337,16 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 
 	fullDump := requestDump + decryptedDump
 	aepr.Log.LogText(err, log.DXLogLevelError, "", fullDump)
-	aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, err.Error())
+	aepr.writeRefusal(statusCode, responseMessage, responseCause(err))
 	return
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend error) {
-	if aepr.ResponseHeaderSent {
-		return
-	}
-	if (200 <= statusCode) && (statusCode < 300) {
-		statusCode = 500
-	}
-	var s utils.JSON
-
-	//	if dxlib.IsDebug {
-	s = utils.JSON{
-		"status":         http.StatusText(statusCode),
-		"status_code":    statusCode,
-		"reason":         errToSend.Error(),
-		"reason_message": RedactErrorText(errToSend.Error()),
-	}
-	//	}
-	aepr.addErrorMembers(s, statusCode, errToSend.Error())
-
-	aepr.WriteResponseAsJSON(statusCode, nil, s)
+	aepr.writeRefusal(statusCode, "", responseCause(errToSend))
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsErrorMessageNotLogged(statusCode int, errorMsg string, reasonMsg string) {
-	if aepr.ResponseHeaderSent {
-		return
-	}
-	if (200 <= statusCode) && (statusCode < 300) {
-		statusCode = 500
-	}
-	var s utils.JSON
-
-	//	if dxlib.IsDebug {
-	s = utils.JSON{
-		"status":         http.StatusText(statusCode),
-		"status_code":    statusCode,
-		"reason":         errorMsg,
-		"reason_message": RedactErrorText(reasonMsg),
-	}
-	//	}
-	aepr.addErrorMembers(s, statusCode, reasonMsg)
-
-	aepr.WriteResponseAsJSON(statusCode, nil, s)
-	return
+	aepr.writeRefusal(statusCode, errorMsg, reasonMsg)
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map[string]string, bodyAsJSON utils.JSON) {

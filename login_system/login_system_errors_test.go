@@ -141,3 +141,64 @@ func TestShortSessionKey(t *testing.T) {
 		t.Errorf("a short key should be kept: %q", got)
 	}
 }
+
+// failCommandsHook answers HGET with a stored session and HDEL with success
+// without reaching Redis, and fails every other command, so an unregister sees
+// its DEL fail after its HDEL went through.
+type failCommandsHook struct{ session string }
+
+var errHookAnswered = errors.New("answered by the test hook")
+
+func (h failCommandsHook) BeforeProcess(ctx context.Context, cmd goredis.Cmder) (context.Context, error) {
+	return ctx, errHookAnswered
+}
+
+func (h failCommandsHook) AfterProcess(ctx context.Context, cmd goredis.Cmder) error {
+	switch c := cmd.(type) {
+	case *goredis.StringCmd:
+		if c.Name() == "hget" {
+			c.SetErr(nil)
+			c.SetVal(h.session)
+			return nil
+		}
+	case *goredis.IntCmd:
+		if c.Name() == "hdel" {
+			c.SetErr(nil)
+			c.SetVal(1)
+			return nil
+		}
+	}
+	return errors.New("DEL refused by the test hook")
+}
+
+func (h failCommandsHook) BeforeProcessPipeline(ctx context.Context, cmds []goredis.Cmder) (context.Context, error) {
+	return ctx, nil
+}
+
+func (h failCommandsHook) AfterProcessPipeline(ctx context.Context, cmds []goredis.Cmder) error {
+	return nil
+}
+
+// When HDEL removed the session's data but DEL of the TTL key failed, the
+// session can no longer be read and a retry finds nothing, so the unregister
+// callback must fire now; the DEL failure is still returned.
+func TestRedisOnlyUnregisterFiresCallbackWhenOnlyDelFailed(t *testing.T) {
+	l := newDownRedisLoginSystem(t, 7)
+	l.RedisClient.AddHook(failCommandsHook{session: `{"user_id": 42}`})
+	var got map[string]any
+	l.OnSessionUnregistered = func(_ string, _ TokenRemoveReasonType, _ any, data map[string]any) { got = data }
+
+	err := l.InstanceUnregister(testSessionKey, LoggedOut, nil)
+	if err == nil || !strings.Contains(err.Error(), "DEL t7:abcdef01...") {
+		t.Fatalf("the failed DEL should be returned, got %v", err)
+	}
+	if strings.Contains(err.Error(), "HDEL") {
+		t.Errorf("HDEL succeeded but is reported as failed: %v", err)
+	}
+	if got == nil {
+		t.Fatal("the unregister callback did not fire although the session's data was removed")
+	}
+	if fmt.Sprint(got["user_id"]) != "42" {
+		t.Errorf("callback got session data %v", got)
+	}
+}

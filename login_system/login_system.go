@@ -542,21 +542,22 @@ func (l *LoginSystem) redisOnlyInstanceUnregister(sessionKey string, reason Toke
 		l.Log.Errorf(err, "redisOnlyInstanceUnregister: HGET %s field %s (reading the session before removing it, tenant %d): %v", l.hashKey(), ShortSessionKey(sessionKey), l.TenantId, err)
 	}
 
-	// Delete TTL key and HASH entry. A failed delete leaves the session live, so it is
-	// returned and the unregister callback is not fired.
-	if err := l.redisDeleteSession(ctx, "redisOnlyInstanceUnregister", sessionKey); err != nil {
-		return err
-	}
+	// Delete TTL key and HASH entry; a failure of either is returned. The session's data
+	// is the HASH field: once HDEL has removed it the session can no longer be read, so
+	// the unregister callback fires even when the DEL of the TTL key failed (a retry
+	// finds no data and could not fire it). When HDEL failed the session is still live
+	// and the callback is not fired.
+	dataRemoved, deleteErr := l.redisDeleteSession(ctx, "redisOnlyInstanceUnregister", sessionKey)
 
 	// Fire callback if we have session data
-	if val != nil && l.OnSessionUnregistered != nil {
+	if dataRemoved && val != nil && l.OnSessionUnregistered != nil {
 		var sessionData map[string]any
 		if err := json.Unmarshal(val, &sessionData); err == nil {
 			l.fixJsonNumbers(sessionData)
 			l.OnSessionUnregistered(sessionKey, reason, reasonData, sessionData)
 		}
 	}
-	return nil
+	return deleteErr
 }
 
 func (l *LoginSystem) redisOnlyInstanceUpdateSessionData(sessionKey string, updateFields map[string]any) error {
@@ -731,7 +732,7 @@ func (l *LoginSystem) redisWithDBInstanceRegister(sessionKey string, userId int6
 			oldKey, ok := oldSession["session_key"].(string)
 			if ok {
 				// Logged by redisDeleteSession; the new session is still registered.
-				_ = l.redisDeleteSession(ctx, "redisWithDBInstanceRegister: replacing an older session", oldKey)
+				_, _ = l.redisDeleteSession(ctx, "redisWithDBInstanceRegister: replacing an older session", oldKey)
 			}
 			if e := l.txFireUnregister(dtx, oldSession, Replaced, nil); e != nil {
 				l.Log.Error("redisWithDBInstanceRegister:txFireUnregister:", e)
@@ -799,7 +800,7 @@ func (l *LoginSystem) redisWithDBInstanceUnregister(sessionKey string, reason To
 
 	// Delete Redis keys. A failed delete leaves the session usable through Redis, so it
 	// is returned with the outcome of the PG delete below, which still runs.
-	redisErr := l.redisDeleteSession(ctx, "redisWithDBInstanceUnregister", sessionKey)
+	_, redisErr := l.redisDeleteSession(ctx, "redisWithDBInstanceUnregister", sessionKey)
 
 	// Delete from PG and fire callback
 	dbErr := l.Db.Tx(ctx, &l.Log, databases.LevelSerializable, func(dtx *databases.DXDatabaseTx) (err error) {
@@ -1158,8 +1159,10 @@ func ShortSessionKey(sessionKey string) string {
 // redisDeleteSession deletes a session's TTL key (DEL) and its field in the
 // session hash (HDEL), both even when the first fails. A failure is logged and
 // returned naming the operation, the Redis key, the shortened session key and
-// the tenant; op names the caller.
-func (l *LoginSystem) redisDeleteSession(ctx context.Context, op string, sessionKey string) error {
+// the tenant; op names the caller. dataRemoved says whether the HDEL removed the
+// session's data, so a caller can tell a session that can no longer be read
+// from one that is still live.
+func (l *LoginSystem) redisDeleteSession(ctx context.Context, op string, sessionKey string) (dataRemoved bool, err error) {
 	var errs []error
 	ttlKey := l.KeyPrefix + ShortSessionKey(sessionKey)
 	if err := l.RedisClient.Del(ctx, l.ttlKey(sessionKey)).Err(); err != nil {
@@ -1167,12 +1170,14 @@ func (l *LoginSystem) redisDeleteSession(ctx context.Context, op string, session
 	}
 	if err := l.RedisClient.HDel(ctx, l.hashKey(), sessionKey).Err(); err != nil {
 		errs = append(errs, fmt.Errorf("%s: HDEL %s field %s (the session's data, tenant %d): %w", op, l.hashKey(), ShortSessionKey(sessionKey), l.TenantId, err))
+	} else {
+		dataRemoved = true
 	}
-	err := errors.Join(errs...)
+	err = errors.Join(errs...)
 	if err != nil {
 		l.Log.Errorf(err, "%v; the session is not fully removed from Redis", err)
 	}
-	return err
+	return dataRemoved, err
 }
 
 // txFireUnregister deletes the PG session row and fires OnSessionUnregistered within a transaction.

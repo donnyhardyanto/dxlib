@@ -107,26 +107,78 @@ func ErrorResponseBody(statusCode_ int, code string, operation string, cause str
 // credentialInText finds a credential written into error text as key=value or
 // key: value, the way a DSN, a URL query or a wrapped config error carries
 // one. The value is masked, the key is kept so the text still says what was
-// wrong with it.
-var credentialInText = regexp.MustCompile(`(?i)\b([a-z0-9_.-]*(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|credential|session[_-]?key|authorization)[a-z0-9_.-]*)(\s*[=:]\s*)("[^"]*"|'[^']*'|[^\s&,;)"']+)`)
+// wrong with it. maskCredentialPair decides which matches are credentials.
+var credentialInText = regexp.MustCompile(`(?i)\b([a-z0-9_.-]*(password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|credential|session[_-]?key|authorization)[a-z0-9_.-]*)(\s*[=:]\s*)("[^"]*"|'[^']*'|[^\s&,;)"']+)`)
 
-// bearerInText finds an Authorization scheme followed by its credential.
-var bearerInText = regexp.MustCompile(`(?i)\b(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{8,}`)
+// bearerInText finds an HTTP authorization scheme and the word after it, with
+// the Authorization header name when it is there.
+var bearerInText = regexp.MustCompile(`(?i)(\bauthorization\s*[:=]\s*)?\b(bearer|basic)\s+([A-Za-z0-9._~+/=-]+)`)
+
+// errorCodeKey is an error code in upper snake case (TOKEN_EXPIRED,
+// SET_ENCRYPTION_SESSION_KEY_ERROR), which heads error text as "CODE: message".
+var errorCodeKey = regexp.MustCompile(`^[A-Z0-9_]+$`)
+
+// passwordKey is a key whose value is a password, often a plain word.
+var passwordKey = regexp.MustCompile(`(?i)(password|passwd|pwd)`)
 
 // userInfoInURL finds the password of a URL's user info (scheme://user:pass@host).
 var userInfoInURL = regexp.MustCompile(`([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+):[^\s@/]+@`)
 
+// looksLikeCredential answers whether a word is shaped like a generated
+// credential rather than prose: it carries a digit or one of . _ ~ + / = - or
+// is 20 characters or longer.
+func looksLikeCredential(word string) bool {
+	if len(word) >= 20 {
+		return true
+	}
+	return strings.ContainsAny(word, "0123456789._~+/=-")
+}
+
+// maskCredentialPair masks the value of one credentialInText match. key=value
+// is always a credential. key: value is also how error text names a code and
+// its message ("TOKEN_EXPIRED: session expired") or explains itself in prose
+// ("invalid token: signature mismatch"), so it is masked only when the key is
+// not an upper snake case error code and the value is quoted, shaped like a
+// credential (looksLikeCredential) or follows a password key.
+func maskCredentialPair(match string) string {
+	m := credentialInText.FindStringSubmatch(match)
+	key, sep, value := m[1], m[3], m[4]
+	if strings.Contains(sep, ":") {
+		if errorCodeKey.MatchString(key) {
+			return match
+		}
+		quoted := strings.HasPrefix(value, `"`) || strings.HasPrefix(value, "'")
+		if !quoted && !passwordKey.MatchString(key) && !looksLikeCredential(value) {
+			return match
+		}
+	}
+	return key + sep + "***REDACTED***"
+}
+
+// maskAuthorization masks the credential of one bearerInText match: always
+// after an Authorization header name, otherwise only a word shaped like a
+// credential, so "Basic authentication failed" keeps its words.
+func maskAuthorization(match string) string {
+	m := bearerInText.FindStringSubmatch(match)
+	header, scheme, value := m[1], m[2], m[3]
+	if header == "" && !looksLikeCredential(value) {
+		return match
+	}
+	return header + scheme + " ***REDACTED***"
+}
+
 // RedactErrorText masks credentials that error text can carry, so the text can
 // go into a response or a log: values of key=value and key: value pairs whose
-// key names a credential, Bearer and Basic credentials, and the password in a
-// URL's user info. Everything else is left as it is.
+// key names a credential (see maskCredentialPair), Bearer and Basic
+// credentials, and the password in a URL's user info. Everything else is left
+// as it is.
 func RedactErrorText(s string) string {
 	if s == "" {
 		return s
 	}
 	s = userInfoInURL.ReplaceAllString(s, "$1:***REDACTED***@")
-	s = bearerInText.ReplaceAllString(s, "$1 ***REDACTED***")
-	s = credentialInText.ReplaceAllString(s, "$1$2***REDACTED***")
+	s = bearerInText.ReplaceAllStringFunc(s, maskAuthorization)
+	s = credentialInText.ReplaceAllStringFunc(s, maskCredentialPair)
 	return s
 }
 
@@ -154,7 +206,7 @@ func (aepr *DXAPIEndPointRequest) writeErrorAnswer(defaultStatus int, defaultCod
 		body["error_log_ref"] = errorLogRef
 	}
 	if status >= http.StatusInternalServerError && aepr.omitServerErrorCause() {
-		cause := "withheld by this API's settings; the full error is in the server log"
+		cause := withheldCause
 		if withLogRef {
 			cause += " entry " + errorLogRef
 		}
@@ -225,18 +277,42 @@ func responseCause(err error) string {
 	return rowDataInText.ReplaceAllString(text, "$1=(values in the server log)")
 }
 
-// addErrorMembers adds error, operation, cause and next to a refusal body a
-// helper such as WriteResponseAndNewErrorf builds in dxlib's older shape, so it
-// answers the same members as the route handler's error answers; its status,
-// reason and reason_message are left as they are.
-func (aepr *DXAPIEndPointRequest) addErrorMembers(body utils.JSON, statusCode int, cause string) {
+// withheldCause is the cause a 5xx answer carries when its API keeps the error
+// text out of it (DXAPI.OmitServerErrorCause).
+const withheldCause = "withheld by this API's settings; the full error is in the server log"
+
+// writeRefusal writes the answer of the older helpers (WriteResponseAndNewErrorf,
+// WriteResponseAndLogAsError, WriteResponseAsError): status, status_code, reason
+// (code, or the cause when code is empty, as WriteResponseAsError always
+// answered) and reason_message (the cause), plus error, operation, cause and
+// next as the route handler's error answers carry them. The cause loses any row
+// values a DB error wrote into it and has its credentials masked; with
+// DXAPI.OmitServerErrorCause a 5xx answer carries none of its text. A 2xx status
+// is answered as 500. Nothing is written when a response has already been sent.
+func (aepr *DXAPIEndPointRequest) writeRefusal(statusCode_ int, code string, cause string) {
+	if aepr.ResponseHeaderSent {
+		return
+	}
+	if (200 <= statusCode_) && (statusCode_ < 300) {
+		statusCode_ = http.StatusInternalServerError
+	}
+	cause = RedactErrorText(rowDataInText.ReplaceAllString(cause, "$1=(values in the server log)"))
+	isServerFault := statusCode_ >= http.StatusInternalServerError
+	if isServerFault && aepr.omitServerErrorCause() {
+		cause = withheldCause
+		if code == "" {
+			code = statusCode(statusCode_)
+		}
+	}
+	if code == "" {
+		code = cause
+	}
 	operation := aepr.operationName("handling")
 	next := "correct the request as the cause says and send it again"
-	if statusCode >= http.StatusInternalServerError {
+	if isServerFault {
 		next = "the server failed while handling the request; the service's operator can find the full error and request in the log"
 	}
-	full := ErrorResponseBody(statusCode, "", operation, cause, next)
-	for _, k := range []string{"error", "operation", "cause", "next"} {
-		body[k] = full[k]
-	}
+	body := ErrorResponseBody(statusCode_, code, operation, cause, next)
+	body["reason_message"] = cause
+	aepr.WriteResponseAsJSON(statusCode_, nil, body)
 }
