@@ -131,13 +131,13 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 	case dxlibTypes.APIParameterTypeInt64, dxlibTypes.APIParameterTypeInt64ZP, dxlibTypes.APIParameterTypeInt64P, dxlibTypes.APIParameterTypeID:
 		if rawValueType == "float64" {
 			if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 			}
 		}
 	case dxlibTypes.APIParameterTypeInt32, dxlibTypes.APIParameterTypeInt32ZP, dxlibTypes.APIParameterTypeInt32P:
 		if rawValueType == "float64" {
 			if !utils.IfFloatIsInt(aeprpv.RawValue.(float64)) {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 			}
 		}
 	case dxlibTypes.APIParameterTypeMoney:
@@ -145,7 +145,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 		// a binary float and may have lost digits, so it is refused here as the
 		// data-model layer refuses it (validateFieldValue).
 		if rawValueType != "string" {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 	case dxlibTypes.APIParameterTypeFloat32, dxlibTypes.APIParameterTypeFloat32ZP, dxlibTypes.APIParameterTypeFloat32P:
 		switch rawValueType {
@@ -154,22 +154,22 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 		case "float64":
 		case "float32":
 		default:
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 	case dxlibTypes.APIParameterTypeFloat64, dxlibTypes.APIParameterTypeFloat64ZP, dxlibTypes.APIParameterTypeFloat64P:
 		switch rawValueType {
 		case "int64":
 		case "float64":
 		default:
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 	case dxlibTypes.APIParameterTypeProtectedString, dxlibTypes.APIParameterTypeProtectedSQLString, dxlibTypes.APIParameterTypeProtectedNonEmptyString, dxlibTypes.APIParameterTypeNullableString, dxlibTypes.APIParameterTypeNonEmptyString, dxlibTypes.APIParameterTypeISO8601, dxlibTypes.APIParameterTypeDate, dxlibTypes.APIParameterTypeTime, dxlibTypes.APIParameterTypeEmail, dxlibTypes.APIParameterTypePhoneNumber, dxlibTypes.APIParameterTypeNPWP:
 		if rawValueType != "string" {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 	case dxlibTypes.APIParameterTypeJSON:
 		if rawValueType != "map[string]interface {}" {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		for _, v := range aeprpv.Children {
 			err = v.Validate()
@@ -179,15 +179,15 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 		}
 	case dxlibTypes.APIParameterTypeJSONPassthrough, dxlibTypes.APIParameterTypeMapStringString:
 		if rawValueType != "map[string]interface {}" {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 	case dxlibTypes.APIParameterTypeArray, dxlibTypes.APIParameterTypeArrayString, dxlibTypes.APIParameterTypeArrayInt64:
 		if rawValueType != "[]interface {}" {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 	case dxlibTypes.APIParameterTypeArrayJSONTemplate:
 		if rawValueType != "[]interface {}" {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		for _, j := range aeprpv.ArrayChildren {
 			err = j.Validate()
@@ -196,7 +196,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateWhenNotSameWithRawValu
 			}
 		}
 	default:
-		return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.RawValue)
+		return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_TYPE_MATCHING:SHOULD_[%s].(%v)_BUT_RECEIVE_(%s)=%v", nameIdPath, aeprpv.Metadata.Type, rawValueType, aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
 	return nil
 }
@@ -243,7 +243,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) rawValueToInt64(nameIdPath str
 		}
 		return v, nil
 	default:
-		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
 }
 
@@ -271,7 +271,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToInt64XXX(nameIdPath s
 			return nil
 		}
 	}
-	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 }
 
 // rawValueToInt32 takes the same wire shapes as rawValueToInt64 (a JSON number
@@ -300,7 +300,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) rawValueToInt32(nameIdPath str
 		}
 		return int32(p), nil
 	default:
-		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
 	if v < math.MinInt32 || v > math.MaxInt32 {
 		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf("INT32_OUT_OF_RANGE:%s=%v", nameIdPath, v)
@@ -335,7 +335,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToInt32XXX(nameIdPath s
 			return nil
 		}
 	}
-	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 }
 
 // resolveToMoney reads a money parameter from its string form into a
@@ -345,7 +345,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToInt32XXX(nameIdPath s
 func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToMoney(nameIdPath string) (err error) {
 	s, ok := aeprpv.RawValue.(string)
 	if !ok {
-		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
 	if !isPlainDecimalString(s) {
 		return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_MONEY_FORMAT:%s=%q", nameIdPath, s)
@@ -392,7 +392,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) rawValueToFloat64(nameIdPath s
 	case int64:
 		return float64(val), nil
 	default:
-		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
 }
 
@@ -409,7 +409,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) rawValueToFloat64WithFloat32(n
 	case float32:
 		return float64(val), nil
 	default:
-		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		return 0, aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
 }
 
@@ -433,9 +433,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToFloat64XXX(nameIdPath
 			return nil
 		}
 	default:
-		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
-	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 }
 
 func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToFloat32XXX(nameIdPath string) (err error) {
@@ -458,9 +458,9 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToFloat32XXX(nameIdPath
 			return nil
 		}
 	default:
-		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
-	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+	return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 }
 
 func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath string) (err error) {
@@ -468,7 +468,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 	case dxlibTypes.APIParameterTypeProtectedString:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		if security.StringCheckPossibleSQLInjection(s) {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("Possible SQL injection found [%s]", s)
@@ -478,11 +478,11 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 	case dxlibTypes.APIParameterTypeProtectedNonEmptyString:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		s = strings.Trim(s, " ")
 		if len(s) == 0 {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		if security.StringCheckPossibleSQLInjection(s) {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("Possible SQL injection found [%s]", s)
@@ -492,7 +492,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 	case dxlibTypes.APIParameterTypeProtectedSQLString:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		if security.PartSQLStringCheckPossibleSQLInjection(s) {
 			return aeprpv.Owner.Log.WarnAndCreateErrorf("Possible SQL injection found [%s]", s)
@@ -506,32 +506,32 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 		}
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		aeprpv.Value = s
 		return nil
 	case dxlibTypes.APIParameterTypeString:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		aeprpv.Value = s
 		return nil
 	case dxlibTypes.APIParameterTypeNonEmptyString:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		s = strings.Trim(s, " ")
 		if len(s) == 0 {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		aeprpv.Value = s
 		return nil
 	case dxlibTypes.APIParameterTypeEmail:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		if s != "" {
 			if !FormatEMailCheckValid(s) {
@@ -543,7 +543,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 	case dxlibTypes.APIParameterTypePhoneNumber:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		if s != "" {
 			if !FormatPhoneNumberCheckValid(s) {
@@ -555,7 +555,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 	case dxlibTypes.APIParameterTypeNPWP:
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		if s != "" {
 			if !FormatNPWPorNIKCheckValid(s) {
@@ -565,7 +565,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveToStringXXX(nameIdPath 
 		aeprpv.Value = s
 		return nil
 	default:
-		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+		return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 	}
 }
 
@@ -617,14 +617,14 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 	case dxlibTypes.APIParameterTypeJSONPassthrough:
 		s, ok := aeprpv.RawValue.(map[string]any)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		aeprpv.Value = s
 		return nil
 	case dxlibTypes.APIParameterTypeMapStringString:
 		rawMap, ok := aeprpv.RawValue.(map[string]any)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		s := make(map[string]string, len(rawMap))
 		for k, v := range rawMap {
@@ -639,7 +639,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 	case dxlibTypes.APIParameterTypeArray:
 		s, ok := aeprpv.RawValue.([]any)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		aeprpv.Value = s
 		return nil
@@ -657,7 +657,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 	case dxlibTypes.APIParameterTypeArrayString:
 		rawSlice, ok := aeprpv.RawValue.([]any)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 
 		// Convert []any to []string
@@ -665,7 +665,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		for i, v := range rawSlice {
 			str, ok := v.(string)
 			if !ok {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 			}
 			s[i] = str
 		}
@@ -674,7 +674,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 	case dxlibTypes.APIParameterTypeArrayInt64:
 		rawSlice, ok := aeprpv.RawValue.([]any)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 
 		// Each element arrives as a float64 from encoding/json and gets the
@@ -683,7 +683,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		for i, v := range rawSlice {
 			aNumber, ok := v.(float64)
 			if !ok {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+				return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 			}
 			if !utils.FloatFitsInt64(aNumber) {
 				return aeprpv.Owner.Log.WarnAndCreateErrorf("INT64_OUT_OF_RANGE:%s[%d]=%v", nameIdPath, i, aNumber)
@@ -699,7 +699,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		if strings.Contains(s, " ") {
 			s = strings.Replace(s, " ", "T", 1)
@@ -717,7 +717,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		t, err := time.Parse(time.DateOnly, s)
 		if err != nil {
@@ -732,7 +732,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) resolveValue(nameIdPath string
 		*/
 		s, ok := aeprpv.RawValue.(string)
 		if !ok {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.RawValue)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf(ErrorMessageIncompatibleTypeReceived, nameIdPath, aeprpv.Metadata.Type, utils.TypeAsString(aeprpv.RawValue), aeprpv.maskedForMessage(aeprpv.RawValue))
 		}
 		t, err := time.Parse(time.TimeOnly, s)
 		if err != nil {
@@ -777,7 +777,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) Validate() (err error) {
 			}
 		}
 		if !found {
-			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_ENUM_VALUE:%s=%v, allowed=%v", nameIdPath, aeprpv.Value, aeprpv.Metadata.Enum)
+			return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_ENUM_VALUE:%s=%v, allowed=%v", nameIdPath, aeprpv.maskedForMessage(aeprpv.Value), aeprpv.Metadata.Enum)
 		}
 	}
 	if aeprpv.isLeftOutOfQuery {

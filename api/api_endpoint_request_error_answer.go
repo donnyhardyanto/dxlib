@@ -3,10 +3,10 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/donnyhardyanto/dxlib/errors"
 	"github.com/donnyhardyanto/dxlib/log"
-	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 // WriteResponseAsDomainError answers a domain error the way the route handler
@@ -33,12 +33,20 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsDomainError(domainErr DXAPIDoma
 // way the route handler answers one returned by OnExecute: the full error and
 // the request dump go to the log at Error, with the DB operation context
 // (operation, table, masked data) when the error carries one, and the client
-// gets a 500 whose body names only INTERNAL_SERVER_ERROR and the
-// error_log_ref that finds the log entry. label heads the log line
+// gets a 500 whose body (ErrorResponseBody) names the reason
+// INTERNAL_SERVER_ERROR, the operation (the request's method and endpoint),
+// the cause (the error's text, credentials masked), what to do next and the
+// error_log_ref that finds the log entry. A DXAPIError in err's chain is
+// answered with its own status and body instead. label heads the log line
 // (EXECUTE_ERROR for the route handler) so the log says which path failed.
 // Nothing is written when a response has already been sent; the log line is
 // written either way.
 func (aepr *DXAPIEndPointRequest) WriteResponseAsInternalServerError(label string, err error) {
+	var apiErr *DXAPIError
+	if errors.As(err, &apiErr) {
+		aepr.logAndAnswerAPIError(label, apiErr)
+		return
+	}
 	requestDump, err2 := aepr.RequestDumpAsString()
 	if err2 != nil {
 		requestDump = "REQUEST_DUMP_ERROR"
@@ -50,15 +58,22 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsInternalServerError(label strin
 	}
 	decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
 	aepr.Log.Errorf(err, "%s:%+v%s\nRaw Request:\n%s%s", label, err, dbContextStr, requestDump, decryptedDump)
-	if aepr.ResponseHeaderSent {
-		return
+	aepr.writeErrorAnswer(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", aepr.operationName("executing"), err,
+		"the server failed while handling the request; send the error_log_ref to the service's operator, who can find the full error and request in the log", true)
+}
+
+// operationName names what the route handler was doing for the request:
+// what, the method and the endpoint, as "executing POST /v1/things".
+func (aepr *DXAPIEndPointRequest) operationName(what string) string {
+	method := ""
+	if aepr.Request != nil {
+		method = aepr.Request.Method
 	}
-	errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
-	aepr.WriteResponseAsJSON(http.StatusInternalServerError, nil, utils.JSON{
-		"status":         "Internal Server Error",
-		"status_code":    http.StatusInternalServerError,
-		"reason":         "INTERNAL_SERVER_ERROR",
-		"reason_message": "INTERNAL_SERVER_ERROR",
-		"error_log_ref":  errorLogRef,
-	})
+	uri := ""
+	if aepr.EndPoint != nil {
+		uri = aepr.EndPoint.Uri
+	} else if aepr.Request != nil && aepr.Request.URL != nil {
+		uri = aepr.Request.URL.Path
+	}
+	return strings.TrimSpace(strings.Join([]string{what, method, uri}, " "))
 }

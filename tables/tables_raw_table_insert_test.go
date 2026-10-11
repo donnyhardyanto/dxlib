@@ -16,9 +16,10 @@ import (
 
 // DXRawTable.DoCreate writes its own error response and returns nil. A row the
 // schema refused answers 409 or 422 with only the reason code, as the DXTable
-// paths do; a database that failed answers the sanitized 500. No answer
-// carries the table, a column, the constraint or the driver message, which
-// all go to the log. Each case runs the real chain over a driver that fails
+// paths do, and carries no table, column, constraint or driver message. A
+// database that failed answers 500 with the operation, the table and the
+// driver's error as the cause, so the caller sees what went wrong; the row's
+// values stay in the log. Each case runs the real chain over a driver that fails
 // the statement, under each dialect's driver name.
 func TestRawTableDoCreateAnswersAFixedReasonCode(t *testing.T) {
 	const tableName = "widget"
@@ -66,10 +67,22 @@ func TestRawTableDoCreateAnswersAFixedReasonCode(t *testing.T) {
 			if got, _ := body["status_code"].(float64); int(got) != c.status {
 				t.Errorf("body status_code = %v, want %d", body["status_code"], c.status)
 			}
+			raw := rec.Body.String()
+			if c.status >= http.StatusInternalServerError {
+				cause, _ := body["cause"].(string)
+				if body["reason"] != c.reason || !strings.Contains(cause, c.leaks[0]) || !strings.Contains(cause, "table="+tableName) {
+					t.Errorf("body = %v, want reason %q and a cause naming the table and %q", body, c.reason, c.leaks[0])
+				}
+				for _, f := range []string{"secret-value", "other-value", "data={"} {
+					if strings.Contains(raw, f) {
+						t.Errorf("body %s carries the row's %q", raw, f)
+					}
+				}
+				return
+			}
 			if body["reason"] != c.reason || body["reason_message"] != c.reason {
 				t.Errorf("body = %v, want reason and reason_message %q", body, c.reason)
 			}
-			raw := rec.Body.String()
 			forbidden := append([]string{tableName, "WIDGET", "name", "owner_ref", "secret-value", "other-value", "DB_INSERT_ERROR", "data="}, c.leaks...)
 			for _, f := range forbidden {
 				if strings.Contains(raw, f) {

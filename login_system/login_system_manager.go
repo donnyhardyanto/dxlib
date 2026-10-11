@@ -2,6 +2,7 @@ package login_system
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -200,14 +201,24 @@ func (m *LoginSystemManager) InstanceGet(sessionKey string) (map[string]any, err
 	}
 	m.mu.RUnlock()
 
+	var errs []error
 	for _, ls := range instances {
 		data, err := ls.InstanceGet(sessionKey)
 		if err == nil && data != nil {
 			m.SessionToTenant.Store(sessionKey, ls.TenantId)
 			return data, nil
 		}
+		if err != nil && !IsSessionNotFound(err) {
+			errs = append(errs, fmt.Errorf("tenant %d: %w", ls.TenantId, err))
+		}
 	}
 
+	// Not found in any tenant is (nil, nil). A tenant whose store failed may hold
+	// the session, so its error is returned rather than reading as "not found".
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("LoginSystemManager.InstanceGet: session %s not found in a reachable tenant, and %d of %d tenants failed: %w",
+			ShortSessionKey(sessionKey), len(errs), len(instances), errors.Join(errs...))
+	}
 	return nil, nil
 }
 
@@ -233,13 +244,21 @@ func (m *LoginSystemManager) InstanceUnregister(sessionKey string, reason TokenR
 	}
 	m.mu.RUnlock()
 
+	// Every tenant is asked: an instance answers nil for a key it does not hold, so
+	// stopping at the first nil would never reach the tenant that holds it. A key
+	// that no instance holds is removed nowhere and is not an error.
+	var errs []error
 	for _, ls := range instances {
-		err := ls.InstanceUnregister(sessionKey, reason, reasonData)
-		if err == nil {
-			return nil
+		if err := ls.InstanceUnregister(sessionKey, reason, reasonData); err != nil {
+			errs = append(errs, fmt.Errorf("tenant %d: %w", ls.TenantId, err))
 		}
 	}
-
+	if len(errs) > 0 {
+		err := fmt.Errorf("LoginSystemManager.InstanceUnregister: removing session %s failed in %d of %d tenants; it may still be live: %w",
+			ShortSessionKey(sessionKey), len(errs), len(instances), errors.Join(errs...))
+		m.Log.Errorf(err, "%v", err)
+		return err
+	}
 	return nil
 }
 
@@ -263,14 +282,24 @@ func (m *LoginSystemManager) InstanceUpdateSessionData(sessionKey string, update
 	}
 	m.mu.RUnlock()
 
+	var errs []error
 	for _, ls := range instances {
 		err := ls.InstanceUpdateSessionData(sessionKey, updateFields)
 		if err == nil {
 			m.SessionToTenant.Store(sessionKey, ls.TenantId)
 			return nil
 		}
+		if !IsSessionNotFound(err) {
+			errs = append(errs, fmt.Errorf("tenant %d: %w", ls.TenantId, err))
+		}
 	}
 
+	// A session no tenant holds is not updated and is not an error, as before; a
+	// tenant whose store failed may hold it, so its error is returned.
+	if len(errs) > 0 {
+		return fmt.Errorf("LoginSystemManager.InstanceUpdateSessionData: session %s not updated in any tenant, and %d of %d tenants failed: %w",
+			ShortSessionKey(sessionKey), len(errs), len(instances), errors.Join(errs...))
+	}
 	return nil
 }
 

@@ -137,6 +137,12 @@ type DXAPI struct {
 	// ProblemTypeBaseURI is put in front of the reason code to name a problem
 	// type, as in "https://example.com/problems/" + "UNIQUE_FIELD_VIOLATION".
 	ProblemTypeBaseURI string
+	// OmitServerErrorCause keeps the underlying error text out of a 5xx answer,
+	// for an API that faces callers who must not see table names, SQL or hosts.
+	// The answer still names the operation, what to do next and the
+	// error_log_ref; its cause says where the full error is logged. A 4xx answer
+	// always carries its cause. Off by default ("omit-server-error-cause").
+	OmitServerErrorCause bool
 }
 
 var SpecFormat = "MarkDown"
@@ -271,6 +277,7 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	a.EnableBrowserSecurityHeaders = utilsJSON.GetBoolWithDefault(c1, "enable-browser-security-headers", false)
 	a.ProblemDetailsEnabled = utilsJSON.GetBoolWithDefault(c1, "problem-details", false)
 	a.ProblemTypeBaseURI, _ = utilsJSON.GetString(c1, "problem-type-base-uri")
+	a.OmitServerErrorCause = utilsJSON.GetBoolWithDefault(c1, "omit-server-error-cause", false)
 
 	// The tls block. Absent means plaintext, said out loud so that "no TLS" is
 	// a line in the log and not the absence of one. Present means every key in
@@ -581,19 +588,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			}
 			aepr.Log.Errorf(panicErr, "PANIC_RECOVERED: %v\nStack Trace:\n%s\nRaw Request:\n%s", rec, stackTrace, requestDump)
 
-			// Send HTTP 500 response with error_log reference
-			if !aepr.ResponseHeaderSent {
-				errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
-				responseBody := utils.JSON{
-					"status":         "Internal Server Error",
-					"status_code":    http.StatusInternalServerError,
-					"reason":         "INTERNAL_SERVER_ERROR",
-					"reason_message": "INTERNAL_SERVER_ERROR",
-					"error_log_ref":  errorLogRef,
-				}
-				aepr.ResponseStatusCode = http.StatusInternalServerError
-				aepr.WriteResponseAsJSON(http.StatusInternalServerError, nil, responseBody)
-			}
+			// Send HTTP 500 response naming the panic, with error_log reference
+			aepr.writeErrorAnswer(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", aepr.operationName("handling"), panicErr,
+				"the handler panicked and the server recovered; send the error_log_ref to the service's operator, who can find the stack trace in the log", true)
 
 			// Set error for other defer functions
 			err = panicErr
@@ -613,11 +610,8 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 
 		if (err != nil) && (dxlib.IsDebug) && (p.RequestContentType == utilsHttp.RequestContentTypeApplicationJSON) {
 			if aepr.RequestBodyAsBytes != nil {
-				requestBody := string(aepr.RequestBodyAsBytes)
 				const maxLogLength = 2000
-				if len(requestBody) > maxLogLength {
-					requestBody = requestBody[:maxLogLength] + "... (truncated)"
-				}
+				requestBody := maskedBodyForLog(r.Header.Get("Content-Type"), aepr.RequestBodyAsBytes, maxLogLength)
 				aepr.Log.Infof("%d %s Request: %s", aepr.ResponseStatusCode, r.URL.Path, requestBody)
 			}
 		} else {
@@ -690,16 +684,9 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 		if aepr.ResponseHeaderSent {
 			return
 		}
-		// Send sanitized response with error_log reference for correlation
-		errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
-		responseBody := utils.JSON{
-			"status":         "Bad Request",
-			"status_code":    http.StatusBadRequest,
-			"reason":         "PREPROCESS_ERROR",
-			"reason_message": "PREPROCESS_ERROR",
-			"error_log_ref":  errorLogRef,
-		}
-		aepr.WriteResponseAsJSON(http.StatusBadRequest, nil, responseBody)
+		// Answer with the cause and the error_log reference for correlation
+		aepr.writeErrorAnswer(http.StatusBadRequest, "PREPROCESS_ERROR", aepr.operationName("reading and checking the request (decryption, body, parameters) for"), err,
+			"correct the request as the cause says and send it again", true)
 		return
 	}
 
@@ -732,16 +719,10 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 			if aepr.ResponseHeaderSent {
 				return
 			}
-			// Send sanitized response with error_log reference for correlation
-			errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
-			responseBody := utils.JSON{
-				"status":         "Bad Request",
-				"status_code":    http.StatusBadRequest,
-				"reason":         "MIDDLEWARE_ERROR",
-				"reason_message": "MIDDLEWARE_ERROR",
-				"error_log_ref":  errorLogRef,
-			}
-			aepr.WriteResponseAsJSON(http.StatusBadRequest, nil, responseBody)
+			// Answer with the cause and the error_log reference for correlation
+			aepr.writeErrorAnswer(http.StatusBadRequest, "MIDDLEWARE_ERROR",
+				aepr.operationName(fmt.Sprintf("running middleware %d of %d for", i+1, len(p.Middlewares))), err,
+				"the request was refused before it reached the endpoint; correct it as the cause says (a session or permission check names what is missing) and send it again", true)
 			return
 		}
 

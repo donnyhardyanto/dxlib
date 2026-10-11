@@ -648,6 +648,27 @@ By default a refusal (status 400 and above) is answered as `application/json` wi
 
 `status_code`, `reason` and a string `reason_message` are not sent; every other member (`fields`, `error_log_ref`, anything a handler put in its refusal) is kept as an extension member. A handler that writes its own `type`, `title`, `detail` or `instance` keeps them; `status` is always the status code. `NewProblemDetails(statusCode, body, typeBaseURI, instance)` does the same conversion for a caller that builds its own answer. Success bodies are not changed. An encrypted endpoint (V2, V3, V4) whose keys are gone answers `REFRESH_PREKEY`, `REFRESH_CAPTCHA` or `REFRESH_SESSION` in plain JSON, and with the setting on that answer is a problem document too, untranslated as before. An encrypted answer keeps its outer envelope and Content-Type as before; the problem document and its Content-Type travel inside the envelope.
 
+### Error answers
+
+An error that reaches the route handler is answered with the operation that failed, the underlying cause, what to do next and the status, in the same shape services such as dx-service-push-notification answer themselves:
+
+| Member | Content |
+|---|---|
+| `error` | One line, `<operation>: <cause>` |
+| `operation` | What was being done: `executing POST /v1/things`, `running middleware 2 of 3 for POST /v1/things`, `reading and checking the request (decryption, body, parameters) for ...`, or the handler's own |
+| `cause` | The error's text, with credentials masked by `RedactErrorText` (key=value and key: value pairs whose key names a password, secret, token or key; Bearer and Basic credentials; the password in a URL's user info). A DB error is named by its operation, table and the driver's error (`DB_INSERT_ERROR table=widget: <driver error>`); the row values it carries (`data=`, `set=`, `where=`) stay in the log |
+| `next` | What the caller can do; left out when empty |
+| `status_code` | The status, as a number |
+| `status`, `reason`, `reason_message`, `error_log_ref` | As before: the status text, the code (`PREPROCESS_ERROR`, `MIDDLEWARE_ERROR`, `INTERNAL_SERVER_ERROR`, or the handler's), the same line as `error` (it used to repeat the code) and the log reference of a 5xx or a preprocess or middleware failure |
+
+A handler or middleware that returns a `*DXAPIError` (`NewAPIError(status, code, operation, cause, next)`), directly or wrapped, is answered with its own status, code, operation and next instead of the fixed 400 (preprocess, middleware) or 500 (execute) an untyped error gets; a status below 500 is logged at Warn and carries no `error_log_ref`. `aepr.WriteResponseAsAPIError(status, operation, err, next)` answers and logs one from inside a handler, and `ErrorResponseBody(status, code, operation, cause, next)` builds the body for a caller that writes its own. A domain error (`DXAPIDomainError`, such as `ErrUniqueFieldViolation`) is answered with its own body as before, without its log details. With problem documents on, these members are kept as extension members and `detail` is the `error` line.
+
+| Configuration key | `DXAPI` field | Description |
+|---|---|---|
+| `omit-server-error-cause` | `OmitServerErrorCause bool` | Keep the error text out of a 5xx answer, for an API whose callers must not see table names, SQL or hosts: `cause` then says it was withheld and names the `error_log_ref`. A 4xx answer always carries its cause. Default `false` |
+
+What goes into a log or an answer from the request is masked: `RequestDump` masks the query values and the body by field name (a JSON body through `utils.MaskForLog` at every depth, a form body value by value) and writes any other body (a file, multipart, text, JSON that does not parse) only as its size and type. A parameter value named in a type or bounds error is masked the same way, under the parameter's name, and a body that cannot be read or parsed is named by its size, not echoed.
+
 ### Types
 
 **`DXAPIEndPointType`** — Endpoint variant enum.
@@ -717,7 +738,9 @@ By default a refusal (status 400 and above) is answered as `application/json` wi
 | `GetParameterValues() utils.JSON` | Returns all parsed parameter values as a flat `utils.JSON` map. |
 | `TranslateMessage(messageKey string) string` | Translates key using the user's detected language. |
 | `TranslateMessageWithArgs(messageKey string, args ...any) string` | Formatted translation. |
-| `RequestDump() ([]byte, error)` | Returns the HTTP request dump for logging: request line, headers in name order with every credential header masked (`utils.WriteHeadersForLog`), and the body up to 1 KB. |
+| `RequestDump() ([]byte, error)` | Returns the HTTP request dump for logging: request line with the query values masked by key, headers in name order with every credential header masked (`utils.WriteHeadersForLog`), and the body masked by field (JSON and form bodies; any other body only as its size and type), cut at 1 KB. |
+| `WriteResponseAsAPIError(statusCode int, operation string, err error, next string)` | Answers with an error body (see Error answers) and logs it with the masked request dump: at Error with `error_log_ref` for 5xx, at Warn below. |
+| `WriteResponseAsInternalServerError(label string, err error)` | Logs `err` at Error with the request dump and answers 500 with the operation, the masked cause, the next step and `error_log_ref`; a `*DXAPIError` in the chain is answered with its own status. |
 
 **`DXAPIAuditLogEntry`** — Audit record written per API call.
 | Field | Description |
@@ -1244,6 +1267,16 @@ Session/token management with flexible device and storage policies. Supports Red
 | Function | Description |
 |---|---|
 | `NewLoginSystem(tenantId int64, aType DeviceInstanceType, tokenLifetime TokenLifetimeType, ...) *LoginSystem` | Creates a new login system instance. |
+| `IsSessionNotFound(err error) bool` | Whether an error only says the session is not there (`goredis.Nil`, `ErrSessionNotFound`, `ErrSessionExpired`), as opposed to a store that failed. |
+| `ShortSessionKey(sessionKey string) string` | The first 8 characters of a session key and `...`: a session key is a bearer credential, so errors and logs carry only this. |
+
+`ErrSessionNotFound` (`session_not_found`) and `ErrSessionExpired` (`session_expired`) keep the texts the DB-only store returned before.
+
+### Errors on session removal
+
+`InstanceUnregister` returns a failed Redis `DEL` of the session's TTL key or `HDEL` of its field in the session hash, each naming the command, the Redis key, the shortened session key and the tenant, and logs it at Error. On `RedisOnly` the unregister callback is not fired then, since the session is still live; on `RedisWithDB` the table delete still runs and both outcomes are returned together. Kicking an older session on a new login and the expiry callbacks log the same failures without failing the call.
+
+`LoginSystemManager.InstanceUnregister` asks every tenant when the session's tenant is not known (each tenant answers nil for a key it does not hold, so stopping at the first nil reached only one tenant) and returns the failures of all of them, each prefixed `tenant N:`. `InstanceGet` and `InstanceUpdateSessionData` keep answering a session no tenant holds as before (`nil, nil` and `nil`), but return a tenant's store failure instead of reading it as "not found".
 
 ---
 

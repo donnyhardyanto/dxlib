@@ -181,7 +181,9 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 		reqURI = req.URL.RequestURI()
 	}
 
-	_, _ = fmt.Fprintf(&b, "%s %s HTTP/%d.%d\r\n", req.Method, reqURI, req.ProtoMajor, req.ProtoMinor)
+	// The query is masked by key and the body by field (maskedBodyForLog): this dump goes into
+	// every error log, and a body can carry passwords, tokens and keys.
+	_, _ = fmt.Fprintf(&b, "%s %s HTTP/%d.%d\r\n", req.Method, maskedQueryForLog(reqURI), req.ProtoMajor, req.ProtoMinor)
 
 	absRequestURI := strings.HasPrefix(reqURI, "http://") || strings.HasPrefix(reqURI, "https://")
 	if !absRequestURI {
@@ -211,13 +213,7 @@ func (aepr *DXAPIEndPointRequest) RequestDump() ([]byte, error) {
 
 	_, _ = io.WriteString(&b, "\r\n")
 	const maxBodyDumpBytes = 1024
-	body := aepr.RequestBodyAsBytes
-	if len(body) > maxBodyDumpBytes {
-		b.Write(body[:maxBodyDumpBytes])
-		_, _ = fmt.Fprintf(&b, "...(truncated, total %d bytes)", len(body))
-	} else {
-		b.Write(body)
-	}
+	b.WriteString(maskedBodyForLog(req.Header.Get("Content-Type"), aepr.RequestBodyAsBytes, maxBodyDumpBytes))
 	_, _ = io.WriteString(&b, "\r\n\r\n")
 	return b.Bytes(), nil
 }
@@ -1217,13 +1213,13 @@ func (aepr *DXAPIEndPointRequest) preProcessRequestAsApplicationJSON() (err erro
 		if tooLarge := aepr.writeIfBodyTooLarge(err); tooLarge != nil {
 			return tooLarge
 		}
-		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_READ:%v=%v", err.Error(), aepr.RequestBodyAsBytes)
+		return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_READ:%v (%d bytes read)", err.Error(), len(aepr.RequestBodyAsBytes))
 	}
 
 	if len(aepr.RequestBodyAsBytes) > 0 {
 		err = json.Unmarshal(aepr.RequestBodyAsBytes, &bodyAsJSON)
 		if err != nil {
-			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v", err.Error()+"="+string(aepr.RequestBodyAsBytes))
+			return aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_BODY_CANT_BE_PARSED_AS_JSON:%v (body of %d bytes, not echoed since it may hold credentials)", err.Error(), len(aepr.RequestBodyAsBytes))
 		}
 	}
 

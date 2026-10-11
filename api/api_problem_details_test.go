@@ -208,8 +208,10 @@ func TestProblemDetailsOn(t *testing.T) {
 		if _, ok := body["error_log_ref"].(string); !ok {
 			t.Fatalf("error_log_ref = %v, want a string", body["error_log_ref"])
 		}
-		if strings.Contains(rec.Body.String(), "relation") {
-			t.Fatalf("the answer carries the driver text: %s", rec.Body.String())
+		// The cause is answered (OmitServerErrorCause withholds it, see
+		// TestOmitServerErrorCauseWithholdsOnly5xx) and kept as an extension member.
+		if body["cause"] != "pq: relation member does not exist" {
+			t.Fatalf("cause = %v, want the driver text", body["cause"])
 		}
 	})
 	t.Run("a success is left as it is", func(t *testing.T) {

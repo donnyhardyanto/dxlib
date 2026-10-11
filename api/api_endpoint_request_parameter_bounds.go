@@ -48,7 +48,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateBounds(nameIdPath stri
 				return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_BOUND_DECLARED:%s, %s=%v", nameIdPath, c.name, *c.bound)
 			}
 			if c.refused(d, b) {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf("%s:%s=%v, %s=%v", c.code, nameIdPath, aeprpv.Value, c.name, *c.bound)
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("%s:%s=%v, %s=%v", c.code, nameIdPath, aeprpv.maskedForMessage(aeprpv.Value), c.name, *c.bound)
 			}
 		}
 		// In decimal, not float: 0.3 is a multiple of 0.1 here, as a reader
@@ -59,13 +59,13 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateBounds(nameIdPath stri
 				return aeprpv.Owner.Log.WarnAndCreateErrorf("INVALID_BOUND_DECLARED:%s, multipleOf=%v", nameIdPath, *m.MultipleOf)
 			}
 			if !d.Mod(b).IsZero() {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_MULTIPLE_OF:%s=%v, multipleOf=%v", nameIdPath, aeprpv.Value, *m.MultipleOf)
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_MULTIPLE_OF:%s=%v, multipleOf=%v", nameIdPath, aeprpv.maskedForMessage(aeprpv.Value), *m.MultipleOf)
 			}
 		}
 		if m.Const != nil {
 			c, ok := boundsDecimal(*m.Const)
 			if !ok || !d.Equal(c) {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_CONST:%s=%v, const=%v", nameIdPath, aeprpv.Value, *m.Const)
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_CONST:%s=%v, const=%v", nameIdPath, aeprpv.maskedForMessage(aeprpv.Value), *m.Const)
 			}
 		}
 	case "string":
@@ -101,7 +101,7 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) validateBounds(nameIdPath stri
 		if m.Const != nil {
 			v, ok := aeprpv.Value.(bool)
 			if c, isBool := (*m.Const).(bool); !ok || !isBool || v != c {
-				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_CONST:%s=%v, const=%v", nameIdPath, aeprpv.Value, *m.Const)
+				return aeprpv.Owner.Log.WarnAndCreateErrorf("VALUE_NOT_CONST:%s=%v, const=%v", nameIdPath, aeprpv.maskedForMessage(aeprpv.Value), *m.Const)
 			}
 		}
 	case "array":
