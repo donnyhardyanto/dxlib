@@ -145,7 +145,10 @@ func TestShortSessionKey(t *testing.T) {
 // failCommandsHook answers HGET with a stored session and HDEL with success
 // without reaching Redis, and fails every other command, so an unregister sees
 // its DEL fail after its HDEL went through.
-type failCommandsHook struct{ session string }
+type failCommandsHook struct {
+	session  string
+	failHDEL bool
+}
 
 var errHookAnswered = errors.New("answered by the test hook")
 
@@ -162,7 +165,7 @@ func (h failCommandsHook) AfterProcess(ctx context.Context, cmd goredis.Cmder) e
 			return nil
 		}
 	case *goredis.IntCmd:
-		if c.Name() == "hdel" {
+		if c.Name() == "hdel" && !h.failHDEL {
 			c.SetErr(nil)
 			c.SetVal(1)
 			return nil
@@ -200,5 +203,29 @@ func TestRedisOnlyUnregisterFiresCallbackWhenOnlyDelFailed(t *testing.T) {
 	}
 	if fmt.Sprint(got["user_id"]) != "42" {
 		t.Errorf("callback got session data %v", got)
+	}
+}
+
+// On expiry a failed HDEL leaves the field for the next sync, which calls the
+// expiry callback again; the unregister callback fires then, so it must not
+// fire now as well.
+func TestRedisOnlyExpiryWaitsForHDELBeforeTheCallback(t *testing.T) {
+	fired := 0
+	onUnregistered := func(string, TokenRemoveReasonType, any, map[string]any) { fired++ }
+
+	l := newDownRedisLoginSystem(t, 7)
+	l.RedisClient.AddHook(failCommandsHook{session: `{"user_id": 42}`, failHDEL: true})
+	l.OnSessionUnregistered = onUnregistered
+	l.redisOnlyExpirationCallback(testSessionKey, Expired)
+	if fired != 0 {
+		t.Fatalf("the callback fired although HDEL failed and the next sync will fire it")
+	}
+
+	l = newDownRedisLoginSystem(t, 7)
+	l.RedisClient.AddHook(failCommandsHook{session: `{"user_id": 42}`})
+	l.OnSessionUnregistered = onUnregistered
+	l.redisOnlyExpirationCallback(testSessionKey, Expired)
+	if fired != 1 {
+		t.Fatalf("the callback fired %d times once HDEL succeeded, want 1", fired)
 	}
 }

@@ -177,6 +177,12 @@ func TestProblemDetailsOffKeepsTheRefusalBody(t *testing.T) {
 		"cause":          "REQUEST_FIELD_VALUE_IS_NOT_STRING:name",
 		"next":           "correct the request as the cause says and send it again",
 	}
+	// WriteResponseAndNewErrorf logs at Error, so its answer names that log line.
+	ref, ok := body["error_log_ref"].(string)
+	if !ok || ref == "" {
+		t.Fatalf("no error_log_ref: %v", body)
+	}
+	want["error_log_ref"] = ref
 	gotJSON, _ := json.Marshal(body)
 	wantJSON, _ := json.Marshal(want)
 	if string(gotJSON) != string(wantJSON) {

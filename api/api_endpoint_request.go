@@ -312,7 +312,7 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndNewErrorf(statusCode int, resp
 	err = errors.New(msg)
 	fullDump := requestDump + decryptedDump
 	aepr.Log.LogText(err, log.DXLogLevelError, "", fullDump)
-	aepr.WriteResponseAsErrorMessageNotLogged(statusCode, responseMessage, msg)
+	aepr.writeRefusal(statusCode, responseMessage, msg, true)
 	return err
 }
 
@@ -337,16 +337,16 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAndLogAsError(statusCode int, res
 
 	fullDump := requestDump + decryptedDump
 	aepr.Log.LogText(err, log.DXLogLevelError, "", fullDump)
-	aepr.writeRefusal(statusCode, responseMessage, responseCause(err))
+	aepr.writeRefusal(statusCode, responseMessage, responseCause(err), true)
 	return
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend error) {
-	aepr.writeRefusal(statusCode, "", responseCause(errToSend))
+	aepr.writeRefusal(statusCode, "", responseCause(errToSend), false)
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsErrorMessageNotLogged(statusCode int, errorMsg string, reasonMsg string) {
-	aepr.writeRefusal(statusCode, errorMsg, reasonMsg)
+	aepr.writeRefusal(statusCode, errorMsg, reasonMsg, false)
 }
 
 func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map[string]string, bodyAsJSON utils.JSON) {

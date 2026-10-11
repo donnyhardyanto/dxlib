@@ -37,25 +37,22 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsDomainError(domainErr DXAPIDoma
 // INTERNAL_SERVER_ERROR, the operation (the request's method and endpoint),
 // the cause (the error's text, credentials masked), what to do next and the
 // error_log_ref that finds the log entry. A DXAPIError in err's chain is
-// answered with its own status and body instead. label heads the log line
+// answered with its own status and body instead, and logged the same way
+// (the whole chain, its stack trace and DB context). label heads the log line
 // (EXECUTE_ERROR for the route handler) so the log says which path failed.
 // Nothing is written when a response has already been sent; the log line is
 // written either way.
 func (aepr *DXAPIEndPointRequest) WriteResponseAsInternalServerError(label string, err error) {
 	var apiErr *DXAPIError
 	if errors.As(err, &apiErr) {
-		aepr.logAndAnswerAPIError(label, apiErr)
+		aepr.logAndAnswerAPIError(label, err, apiErr)
 		return
 	}
 	requestDump, err2 := aepr.RequestDumpAsString()
 	if err2 != nil {
 		requestDump = "REQUEST_DUMP_ERROR"
 	}
-	dbContextStr := ""
-	var dbCtx dbContextCarrier
-	if errors.As(err, &dbCtx) {
-		dbContextStr = fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
-	}
+	dbContextStr := dbContextLine(err)
 	decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
 	aepr.Log.Errorf(err, "%s:%+v%s\nRaw Request:\n%s%s", label, err, dbContextStr, requestDump, decryptedDump)
 	aepr.writeErrorAnswer(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", aepr.operationName("executing"), err,

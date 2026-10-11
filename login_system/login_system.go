@@ -539,7 +539,7 @@ func (l *LoginSystem) redisOnlyInstanceUnregister(sessionKey string, reason Toke
 	// Read session data before deleting
 	val, err := l.RedisClient.HGet(ctx, l.hashKey(), sessionKey).Bytes()
 	if err != nil && !errors.Is(err, goredis.Nil) {
-		l.Log.Errorf(err, "redisOnlyInstanceUnregister: HGET %s field %s (reading the session before removing it, tenant %d): %v", l.hashKey(), ShortSessionKey(sessionKey), l.TenantId, err)
+		l.Log.Errorf(err, "redisOnlyInstanceUnregister: HGET %s field %s (reading the session before removing it, tenant %d): %v; the session is still removed, but the unregister callback is not fired", l.hashKey(), ShortSessionKey(sessionKey), l.TenantId, err)
 	}
 
 	// Delete TTL key and HASH entry; a failure of either is returned. The session's data
@@ -658,8 +658,11 @@ func (l *LoginSystem) redisOnlyExpirationCallback(sessionKey string, reason Toke
 		return
 	}
 	if err := l.RedisClient.HDel(ctx, l.hashKey(), sessionKey).Err(); err != nil {
-		l.Log.Errorf(err, "redisOnlyExpirationCallback: HDEL %s field %s (removal reason %d, tenant %d): %v; the session data stays in the hash until the next sync",
+		// The next sync finds the field without its TTL key and calls this again; the
+		// callback fires then, once the HDEL has succeeded, so it fires once per session.
+		l.Log.Errorf(err, "redisOnlyExpirationCallback: HDEL %s field %s (removal reason %d, tenant %d): %v; the session data stays in the hash until the next sync, and the unregister callback fires once it is removed",
 			l.hashKey(), ShortSessionKey(sessionKey), reason, l.TenantId, err)
+		return
 	}
 
 	if l.OnSessionUnregistered != nil {

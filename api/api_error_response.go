@@ -171,7 +171,13 @@ func maskAuthorization(match string) string {
 // go into a response or a log: values of key=value and key: value pairs whose
 // key names a credential (see maskCredentialPair), Bearer and Basic
 // credentials, and the password in a URL's user info. Everything else is left
-// as it is.
+// as it is. It works on prose and is not a full masker: a key: value pair whose
+// value is a plain word (no digit or punctuation) stays unless the key names a
+// password, the first word after a password key is masked even when it is
+// prose ("password: must be at least 8 characters"), and JSON in the text is
+// not covered ("{\"token\":\"abc\"}" passes through, since the quote breaks the
+// key match). A dependent that wraps an upstream body or JSON into an error
+// should mask it before it does.
 func RedactErrorText(s string) string {
 	if s == "" {
 		return s
@@ -226,26 +232,42 @@ func (aepr *DXAPIEndPointRequest) writeErrorAnswer(defaultStatus int, defaultCod
 // written when a response has already been sent; the log line is written
 // either way.
 func (aepr *DXAPIEndPointRequest) WriteResponseAsAPIError(statusCode int, operation string, err error, next string) {
-	aepr.logAndAnswerAPIError("API_ERROR", NewAPIError(statusCode, "", operation, err, next))
+	apiErr := NewAPIError(statusCode, "", operation, err, next)
+	aepr.logAndAnswerAPIError("API_ERROR", apiErr, apiErr)
 }
 
-// logAndAnswerAPIError logs apiErr with the masked request dump and answers
-// with its status and body: at Error, with error_log_ref in the body, for a
-// status of 500 or more; at Warn below it, since a refusal of the caller's
-// request is not a fault of the server. label heads the log line.
-func (aepr *DXAPIEndPointRequest) logAndAnswerAPIError(label string, apiErr *DXAPIError) {
+// logAndAnswerAPIError logs err, whose chain holds apiErr, with the masked
+// request dump and answers with apiErr's status and body: at Error, with
+// error_log_ref in the body, for a status of 500 or more; at Warn below it,
+// since a refusal of the caller's request is not a fault of the server. The
+// log line carries the whole chain with its stack trace (%+v of err) and the
+// DB operation context when the chain holds one, since with
+// omit-server-error-cause the log is the only place the full error lives.
+// label heads the log line.
+func (aepr *DXAPIEndPointRequest) logAndAnswerAPIError(label string, err error, apiErr *DXAPIError) {
 	requestDump, err2 := aepr.RequestDumpAsString()
 	if err2 != nil {
 		requestDump = fmt.Sprintf("REQUEST_DUMP_ERROR: %v", err2)
 	}
 	decryptedDump := "\n\n" + aepr.DecryptedRequestDumpAsString()
+	dbContextStr := dbContextLine(err)
 	isServerFault := apiErr.StatusCode >= http.StatusInternalServerError
 	if isServerFault {
-		aepr.Log.Errorf(apiErr, "%s:HTTP %d:%+v\nRaw Request:\n%s%s", label, apiErr.StatusCode, apiErr, requestDump, decryptedDump)
+		aepr.Log.Errorf(err, "%s:HTTP %d:%+v%s\nRaw Request:\n%s%s", label, apiErr.StatusCode, err, dbContextStr, requestDump, decryptedDump)
 	} else {
-		aepr.Log.Warnf("%s:HTTP %d:%v\nRaw Request:\n%s%s", label, apiErr.StatusCode, apiErr, requestDump, decryptedDump)
+		aepr.Log.Warnf("%s:HTTP %d:%+v%s\nRaw Request:\n%s%s", label, apiErr.StatusCode, err, dbContextStr, requestDump, decryptedDump)
 	}
 	aepr.writeErrorAnswer(apiErr.StatusCode, apiErr.Code, apiErr.Operation, apiErr, apiErr.Next, isServerFault)
+}
+
+// dbContextLine is the DB_CONTEXT log line (operation, table, masked data) of
+// the DB error in err's chain, or "" when it holds none.
+func dbContextLine(err error) string {
+	var dbCtx dbContextCarrier
+	if errors.As(err, &dbCtx) {
+		return fmt.Sprintf("\nDB_CONTEXT: %s table=%s data=%s", dbCtx.DBOperation(), dbCtx.DBTableName(), dbCtx.DBMaskedDataString())
+	}
+	return ""
 }
 
 // omitServerErrorCause answers whether the request's API keeps the cause out
@@ -281,15 +303,26 @@ func responseCause(err error) string {
 // text out of it (DXAPI.OmitServerErrorCause).
 const withheldCause = "withheld by this API's settings; the full error is in the server log"
 
+// isBareCode answers whether s is a code with no error text in it: upper snake
+// case (CANNOT_GET_ID_FROM_ROW) or the status text in upper case that the
+// helpers default the code to ("BAD GATEWAY").
+func isBareCode(s string, statusCode_ int) bool {
+	return errorCodeKey.MatchString(s) || (s != "" && s == strings.ToUpper(http.StatusText(statusCode_)))
+}
+
 // writeRefusal writes the answer of the older helpers (WriteResponseAndNewErrorf,
 // WriteResponseAndLogAsError, WriteResponseAsError): status, status_code, reason
 // (code, or the cause when code is empty, as WriteResponseAsError always
 // answered) and reason_message (the cause), plus error, operation, cause and
 // next as the route handler's error answers carry them. The cause loses any row
-// values a DB error wrote into it and has its credentials masked; with
-// DXAPI.OmitServerErrorCause a 5xx answer carries none of its text. A 2xx status
+// values a DB error wrote into it and has its credentials masked. With
+// DXAPI.OmitServerErrorCause a 5xx answer carries none of the error text: a
+// code or cause that is a bare code (isBareCode) stays as it is, a cause with
+// text is withheld and a code with text becomes the status code. With
+// withLogRef (the helper has just logged at Error) the answer carries the
+// error_log_ref of that log line, and a withheld cause names it. A 2xx status
 // is answered as 500. Nothing is written when a response has already been sent.
-func (aepr *DXAPIEndPointRequest) writeRefusal(statusCode_ int, code string, cause string) {
+func (aepr *DXAPIEndPointRequest) writeRefusal(statusCode_ int, code string, cause string, withLogRef bool) {
 	if aepr.ResponseHeaderSent {
 		return
 	}
@@ -298,11 +331,17 @@ func (aepr *DXAPIEndPointRequest) writeRefusal(statusCode_ int, code string, cau
 	}
 	cause = RedactErrorText(rowDataInText.ReplaceAllString(cause, "$1=(values in the server log)"))
 	code = RedactErrorText(rowDataInText.ReplaceAllString(code, "$1=(values in the server log)"))
+	errorLogRef := fmt.Sprintf("%d:%s", aepr.Log.LastErrorLogId, aepr.Log.LastErrorLogUid)
 	isServerFault := statusCode_ >= http.StatusInternalServerError
 	if isServerFault && aepr.omitServerErrorCause() {
-		cause = withheldCause
+		if !isBareCode(cause, statusCode_) {
+			cause = withheldCause
+			if withLogRef {
+				cause += " entry " + errorLogRef
+			}
+		}
 		// A caller may pass the error text as the code; only a bare code stays.
-		if !errorCodeKey.MatchString(code) {
+		if !isBareCode(code, statusCode_) {
 			code = statusCode(statusCode_)
 		}
 	}
@@ -313,8 +352,14 @@ func (aepr *DXAPIEndPointRequest) writeRefusal(statusCode_ int, code string, cau
 	next := "correct the request as the cause says and send it again"
 	if isServerFault {
 		next = "the server failed while handling the request; the service's operator can find the full error and request in the log"
+		if withLogRef {
+			next = "the server failed while handling the request; send the error_log_ref to the service's operator, who can find the full error and request in the log"
+		}
 	}
 	body := ErrorResponseBody(statusCode_, code, operation, cause, next)
 	body["reason_message"] = cause
+	if withLogRef {
+		body["error_log_ref"] = errorLogRef
+	}
 	aepr.WriteResponseAsJSON(statusCode_, nil, body)
 }

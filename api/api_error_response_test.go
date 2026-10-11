@@ -344,3 +344,67 @@ func TestHelperAnswersMaskAndWithhold(t *testing.T) {
 		}
 	}
 }
+
+// A bare code is not error text: with omit-server-error-cause on, the status
+// text a helper defaults reason to and dxlib's own upper snake case causes
+// answer exactly as with the switch off.
+func TestHelperBareCodesSurviveOmit(t *testing.T) {
+	for _, omit := range []bool{false, true} {
+		aepr, rec := helperRequest(omit)
+		_ = aepr.WriteResponseAndNewErrorf(http.StatusInternalServerError, "", "CANNOT_GET_ID_FROM_ROW")
+		body := decodeBody(t, rec)
+		if body["reason"] != "INTERNAL SERVER ERROR" || body["cause"] != "CANNOT_GET_ID_FROM_ROW" {
+			t.Errorf("omit=%v: reason %q cause %q, want INTERNAL SERVER ERROR and CANNOT_GET_ID_FROM_ROW", omit, body["reason"], body["cause"])
+		}
+
+		aepr, rec = helperRequest(omit)
+		aepr.WriteResponseAndLogAsError(http.StatusBadGateway, "", fmt.Errorf("dial tcp 10.0.0.5:443: connection refused"))
+		body = decodeBody(t, rec)
+		if body["reason"] != "BAD GATEWAY" {
+			t.Errorf("omit=%v: reason %q, want BAD GATEWAY", omit, body["reason"])
+		}
+	}
+}
+
+// The helpers that log at Error give the answer that log line's error_log_ref,
+// and a withheld cause names it; WriteResponseAsError logs nothing and has none.
+func TestHelperAnswersCarryTheLogRef(t *testing.T) {
+	aepr, rec := helperRequest(true)
+	aepr.WriteResponseAndLogAsError(http.StatusInternalServerError, "", fmt.Errorf("pq: deadlock detected"))
+	body := decodeBody(t, rec)
+	ref, _ := body["error_log_ref"].(string)
+	if ref == "" {
+		t.Fatalf("no error_log_ref: %v", body)
+	}
+	if c, _ := body["cause"].(string); !strings.Contains(c, "withheld") || !strings.HasSuffix(c, "entry "+ref) {
+		t.Errorf("the withheld cause does not name the log entry %q: %q", ref, c)
+	}
+
+	aepr, rec = helperRequest(true)
+	aepr.WriteResponseAsError(http.StatusInternalServerError, fmt.Errorf("pq: deadlock detected"))
+	if _, ok := decodeBody(t, rec)["error_log_ref"]; ok {
+		t.Errorf("WriteResponseAsError logs nothing but answers an error_log_ref: %s", rec.Body.String())
+	}
+}
+
+// A DXAPIError returned from a handler is logged with the whole chain: the
+// wrapper's text and the DB context, not only the DXAPIError's own text.
+func TestExecuteAPIErrorLogsTheWholeChain(t *testing.T) {
+	logged := captureLog(t)
+	ep := &DXAPIEndPoint{
+		OnExecute: func(*DXAPIEndPointRequest) error {
+			return fmt.Errorf("handler wrapper: %w", NewAPIError(http.StatusServiceUnavailable, "", "saving the profile",
+				&fakeDBError{cause: fmt.Errorf("pq: deadlock detected")}, "retry"))
+		},
+	}
+	rec, _ := routeTo(t, ep, `{}`)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	log := logged.String()
+	for _, want := range []string{"handler wrapper", "DB_CONTEXT: UPDATE table=member"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("the log lacks %q: %s", want, log)
+		}
+	}
+}
