@@ -306,6 +306,10 @@ func TestHelperAnswersMaskAndWithhold(t *testing.T) {
 		"WriteResponseAndNewErrorf": func(a *DXAPIEndPointRequest, status int) {
 			_ = a.WriteResponseAndNewErrorf(status, "", "%s", dbErr.Error())
 		},
+		// The error text passed as the code, which then becomes reason.
+		"WriteResponseAndNewErrorf with the text as code": func(a *DXAPIEndPointRequest, status int) {
+			_ = a.WriteResponseAndNewErrorf(status, dbErr.Error(), "")
+		},
 	}
 	for name, write := range helpers {
 		aepr, rec := helperRequest(false)

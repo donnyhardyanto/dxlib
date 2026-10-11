@@ -297,10 +297,12 @@ func (aepr *DXAPIEndPointRequest) writeRefusal(statusCode_ int, code string, cau
 		statusCode_ = http.StatusInternalServerError
 	}
 	cause = RedactErrorText(rowDataInText.ReplaceAllString(cause, "$1=(values in the server log)"))
+	code = RedactErrorText(rowDataInText.ReplaceAllString(code, "$1=(values in the server log)"))
 	isServerFault := statusCode_ >= http.StatusInternalServerError
 	if isServerFault && aepr.omitServerErrorCause() {
 		cause = withheldCause
-		if code == "" {
+		// A caller may pass the error text as the code; only a bare code stays.
+		if !errorCodeKey.MatchString(code) {
 			code = statusCode(statusCode_)
 		}
 	}
