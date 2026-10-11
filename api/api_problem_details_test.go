@@ -158,8 +158,8 @@ func TestNewProblemDetails(t *testing.T) {
 	})
 }
 
-// With the setting off, nothing changes: the refusal keeps its own body and
-// application/json.
+// With the setting off, the refusal keeps its own body, with the error members
+// every error answer carries, and application/json.
 func TestProblemDetailsOffKeepsTheRefusalBody(t *testing.T) {
 	aepr, rec := newProblemRequest(false, EndPointTypeHTTPJSON)
 	_ = aepr.WriteResponseAndNewErrorf(http.StatusUnprocessableEntity, "", "REQUEST_FIELD_VALUE_IS_NOT_STRING:%s", "name")
@@ -172,6 +172,10 @@ func TestProblemDetailsOffKeepsTheRefusalBody(t *testing.T) {
 		"status_code":    float64(http.StatusUnprocessableEntity),
 		"reason":         "UNPROCESSABLE ENTITY",
 		"reason_message": "REQUEST_FIELD_VALUE_IS_NOT_STRING:name",
+		"error":          "handling POST /probe: REQUEST_FIELD_VALUE_IS_NOT_STRING:name",
+		"operation":      "handling POST /probe",
+		"cause":          "REQUEST_FIELD_VALUE_IS_NOT_STRING:name",
+		"next":           "correct the request as the cause says and send it again",
 	}
 	gotJSON, _ := json.Marshal(body)
 	wantJSON, _ := json.Marshal(want)

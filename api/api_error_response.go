@@ -224,3 +224,19 @@ func responseCause(err error) string {
 	}
 	return rowDataInText.ReplaceAllString(text, "$1=(values in the server log)")
 }
+
+// addErrorMembers adds error, operation, cause and next to a refusal body a
+// helper such as WriteResponseAndNewErrorf builds in dxlib's older shape, so it
+// answers the same members as the route handler's error answers; its status,
+// reason and reason_message are left as they are.
+func (aepr *DXAPIEndPointRequest) addErrorMembers(body utils.JSON, statusCode int, cause string) {
+	operation := aepr.operationName("handling")
+	next := "correct the request as the cause says and send it again"
+	if statusCode >= http.StatusInternalServerError {
+		next = "the server failed while handling the request; the service's operator can find the full error and request in the log"
+	}
+	full := ErrorResponseBody(statusCode, "", operation, cause, next)
+	for _, k := range []string{"error", "operation", "cause", "next"} {
+		body[k] = full[k]
+	}
+}

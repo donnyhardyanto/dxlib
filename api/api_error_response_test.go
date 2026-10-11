@@ -179,8 +179,13 @@ func TestPreprocessErrorNamesTheCause(t *testing.T) {
 	if strings.Contains(rec.Body.String(), "hunter2") {
 		t.Fatalf("the request body was echoed in the answer: %s", rec.Body.String())
 	}
-	if c, _ := body["cause"].(string); c == "" && !strings.Contains(fmt.Sprint(body["reason_message"]), "JSON") {
-		t.Fatalf("the answer does not say the body is not JSON: %v", body)
+	if c, _ := body["cause"].(string); !strings.Contains(c, "REQUEST_BODY_CANT_BE_PARSED_AS_JSON") {
+		t.Fatalf("the cause does not say the body is not JSON: %v", body)
+	}
+	for _, k := range []string{"error", "operation", "next"} {
+		if s, _ := body[k].(string); s == "" {
+			t.Fatalf("answer has no %q: %v", k, body)
+		}
 	}
 }
 

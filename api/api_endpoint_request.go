@@ -355,9 +355,10 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsError(statusCode int, errToSend
 		"status":         http.StatusText(statusCode),
 		"status_code":    statusCode,
 		"reason":         errToSend.Error(),
-		"reason_message": errToSend.Error(),
+		"reason_message": RedactErrorText(errToSend.Error()),
 	}
 	//	}
+	aepr.addErrorMembers(s, statusCode, errToSend.Error())
 
 	aepr.WriteResponseAsJSON(statusCode, nil, s)
 }
@@ -376,9 +377,10 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsErrorMessageNotLogged(statusCod
 		"status":         http.StatusText(statusCode),
 		"status_code":    statusCode,
 		"reason":         errorMsg,
-		"reason_message": reasonMsg,
+		"reason_message": RedactErrorText(reasonMsg),
 	}
 	//	}
+	aepr.addErrorMembers(s, statusCode, reasonMsg)
 
 	aepr.WriteResponseAsJSON(statusCode, nil, s)
 	return
@@ -423,8 +425,14 @@ func (aepr *DXAPIEndPointRequest) WriteResponseAsJSON(statusCode int, header map
 			if len(parts) >= 2 {
 				// Store error log reference in separate field
 				bodyAsJSON["error_log_ref"] = strings.TrimSpace(parts[1])
-				// Remove ERROR_LOG= from reason_message
+				// Remove ERROR_LOG= from reason_message, and from the error line and
+				// the cause that repeat it
 				bodyAsJSON["reason_message"] = strings.TrimSpace(parts[0])
+				for _, k := range []string{"error", "cause"} {
+					if v, ok := bodyAsJSON[k].(string); ok {
+						bodyAsJSON[k] = strings.TrimSpace(strings.Split(v, "ERROR_LOG=")[0])
+					}
+				}
 			}
 		}
 	}
