@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-
-	"github.com/donnyhardyanto/dxlib"
 )
 
 // ── Credential headers ────────────────────────────────────────────────────────
@@ -65,12 +63,25 @@ func IsCredentialHeader(name string) bool {
 
 // MaskHeaderValue returns the value a dump may show for a header: "***REDACTED***" for a credential
 // header, the value itself otherwise. The debug override (IsDebug with OverrideShowPasswordOnLog)
-// shows every header raw, as it does for a body.
+// shows every header raw, as it does for a body; MaskHeaderValueForAnswer is the same without it.
 func MaskHeaderValue(name, value string) string {
+	return maskHeaderValue(name, value, showRawOnLog())
+}
+
+// MaskHeaderValueForAnswer is MaskHeaderValue for a header value that leaves the process in an
+// answer: "***REDACTED***" for a credential header whatever the debug override says, because
+// a switch meant for an operator reading their own log must not decide what a caller sees.
+func MaskHeaderValueForAnswer(name, value string) string {
+	return maskHeaderValue(name, value, false)
+}
+
+// maskHeaderValue is MaskHeaderValue with the debug override as the caller reads it: showRaw
+// true returns a credential header's value as it is.
+func maskHeaderValue(name, value string, showRaw bool) string {
 	if !IsCredentialHeader(name) {
 		return value
 	}
-	if dxlib.IsDebug && OverrideShowPasswordOnLog {
+	if showRaw {
 		return value
 	}
 	return maskRedacted

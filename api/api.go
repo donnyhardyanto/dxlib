@@ -145,7 +145,8 @@ type DXAPI struct {
 	OmitServerErrorCause bool
 	// EchoRawRequest lets oam.EchoHandler answer the request as received: every
 	// header value, the query, the request URI and the body, unmasked. With it
-	// off the echo is the masked form, oam.MaskedRequest. Off by default
+	// off the echo is the masked form, oam.MaskedRequest, whatever the debug
+	// override for logs says: this is the only switch to a raw echo. Off by default
 	// ("echo-raw-request"), and unsafe behind a proxy or gateway that adds
 	// headers on the way in (a signed internal token, gateway auth headers,
 	// X-Forwarded-*, routing headers): the caller gets them back, and a script

@@ -36,16 +36,47 @@ func LogRequest(r *http.Request) (map[string]interface{}, error) {
 	return lr, nil
 }
 
-// MaskedRequest is the one form of a LogRequest map that may leave the process, in a log line
-// or in an answer. Each header name holds the list of its values, every value through
-// utils.MaskHeaderValue, so a credential header (Authorization, Cookie, an API key, a token
-// header the host declared or whose name says what it carries) shows as "***REDACTED***" under
-// its name; the query and a body that is a JSON object go through utils.MaskForLog, which masks
-// by field name under the host's rules; any other body is shown by its length only; and the
-// request URI is cut to its path, so the query string does not ride along unmasked. The debug
-// override (dxlib.IsDebug with utils.OverrideShowPasswordOnLog) shows the values raw here as it
-// does in every log line. The map it is given is not changed.
+// MaskedRequest is the form of a LogRequest map that may leave the process in an answer. Each
+// header name holds the list of its values, every value through utils.MaskHeaderValueForAnswer,
+// so a credential header (Authorization, Cookie, an API key, a token header the host declared
+// or whose name says what it carries) shows as "***REDACTED***" under its name; the query and a
+// body that is a JSON object go through utils.MaskForAnswer, which masks by field name under
+// the host's rules; any other body is shown by its length only; and the request URI is cut to
+// its path, so the query string does not ride along unmasked. The debug override
+// (dxlib.IsDebug with utils.OverrideShowPasswordOnLog) does not reach it: it is a switch for
+// an operator reading their own log, and the log line RequestForLog writes is the one place it
+// shows these values raw. The map it is given is not changed.
 func MaskedRequest(lr map[string]interface{}) utils.JSON {
+	return maskedRequest(lr, forAnswer)
+}
+
+// RequestForLog renders the request as one JSON line for a log: the shape of MaskedRequest,
+// masked through utils.MaskHeaderValue and utils.MaskForLog, so the debug override shows the
+// values raw here as it does in every log line.
+func RequestForLog(lr map[string]interface{}) string {
+	s, err := utils.JSONToString(maskedRequest(lr, forLog))
+	if err != nil {
+		return fmt.Sprintf("REQUEST_FOR_LOG_MARSHAL_ERROR: %v", err)
+	}
+	return s
+}
+
+// masker is the pair of mask functions a rendering of the request goes through: one for a
+// header value, one for the query and the body.
+type masker struct {
+	header func(name, value string) string
+	data   func(utils.JSON) utils.JSON
+}
+
+var (
+	// forAnswer never consults the debug override: what a caller is answered.
+	forAnswer = masker{header: utils.MaskHeaderValueForAnswer, data: utils.MaskForAnswer}
+	// forLog honours the debug override, as every log line does.
+	forLog = masker{header: utils.MaskHeaderValue, data: utils.MaskForLog}
+)
+
+// maskedRequest builds the masked form of lr through m.
+func maskedRequest(lr map[string]interface{}, m masker) utils.JSON {
 	header, _ := lr["header"].(http.Header)
 	query, _ := lr["query"].(url.Values)
 	body, _ := lr["body"].([]byte)
@@ -55,29 +86,20 @@ func MaskedRequest(lr map[string]interface{}) utils.JSON {
 		"method":      lr["method"],
 		"host":        lr["host"],
 		"path":        strings.SplitN(requestURI, "?", 2)[0],
-		"query":       utils.MaskForLog(valuesAsJSON(query)),
-		"header":      headersMasked(header),
-		"body":        bodyForLog(body),
+		"query":       m.data(valuesAsJSON(query)),
+		"header":      headersMasked(header, m),
+		"body":        bodyMasked(body, m),
 	}
-}
-
-// RequestForLog renders MaskedRequest as one JSON line for a log.
-func RequestForLog(lr map[string]interface{}) string {
-	s, err := utils.JSONToString(MaskedRequest(lr))
-	if err != nil {
-		return fmt.Sprintf("REQUEST_FOR_LOG_MARSHAL_ERROR: %v", err)
-	}
-	return s
 }
 
 // headersMasked copies h into the shape of valuesAsJSON: each header name holds the list of
-// its values, each through utils.MaskHeaderValue.
-func headersMasked(h http.Header) utils.JSON {
+// its values, each through m.header.
+func headersMasked(h http.Header, m masker) utils.JSON {
 	out := make(utils.JSON, len(h))
 	for name, values := range h {
 		list := make([]any, len(values))
 		for i, value := range values {
-			list[i] = utils.MaskHeaderValue(name, value)
+			list[i] = m.header(name, value)
 		}
 		out[name] = list
 	}
@@ -98,19 +120,19 @@ func valuesAsJSON(v url.Values) utils.JSON {
 	return out
 }
 
-// bodyForLog returns the body as a log may carry it: a JSON object masked field by field,
-// anything else (empty, an array, not JSON) by its length only.
-func bodyForLog(body []byte) any {
+// bodyMasked returns the body as a log line or an answer may carry it: a JSON object masked
+// field by field through m.data, anything else (empty, an array, not JSON) by its length only.
+func bodyMasked(body []byte, m masker) any {
 	var object map[string]any
 	if len(body) > 0 && json.Unmarshal(body, &object) == nil && object != nil {
-		return utils.MaskForLog(object)
+		return m.data(object)
 	}
 	return fmt.Sprintf("(%d bytes, not a JSON object)", len(body))
 }
 
-// Echo returns the request as a caller may see it, {"log_request": MaskedRequest(lr)}. The
-// request as received, every header value and the body unmasked, is answered only by
-// EchoHandler under echo-raw-request.
+// Echo returns the request as a caller may see it, {"log_request": MaskedRequest(lr)}, masked
+// whatever the debug override says. The request as received, every header value and the body
+// unmasked, is answered only by EchoHandler under echo-raw-request.
 func Echo(r *http.Request) (map[string]interface{}, error) {
 	lr, err := LogRequest(r)
 	if err != nil {
@@ -123,12 +145,13 @@ func Echo(r *http.Request) (map[string]interface{}, error) {
 }
 
 // EchoHandler is the endpoint form of Echo: it logs the request as RequestForLog and answers
-// {"log_request": MaskedRequest(lr)}. With echo-raw-request on for its API
-// (DXAPI.EchoRawRequest) it answers the request as received instead: every header value, the
-// query, the request URI and the body (as base64 bytes), unmasked. That is unsafe behind a
-// proxy or gateway that adds headers on the way in (a signed internal token, gateway auth
-// headers, X-Forwarded-*, routing headers), because the caller gets them back, and a script
-// that can read the answer reads the Cookie header, HttpOnly or not. It is off by default.
+// {"log_request": MaskedRequest(lr)}. Only echo-raw-request on for its API
+// (DXAPI.EchoRawRequest) makes it answer the request as received instead: every header value,
+// the query, the request URI and the body (as base64 bytes), unmasked; the debug override does
+// not. That is unsafe behind a proxy or gateway that adds headers on the way in (a signed
+// internal token, gateway auth headers, X-Forwarded-*, routing headers), because the caller
+// gets them back, and a script that can read the answer reads the Cookie header, HttpOnly or
+// not. It is off by default.
 func EchoHandler(aepr *api.DXAPIEndPointRequest) (err error) {
 	lr, err := LogRequest(aepr.Request)
 	if err != nil {

@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/donnyhardyanto/dxlib"
 	"github.com/donnyhardyanto/dxlib/api"
 	"github.com/donnyhardyanto/dxlib/log"
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 // The credentials a request can carry, one in every place one rides: a bearer token, a cookie,
@@ -209,7 +211,11 @@ func TestEchoHandlerEchoesRawOnlyWithOptIn(t *testing.T) {
 				t.Fatalf("status %d, want 200: %s", rec.Code, rec.Body.String())
 			}
 			answer := rec.Body.String()
-			assertNoSecret(t, "the log", logText())
+			all := logText()
+			if all == "" {
+				t.Fatal("EchoHandler wrote nothing to the log")
+			}
+			assertNoSecret(t, "the log", all)
 
 			if !tc.raw {
 				assertNoSecret(t, "the echo", answer)
@@ -222,6 +228,68 @@ func TestEchoHandlerEchoesRawOnlyWithOptIn(t *testing.T) {
 			for _, sent := range []string{authValue, cookieValue, proxyToken, queryToken, base64.StdEncoding.EncodeToString([]byte(body))} {
 				if !strings.Contains(answer, sent) {
 					t.Errorf("the raw echo does not carry %q:\n%s", sent, answer)
+				}
+			}
+		})
+	}
+}
+
+// The debug override that shows raw values in a log (dxlib.IsDebug with
+// utils.OverrideShowPasswordOnLog) must not decide what leaves the server: with it on and
+// echo-raw-request off, Echo and EchoHandler still answer no credential. The log line is the
+// override's own path and carries them raw, as every log line does under it.
+func TestEchoMasksUnderDebugOverride(t *testing.T) {
+	prevDebug, prevOverride := dxlib.IsDebug, utils.OverrideShowPasswordOnLog
+	t.Cleanup(func() { dxlib.IsDebug, utils.OverrideShowPasswordOnLog = prevDebug, prevOverride })
+	dxlib.IsDebug, utils.OverrideShowPasswordOnLog = true, true
+
+	t.Run("Echo", func(t *testing.T) {
+		req, _ := newCredentialRequest("/echo")
+		data, err := Echo(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		answer := string(raw)
+		assertNoSecret(t, "the echo under the debug override", answer)
+		if !strings.Contains(answer, "***REDACTED***") {
+			t.Errorf("no credential was redacted in the echo:\n%s", answer)
+		}
+	})
+
+	for _, tc := range []struct {
+		name  string
+		owner *api.DXAPI
+	}{
+		{"EchoHandler, no owner", nil},
+		{"EchoHandler, echo-raw-request off", &api.DXAPI{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logText := captureLog(t)
+			req, _ := newCredentialRequest("/echo")
+			aepr, rec := newEndPointRequest(req, tc.owner)
+			if err := EchoHandler(aepr); err != nil {
+				t.Fatal(err)
+			}
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status %d, want 200: %s", rec.Code, rec.Body.String())
+			}
+			answer := rec.Body.String()
+			assertNoSecret(t, "the echo under the debug override", answer)
+			if !strings.Contains(answer, "***REDACTED***") {
+				t.Errorf("no credential was redacted in the echo:\n%s", answer)
+			}
+			// The log keeps the override: that is what the switch is for.
+			all := logText()
+			if all == "" {
+				t.Fatal("EchoHandler wrote nothing to the log")
+			}
+			for _, sent := range []string{authValue, cookieValue, proxyToken, queryToken, password} {
+				if !strings.Contains(all, sent) {
+					t.Errorf("the log under the debug override does not carry %q as sent:\n%s", sent, all)
 				}
 			}
 		})

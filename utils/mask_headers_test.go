@@ -64,6 +64,24 @@ func TestMaskHeaderValue(t *testing.T) {
 	}
 }
 
+// A header value that leaves the process in an answer is masked whatever the debug override
+// says: the override is for an operator reading their own log, not for what a caller sees. A
+// plain header still passes through.
+func TestMaskHeaderValueForAnswer_IgnoresDebugOverride(t *testing.T) {
+	resetHeaderState(t)
+	SetCredentialHeaders([]string{"X-Tenant-Access"})
+	dxlib.IsDebug, OverrideShowPasswordOnLog = true, true
+
+	for _, name := range []string{"Authorization", "Cookie", "X-Tenant-Access", "X-Upstream-Token"} {
+		if got := MaskHeaderValueForAnswer(name, "secret-value"); got != "***REDACTED***" {
+			t.Errorf("%s under the debug override: got %q, want it redacted", name, got)
+		}
+	}
+	if got := MaskHeaderValueForAnswer("X-Request-Id", "req-1"); got != "req-1" {
+		t.Errorf("plain header: got %q", got)
+	}
+}
+
 // The rendered headers come in name order, one line per value, with every credential value
 // masked, excluded names left out, and a line break inside a value flattened so a value cannot
 // forge a header line of its own.

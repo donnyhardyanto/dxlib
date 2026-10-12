@@ -177,6 +177,54 @@ func TestMaskKind_DebugOverrideShowsEveryKindRaw(t *testing.T) {
 	}
 }
 
+// MaskForAnswer is MaskForLog for data that leaves the process in an answer: the debug override
+// that shows raw values in a log does not reach it. A credential leaf, a credential container, a
+// PII-rule leaf and a PII-rule object are masked as they are with the override off, at depth,
+// while MaskForLog on the same data shows them raw.
+func TestMaskForAnswer_IgnoresDebugOverride(t *testing.T) {
+	resetMaskState(t)
+	SetMaskRules(kindRules())
+	prevDebug, prevOverride := dxlib.IsDebug, OverrideShowPasswordOnLog
+	t.Cleanup(func() { dxlib.IsDebug, OverrideShowPasswordOnLog = prevDebug, prevOverride })
+	dxlib.IsDebug, OverrideShowPasswordOnLog = true, true
+
+	in := JSON{
+		"password": "hunter2",
+		"token":    JSON{"access": "abc", "refresh": "def"},
+		"params": JSON{
+			"email":     "budi@mail.com",
+			"full_name": JSON{"first": "Budi"},
+			"unique_id": "dev-1",
+		},
+	}
+	out := MaskForAnswer(in)
+	if out["password"] != "***REDACTED***" {
+		t.Errorf("credential leaf: got %v, want it redacted", out["password"])
+	}
+	if out["token"] != "***REDACTED***" {
+		t.Errorf("credential container: got %v, want it redacted whole", out["token"])
+	}
+	params, _ := out["params"].(JSON)
+	if params["email"] != "b***@ma***.com" {
+		t.Errorf("PII leaf at depth: got %v, want it masked by its rule", params["email"])
+	}
+	if params["full_name"] != "********" {
+		t.Errorf("PII object at depth: got %v, want it masked whole", params["full_name"])
+	}
+	if params["unique_id"] != "dev-1" {
+		t.Errorf("plain field: got %v, want it kept", params["unique_id"])
+	}
+	if in["password"] != "hunter2" {
+		t.Error("MaskForAnswer changed its input")
+	}
+
+	// The log walk on the same data is the override's own path and shows the values raw.
+	logged := MaskForLog(in)
+	if logged["password"] != "hunter2" {
+		t.Errorf("MaskForLog under the debug override: got %v, want the raw value", logged["password"])
+	}
+}
+
 // The zero Kind is the original Front+Back rule, so a host's existing rules keep their meaning.
 func TestMaskKind_ZeroValueIsPartial(t *testing.T) {
 	resetMaskState(t)

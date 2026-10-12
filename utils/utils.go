@@ -1587,13 +1587,22 @@ func firstRunes(s string, n int) string {
 //   - Requires BOTH dxlib.IsDebug AND OverrideShowPasswordOnLog to show raw values
 //     (prevents accidental exposure from a single env flip).
 func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
-	return maskLeaf(fieldName, value, nil)
+	return maskLeaf(fieldName, value, nil, showRawOnLog())
+}
+
+// showRawOnLog reports whether the debug override is on: dxlib.IsDebug and
+// OverrideShowPasswordOnLog together, so that one env flip alone cannot show raw values. It is
+// an operator's switch for reading their own log; what leaves the process in an answer goes
+// through MaskForAnswer and MaskHeaderValueForAnswer, which never consult it.
+func showRawOnLog() bool {
+	return dxlib.IsDebug && OverrideShowPasswordOnLog
 }
 
 // maskLeaf is MaskSensitiveValue with an inherited rule: the rule of an enclosing location key,
-// applied to a numeric leaf that has no rule of its own (see MaskKindLocation).
-func maskLeaf(fieldName string, value any, inherited *MaskRule) any {
-	if dxlib.IsDebug && OverrideShowPasswordOnLog {
+// applied to a numeric leaf that has no rule of its own (see MaskKindLocation). showRaw is the
+// debug override as the caller reads it: true returns the value as it is.
+func maskLeaf(fieldName string, value any, inherited *MaskRule, showRaw bool) any {
+	if showRaw {
 		return value
 	}
 	if IsSensitiveField(fieldName) {
@@ -1649,52 +1658,62 @@ func MaskSensitiveDataInJSON(data JSON) JSON {
 // number under the rule that matches phone_numbers, and an object inside that array is masked
 // whole.
 //
-// Use it for anything written to a log; it never changes the data it is given.
+// Use it for anything written to a log; it never changes the data it is given. The debug
+// override (dxlib.IsDebug with OverrideShowPasswordOnLog) returns every value raw, as it does
+// for every log line; MaskForAnswer is the same walk without it.
 func MaskForLog(data JSON) JSON {
-	return maskForLogMap(data, nil)
+	return maskForLogMap(data, nil, showRawOnLog())
 }
 
-func maskForLogMap(data map[string]any, inherited *MaskRule) JSON {
+// MaskForAnswer is MaskForLog for data that leaves the process in an answer: the same walk,
+// the same rules, but the debug override (dxlib.IsDebug with OverrideShowPasswordOnLog) is not
+// consulted, so what a caller is answered does not depend on a switch meant for an operator
+// reading their own log. It never changes the data it is given.
+func MaskForAnswer(data JSON) JSON {
+	return maskForLogMap(data, nil, false)
+}
+
+func maskForLogMap(data map[string]any, inherited *MaskRule, showRaw bool) JSON {
 	result := make(JSON, len(data))
 	for k, v := range data {
-		result[k] = maskForLogValue(k, v, inherited)
+		result[k] = maskForLogValue(k, v, inherited, showRaw)
 	}
 	return result
 }
 
 // maskForLogValue masks one value under the field name key, descending into containers.
 // inherited is the location rule of an enclosing key, if any, so the numeric leaves of a
-// location object are rounded.
-func maskForLogValue(key string, v any, inherited *MaskRule) any {
+// location object are rounded. showRaw is the debug override as the caller reads it.
+func maskForLogValue(key string, v any, inherited *MaskRule, showRaw bool) any {
 	switch typed := v.(type) {
 	case map[string]any:
-		if maskCredentialWhole(key) {
+		if maskCredentialWhole(key, showRaw) {
 			return maskRedacted
 		}
-		if maskContainerWhole(key) {
+		if maskContainerWhole(key, showRaw) {
 			return maskFull
 		}
-		return maskForLogMap(typed, locationRuleFor(key, inherited))
+		return maskForLogMap(typed, locationRuleFor(key, inherited), showRaw)
 	case []any:
-		if maskCredentialWhole(key) {
+		if maskCredentialWhole(key, showRaw) {
 			return maskRedacted
 		}
 		out := make([]any, len(typed))
 		for i, e := range typed {
-			out[i] = maskForLogValue(key, e, inherited)
+			out[i] = maskForLogValue(key, e, inherited, showRaw)
 		}
 		return out
 	case []map[string]any:
-		if maskCredentialWhole(key) {
+		if maskCredentialWhole(key, showRaw) {
 			return maskRedacted
 		}
 		out := make([]any, len(typed))
 		for i, e := range typed {
-			out[i] = maskForLogValue(key, e, inherited)
+			out[i] = maskForLogValue(key, e, inherited, showRaw)
 		}
 		return out
 	default:
-		return maskLeaf(key, v, inherited)
+		return maskLeaf(key, v, inherited, showRaw)
 	}
 }
 
@@ -1708,10 +1727,10 @@ func locationRuleFor(key string, inherited *MaskRule) *MaskRule {
 }
 
 // maskCredentialWhole reports whether a container under key is a credential and so masked as
-// one value. The debug override that shows raw values (dxlib.IsDebug and
-// OverrideShowPasswordOnLog together) applies here as it does to leaves.
-func maskCredentialWhole(key string) bool {
-	if dxlib.IsDebug && OverrideShowPasswordOnLog {
+// one value. showRaw, the debug override as the caller reads it, applies here as it does to
+// leaves: true masks nothing.
+func maskCredentialWhole(key string, showRaw bool) bool {
+	if showRaw {
 		return false
 	}
 	return IsSensitiveField(key)
@@ -1720,11 +1739,11 @@ func maskCredentialWhole(key string) bool {
 // maskContainerWhole reports whether an object under key is masked as one value: when the key
 // is a credential or matches a PII rule of any kind but location, which walks the object and
 // rounds its coordinates instead.
-func maskContainerWhole(key string) bool {
-	if maskCredentialWhole(key) {
+func maskContainerWhole(key string, showRaw bool) bool {
+	if maskCredentialWhole(key, showRaw) {
 		return true
 	}
-	if dxlib.IsDebug && OverrideShowPasswordOnLog {
+	if showRaw {
 		return false
 	}
 	r, hasRule := piiRuleFor(key)

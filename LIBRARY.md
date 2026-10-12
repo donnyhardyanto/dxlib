@@ -199,7 +199,7 @@ General utility functions. The most important export is `JSON = map[string]any`,
 
 | Identifier | Description |
 |---|---|
-| `OverrideShowPasswordOnLog` | `var bool` — When true, disables sensitive field masking in log output. Default false. |
+| `OverrideShowPasswordOnLog` | `var bool` — When true, together with `dxlib.IsDebug`, disables sensitive field masking in log output (`MaskSensitiveValue`, `MaskForLog`, `MaskHeaderValue`). It reaches log output only: what an endpoint answers goes through `MaskForAnswer` and `MaskHeaderValueForAnswer`, which never consult it. Default false. |
 
 ### Functions — JSON / type conversion
 
@@ -242,9 +242,11 @@ General utility functions. The most important export is `JSON = map[string]any`,
 | `MaskSensitiveDataInJSON(data JSON) JSON` | Deep-copies a `JSON` map, replacing credential values with `"***REDACTED***"` in nested objects. Only the built-in credential keywords apply, not the host's rules. Used by `configuration.FilterSensitiveData()`. |
 | `IsCredentialHeader(name string) bool` | Returns true for a header that carries a credential: the built-in list (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, `X-Csrf-Token` and the like), the host's list (`SetCredentialHeaders`), or a name holding a credential keyword (`IsSensitiveField`). Case-insensitive. |
 | `SetCredentialHeaders(names []string)` | Replaces the host's own list of credential headers, added to the built-in list and the keywords. Called once at init. |
-| `MaskHeaderValue(name, value string) string` | Returns `"***REDACTED***"` for a credential header, the value itself otherwise. A credential header is never partially shown. |
-| `WriteHeadersForLog(h http.Header, exclude map[string]bool) string` | Renders headers as `Name: value` lines in name order, one per value, with every credential value masked and line breaks inside a value flattened. Names in `exclude` are left out. Every request or response dump dxlib writes to a log goes through it. |
-| `MaskForLog(data JSON) JSON` | Deep-copies a `JSON` map applying `MaskSensitiveValue` at every depth, in objects and arrays. A credential key masks its container whole as `"***REDACTED***"`; a PII-rule key masks an object whole as `"********"` (a location rule instead walks it and rounds its numeric leaves) and an array element by element. Use it for any request or response body written to a log. |
+| `MaskHeaderValue(name, value string) string` | Returns `"***REDACTED***"` for a credential header, the value itself otherwise. A credential header is never partially shown. For a log: the debug override (`dxlib.IsDebug` with `OverrideShowPasswordOnLog`) shows the value raw. |
+| `MaskHeaderValueForAnswer(name, value string) string` | `MaskHeaderValue` for a header value that leaves the process in an answer: the debug override is not consulted, so a credential header is redacted whatever it says. |
+| `WriteHeadersForLog(h http.Header, exclude map[string]bool) string` | Renders headers as `Name: value` lines in name order, one per value, with every credential value masked and line breaks inside a value flattened. Names in `exclude` are left out. `RequestDump` and the request proxy's dumps go through it; the `oam` Receive line renders its headers as a JSON object instead. Every header value a log or an echo carries goes through `MaskHeaderValue` or `MaskHeaderValueForAnswer`. |
+| `MaskForLog(data JSON) JSON` | Deep-copies a `JSON` map applying `MaskSensitiveValue` at every depth, in objects and arrays. A credential key masks its container whole as `"***REDACTED***"`; a PII-rule key masks an object whole as `"********"` (a location rule instead walks it and rounds its numeric leaves) and an array element by element. Use it for any request or response body written to a log. The debug override shows every value raw. |
+| `MaskForAnswer(data JSON) JSON` | `MaskForLog` for data that leaves the process in an answer: the same walk and rules, but the debug override is not consulted, so what a caller is answered does not depend on a switch meant for an operator reading their own log. `oam.MaskedRequest` uses it. |
 
 ### Functions — collections
 
@@ -673,13 +675,13 @@ What goes into a log or an answer from the request is masked: `RequestDump` mask
 
 `oam.Ping` is the liveness handler a service registers at `GET /ping`. It logs the request as `oam.RequestForLog` and answers only that the service is up: the envelope's `status` (`OK`), `service` (the name `app.Set` gave the process) and `time` (UTC, RFC 3339). It echoes nothing of the request. It used to answer the whole request as received under `log_request`, which handed a caller every header a proxy or gateway added on the way in, and `Authorization` and `Cookie` with them.
 
-`oam.Echo(r)` returns the request in the masked form, `oam.MaskedRequest`, under `log_request`: each header name with its values, every value through `utils.MaskHeaderValue` (a credential header is named, its value `***REDACTED***`); the query and a JSON-object body through `utils.MaskForLog`, by field name under the host's rules; any other body by its length; and the request URI cut to its `path`. `oam.EchoHandler` is its endpoint form and answers the same, unless its API opts in:
+`oam.Echo(r)` returns the request in the masked form, `oam.MaskedRequest`, under `log_request`: each header name with its values, every value through `utils.MaskHeaderValueForAnswer` (a credential header is named, its value `***REDACTED***`); the query and a JSON-object body through `utils.MaskForAnswer`, by field name under the host's rules; any other body by its length; and the request URI cut to its `path`. `oam.EchoHandler` is its endpoint form and answers the same, unless its API opts in:
 
 | Configuration key | `DXAPI` field | Description |
 |---|---|---|
-| `echo-raw-request` | `EchoRawRequest bool` | Let `oam.EchoHandler` answer the request as received: every header value, the query, the request URI and the body (as base64 bytes), unmasked. Unsafe behind a proxy or gateway that adds headers on the way in (a signed internal token, gateway auth headers, `X-Forwarded-*`, routing headers), because the caller gets them back, and a script that can read the answer reads the `Cookie` header, HttpOnly or not. `oam.Ping` never echoes the request, whatever this says. Default `false` |
+| `echo-raw-request` | `EchoRawRequest bool` | Let `oam.EchoHandler` answer the request as received: every header value, the query, the request URI and the body (as base64 bytes), unmasked. Unsafe behind a proxy or gateway that adds headers on the way in (a signed internal token, gateway auth headers, `X-Forwarded-*`, routing headers), because the caller gets them back, and a script that can read the answer reads the `Cookie` header, HttpOnly or not. The only switch to a raw echo: the debug override for logs does not reach it. `oam.Ping` never echoes the request, whatever this says. Default `false` |
 
-The debug override that shows raw values in logs (`dxlib.IsDebug` with `utils.OverrideShowPasswordOnLog`) shows them raw in the masked echo too, as it does in every log line.
+The debug override that shows raw values in logs (`dxlib.IsDebug` with `utils.OverrideShowPasswordOnLog`) does not reach the echo: `oam.MaskedRequest` masks through `utils.MaskHeaderValueForAnswer` and `utils.MaskForAnswer`, which never consult it, so `echo-raw-request` is the only way to a raw echo. The Receive line `oam.RequestForLog` writes is the same shape masked through `utils.MaskHeaderValue` and `utils.MaskForLog`, so the override shows the values raw there, as it does in every log line.
 
 ### Types
 
