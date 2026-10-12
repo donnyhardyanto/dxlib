@@ -1,0 +1,42 @@
+# OpenSSF Scorecard: an outside score of this repository's supply-chain
+# settings (branch and tag rules, pinned actions, token permissions, signed
+# releases). The results go to the Security tab as code-scanning alerts and are
+# published to the Scorecard API, which is what the public badge reads.
+#
+# publish_results limits what this workflow may contain: no top-level env or
+# defaults, and only the actions below. Keep it that way, or the publish fails.
+
+name: Scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "17 3 * * 1"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc  # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
+        with:
+          sarif_file: results.sarif
