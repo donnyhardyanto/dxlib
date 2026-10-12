@@ -6,7 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/donnyhardyanto/dxlib"
 	"github.com/donnyhardyanto/dxlib/log"
+	dxlibTypes "github.com/donnyhardyanto/dxlib/types"
+	"github.com/donnyhardyanto/dxlib/utils"
 )
 
 // The raw request dump that rides every error log wrote the body and the query
@@ -97,5 +100,36 @@ func TestParameterErrorMasksACredentialValue(t *testing.T) {
 	pv.Metadata.NameId = "passwords"
 	if got := child.maskedForMessage(child.RawValue); got == "s3cret" {
 		t.Fatalf("an array element of a credential should take its parent's name: %v", got)
+	}
+}
+
+// The type error is answered to the caller as well as logged, so the debug
+// override (dxlib.IsDebug with utils.OverrideShowPasswordOnLog), which shows
+// raw values in a log, must not send a password or token back in the answer.
+func TestParameterErrorAnswerMasksUnderDebugOverride(t *testing.T) {
+	prevDebug, prevOverride := dxlib.IsDebug, utils.OverrideShowPasswordOnLog
+	t.Cleanup(func() { dxlib.IsDebug, utils.OverrideShowPasswordOnLog = prevDebug, prevOverride })
+	dxlib.IsDebug, utils.OverrideShowPasswordOnLog = true, true
+
+	aepr := &DXAPIEndPointRequest{Log: log.NewLog(nil, t.Context(), "param-mask-debug-test")}
+	for _, c := range []struct{ name, secret string }{
+		{"password", "hunter2-raw-password"},
+		{"access_token", "tok-raw-0123456789"},
+	} {
+		pv := &DXAPIEndPointRequestParameterValue{
+			Owner:    aepr,
+			RawValue: c.secret,
+			Metadata: DXAPIEndPointParameter{NameId: c.name, Type: dxlibTypes.APIParameterTypeArrayString},
+		}
+		err := pv.validateWhenNotSameWithRawValue("string", c.name)
+		if err == nil {
+			t.Fatalf("%s: a string sent for an array should fail", c.name)
+		}
+		if strings.Contains(err.Error(), c.secret) {
+			t.Fatalf("%s: the answer carries the raw value under the debug override: %v", c.name, err)
+		}
+		if !strings.Contains(err.Error(), "***REDACTED***") {
+			t.Fatalf("%s: the answer should show the value as redacted: %v", c.name, err)
+		}
 	}
 }

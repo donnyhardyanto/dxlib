@@ -123,8 +123,10 @@ func (aeprpv *DXAPIEndPointRequestParameterValue) maskName() string {
 // to the log and back to the caller: a password, token or key is written as
 // ***REDACTED***, at any depth of an object or array, and so is a field the
 // host's mask rules cover. Any other value is written as it was sent, so the
-// message still shows what was wrong with it.
+// message still shows what was wrong with it. The message is an answer, so it
+// is masked with utils.MaskForAnswer: the debug override that shows raw values
+// in a log never sends a caller's password or token back to them.
 func (aeprpv *DXAPIEndPointRequestParameterValue) maskedForMessage(v any) any {
 	name := aeprpv.maskName()
-	return utils.MaskForLog(utils.JSON{name: v})[name]
+	return utils.MaskForAnswer(utils.JSON{name: v})[name]
 }
