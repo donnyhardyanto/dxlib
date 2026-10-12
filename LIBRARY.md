@@ -669,6 +669,18 @@ A handler or middleware that returns a `*DXAPIError` (`NewAPIError(status, code,
 
 What goes into a log or an answer from the request is masked: `RequestDump` masks the query values and the body by field name (a JSON body through `utils.MaskForLog` at every depth, a form body value by value) and writes any other body (a file, multipart, text, JSON that does not parse) only as its size and type. A parameter value named in a type or bounds error is masked the same way, under the parameter's name, and a body that cannot be read or parsed is named by its size, not echoed.
 
+### Operations endpoints (`api/oam`)
+
+`oam.Ping` is the liveness handler a service registers at `GET /ping`. It logs the request as `oam.RequestForLog` and answers only that the service is up: the envelope's `status` (`OK`), `service` (the name `app.Set` gave the process) and `time` (UTC, RFC 3339). It echoes nothing of the request. It used to answer the whole request as received under `log_request`, which handed a caller every header a proxy or gateway added on the way in, and `Authorization` and `Cookie` with them.
+
+`oam.Echo(r)` returns the request in the masked form, `oam.MaskedRequest`, under `log_request`: each header name with its values, every value through `utils.MaskHeaderValue` (a credential header is named, its value `***REDACTED***`); the query and a JSON-object body through `utils.MaskForLog`, by field name under the host's rules; any other body by its length; and the request URI cut to its `path`. `oam.EchoHandler` is its endpoint form and answers the same, unless its API opts in:
+
+| Configuration key | `DXAPI` field | Description |
+|---|---|---|
+| `echo-raw-request` | `EchoRawRequest bool` | Let `oam.EchoHandler` answer the request as received: every header value, the query, the request URI and the body (as base64 bytes), unmasked. Unsafe behind a proxy or gateway that adds headers on the way in (a signed internal token, gateway auth headers, `X-Forwarded-*`, routing headers), because the caller gets them back, and a script that can read the answer reads the `Cookie` header, HttpOnly or not. `oam.Ping` never echoes the request, whatever this says. Default `false` |
+
+The debug override that shows raw values in logs (`dxlib.IsDebug` with `utils.OverrideShowPasswordOnLog`) shows them raw in the masked echo too, as it does in every log line.
+
 ### Types
 
 **`DXAPIEndPointType`** — Endpoint variant enum.

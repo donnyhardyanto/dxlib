@@ -143,6 +143,15 @@ type DXAPI struct {
 	// error_log_ref; its cause says where the full error is logged. A 4xx answer
 	// always carries its cause. Off by default ("omit-server-error-cause").
 	OmitServerErrorCause bool
+	// EchoRawRequest lets oam.EchoHandler answer the request as received: every
+	// header value, the query, the request URI and the body, unmasked. With it
+	// off the echo is the masked form, oam.MaskedRequest. Off by default
+	// ("echo-raw-request"), and unsafe behind a proxy or gateway that adds
+	// headers on the way in (a signed internal token, gateway auth headers,
+	// X-Forwarded-*, routing headers): the caller gets them back, and a script
+	// that can read the answer reads the Cookie header, HttpOnly or not.
+	// oam.Ping never echoes the request, whatever this says.
+	EchoRawRequest bool
 }
 
 var SpecFormat = "MarkDown"
@@ -278,6 +287,7 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	a.ProblemDetailsEnabled = utilsJSON.GetBoolWithDefault(c1, "problem-details", false)
 	a.ProblemTypeBaseURI, _ = utilsJSON.GetString(c1, "problem-type-base-uri")
 	a.OmitServerErrorCause = utilsJSON.GetBoolWithDefault(c1, "omit-server-error-cause", false)
+	a.EchoRawRequest = utilsJSON.GetBoolWithDefault(c1, "echo-raw-request", false)
 
 	// The tls block. Absent means plaintext, said out loud so that "no TLS" is
 	// a line in the log and not the absence of one. Present means every key in
