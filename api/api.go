@@ -141,7 +141,10 @@ type DXAPI struct {
 	// for an API that faces callers who must not see table names, SQL or hosts.
 	// The answer still names the operation, what to do next and the
 	// error_log_ref; its cause says where the full error is logged. A 4xx answer
-	// always carries its cause. Off by default ("omit-server-error-cause").
+	// always carries its cause. On by default ("omit-server-error-cause"): an API
+	// built by NewAPI or configured by ApplyConfigurations withholds the cause
+	// unless its configuration sets the key to false. A DXAPI written as a bare
+	// struct literal has the Go zero value, false, and answers the cause.
 	OmitServerErrorCause bool
 	// EchoRawRequest lets oam.EchoHandler answer the request as received: every
 	// header value, the query, the request URI and the body, unmasked. With it
@@ -196,6 +199,8 @@ func (am *DXAPIManager) NewAPI(nameId string) (*DXAPI, error) {
 		Context:   ctx,
 		Cancel:    cancel,
 		Log:       log.NewLog(&log.Log, ctx, nameId),
+
+		OmitServerErrorCause: true,
 	}
 	am.APIs[nameId] = &a
 	return &a, nil
@@ -287,7 +292,7 @@ func (a *DXAPI) ApplyConfigurations(configurationNameId string) (err error) {
 	a.EnableBrowserSecurityHeaders = utilsJSON.GetBoolWithDefault(c1, "enable-browser-security-headers", false)
 	a.ProblemDetailsEnabled = utilsJSON.GetBoolWithDefault(c1, "problem-details", false)
 	a.ProblemTypeBaseURI, _ = utilsJSON.GetString(c1, "problem-type-base-uri")
-	a.OmitServerErrorCause = utilsJSON.GetBoolWithDefault(c1, "omit-server-error-cause", false)
+	a.OmitServerErrorCause = utilsJSON.GetBoolWithDefault(c1, "omit-server-error-cause", true)
 	a.EchoRawRequest = utilsJSON.GetBoolWithDefault(c1, "echo-raw-request", false)
 
 	// The tls block. Absent means plaintext, said out loud so that "no TLS" is

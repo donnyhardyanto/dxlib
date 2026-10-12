@@ -91,7 +91,8 @@ func TestRedactErrorText(t *testing.T) {
 }
 
 // routeTo builds an endpoint on a bare DXAPI and runs one request through the
-// real route handler.
+// real route handler. The bare struct leaves OmitServerErrorCause false, the
+// opt-out that answers the cause, so these tests can check the cause text.
 func routeTo(t *testing.T, ep *DXAPIEndPoint, body string) (*httptest.ResponseRecorder, utils.JSON) {
 	t.Helper()
 	a := &DXAPI{NameId: "error-answer-test"}
