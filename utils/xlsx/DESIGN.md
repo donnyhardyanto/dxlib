@@ -153,8 +153,11 @@ func (w *Writer) WriteRow(cells []string) error
 func (w *Writer) Close() error
 ```
 
-Everything is text, as it is today. Typed cells (numbers, dates) are a possible
-later addition (§8) and not part of this design.
+Everything written through `Writer` is text, as it is today. Several sheets,
+typed numbers, number formats, a style table, merged ranges, row heights and
+frozen panes came later (2026-10-27) through a second type, `Workbook`, beside
+this one (§10); `Writer` is now a thin layer over it and its output does not
+change.
 
 Errors are values from `dxlib/errors`; the writer never panics on any input.
 After an error, every later call returns the same error.
@@ -182,7 +185,8 @@ The zip entries are written in this order:
 1. `[Content_Types].xml`, `_rels/.rels`, `xl/workbook.xml`,
    `xl/_rels/workbook.xml.rels` and `xl/styles.xml`, in `NewWriter`: everything
    in them (the sheet name, the header style) is known from `Options`;
-2. `xl/worksheets/sheet1.xml`, row by row as `WriteRow` is called;
+2. `xl/worksheets/sheet1.xml`, row by row as `WriteRow` is called (with
+   `Workbook`, `sheet1.xml` to `sheetN.xml`, one after another, §10.3);
 3. `xl/sharedStrings.xml`, in `Close`, from the table built while the rows
    went by. It is the only part that has to follow the sheet.
 
@@ -217,11 +221,11 @@ reads the same everywhere the old one did.
 
 | Part | Content |
 |---|---|
-| `[Content_Types].xml` | defaults for `rels` and `xml`; overrides for workbook, worksheet, styles, sharedStrings |
+| `[Content_Types].xml` | defaults for `rels` and `xml`; overrides for workbook, each worksheet, styles, sharedStrings |
 | `_rels/.rels` | officeDocument → `xl/workbook.xml` |
-| `xl/workbook.xml` | one `<sheet name="…" sheetId="1" r:id="rId1"/>`, name XML-escaped |
-| `xl/_rels/workbook.xml.rels` | rId1 → worksheet, rId2 → styles, rId3 → sharedStrings |
-| `xl/worksheets/sheet1.xml` | `<cols>` (only when a width is set), `<sheetData>` |
+| `xl/workbook.xml` | `<bookViews>` with `activeTab="0"`, then one `<sheet name="…" sheetId="N" r:id="rIdN"/>` per sheet, names XML-escaped |
+| `xl/_rels/workbook.xml.rels` | rId1…rIdN → worksheets, then styles and sharedStrings |
+| `xl/worksheets/sheetN.xml` | `<sheetViews>` (first sheet, or a frozen pane), `<cols>` (only when a width is set), `<sheetData>`, `<mergeCells>` (only when there are merges) |
 | `xl/styles.xml` | see below |
 | `xl/sharedStrings.xml` | `<sst count uniqueCount>` with one `<si><t>` per string |
 
@@ -239,6 +243,9 @@ one `<c>` per column. The header
 row also carries `s="1" customFormat="1"`, and each of its cells `s="1"`, which
 is what `SetRowStyle` produced. Cell references are written out (`r=`) because
 some readers require them.
+
+§10.4 has what a style table adds to `styles.xml`, and §10.5 the rest of the
+sheet XML a `Workbook` writes.
 
 Left out: `docProps/core.xml`, `docProps/app.xml` and `xl/theme/theme1.xml`.
 None is required by the package rules. Leaving them out keeps the output
@@ -263,6 +270,7 @@ input gives the same entries.
 | `ColumnWidths` | at most 16,384 entries, each 0 or in (0, 255] | Excel's column width range |
 | `FillRGB` | exactly six hex digits | |
 | `WriteHeader` | once, before the first `WriteRow` | |
+| `Workbook` options and cells | §10.6 | |
 
 An export that hits the row limit fails with an error, as it does today
 (`CoordinatesToCellName` refuses row 1,048,577), instead of producing a file
@@ -302,8 +310,10 @@ decodes it there, such a name is refused. Step 5 becomes attribute escaping: `&`
 `'` are legal in a sheet name (`'` only inside it), so `a"b` and `it's` are
 written, not refused.
 
-Nothing is ever written as a formula or as a bare `<v>` number: a value such as
-`=HYPERLINK("http://x","y")` stays text, which `TestXLSXKeepsRawValue` checks.
+Nothing is ever written as a formula, and text is never turned into a number:
+a value such as `=HYPERLINK("http://x","y")` or `-5` given as text stays text,
+which `TestXLSXKeepsRawValue` checks. A bare `<v>` number is written only for a
+cell the caller made a number (`Number`, §10.2).
 
 ### 5.3 If a reader is ever needed
 
@@ -391,6 +401,8 @@ when another LibreOffice instance is running. Run it as
 LibreOffice passing does not mean Excel will open the file without a repair
 prompt. One manual open in Excel is required in step 2 (§4).
 
+The tests for `Workbook` are listed in §10.7.
+
 ### 6.4 `databases/export`
 
 - `TestXLSXKeepsRawValue` moves from `excelize.OpenReader` to the test parser
@@ -435,10 +447,10 @@ its pin moves. dx-erp's step has no date yet and needs one of the two.
 
 - **Writer only.** No reader, so the advisory class does not exist in our code.
   A reader later is a separate design starting from §5.3.
-- **Strings only.** Same as today. Numbers stay text in the sheet, so a user who
-  sums a column in Excel still has to convert it, as now. Typed numeric and
-  date cells would be a later, separate change (a `Cell` type beside
-  `[]string`), with its own tests.
+- **Strings only** in `databases/export`, same as before. Numbers stay text in
+  that sheet, so a user who sums a column in Excel still has to convert it.
+  `Workbook` (§10) has typed numeric cells; moving `databases/export` to them
+  is a separate change. Dates as typed cells are still out (§9).
 - **Silent truncation at 32,767** units, matching excelize, so the switch does
   not turn a working export into an error.
 - **Two encoding changes from today's files**: a literal `_xHHHH_` is escaped
@@ -451,6 +463,214 @@ its pin moves. dx-erp's step has no date yet and needs one of the two.
 
 ## 9. Out of scope
 
-Multiple sheets, merged cells, formulas, number formats, images, encryption,
-reading, and the legacy binary `.xls` format (the `xls` export format already
-writes OOXML, as it does today).
+Moved in on 2026-10-27 (§10): several sheets, typed numbers, number formats, a
+cell style table, merged ranges, row heights and frozen panes.
+
+Still out: formulas, dates and booleans as typed cells (a date can be written
+as its serial number with a date format, but the writer does no conversion),
+rich text inside a cell, hyperlinks, comments, conditional formatting, data
+validation, images and charts, frozen columns, print settings, theme colours,
+encryption, reading, and the legacy binary `.xls` format (the `xls` export
+format already writes OOXML, as it does today).
+
+## 10. Workbooks: several sheets, numbers and styles (2026-10-27)
+
+### 10.1 Why
+
+A caller that builds a styled workbook of several sheets (a bill of materials:
+a summary sheet and one sheet per section, money in `"Rp"#,##0`, bordered
+tables, merged title rows, a frozen header) uses excelize for it. excelize
+v2.11.0 carries the advisories in the Summary, fixed only in commits no release
+holds yet. `Workbook` gives that caller what it uses, so it can drop excelize.
+It stays a writer, streams rows as `Writer` does, and needs nothing outside the
+standard library and `dxlib/errors`.
+
+### 10.2 API
+
+```go
+// CellStyle is one entry of the style table. The zero value is the default.
+type CellStyle struct {
+	Font         Font
+	FillRGB      string // solid fill, "E0EBF5"; empty for none
+	Border       Border
+	Horizontal   string // "", "left", "center", "right"
+	Vertical     string // "", "top", "center", "bottom"
+	Wrap         bool
+	NumberFormat string // a format code such as `"Rp"#,##0`; empty for General
+}
+
+type Font struct {
+	Name     string  // empty for Calibri
+	Size     float64 // points; 0 for 11
+	Bold     bool
+	Italic   bool
+	ColorRGB string // empty for black
+}
+
+// Border draws thin lines on the sides set, in ColorRGB (empty for black).
+type Border struct {
+	Left, Right, Top, Bottom bool
+	ColorRGB                 string
+}
+
+type SheetOptions struct {
+	Name         string    // Excel's rules for sheet names; unique in the workbook
+	ColumnWidths []float64 // as Options.ColumnWidths
+	FreezeRows   int       // rows kept in view above the pane; 0 for none
+}
+
+type WorkbookOptions struct {
+	Sheets []SheetOptions // at least one; the first is the active sheet
+}
+
+// A cell: Text, Number, or Blank (a styled cell with no value). The zero
+// Cell is blank with the default style and is not written at all.
+type Cell struct { /* kind, text, number, style */ }
+
+func Text(s string, style int) Cell
+func Number(v float64, style int) Cell
+func Blank(style int) Cell
+
+type Row struct {
+	Cells  []Cell  // from column A, one per column
+	Height float64 // points; 0 for the default
+	Style  int     // the row's own style (s= on <row>); 0 for none
+}
+
+func NewWorkbook(w io.Writer, opts WorkbookOptions) (*Workbook, error)
+
+// AddStyle adds a style and returns its index for cells and rows. Only before
+// the first WriteRow, Merge, NextSheet or Close. Style 0 is the default.
+func (b *Workbook) AddStyle(s CellStyle) (int, error)
+
+// WriteRow writes the next row of the current sheet (the first, at the start).
+func (b *Workbook) WriteRow(r Row) error
+
+// Merge merges a range of the current sheet, rows and columns 1-based and
+// inclusive. Any time while that sheet is current.
+func (b *Workbook) Merge(firstRow, firstCol, lastRow, lastCol int) error
+
+// NextSheet ends the current sheet and makes the next one in Sheets current.
+func (b *Workbook) NextSheet() error
+
+// Close ends the current sheet, writes the sheets never reached as empty
+// sheets, then the shared strings and the zip directory. It does not close w.
+func (b *Workbook) Close() error
+```
+
+The style index works the way excelize's `NewStyle` does, which keeps a move
+from it mechanical. Equal styles added twice get two indices but share one
+`<xf>` underneath; fonts, fills, borders and number formats are deduplicated.
+
+Errors and state follow §3.1: errors from `dxlib/errors`, no panic on any
+input, and after an error every later call returns it. `NewWorkbook` checks
+the options; it writes nothing, so an error from `w` comes back from the first
+call that writes.
+
+`Writer` is kept as it is and becomes a layer over `Workbook`: one sheet, the
+header style added as style 1, `WriteHeader` a row with `Style: 1` whose cells
+carry style 1, every value `Text`. Its files have the same parts, in the same
+order, as before.
+
+### 10.3 Streaming and part order
+
+Every sheet name and every style must be known before the first sheet is
+written, because `workbook.xml`, its relationships, `[Content_Types].xml` and
+`styles.xml` name them and come before the sheets (§3.3). So the sheets are
+declared in `WorkbookOptions`, and the style table is closed by the first call
+that writes. The order of the entries is then:
+
+1. `[Content_Types].xml`, `_rels/.rels`, `xl/workbook.xml`,
+   `xl/_rels/workbook.xml.rels`, `xl/styles.xml`;
+2. `xl/worksheets/sheet1.xml` … `sheetN.xml`, each row by row, in the order of
+   `Sheets`;
+3. `xl/sharedStrings.xml`, one table for every sheet.
+
+Memory is what §3.3 says, plus each sheet's merged ranges until that sheet
+ends: `<mergeCells>` follows `<sheetData>` in the schema, so the ranges are
+kept and written when the sheet ends. A sheet's views and widths come from
+its `SheetOptions` and go before `<sheetData>`; a row's height goes on its
+`<row>`. Nothing else has to be held.
+
+### 10.4 Styles
+
+`styles.xml` is built from the table when the first sheet starts:
+
+- `<numFmts>` (only when a style has a format code), each code once, ids from
+  164 up, codes attribute-escaped (`"Rp"#,##0` is written
+  `&quot;Rp&quot;#,##0`). `General` and the empty code are id 0.
+- `<fonts>`: font 0 is Calibri 11 black, as before; each distinct font after
+  it, children in Excel's order (`b`, `i`, `sz`, `color`, `name`, `family` for
+  Calibri only).
+- `<fills>`: `none` and `gray125` at 0 and 1, then each distinct solid colour.
+- `<borders>`: the empty border at 0, then each distinct one, sides in the
+  schema's order (`left`, `right`, `top`, `bottom`, `diagonal`), a set side
+  `style="thin"` with its `<color rgb="FF…"/>`.
+- `<cellXfs>`: 0 the default, then each distinct style, with the `apply…`
+  attributes for what it sets and an `<alignment>` when it sets alignment or
+  wrapping.
+
+### 10.5 Sheets
+
+- **Active sheet.** `workbook.xml` has `<bookViews><workbookView
+  activeTab="0"/></bookViews>` before `<sheets>`, and only the first sheet's
+  `<sheetView>` has `tabSelected="1"`, so Excel opens on the first sheet.
+- **Frozen pane** under row N: `<pane ySplit="N" topLeftCell="A(N+1)"
+  activePane="bottomLeft" state="frozen"/>` and `<selection pane="bottomLeft"
+  activeCell="A(N+1)" sqref="A(N+1)"/>` in that sheet's `<sheetView>`.
+- **Numbers**: `<c r="B2" s="3"><v>1500</v></c>` (no `t`, so a number), the
+  value in Go's shortest form that reads back as the same float64: plain
+  digits while `1e-5 <= |v| < 1e15`, otherwise with an exponent (`1.5E+20`).
+  `-0` is written `0`.
+- **Blank cells**: `<c r="C2" s="3"/>`. A zero `Cell` (blank, style 0) is not
+  written at all, so a row may leave gaps.
+- **Row heights**: `ht="…" customHeight="1"` on `<row>`; a row style adds
+  `s="…" customFormat="1"`, as the header row of `Writer` always had.
+- **Merged ranges**: `<mergeCells count="…"><mergeCell ref="A1:C1"/>…`, after
+  `<sheetData>`. Excel takes the value and style of the top-left cell and
+  draws each border from the cells of the range, so a bordered merged range
+  needs `Blank` cells in that style for the rest of it.
+
+### 10.6 Limits, as errors
+
+| What | Rule |
+|---|---|
+| sheets | at least one; each name as §5.1, and no two equal ignoring letter case (Excel's rule) |
+| `ColumnWidths` | as §5.1, per sheet |
+| `FreezeRows` | 0 to 1,048,575 |
+| style index | 0 to the last index `AddStyle` gave, on a cell and on a row |
+| `AddStyle` | before the first call that writes |
+| colours (`FillRGB`, `Font.ColorRGB`, `Border.ColorRGB`) | empty or six hex digits |
+| `Font.Name` | 1 to 31 UTF-16 units when set, valid UTF-8, no control character |
+| `Font.Size` | 0, or 1 to 409 points |
+| `Horizontal`, `Vertical` | the values listed in §10.2 |
+| `NumberFormat` | at most 255 UTF-16 units, valid UTF-8, no control character |
+| number | finite: NaN and ±Inf are refused, since Excel has no cell for them |
+| row `Height` | 0, or in (0, 409] points |
+| cells, rows | as §5.1 per sheet |
+| merged range | inside the sheet, first ≤ last, more than one cell, not overlapping an earlier range of that sheet (Excel repairs a file with overlapping merges) |
+| `NextSheet` | refused on the last sheet |
+
+### 10.7 Tests
+
+- Several sheets: names and order read back; one `sheetN.xml` per sheet in the
+  part order of §10.3; every content type and relationship resolves; only the
+  first sheet is selected; sheets never reached are written empty.
+- Numbers: integers, fractions, negatives, `-0`, very small and very large
+  values read back as the same float64; NaN and ±Inf refused; `Text("-5")`
+  stays text.
+- Styles: each field of `CellStyle` resolved back through `styles.xml` (font,
+  fill, border sides and colour, alignment, wrap, number format code with its
+  quotes); equal fonts, fills, borders and formats stored once; `AddStyle`
+  after the first write refused; an unknown style index refused; each option
+  check in §10.6.
+- Merges: written after `<sheetData>`; single-cell, reversed, out-of-range and
+  overlapping ranges refused; a bordered merge with `Blank` cells.
+- Row heights, row styles and frozen panes read back.
+- `Writer`'s tests run unchanged.
+- LibreOffice (§6.3): one workbook with every feature, converted sheet by
+  sheet to CSV, the raw values compared.
+- Excel and Numbers: the same workbook opened by hand, with no repair prompt.
+  §6.3's caveat holds: LibreOffice and Numbers forgive what Excel repairs, so
+  each part is also checked against the ECMA-376 transitional schema
+  (`sml.xsd`) with `xmllint` where the schema is to hand.
