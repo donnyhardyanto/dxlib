@@ -773,6 +773,7 @@ In:
   `""`. A row with no value before the last row that has one is an empty
   slice. Nothing follows that last row. A cell that renders as `""` is left
   out, unless it holds a formula: then it keeps its place, as in excelize.
+  `GetRowsRaw` gives the same shape, trimmed by the value as stored (§11.7).
 - Values: shared strings (rich-text runs joined, phonetic runs `<rPh>` left
   out, `_xHHHH_` decoded as excelize decodes it), inline strings, numbers,
   booleans as `TRUE`/`FALSE`, ISO 8601 dates (`t="d"`), error values such as
@@ -873,10 +874,10 @@ and the value seen, plus the part. For example:
 | `MaxSheets` | 1,000 | sheets in `workbook.xml` |
 | `MaxRows` | 1,048,576 | the highest row number in a sheet (Excel's) |
 | `MaxColumns` | 16,384 | the highest column in a sheet (Excel's, `XFD`) |
-| `MaxCells` | 5,000,000 | cells `GetRows` returns for one sheet, padding included, plus one per empty row in between |
-| `MaxSheetBytes` | 200 MiB | bytes of text `GetRows` returns for one sheet, the sum over its cells as rendered; a shared string counts each time a cell uses it |
+| `MaxCells` | 5,000,000 | cells `GetRows` or `GetRowsRaw` returns for one sheet, padding included, plus one per empty row in between |
+| `MaxSheetBytes` | 200 MiB | bytes of text `GetRows` or `GetRowsRaw` returns for one sheet, the sum over its cells as returned; a shared string counts each time a cell uses it |
 | `MaxSharedStrings` | 1,048,576 | entries in the shared string table |
-| `MaxStringUnits` | 32,767 | UTF-16 units of one shared or inline string (Excel's cell limit), and of one cell as `GetRows` returns it, after its number format; the raw text of a string or a `<v>` is also capped at four bytes per unit while it is read |
+| `MaxStringUnits` | 32,767 | UTF-16 units of one shared or inline string (Excel's cell limit), and of one cell as `GetRows` returns it, after its number format, or as `GetRowsRaw` returns it; the raw text of a string or a `<v>` is also capped at four bytes per unit while it is read |
 | `MaxStyles` | 65,536 | cell formats (`cellXfs`) and number formats, each |
 
 The zip boundary:

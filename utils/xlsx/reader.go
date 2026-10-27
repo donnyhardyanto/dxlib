@@ -32,10 +32,10 @@ type ReaderLimits struct {
 	MaxSheets           int   // sheets in the workbook; 1,000
 	MaxRows             int   // highest row number in a sheet; 1,048,576 (Excel's)
 	MaxColumns          int   // highest column in a sheet; 16,384 (Excel's, column XFD)
-	MaxCells            int64 // cells GetRows returns for one sheet, padding included, plus one per empty row; 5,000,000
-	MaxSheetBytes       int64 // bytes of text GetRows returns for one sheet, every cell counted, shared strings each time used; 200 MiB
+	MaxCells            int64 // cells GetRows or GetRowsRaw returns for one sheet, padding included, plus one per empty row; 5,000,000
+	MaxSheetBytes       int64 // bytes of text GetRows or GetRowsRaw returns for one sheet, every cell counted, shared strings each time used; 200 MiB
 	MaxSharedStrings    int   // entries in the shared string table; 1,048,576
-	MaxStringUnits      int   // UTF-16 units in one string (shared or inline), and in one cell as rendered; 32,767 (Excel's)
+	MaxStringUnits      int   // UTF-16 units in one string (shared or inline), and in one cell as returned; 32,767 (Excel's)
 	MaxStyles           int   // cell formats (cellXfs) and number formats, each; 65,536
 }
 
