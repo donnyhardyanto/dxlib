@@ -998,13 +998,12 @@ units.
   all. `FuzzNumFmt` checks that a capped text section is never built. The targets run with small limits, so limits are reached
   often. Run one as:
 
-      go test -run '^$' -fuzz '^FuzzSheetXML$' -fuzztime 60s ./utils/xlsx/
+      go test -run '^$' -fuzz '^FuzzOpen$' -fuzztime 60s -fuzzminimizetime=10x ./utils/xlsx/
 
-  `FuzzOpen` takes a count instead (`-fuzztime 1000000x`). With Go 1.27.3
-  on the machine these were run on, it stalls by time: its workers stop
-  after a dozen inputs, with no input running long (a three-second
-  watchdog in the target never fired), while a count runs at over 10,000
-  inputs a second.
+  `FuzzOpen` needs the last flag. Without it, its workers
+  spend the run minimizing the first new inputs they find (whole zip files,
+  each a slow input to shrink) and get through only a dozen or so inputs a
+  minute. With it, they get through about 30,000 a second.
 
 - **Excel and Numbers.** No fixtures. Excel is not installed on the machine
   these were made on, and Numbers does not run without a display there.
