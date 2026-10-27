@@ -48,7 +48,9 @@ func writeBOM(t *testing.T) []byte {
 	s.wrapped = add(CellStyle{Font: Font{Italic: true}, Border: thin, Wrap: true})
 
 	rows := []func() error{
-		func() error { return b.WriteRow(Row{Cells: []Cell{Text("Daftar Bahan", s.title), Blank(s.title)}, Height: 24}) },
+		func() error {
+			return b.WriteRow(Row{Cells: []Cell{Text("Daftar Bahan", s.title), Blank(s.title)}, Height: 24})
+		},
 		func() error { return b.Merge(1, 1, 1, 2) },
 		func() error { return b.WriteRow(Row{Cells: []Cell{Text("Total", s.cell), Number(1234567, s.money)}}) },
 		func() error { return b.WriteRow(Row{Cells: []Cell{Text("Catatan panjang yang dibungkus", s.wrapped)}}) },
