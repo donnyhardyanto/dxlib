@@ -725,7 +725,7 @@ test parser for the writer's own output, not this reader.
 // ReaderLimits bounds what a Reader accepts; a zero or negative field takes
 // its default (§11.5).
 type ReaderLimits struct {
-	MaxFileSize, MaxPartSize, MaxTotalSize, MaxCompressionRatio, MaxXMLTokens, MaxCells int64
+	MaxFileSize, MaxPartSize, MaxTotalSize, MaxCompressionRatio, MaxXMLTokens, MaxCells, MaxSheetBytes int64
 	MaxEntries, MaxXMLDepth, MaxSheets, MaxRows, MaxColumns, MaxSharedStrings, MaxStringUnits, MaxStyles int
 }
 func DefaultReaderLimits() ReaderLimits
@@ -865,15 +865,16 @@ and the value seen, plus the part. For example:
 | `MaxEntries` | 1,000 | entries in the zip directory, at open; also relationships in one `.rels` part |
 | `MaxPartSize` | 100 MiB | decompressed bytes of one part, counted while inflating |
 | `MaxTotalSize` | 200 MiB | decompressed bytes over the reader's life, every part read counted each time it is read |
-| `MaxCompressionRatio` | 100 | decompressed to compressed bytes of a part, checked once the part has passed 1 MiB, so small parts (which compress far better) are not refused |
+| `MaxCompressionRatio` | 100 | decompressed bytes of a part to the compressed bytes the decompressor actually took for them, checked once the part has passed 1 MiB, so small parts (which compress far better) are not refused |
 | `MaxXMLDepth` | 64 | element nesting in a part |
 | `MaxXMLTokens` | 50,000,000 | tokens in a part |
 | `MaxSheets` | 1,000 | sheets in `workbook.xml` |
 | `MaxRows` | 1,048,576 | the highest row number in a sheet (Excel's) |
 | `MaxColumns` | 16,384 | the highest column in a sheet (Excel's, `XFD`) |
 | `MaxCells` | 5,000,000 | cells `GetRows` returns for one sheet, padding included, plus one per empty row in between |
+| `MaxSheetBytes` | 200 MiB | bytes of text `GetRows` returns for one sheet, the sum over its cells as rendered; a shared string counts each time a cell uses it |
 | `MaxSharedStrings` | 1,048,576 | entries in the shared string table |
-| `MaxStringUnits` | 32,767 | UTF-16 units of one shared or inline string (Excel's cell limit); the raw text of a string or a `<v>` is also capped at four bytes per unit while it is read |
+| `MaxStringUnits` | 32,767 | UTF-16 units of one shared or inline string (Excel's cell limit), and of one cell as `GetRows` returns it, after its number format; the raw text of a string or a `<v>` is also capped at four bytes per unit while it is read |
 | `MaxStyles` | 65,536 | cell formats (`cellXfs`) and number formats, each |
 
 The zip boundary:
@@ -893,10 +894,15 @@ The zip boundary:
   twice is refused when a relationship leads to it.
 - A name `archive/zip` calls insecure (`..`, an absolute path) is ignored
   unless a relationship leads to it, and resolution never produces one.
-- No size from a zip header is trusted. Decompressed bytes are counted as
-  they come, per part and in total. The ratio is also measured on what
-  actually inflated. `archive/zip` checks each part's CRC and declared size
-  at its end.
+- No size from a zip header is trusted for a limit. Decompressed bytes are
+  counted as they come, per part and in total. The ratio divides them by the
+  compressed bytes the decompressor actually took, counted under it, not by
+  the compressed size the zip directory claims: a directory that claims more
+  would otherwise lower the ratio. Parts are opened raw (`OpenRaw`) and
+  inflated with `compress/flate`, stored or deflate only, as `archive/zip`
+  does. At a part's end its size and CRC are checked against the directory,
+  as `archive/zip` checks them; a part read only in part (a sheet, read to
+  `</sheetData>`) is not checked.
 
 The XML boundary:
 
@@ -914,6 +920,15 @@ The XML boundary:
 
 Sheets:
 
+- The output is bounded, not only the input. A number format can repeat a
+  value: each `@` of a text section writes it again, so 1,024 `@`s over a
+  32,000-unit shared string would make one cell of 32 million units. A text
+  section's length is worked out before it is built, and a cell that would
+  pass `MaxStringUnits` as rendered is an error, as is a `t="str"` value
+  over it. Every other section writes the value once, plus at most 1,024
+  characters of its format. Across cells, `MaxSheetBytes` bounds the sum,
+  since many cells can use one long shared string.
+
 - Row and column numbers are checked against `MaxRows` and `MaxColumns`
   before anything is padded. A cell at `XFD1` costs one token, but padding
   it would make 16,384 strings, and those count against `MaxCells`.
@@ -928,7 +943,9 @@ Streaming: sheets, the shared strings and the styles are parsed as streams
 from their zip entries. `Open` reads only the relationships and the
 workbook. The shared strings and styles are read once, on the first
 `GetRows`, and kept. A sheet is read up to the end of `<sheetData>` and no
-further. What `GetRows` returns is held in memory, bounded by `MaxCells`.
+further. What `GetRows` returns is held in memory: `MaxCells` strings at
+most, of `MaxSheetBytes` bytes in all, each at most `MaxStringUnits` UTF-16
+units.
 
 ### 11.6 Tests
 
@@ -958,6 +975,11 @@ further. What `GetRows` returns is held in memory, bounded by `MaxCells`.
 - **Limits.** One test per limit (`TestReaderLimits`) triggers it, checks
   the `*LimitError` fields and checks that the message names the limit. A
   zip bomb is one of them: 4 MiB of spaces deflated about a thousand to one.
+  Another is the same bomb with a zip directory claiming 1 MiB of compressed
+  bytes, which a ratio taken from the header would pass. Two more bound the
+  output: 1,024 `@`s over a 32,000-unit shared string, and many cells using
+  one shared string past `MaxSheetBytes`. `TestReaderChecksDirectoryCRC`
+  checks that a part whose CRC does not match is refused.
 - **Malformed input** (`TestReaderRefusesMalformed`): not a zip, a Compound
   File, a truncated zip, no `_rels/.rels`, no workbook, a DTD with nested
   entities, an undefined entity, a UTF-16 declaration, mismatched and
@@ -972,10 +994,17 @@ further. What `GetRows` returns is held in memory, bounded by `MaxCells`.
   - `FuzzNumFmt`: format codes and values.
 
   The property is that nothing panics, and that what comes back respects
-  the limits. The targets run with small limits, so limits are reached
+  the limits: rows, cells, each cell's UTF-16 length and a sheet's bytes in
+  all. `FuzzNumFmt` checks that a capped text section is never built. The targets run with small limits, so limits are reached
   often. Run one as:
 
-      go test -run '^$' -fuzz '^FuzzOpen$' -fuzztime 60s ./utils/xlsx/
+      go test -run '^$' -fuzz '^FuzzSheetXML$' -fuzztime 60s ./utils/xlsx/
+
+  `FuzzOpen` takes a count instead (`-fuzztime 1000000x`). With Go 1.27.3
+  on the machine these were run on, it stalls by time: its workers stop
+  after a dozen inputs, with no input running long (a three-second
+  watchdog in the target never fired), while a count runs at over 10,000
+  inputs a second.
 
 - **Excel and Numbers.** No fixtures. Excel is not installed on the machine
   these were made on, and Numbers does not run without a display there.

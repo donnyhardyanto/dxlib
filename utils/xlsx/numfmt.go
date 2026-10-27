@@ -302,14 +302,28 @@ func (l *language) month(m time.Month, abbr int) string {
 
 // render gives v as the format shows it; a nil format gives v.
 func (f *numFmt) render(v string, kind valueKind, date1904 bool) string {
+	s, _ := f.renderMax(v, kind, date1904, 0)
+	return s
+}
+
+// renderMax is render with a cap on a text section, the one place a format
+// multiplies its value: each @ writes the whole value again. When the text
+// would pass maxUnits UTF-16 units (0 for no cap), it is not built: over is
+// its length in units and s is "". Every other section writes the value
+// once, plus at most maxNumFmtRunes characters of the format.
+func (f *numFmt) renderMax(v string, kind valueKind, date1904 bool, maxUnits int) (s string, over int) {
 	if f == nil {
-		return v
+		return v, 0
 	}
 	if f.unsupported {
-		return v
+		return v, 0
 	}
-	nf := numberFormat{f: f, value: v, kind: kind, date1904: date1904}
-	return nf.run()
+	nf := numberFormat{f: f, value: v, kind: kind, date1904: date1904, maxUnits: maxUnits}
+	s = nf.run()
+	if nf.over > 0 {
+		return "", nf.over
+	}
+	return s, 0
 }
 
 // numberFormat is one rendering, holding excelize's state for it.
@@ -331,6 +345,9 @@ type numberFormat struct {
 	t       time.Time
 	ap      string
 	result  string
+
+	maxUnits int // cap on a text section's output; 0 for none
+	over     int // the units a text section would have had, past maxUnits
 }
 
 func (nf *numberFormat) run() string {
@@ -390,6 +407,21 @@ func (nf *numberFormat) alignment(s string) string {
 }
 
 func (nf *numberFormat) textHandler() string {
+	if nf.maxUnits > 0 {
+		units, vu := 0, utf16Len(nf.value)
+		for _, t := range nf.sec.items {
+			switch t.kind {
+			case tLiteral:
+				units += utf16Len(t.val)
+			case tText, tZero:
+				units += vu
+			}
+		}
+		if units > nf.maxUnits {
+			nf.over = units
+			return ""
+		}
+	}
 	var b strings.Builder
 	for _, t := range nf.sec.items {
 		switch t.kind {

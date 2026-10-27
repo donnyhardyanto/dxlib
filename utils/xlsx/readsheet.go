@@ -160,6 +160,7 @@ type sheetReader struct {
 	st    *readStyles
 	rows  [][]string
 	cells int64 // counted against MaxCells
+	bytes int64 // counted against MaxSheetBytes
 }
 
 func (r *sheetReader) read() error {
@@ -274,6 +275,9 @@ func (r *sheetReader) row(n int) ([]string, error) {
 			if err := r.count(int64(c - len(cells))); err != nil {
 				return nil, err
 			}
+			if r.bytes += int64(len(v)); r.bytes > r.x.lim.MaxSheetBytes {
+				return nil, limitError("bytes of text returned for a sheet", r.x.lim.MaxSheetBytes, r.bytes, r.s.part)
+			}
 			for len(cells) < c-1 {
 				cells = append(cells, "")
 			}
@@ -360,9 +364,31 @@ func (r *sheetReader) cell(e xml.StartElement) (string, bool, error) {
 	return out, out != "" || hasFormula, nil
 }
 
-// value renders a cell as excelize's getValueFrom does with raw off.
+// value renders a cell as excelize's getValueFrom does with raw off. What it
+// gives is at most MaxStringUnits UTF-16 units: a format can repeat its value
+// (each @ writes it again), and a t="str" value is only capped in bytes.
 func (r *sheetReader) value(typ string, style int, v, inline string, hasInline bool) (string, error) {
+	out, err := r.render(typ, style, v, inline, hasInline)
+	if err != nil {
+		return "", err
+	}
+	if max := r.x.lim.MaxStringUnits; len(out) > max { // UTF-8 bytes are never fewer than UTF-16 units
+		if u := utf16Len(out); u > max {
+			return "", limitError("rendered cell length in UTF-16 units", int64(max), int64(u), r.s.part)
+		}
+	}
+	return out, nil
+}
+
+func (r *sheetReader) render(typ string, style int, v, inline string, hasInline bool) (string, error) {
 	f := r.st.format(style)
+	render := func(v string, kind valueKind) (string, error) {
+		s, over := f.renderMax(v, kind, r.x.date1904, r.x.lim.MaxStringUnits)
+		if over > 0 {
+			return "", limitError("rendered cell length in UTF-16 units", int64(r.x.lim.MaxStringUnits), int64(over), r.s.part)
+		}
+		return s, nil
+	}
 	switch typ {
 	case "b":
 		switch v {
@@ -371,25 +397,25 @@ func (r *sheetReader) value(typ string, style int, v, inline string, hasInline b
 		case "0":
 			return "FALSE", nil
 		}
-		return f.render(v, kindText, r.x.date1904), nil
+		return render(v, kindText)
 	case "d":
-		return f.render(isoDateToSerial(v), kindDate, r.x.date1904), nil
+		return render(isoDateToSerial(v), kindDate)
 	case "s":
 		if v == "" {
-			return f.render(v, kindText, r.x.date1904), nil
+			return render(v, kindText)
 		}
 		i, err := strconv.Atoi(strings.TrimSpace(v))
 		if err != nil || i < 0 || i >= len(r.sst) {
 			return "", errors.Errorf("shared string index %q is outside the table of %d strings", clip(v, 20), len(r.sst))
 		}
-		return f.render(r.sst[i], kindText, r.x.date1904), nil
+		return render(r.sst[i], kindText)
 	case "str":
 		return v, nil
 	case "inlineStr":
 		if hasInline {
-			return f.render(inline, kindText, r.x.date1904), nil
+			return render(inline, kindText)
 		}
-		return f.render(v, kindText, r.x.date1904), nil
+		return render(v, kindText)
 	}
 	if isNum, precision, d := isNumeric(v); isNum {
 		if precision > 15 {
@@ -398,7 +424,7 @@ func (r *sheetReader) value(typ string, style int, v, inline string, hasInline b
 			v = strconv.FormatFloat(d, 'f', -1, 64)
 		}
 	}
-	return f.render(v, kindNumber, r.x.date1904), nil
+	return render(v, kindNumber)
 }
 
 // isoDateToSerial turns the ISO 8601 value of a t="d" cell into a date serial

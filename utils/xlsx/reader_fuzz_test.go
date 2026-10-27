@@ -3,6 +3,7 @@ package xlsx
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -19,6 +20,7 @@ var fuzzLimits = ReaderLimits{
 	MaxRows:          2000,
 	MaxColumns:       200,
 	MaxCells:         20_000,
+	MaxSheetBytes:    256 << 10,
 	MaxSharedStrings: 1000,
 	MaxStringUnits:   1000,
 	MaxStyles:        200,
@@ -40,15 +42,24 @@ func readAll(t *testing.T, data []byte) {
 		if len(rows) > fuzzLimits.MaxRows {
 			t.Fatalf("%d rows past MaxRows", len(rows))
 		}
-		cells := int64(0)
+		cells, n := int64(0), int64(0)
 		for _, r := range rows {
 			if len(r) > fuzzLimits.MaxColumns {
 				t.Fatalf("%d cells in a row past MaxColumns", len(r))
 			}
 			cells += int64(max(len(r), 1))
+			for _, c := range r {
+				if u := utf16Len(c); u > fuzzLimits.MaxStringUnits {
+					t.Fatalf("a cell of %d UTF-16 units past MaxStringUnits", u)
+				}
+				n += int64(len(c))
+			}
 		}
 		if cells > fuzzLimits.MaxCells {
 			t.Fatalf("%d cells past MaxCells", cells)
+		}
+		if n > fuzzLimits.MaxSheetBytes {
+			t.Fatalf("%d bytes past MaxSheetBytes", n)
 		}
 	}
 }
@@ -102,10 +113,21 @@ func FuzzNumFmt(f *testing.F) {
 	f.Add(`"Rp"#,##0.00;[Red]\-"Rp"#,##0.00`, "-1500000", false)
 	f.Add("[$-421]dddd, d mmmm yyyy h:mm AM/PM", "45000.75", true)
 	f.Add("[h]:mm:ss.000", "1e15", false)
+	f.Add(strings.Repeat("@", 1024), strings.Repeat("x", 100), false)
 	f.Fuzz(func(t *testing.T, code, value string, date1904 bool) {
+		const maxUnits = 1000
 		nf := parseNumFmt(code)
 		for _, k := range []valueKind{kindNumber, kindDate, kindText} {
-			_ = nf.render(value, k, date1904)
+			s, over := nf.renderMax(value, k, date1904, maxUnits)
+			if over > 0 && (over <= maxUnits || s != "") {
+				t.Fatalf("over %d with %d bytes rendered", over, len(s))
+			}
+			// Past the cap only by what a format writes once: the value,
+			// at most maxNumFmtRunes characters, and what a date or a
+			// number expands them to.
+			if u := utf16Len(s); u > maxUnits && u > 4*(utf16Len(value)+maxNumFmtRunes)+400 {
+				t.Fatalf("%d UTF-16 units from a %d-unit value", u, utf16Len(value))
+			}
 		}
 	})
 }

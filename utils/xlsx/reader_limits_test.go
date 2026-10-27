@@ -1,8 +1,12 @@
 package xlsx
 
 import (
+	"archive/zip"
 	"bytes"
+	"compress/flate"
 	"errors"
+	"hash/crc32"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -197,6 +201,34 @@ func TestReaderLimits(t *testing.T) {
 		{"inline string bytes", func(t *testing.T) []byte {
 			return pkg(t, `<row><c t="inlineStr"><is><t>`+strings.Repeat("x", 30)+`</t></is></c></row>`, nil)
 		}, ReaderLimits{MaxStringUnits: 5}, "inline string bytes", -1},
+		{"output bomb through a text format", func(t *testing.T) []byte {
+			// A 32,000-unit string shown through 1,024 @s: 50 such cells
+			// once made 1.6 GB of GetRows output from a 1.8 KB file.
+			return pkg(t, strings.Repeat(`<row><c t="s" s="1"><v>0</v></c></row>`, 50), map[string]string{
+				"xl/sharedStrings.xml": `<sst><si><t>` + strings.Repeat("x", 32000) + `</t></si></sst>`,
+				"xl/styles.xml":        `<styleSheet><numFmts><numFmt numFmtId="164" formatCode="` + strings.Repeat("@", 1024) + `"/></numFmts><cellXfs><xf/><xf numFmtId="164"/></cellXfs></styleSheet>`,
+			})
+		}, ReaderLimits{}, "rendered cell length in UTF-16 units", 32000 * 1024},
+		{"rendered cell", func(t *testing.T) []byte {
+			return pkg(t, `<row><c t="s" s="1"><v>0</v></c></row>`, map[string]string{
+				"xl/sharedStrings.xml": `<sst><si><t>abcdefghij</t></si></sst>`,
+				"xl/styles.xml":        `<styleSheet><numFmts><numFmt numFmtId="164" formatCode="@&quot;-&quot;@"/></numFmts><cellXfs><xf/><xf numFmtId="164"/></cellXfs></styleSheet>`,
+			})
+		}, ReaderLimits{MaxStringUnits: 20}, "rendered cell length in UTF-16 units", 21},
+		{"rendered number", func(t *testing.T) []byte {
+			return pkg(t, `<row><c s="1"><v>1</v></c></row>`, map[string]string{
+				"xl/styles.xml": `<styleSheet><numFmts><numFmt numFmtId="164" formatCode="` + strings.Repeat("0", 30) + `"/></numFmts><cellXfs><xf/><xf numFmtId="164"/></cellXfs></styleSheet>`,
+			})
+		}, ReaderLimits{MaxStringUnits: 20}, "rendered cell length in UTF-16 units", 30},
+		{"t=str value", func(t *testing.T) []byte {
+			return pkg(t, `<row><c t="str"><v>`+strings.Repeat("y", 30)+`</v></c></row>`, nil)
+		}, ReaderLimits{MaxStringUnits: 10}, "rendered cell length in UTF-16 units", 30},
+		{"sheet bytes", func(t *testing.T) []byte {
+			return pkg(t, `<row>`+strings.Repeat(`<c t="s"><v>0</v></c>`, 10)+`</row>`, map[string]string{"xl/sharedStrings.xml": `<sst><si><t>0123456789</t></si></sst>`})
+		}, ReaderLimits{MaxSheetBytes: 95}, "bytes of text returned for a sheet", 100},
+		{"zip bomb whose header claims more compressed bytes", func(t *testing.T) []byte {
+			return lyingZip(t, pkgParts("", map[string]string{"xl/worksheets/sheet1.xml": zeros(4 << 20)}), "xl/worksheets/sheet1.xml", 1<<20)
+		}, ReaderLimits{}, "compression ratio", -1},
 		{"cell formats", func(t *testing.T) []byte {
 			return pkg(t, `<row><c><v>1</v></c></row>`, map[string]string{"xl/styles.xml": `<styleSheet><cellXfs><xf/><xf/><xf/></cellXfs></styleSheet>`})
 		}, ReaderLimits{MaxStyles: 2}, "cell formats", 3},
@@ -219,6 +251,65 @@ func TestReaderLimits(t *testing.T) {
 				t.Fatalf("message %q does not name the limit", err)
 			}
 		})
+	}
+}
+
+// lyingZip zips parts as zipParts does, but writes part's directory entry
+// with a compressed size of claim: a ratio taken from the header would be
+// about four, while what actually inflates is over a thousand to one.
+func lyingZip(t testing.TB, parts []string, part string, claim uint64) []byte {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for i := 0; i < len(parts); i += 2 {
+		name, body := parts[i], parts[i+1]
+		if name != part {
+			w, err := zw.Create(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			io.WriteString(w, body)
+			continue
+		}
+		var comp bytes.Buffer
+		fw, _ := flate.NewWriter(&comp, flate.BestCompression)
+		io.WriteString(fw, body)
+		fw.Close()
+		// Pad the stream's bytes up to the claim, as a forged entry would:
+		// flate stops at the stream's end and never reads the padding.
+		raw := append(comp.Bytes(), make([]byte, int(claim)-comp.Len())...)
+		w, err := zw.CreateRaw(&zip.FileHeader{Name: name, Method: zip.Deflate, CRC32: crc32.ChecksumIEEE([]byte(body)),
+			CompressedSize64: claim, UncompressedSize64: uint64(len(body))})
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.Write(raw)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func TestReaderChecksDirectoryCRC(t *testing.T) {
+	parts := pkgParts(`<row><c><v>1</v></c></row>`, nil)
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for i := 0; i < len(parts); i += 2 {
+		name, body := parts[i], parts[i+1]
+		crc := crc32.ChecksumIEEE([]byte(body))
+		if name == "xl/workbook.xml" { // read to its end; a sheet is read only to </sheetData>
+			crc++
+		}
+		w, err := zw.CreateRaw(&zip.FileHeader{Name: name, Method: zip.Store, CRC32: crc,
+			CompressedSize64: uint64(len(body)), UncompressedSize64: uint64(len(body))})
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.WriteString(w, body)
+	}
+	zw.Close()
+	if _, err := rowsOf(buf.Bytes(), nil); !errors.Is(err, zip.ErrChecksum) {
+		t.Fatalf("error %v, want zip.ErrChecksum", err)
 	}
 }
 

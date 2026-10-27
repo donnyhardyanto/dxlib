@@ -2,8 +2,12 @@ package xlsx
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
+	"compress/flate"
 	"encoding/xml"
+	"hash"
+	"hash/crc32"
 	"io"
 	"net/url"
 	"strconv"
@@ -29,8 +33,9 @@ type ReaderLimits struct {
 	MaxRows             int   // highest row number in a sheet; 1,048,576 (Excel's)
 	MaxColumns          int   // highest column in a sheet; 16,384 (Excel's, column XFD)
 	MaxCells            int64 // cells GetRows returns for one sheet, padding included, plus one per empty row; 5,000,000
+	MaxSheetBytes       int64 // bytes of text GetRows returns for one sheet, every cell counted, shared strings each time used; 200 MiB
 	MaxSharedStrings    int   // entries in the shared string table; 1,048,576
-	MaxStringUnits      int   // UTF-16 units in one string (shared or inline); 32,767 (Excel's)
+	MaxStringUnits      int   // UTF-16 units in one string (shared or inline), and in one cell as rendered; 32,767 (Excel's)
 	MaxStyles           int   // cell formats (cellXfs) and number formats, each; 65,536
 }
 
@@ -48,6 +53,7 @@ func DefaultReaderLimits() ReaderLimits {
 		MaxRows:             MaxRows,
 		MaxColumns:          MaxColumns,
 		MaxCells:            5_000_000,
+		MaxSheetBytes:       200 << 20,
 		MaxSharedStrings:    1 << 20,
 		MaxStringUnits:      MaxCellUnits,
 		MaxStyles:           1 << 16,
@@ -85,6 +91,7 @@ func (l *ReaderLimits) withDefaults() ReaderLimits {
 	setInt(&o.MaxRows, d.MaxRows)
 	setInt(&o.MaxColumns, d.MaxColumns)
 	setInt64(&o.MaxCells, d.MaxCells)
+	setInt64(&o.MaxSheetBytes, d.MaxSheetBytes)
 	setInt(&o.MaxSharedStrings, d.MaxSharedStrings)
 	setInt(&o.MaxStringUnits, d.MaxStringUnits)
 	setInt(&o.MaxStyles, d.MaxStyles)
@@ -378,27 +385,63 @@ func (x *Reader) openPart(part string) (io.ReadCloser, error) {
 	if !ok {
 		return nil, errors.Errorf("xlsx: part %s is named by the workbook but missing from the zip", part)
 	}
-	rc, err := f.Open()
+	raw, err := f.OpenRaw()
 	if err != nil {
 		return nil, errors.Errorf("xlsx: opening part %s: %v", part, err)
 	}
-	compressed := max(int64(f.CompressedSize64), 1)
-	return &partReader{rc: rc, x: x, part: part, compressed: compressed}, nil
+	in := &countReader{r: bufio.NewReader(raw)}
+	var rc io.ReadCloser
+	switch f.Method {
+	case zip.Store:
+		rc = io.NopCloser(in)
+	case zip.Deflate:
+		rc = flate.NewReader(in)
+	default:
+		return nil, errors.Errorf("xlsx: opening part %s: compression method %d: %v (only stored and deflate are read)", part, f.Method, zip.ErrAlgorithm)
+	}
+	return &partReader{rc: rc, in: in, f: f, x: x, part: part, crc: crc32.NewIEEE()}, nil
 }
 
-// partReader counts the decompressed bytes of a part as they come, so no size
-// in a zip header is trusted.
+// countReader counts the compressed bytes the decompressor takes. It is an
+// io.ByteReader, so flate reads through it without a buffer of its own and
+// the count is what was used, not what was read ahead.
+type countReader struct {
+	r *bufio.Reader
+	n int64
+}
+
+func (c *countReader) Read(b []byte) (int, error) {
+	n, err := c.r.Read(b)
+	c.n += int64(n)
+	return n, err
+}
+
+func (c *countReader) ReadByte() (byte, error) {
+	b, err := c.r.ReadByte()
+	if err == nil {
+		c.n++
+	}
+	return b, err
+}
+
+// partReader counts the decompressed bytes of a part as they come, and the
+// compressed bytes they came from, so no size in a zip header is trusted for
+// a limit. At the end it checks the CRC and size the zip directory declares,
+// as archive/zip does.
 type partReader struct {
-	rc         io.ReadCloser
-	x          *Reader
-	part       string
-	n          int64
-	compressed int64
+	rc   io.ReadCloser
+	in   *countReader
+	f    *zip.File
+	x    *Reader
+	part string
+	n    int64
+	crc  hash.Hash32
 }
 
 func (p *partReader) Read(b []byte) (int, error) {
 	n, err := p.rc.Read(b)
 	p.n += int64(n)
+	p.crc.Write(b[:n])
 	lim := &p.x.lim
 	if p.n > lim.MaxPartSize {
 		return 0, limitError("decompressed bytes of a part", lim.MaxPartSize, p.n, p.part)
@@ -406,8 +449,19 @@ func (p *partReader) Read(b []byte) (int, error) {
 	if t := p.x.total.Add(int64(n)); t > lim.MaxTotalSize {
 		return 0, limitError("decompressed bytes in all", lim.MaxTotalSize, t, p.part)
 	}
-	if p.n > ratioFloor && p.n/p.compressed > lim.MaxCompressionRatio {
-		return 0, limitError("compression ratio", lim.MaxCompressionRatio, p.n/p.compressed, p.part)
+	if p.n > ratioFloor && p.n/max(p.in.n, 1) > lim.MaxCompressionRatio {
+		return 0, limitError("compression ratio", lim.MaxCompressionRatio, p.n/max(p.in.n, 1), p.part)
+	}
+	if uint64(p.n) > p.f.UncompressedSize64 {
+		return 0, &partReadError{part: p.part, err: zip.ErrFormat}
+	}
+	if err == io.EOF {
+		if uint64(p.n) != p.f.UncompressedSize64 {
+			return n, &partReadError{part: p.part, err: io.ErrUnexpectedEOF}
+		}
+		if p.f.CRC32 != 0 && p.crc.Sum32() != p.f.CRC32 {
+			return n, &partReadError{part: p.part, err: zip.ErrChecksum}
+		}
 	}
 	if err != nil && err != io.EOF {
 		return n, &partReadError{part: p.part, err: err}
@@ -415,8 +469,8 @@ func (p *partReader) Read(b []byte) (int, error) {
 	return n, err
 }
 
-// partReadError is a part that could not be read: a broken deflate stream or
-// a checksum that does not match.
+// partReadError is a part that could not be read: a broken deflate stream, or
+// a size or checksum that does not match the zip directory.
 type partReadError struct {
 	part string
 	err  error
