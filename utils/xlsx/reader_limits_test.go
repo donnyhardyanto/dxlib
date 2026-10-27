@@ -388,3 +388,45 @@ func TestReaderStylesScope(t *testing.T) {
 		t.Fatalf("rows %q, want %q", rows, want)
 	}
 }
+
+// A large export of repetitive values, as the writer makes it, is read with
+// the default limits: its sheet part compresses about 13 to 1, far under
+// MaxCompressionRatio, and passes the 1 MiB floor where the ratio counts.
+func TestReaderDefaultsReadALargeExport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("writes a 60,000-row workbook")
+	}
+	var buf bytes.Buffer
+	wb, err := NewWorkbook(&buf, WorkbookOptions{Sheets: []SheetOptions{{Name: "S"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := wb.AddStyle(CellStyle{NumberFormat: "#,##0.00"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const n = 60000
+	for i := 0; i < n; i++ {
+		if err := wb.WriteRow(Row{Cells: []Cell{Text("same text", 0), Number(1234.5, style), Number(1, 0), Blank(style), Text("x", 0)}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := wb.Close(); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := rowsOf2(buf.Bytes(), "S")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != n || !sameRows(rows[n-1:], [][]string{{"same text", "1,234.50", "1", "", "x"}}) {
+		t.Fatalf("%d rows, last %q", len(rows), rows[len(rows)-1])
+	}
+}
+
+func rowsOf2(data []byte, sheet string) ([][]string, error) {
+	x, err := OpenBytes(data, nil)
+	if err != nil {
+		return nil, err
+	}
+	return x.GetRows(sheet)
+}

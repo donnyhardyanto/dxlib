@@ -3,6 +3,7 @@ package xlsx
 import (
 	"archive/zip"
 	"bytes"
+	"io"
 	"os"
 	"testing"
 )
@@ -124,14 +125,35 @@ func handmadeParts(strict bool) []string {
 	}
 }
 
+// The committed hand-made fixtures hold exactly handmadeParts, compared part
+// by part so that a change in the deflate output alone does not fail it.
 func TestHandmadeFixturesAreCurrent(t *testing.T) {
 	for name, strict := range map[string]bool{"testdata/handmade.xlsx": false, "testdata/handmade-strict.xlsx": true} {
 		have, err := os.ReadFile(name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !bytes.Equal(have, zipParts(t, handmadeParts(strict))) {
-			t.Errorf("%s differs from handmadeParts; rerun TestWriteFixtures and run.sh", name)
+		zr, err := zip.NewReader(bytes.NewReader(have), int64(len(have)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := handmadeParts(strict)
+		if len(zr.File)*2 != len(want) {
+			t.Fatalf("%s holds %d parts, handmadeParts %d; rerun TestWriteFixtures and run.sh", name, len(zr.File), len(want)/2)
+		}
+		for i, f := range zr.File {
+			rc, err := f.Open()
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if f.Name != want[2*i] || string(b) != want[2*i+1] {
+				t.Errorf("%s: part %d (%s) differs from handmadeParts; rerun TestWriteFixtures and run.sh", name, i, f.Name)
+			}
 		}
 	}
 }
