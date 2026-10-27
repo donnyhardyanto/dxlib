@@ -1,8 +1,10 @@
-// Package xlsx writes .xlsx workbooks, streaming the rows into an io.Writer.
-// Writer writes one sheet of text cells; Workbook writes several sheets with
-// numbers, a style table, merged ranges, row heights and frozen panes. It is a
-// writer only: dxlib never reads a workbook, so there is no parser here for a
-// malformed file to reach. DESIGN.md has the reasons and the rules.
+// Package xlsx writes and reads .xlsx workbooks. Writer writes one sheet of
+// text cells, streaming the rows into an io.Writer; Workbook writes several
+// sheets with numbers, a style table, merged ranges, row heights and frozen
+// panes. Reader reads the values of a workbook it cannot trust, the sheet list
+// and each sheet's rows as text the way excelize's GetRows gives them, within
+// limits on the zip, the XML and the sheet (ReaderLimits). DESIGN.md has the
+// reasons and the rules; §11 is the reader.
 package xlsx
 
 import (

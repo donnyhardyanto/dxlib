@@ -14,7 +14,7 @@ This document lists every exported identifier in dxlib — types, constants, var
 | `errors` | `github.com/donnyhardyanto/dxlib/errors` | Stack-traced error wrapping (drop-in for pkg/errors) |
 | `log` | `github.com/donnyhardyanto/dxlib/log` | Structured logging, file output, Telegram alerts |
 | `utils` | `github.com/donnyhardyanto/dxlib/utils` | JSON type, type conversions, collections, network utils |
-| `utils/xlsx` | `github.com/donnyhardyanto/dxlib/utils/xlsx` | Streaming .xlsx writer: one sheet of text (`Writer`), or several sheets with numbers, styles, merges, row heights and frozen panes (`Workbook`); no reader |
+| `utils/xlsx` | `github.com/donnyhardyanto/dxlib/utils/xlsx` | Streaming .xlsx writer: one sheet of text (`Writer`), or several sheets with numbers, styles, merges, row heights and frozen panes (`Workbook`); a hardened reader of untrusted workbooks (sheet list, rows as text, as excelize's `GetRows`) |
 | `secure_memory` | `github.com/donnyhardyanto/dxlib/secure_memory` | Secure in-memory storage for secrets (memguard-backed) |
 | `configuration` | `github.com/donnyhardyanto/dxlib/configuration` | JSON/YAML config files, dot-path access, sensitive masking |
 | `base` | `github.com/donnyhardyanto/dxlib/base` | Database type enum shared by databases and tables packages |
@@ -281,7 +281,7 @@ General utility functions. The most important export is `JSON = map[string]any`,
 
 **Import:** `github.com/donnyhardyanto/dxlib/utils/xlsx`
 
-Writes `.xlsx` workbooks, streaming rows into an `io.Writer`: `Writer` for one sheet of text cells with a header style, `Workbook` for several sheets with typed numbers, number formats, a cell style table, merged ranges, row heights and frozen panes. A writer only: dxlib never reads a workbook. No dependency outside the standard library. `utils/xlsx/DESIGN.md` has the design, the limits and the text encoding (§10 for `Workbook`).
+Writes `.xlsx` workbooks, streaming rows into an `io.Writer`: `Writer` for one sheet of text cells with a header style, `Workbook` for several sheets with typed numbers, number formats, a cell style table, merged ranges, row heights and frozen panes. `Reader` reads workbooks it cannot trust: the sheet list and each sheet's rows as text, rendered the way excelize's `GetRows` renders them, within limits on the zip, the XML and the sheet. No dependency outside the standard library. `utils/xlsx/DESIGN.md` has the design, the limits and the text encoding (§10 for `Workbook`, §11 for `Reader`).
 
 | Identifier | Kind | Description |
 |---|---|---|
@@ -303,6 +303,14 @@ Writes `.xlsx` workbooks, streaming rows into an `io.Writer`: `Writer` for one s
 | `(*Workbook) NextSheet() error` | method | Ends the current sheet and starts the next one in `Sheets`. |
 | `(*Workbook) Close() error` | method | Ends the sheets (those never reached are written empty), the shared strings and the zip; does not close `w`. |
 | `MaxRows`, `MaxColumns`, `MaxCellUnits`, `MaxSheetNameUnits` | `const` | Excel's limits: 1,048,576 rows, 16,384 columns (more is an error), 32,767 UTF-16 units per cell (longer values are cut), 31 units per sheet name. |
+| `ReaderLimits` | `struct` | Limits for `Reader`, each defaulted when zero: `MaxFileSize` (50 MiB), `MaxEntries` (1,000), `MaxPartSize` (100 MiB), `MaxTotalSize` (200 MiB), `MaxCompressionRatio` (100), `MaxXMLDepth` (64), `MaxXMLTokens` (50,000,000), `MaxSheets` (1,000), `MaxRows` (1,048,576), `MaxColumns` (16,384), `MaxCells` (5,000,000), `MaxSharedStrings` (1,048,576), `MaxStringUnits` (32,767), `MaxStyles` (65,536). |
+| `DefaultReaderLimits() ReaderLimits` | `func` | The defaults above. |
+| `LimitError` | `struct` | The error for a limit passed: `Limit` (what was counted), `Max`, `Seen`, `Part`; found with `errors.As`. |
+| `OpenReader(r io.Reader, limits *ReaderLimits) (*Reader, error)` | `func` | Reads at most `MaxFileSize` bytes and opens the workbook; `nil` limits for the defaults. |
+| `OpenBytes(b []byte, limits *ReaderLimits) (*Reader, error)`, `Open(r io.ReaderAt, size int64, limits *ReaderLimits) (*Reader, error)` | `func` | The same, from memory or from a file. A Compound File (encrypted workbook, legacy `.xls`) is refused. |
+| `(*Reader) GetSheetList() []string` | method | Sheet names in workbook order, hidden and chart sheets included. |
+| `(*Reader) GetRows(sheet string) ([][]string, error)` | method | The rows as text, shaped and rendered as excelize's `GetRows` (number formats applied, cached formula results, never evaluated); `sheet` matched ignoring case. |
+| `(*Reader) Close() error` | method | Marks the reader closed; holds no file. |
 
 Errors stick: after one, every later call returns it. Characters XML cannot hold are written as `_xHHHH_`, and a literal `_xHHHH_` in a value is escaped so Excel shows it as typed.
 

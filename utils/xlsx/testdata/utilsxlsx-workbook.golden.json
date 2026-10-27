@@ -1,0 +1,49 @@
+{
+ "excelize": "v2.11.0",
+ "sheets": [
+  "Ringkasan",
+  "Item",
+  "Kosong"
+ ],
+ "rows": {
+  "Item": [
+   [
+    "No",
+    "Uraian",
+    "Jumlah",
+    "Harga"
+   ],
+   [
+    "",
+    "",
+    "(unit)",
+    "(Rp)"
+   ],
+   [
+    "1",
+    "Kabel NYY 4x16",
+    "12.5",
+    "Rp185,000"
+   ],
+   [
+    "2",
+    "-5",
+    "",
+    "-Rp0"
+   ]
+  ],
+  "Kosong": [],
+  "Ringkasan": [
+   [
+    "Daftar Bahan"
+   ],
+   [
+    "Total",
+    "Rp1,234,567"
+   ],
+   [
+    "Catatan panjang yang dibungkus"
+   ]
+  ]
+ }
+}

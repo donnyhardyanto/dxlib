@@ -1,0 +1,70 @@
+{
+ "excelize": "v2.11.0",
+ "sheets": [
+  "Cells",
+  "Absolute",
+  "Hidden",
+  "Chart"
+ ],
+ "rows": {
+  "Absolute": [
+   [
+    "absolute target"
+   ]
+  ],
+  "Cells": [
+   [
+    "plain",
+    "rich text",
+    "漢字",
+    "head run",
+    "cr\rlf _x0041_ Ax0042_ ",
+    "",
+    "  spaced  ",
+    "second",
+    "a \u0026 b \u003cc\u003e ☺"
+   ],
+   [
+    "ab",
+    "#DIV/0!",
+    "46322.4375",
+    "10/27/26 10:30",
+    "not a date"
+   ],
+   null,
+   [
+    "inline",
+    "inline runs",
+    "TRUE",
+    "FALSE",
+    "2"
+   ],
+   [
+    "3.25",
+    "3.3",
+    "2026/10/27",
+    "plain",
+    "1234.5",
+    "",
+    "7",
+    ""
+   ],
+   null,
+   [
+    "",
+    "  12  ",
+    "",
+    "plain"
+   ]
+  ],
+  "Chart": [],
+  "Hidden": [
+   null,
+   [
+    "",
+    "",
+    "-0"
+   ]
+  ]
+ }
+}

@@ -106,6 +106,10 @@ Both were checked by running the current code on 2026-10-09.
 
 ## 2. Scope: a writer only
 
+*Superseded on 2026-10-27:* `utils/xlsx` now also reads workbooks, for a
+caller that reads files it cannot trust (§11). What follows was the scope of
+the first version.
+
 dxlib does not read `.xlsx` files anywhere in production code. So `utils/xlsx`
 is a writer and has no reader. The advisories are all about parsing hostile
 files; with no parser there is nothing for them to reach, and nothing for
@@ -319,8 +323,8 @@ cell the caller made a number (`Number`, §10.2).
 
 ### 5.3 If a reader is ever needed
 
-Not built now. Any future reader starts from these, each one returning an
-error, never panicking:
+Built on 2026-10-27 (§11), from these; §11.5 has the limits as they are.
+Written down before then as the starting point:
 
 - the input size capped before opening (default 50 MiB), read through
   `io.LimitReader`;
@@ -448,7 +452,8 @@ its pin moves. dx-erp's step has no date yet and needs one of the two.
 ## 8. Decisions worth flagging
 
 - **Writer only.** No reader, so the advisory class does not exist in our code.
-  A reader later is a separate design starting from §5.3.
+  A reader later is a separate design starting from §5.3. (It came on
+  2026-10-27, hardened against that class: §11.)
 - **Strings only** in `databases/export`, same as before. Numbers stay text in
   that sheet, so a user who sums a column in Excel still has to convert it.
   `Workbook` (§10) has typed numeric cells; moving `databases/export` to them
@@ -472,8 +477,9 @@ Still out: formulas, dates and booleans as typed cells (a date can be written
 as its serial number with a date format, but the writer does no conversion),
 rich text inside a cell, hyperlinks, comments, conditional formatting, data
 validation, images and charts, frozen columns, print settings, theme colours,
-encryption, reading, and the legacy binary `.xls` format (the `xls` export
-format already writes OOXML, as it does today).
+encryption, and the legacy binary `.xls` format (the `xls` export format
+already writes OOXML, as it does today). Reading came in on 2026-10-27 (§11);
+its own scope is §11.3.
 
 ## 10. Workbooks: several sheets, numbers and styles (2026-10-27)
 
@@ -696,3 +702,284 @@ its `SheetOptions` and go before `<sheetData>`; a row's height goes on its
   §6.3's caveat holds: LibreOffice and Numbers forgive what Excel repairs, so
   each part is also checked against the ECMA-376 transitional schema
   (`sml.xsd`) with `xmllint` where the schema is to hand.
+
+## 11. Reading workbooks (2026-10-27)
+
+### 11.1 Why
+
+A caller that extracts the text of documents handed to it reads spreadsheets
+with excelize. All the advisories listed in the Summary are denial of service
+on *reading* a malformed workbook, and malformed workbooks from anyone are
+exactly what that caller reads. It uses four things: `OpenReader`,
+`GetSheetList`, `GetRows(sheet)` as `[][]string`, and `Close`. This section
+adds a reader with that surface, built on `archive/zip` and `encoding/xml`
+like the writer, so the caller can drop excelize.
+
+§2 ("a writer only") and §8's first bullet no longer hold. The reader starts
+from the limits written down in §5.3. `internal/xlsxtest` stays as it is: a
+test parser for the writer's own output, not this reader.
+
+### 11.2 API
+
+```go
+// ReaderLimits bounds what a Reader accepts; a zero or negative field takes
+// its default (§11.5).
+type ReaderLimits struct {
+	MaxFileSize, MaxPartSize, MaxTotalSize, MaxCompressionRatio, MaxXMLTokens, MaxCells int64
+	MaxEntries, MaxXMLDepth, MaxSheets, MaxRows, MaxColumns, MaxSharedStrings, MaxStringUnits, MaxStyles int
+}
+func DefaultReaderLimits() ReaderLimits
+
+// LimitError is the error for going past one of them.
+type LimitError struct {
+	Limit string // what was counted, such as "zip entries"
+	Max   int64  // the limit in force
+	Seen  int64  // the value that went past it
+	Part  string // the part being read; empty for the file as a whole
+}
+
+func OpenReader(r io.Reader, limits *ReaderLimits) (*Reader, error) // reads at most MaxFileSize bytes
+func OpenBytes(b []byte, limits *ReaderLimits) (*Reader, error)
+func Open(r io.ReaderAt, size int64, limits *ReaderLimits) (*Reader, error)
+
+func (x *Reader) GetSheetList() []string
+func (x *Reader) GetRows(sheet string) ([][]string, error)
+func (x *Reader) Close() error
+```
+
+`nil` limits means the defaults. The names follow excelize's, so moving a
+caller over is mechanical:
+
+| excelize | utils/xlsx |
+|---|---|
+| `excelize.OpenReader(r)` | `xlsx.OpenReader(r, nil)`, or `xlsx.Open(f, size, nil)` for a file |
+| `f.GetSheetList()` | `x.GetSheetList()` |
+| `f.GetRows(sheet)` | `x.GetRows(sheet)` |
+| `f.Close()` | `x.Close()` |
+
+`Close` holds no file and frees nothing; it marks the reader closed, and
+later calls return an error. A `Reader`'s methods are safe for concurrent use.
+
+### 11.3 Scope: values as text
+
+In:
+
+- The sheet list in workbook order, hidden sheets and chart sheets included,
+  as excelize gives it. A chart sheet has no rows.
+- For each worksheet, the rows as excelize's `GetRows` returns them. A row
+  ends at its last cell with a value. A missing or empty cell before that is
+  `""`. A row with no value before the last row that has one is an empty
+  slice. Nothing follows that last row. A cell that renders as `""` is left
+  out, unless it holds a formula: then it keeps its place, as in excelize.
+- Values: shared strings (rich-text runs joined, phonetic runs `<rPh>` left
+  out, `_xHHHH_` decoded as excelize decodes it), inline strings, numbers,
+  booleans as `TRUE`/`FALSE`, ISO 8601 dates (`t="d"`), error values such as
+  `#DIV/0!`, and formula results.
+- Number formats applied, so dates, times, percentages and currency read as
+  a spreadsheet shows them (§11.4).
+- ISO 29500 Strict files as well as transitional ones. Element names are
+  matched without their namespace, and relationship types by their last
+  segment.
+
+Formulas are never evaluated. A formula cell gives its cached value, as
+excelize's `GetRows` does. A formula with no cached value gives `""`.
+
+Out:
+
+- Styles other than the number format: fonts, fills, borders, alignment.
+- A merged range's other cells: the value sits in the top-left cell only, as
+  in excelize.
+- Comments, hyperlink targets, drawings, charts, images, pivot tables, data
+  validation, defined names and tables.
+- External links: never followed (§11.5).
+- Macros: `vbaProject.bin` is never opened.
+- An encrypted workbook or a legacy `.xls`: both are Compound Files, and both
+  are refused with an error that says so.
+- `.xlsb` (binary parts) and `.ods`: they fail as malformed packages.
+- Parts in an encoding other than UTF-8: refused. Excel, LibreOffice and
+  excelize all write UTF-8.
+
+### 11.4 Number formats
+
+excelize's `GetRows` renders every cell whose `s` is not 0 through the cell's
+number format. A number with no style is written with 15 significant digits
+when it has more, and as it is otherwise. The reader does the same.
+
+For the formats it supports, the reader follows excelize v2.11.0's
+arithmetic, so the text matches, quirks included. Some examples:
+
+- the third section of a format (the one for zero) is never used;
+- `0` rounds half away from zero, so 0.5 gives `1`;
+- serials up to 61 go through the Julian calendar, and serial 0 shows as
+  `1/0/00`;
+- `General` on a styled cell gives 10 significant digits once the number has
+  more than 11.
+
+This is our own code, not a copy of excelize, but it reproduces excelize's
+rules, so NOTICE credits excelize.
+
+Supported:
+
+- `General`; the digit placeholders `0` and `#`; the decimal point;
+  thousands grouping, and scaling by a trailing `,`; `%`; scientific
+  notation `E+` (two exponent digits, as excelize); literals (quoted,
+  `\`-escaped, and plain characters); `[$sym-lcid]` currency; colours
+  (`[Red]`); alignment `_x` and fill `*x`; up to four sections; the text
+  section with `@`.
+- Dates and times: `y`, `m`, `d`, `h`, `s` in their usual runs, month and
+  weekday names, `AM/PM` and `A/P`, elapsed `[h]`, `[m]`, `[s]`, and
+  fractions of a second. Names are in English, or in Indonesian under
+  `[$-421]`; the system date and time codes (`[$-F800]`, `[$-F400]`) mean US
+  English, as in excelize.
+- The built-in ids excelize knows without a culture set: 0–4, 9–22, 37–49.
+  A custom `<numFmt>` with a built-in id takes precedence, as in excelize.
+
+Anything else gives the value as stored, unformatted:
+
+- fractions (`?`, built-in ids 12 and 13);
+- conditions (`[<100]`) and switch arguments (`[DBNum1]`);
+- weekdays written with `a`;
+- eras and other calendars (`g`, `b`, `r`, and `e` under a Japanese or
+  Taiwanese language code);
+- languages other than English and Indonesian in a date (excelize knows
+  about 200);
+- format codes longer than 1,024 characters;
+- built-in ids outside the list above. excelize gives the stored value for
+  those too: ids 27–36 and 50–58 depend on a culture it has no default for,
+  and 5–8 and 23–26 are not in its table.
+
+On the fixtures (§11.6), the only cells where the reader and excelize
+disagree are the fraction row of `excelize.xlsx`. That row is named in
+`knownDifferences` in the golden test.
+
+### 11.5 Hardening
+
+Every limit has a default and an error. Going past one returns a
+`*LimitError` (found with `errors.As`) that names what was counted, the limit
+and the value seen, plus the part. For example:
+`xlsx: xl/worksheets/sheet1.xml: compression ratio reached 246, over the limit of 100 (ReaderLimits)`.
+
+| Field | Default | What is counted, and when |
+|---|---|---|
+| `MaxFileSize` | 50 MiB | the file's size, before anything is read (`OpenReader` reads one byte past it to know) |
+| `MaxEntries` | 1,000 | entries in the zip directory, at open; also relationships in one `.rels` part |
+| `MaxPartSize` | 100 MiB | decompressed bytes of one part, counted while inflating |
+| `MaxTotalSize` | 200 MiB | decompressed bytes over the reader's life, every part read counted each time it is read |
+| `MaxCompressionRatio` | 100 | decompressed to compressed bytes of a part, checked once the part has passed 1 MiB, so small parts (which compress far better) are not refused |
+| `MaxXMLDepth` | 64 | element nesting in a part |
+| `MaxXMLTokens` | 50,000,000 | tokens in a part |
+| `MaxSheets` | 1,000 | sheets in `workbook.xml` |
+| `MaxRows` | 1,048,576 | the highest row number in a sheet (Excel's) |
+| `MaxColumns` | 16,384 | the highest column in a sheet (Excel's, `XFD`) |
+| `MaxCells` | 5,000,000 | cells `GetRows` returns for one sheet, padding included, plus one per empty row in between |
+| `MaxSharedStrings` | 1,048,576 | entries in the shared string table |
+| `MaxStringUnits` | 32,767 | UTF-16 units of one shared or inline string (Excel's cell limit); the raw text of a string or a `<v>` is also capped at four bytes per unit while it is read |
+| `MaxStyles` | 65,536 | cell formats (`cellXfs`) and number formats, each |
+
+The zip boundary:
+
+- The size is checked before the zip directory is read. A Compound File (an
+  encrypted workbook, a legacy `.xls`) is recognised by its signature and
+  refused by name.
+- Only the parts reached from `_rels/.rels` are opened: the workbook, its
+  `.rels`, the sheets, the shared strings and the styles. Nothing else in the
+  zip is read: not `[Content_Types].xml`, not `docProps`, not macros.
+- Targets resolve relative to the part, or from the package root when they
+  start with `/`. The result never leaves the package: `..` past the root, a
+  scheme (`file:`, `http:`) or a backslash is an error.
+- A relationship with `TargetMode="External"` is never followed. A sheet that
+  points at one has no part, and reading it is an error.
+- Part names are matched ignoring case, as OPC defines them. A name present
+  twice is refused when a relationship leads to it.
+- A name `archive/zip` calls insecure (`..`, an absolute path) is ignored
+  unless a relationship leads to it, and resolution never produces one.
+- No size from a zip header is trusted. Decompressed bytes are counted as
+  they come, per part and in total. The ratio is also measured on what
+  actually inflated. `archive/zip` checks each part's CRC and declared size
+  at its end.
+
+The XML boundary:
+
+- `encoding/xml`, strict, token by token, with no recursion on element
+  nesting.
+- A directive (`<!DOCTYPE …>`) is an error. With no DTD there is no entity
+  to declare or expand. `encoding/xml` knows only the five predefined
+  entities and character references, and any other entity is a syntax error.
+  Billion-laughs and external entities therefore have nothing to work with.
+- Depth and token count are capped per part.
+- A single token is bounded only by `MaxPartSize`. `encoding/xml` builds a
+  text token whole before handing it over, so a cell's text is measured
+  against `MaxStringUnits` after it is read, not before.
+- An encoding other than UTF-8 is refused (no `CharsetReader`).
+
+Sheets:
+
+- Row and column numbers are checked against `MaxRows` and `MaxColumns`
+  before anything is padded. A cell at `XFD1` costs one token, but padding
+  it would make 16,384 strings, and those count against `MaxCells`.
+- Rows must come in increasing order, and so must cells within a row. A file
+  that goes back, or repeats a row or a cell, is an error. excelize appends
+  such cells silently, but no spreadsheet application writes them.
+- A shared-string index is checked against the table. An index that is out
+  of range or not a number is an error; excelize gives `""` or the first
+  string.
+
+Streaming: sheets, the shared strings and the styles are parsed as streams
+from their zip entries. `Open` reads only the relationships and the
+workbook. The shared strings and styles are read once, on the first
+`GetRows`, and kept. A sheet is read up to the end of `<sheetData>` and no
+further. What `GetRows` returns is held in memory, bounded by `MaxCells`.
+
+### 11.6 Tests
+
+- **Golden files against excelize.** Each `testdata/*.xlsx` has a
+  `*.golden.json` holding excelize v2.11.0's `GetSheetList` and every sheet's
+  `GetRows`. `TestReaderMatchesExcelize` compares the reader against them,
+  cell by cell. The fixtures, all made here:
+  - `utilsxlsx-workbook.xlsx`: `Workbook`'s feature sample;
+  - `utilsxlsx-writer.xlsx`: `Writer` with every encoding case of §5.2;
+  - `excelize.xlsx` and `excelize-1904.xlsx`: written by excelize, with a
+    sheet of 61 number formats against 11 values, and the 1904 date system;
+  - `libreoffice.xlsx`: converted by LibreOffice from
+    `testdata/libreoffice/source.fods`, with grouping, percent, `Rp`
+    currency, dates, times, booleans, formulas with cached values, an error,
+    a merge, a hidden sheet and an empty one;
+  - `handmade.xlsx` and `handmade-strict.xlsx`: parts written by hand
+    (`TestWriteFixtures`), with what applications write and the other
+    producers do not: phonetic runs, rich text, inline strings, `t="str"`,
+    `t="e"`, `t="d"`, rows and cells without `r`, a built-in format
+    redefined, an unknown built-in id, an absolute target, a hidden sheet, a
+    chart sheet, an external relationship, and Strict namespaces.
+- **Regenerating.** `testdata/goldens/run.sh` regenerates the excelize
+  fixtures and every golden file. It builds `generate.go` in a throwaway
+  module outside the repository, so excelize is never in dxlib's `go.mod`
+  and no scan of this repository finds it. `testdata/libreoffice/convert.sh`
+  remakes `libreoffice.xlsx`.
+- **Limits.** One test per limit (`TestReaderLimits`) triggers it, checks
+  the `*LimitError` fields and checks that the message names the limit. A
+  zip bomb is one of them: 4 MiB of spaces deflated about a thousand to one.
+- **Malformed input** (`TestReaderRefusesMalformed`): not a zip, a Compound
+  File, a truncated zip, no `_rels/.rels`, no workbook, a DTD with nested
+  entities, an undefined entity, a UTF-16 declaration, mismatched and
+  truncated XML, shared-string indexes past the table / negative / not a
+  number, rows and cells out of order, a bad reference or style index, a
+  missing or duplicated part, targets leaving the package or carrying a
+  scheme, and an external sheet.
+- **Fuzzing**, each target run on its own:
+  - `FuzzOpen`: whole files, seeded with the fixtures;
+  - `FuzzSheetXML`: a worksheet part inside a valid package;
+  - `FuzzSharedStrings`: the shared strings and the styles;
+  - `FuzzNumFmt`: format codes and values.
+
+  The property is that nothing panics, and that what comes back respects
+  the limits. The targets run with small limits, so limits are reached
+  often. Run one as:
+
+      go test -run '^$' -fuzz '^FuzzOpen$' -fuzztime 60s ./utils/xlsx/
+
+- **Excel and Numbers.** No fixtures. Excel is not installed on the machine
+  these were made on, and Numbers does not run without a display there.
+  `handmade.xlsx` carries the constructs Excel writes that the other
+  producers do not. A workbook saved from Excel or Numbers, with no
+  third-party content, can be added to `testdata` at any time; `run.sh`
+  then records excelize's reading of it.

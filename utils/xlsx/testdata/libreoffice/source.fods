@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+ xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+ xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+ xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"
+ xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
+ xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0"
+ xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2"
+ office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.spreadsheet">
+ <office:automatic-styles>
+  <number:number-style style:name="N2"><number:number number:decimal-places="2" number:min-decimal-places="2" number:min-integer-digits="1" number:grouping="true"/></number:number-style>
+  <number:percentage-style style:name="NPct"><number:number number:decimal-places="1" number:min-decimal-places="1" number:min-integer-digits="1"/><number:text>%</number:text></number:percentage-style>
+  <number:currency-style style:name="NRp"><number:currency-symbol number:language="id" number:country="ID">Rp</number:currency-symbol><number:number number:decimal-places="0" number:min-decimal-places="0" number:min-integer-digits="1" number:grouping="true"/></number:currency-style>
+  <number:date-style style:name="NDate"><number:year number:style="long"/><number:text>-</number:text><number:month number:style="long"/><number:text>-</number:text><number:day number:style="long"/></number:date-style>
+  <number:date-style style:name="NDateLong"><number:day/><number:text> </number:text><number:month number:textual="true" number:style="long"/><number:text> </number:text><number:year number:style="long"/></number:date-style>
+  <number:time-style style:name="NTime"><number:hours number:style="long"/><number:text>:</number:text><number:minutes number:style="long"/><number:text>:</number:text><number:seconds number:style="long"/></number:time-style>
+  <number:date-style style:name="NDateTime"><number:day number:style="long"/><number:text>/</number:text><number:month number:style="long"/><number:text>/</number:text><number:year number:style="long"/><number:text> </number:text><number:hours number:style="long"/><number:text>:</number:text><number:minutes number:style="long"/></number:date-style>
+  <number:boolean-style style:name="NBool"><number:boolean/></number:boolean-style>
+  <number:text-style style:name="NText"><number:text-content/></number:text-style>
+  <style:style style:name="ce2" style:family="table-cell" style:data-style-name="N2"/>
+  <style:style style:name="cePct" style:family="table-cell" style:data-style-name="NPct"/>
+  <style:style style:name="ceRp" style:family="table-cell" style:data-style-name="NRp"/>
+  <style:style style:name="ceDate" style:family="table-cell" style:data-style-name="NDate"/>
+  <style:style style:name="ceDateLong" style:family="table-cell" style:data-style-name="NDateLong"/>
+  <style:style style:name="ceTime" style:family="table-cell" style:data-style-name="NTime"/>
+  <style:style style:name="ceDateTime" style:family="table-cell" style:data-style-name="NDateTime"/>
+  <style:style style:name="ceBool" style:family="table-cell" style:data-style-name="NBool"/>
+  <style:style style:name="ceText" style:family="table-cell" style:data-style-name="NText"/>
+  <style:style style:name="taHidden" style:family="table"><style:table-properties table:display="false"/></style:style>
+  <style:style style:name="T1" style:family="text"><style:text-properties fo:font-weight="bold"/></style:style>
+ </office:automatic-styles>
+ <office:body>
+  <office:spreadsheet>
+   <table:table table:name="Data">
+    <table:table-row>
+     <table:table-cell office:value-type="string"><text:p>Name</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Amount</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Share</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Price</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Day</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Long day</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Time</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Stamp</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Paid</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>Double</text:p></table:table-cell>
+    </table:table-row>
+    <table:table-row>
+     <table:table-cell office:value-type="string"><text:p>Ani <text:span text:style-name="T1">Wijaya</text:span></text:p></table:table-cell>
+     <table:table-cell table:style-name="ce2" office:value-type="float" office:value="1234567.891"><text:p>1,234,567.89</text:p></table:table-cell>
+     <table:table-cell table:style-name="cePct" office:value-type="percentage" office:value="0.125"><text:p>12.5%</text:p></table:table-cell>
+     <table:table-cell table:style-name="ceRp" office:value-type="currency" office:currency="IDR" office:value="1500000"><text:p>Rp1,500,000</text:p></table:table-cell>
+     <table:table-cell table:style-name="ceDate" office:value-type="date" office:date-value="2026-10-27"><text:p>2026-10-27</text:p></table:table-cell>
+     <table:table-cell table:style-name="ceDateLong" office:value-type="date" office:date-value="2026-01-05"><text:p>5 January 2026</text:p></table:table-cell>
+     <table:table-cell table:style-name="ceTime" office:value-type="time" office:time-value="PT13H45M30S"><text:p>13:45:30</text:p></table:table-cell>
+     <table:table-cell table:style-name="ceDateTime" office:value-type="date" office:date-value="2026-10-27T08:05:00"><text:p>27/10/2026 08:05</text:p></table:table-cell>
+     <table:table-cell table:style-name="ceBool" office:value-type="boolean" office:boolean-value="true"><text:p>TRUE</text:p></table:table-cell>
+     <table:table-cell table:formula="of:=[.B2]*2" office:value-type="float" office:value="2469135.782"><text:p>2469135.782</text:p></table:table-cell>
+    </table:table-row>
+    <table:table-row>
+     <table:table-cell office:value-type="string"><text:p>Budi</text:p><text:p>second line</text:p></table:table-cell>
+     <table:table-cell office:value-type="float" office:value="-42"><text:p>-42</text:p></table:table-cell>
+     <table:table-cell table:number-columns-repeated="2"/>
+     <table:table-cell table:style-name="ceText" office:value-type="string"><text:p>00123</text:p></table:table-cell>
+     <table:table-cell table:formula="of:=1/0" office:value-type="string" office:string-value=""><text:p>#DIV/0!</text:p></table:table-cell>
+     <table:table-cell table:formula="of:=&quot;con&quot;&amp;&quot;cat&quot;" office:value-type="string" office:string-value="concat"><text:p>concat</text:p></table:table-cell>
+     <table:table-cell table:style-name="ceBool" office:value-type="boolean" office:boolean-value="false"><text:p>FALSE</text:p></table:table-cell>
+     <table:table-cell table:number-columns-spanned="2" office:value-type="string"><text:p>merged across two</text:p></table:table-cell>
+     <table:covered-table-cell/>
+    </table:table-row>
+    <table:table-row table:number-rows-repeated="2"><table:table-cell table:number-columns-repeated="10"/></table:table-row>
+    <table:table-row>
+     <table:table-cell table:number-columns-repeated="3"/>
+     <table:table-cell office:value-type="float" office:value="0.1"><text:p>0.1</text:p></table:table-cell>
+     <table:table-cell office:value-type="float" office:value="123456789012345"><text:p>123456789012345</text:p></table:table-cell>
+     <table:table-cell office:value-type="string"><text:p>日本語 😀 é &lt;&amp;&gt; _x0041_</text:p></table:table-cell>
+    </table:table-row>
+   </table:table>
+   <table:table table:name="Ringkasan Ü">
+    <table:table-row>
+     <table:table-cell office:value-type="string"><text:p>only</text:p></table:table-cell>
+    </table:table-row>
+   </table:table>
+   <table:table table:name="Hidden" table:style-name="taHidden">
+    <table:table-row>
+     <table:table-cell office:value-type="float" office:value="7"><text:p>7</text:p></table:table-cell>
+    </table:table-row>
+   </table:table>
+   <table:table table:name="Blank"/>
+  </office:spreadsheet>
+ </office:body>
+</office:document>
