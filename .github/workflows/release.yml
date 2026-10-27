@@ -8,6 +8,11 @@
 # building the changelog and publishing the GitHub release. The tag message,
 # which carries the consumer-facing warnings, is written by a person and kept --
 # `mode: append` in .goreleaser.yaml puts the generated changelog beneath it.
+#
+# The release is left as a draft, not published: a published release is
+# immutable, so the SBOM could not be attached afterwards. After this workflow
+# finishes, run `agentq sbom dxlib <tag>` to upload dxlib-<version>.cdx.json,
+# then publish with `gh release edit <tag> --draft=false`.
 
 name: Release
 

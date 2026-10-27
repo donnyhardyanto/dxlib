@@ -50,7 +50,17 @@ changelog:
       - '^Merge '
 
 release:
-  draft: false
+  # Left as a draft so the SBOM can be attached before anyone can see it: once
+  # a release is published GitHub makes it immutable, and an asset uploaded
+  # after that is refused with HTTP 422 (v1.131.0 and v1.132.0 have no SBOM
+  # for that reason). The order is: tag push -> this workflow makes the draft
+  # -> `agentq sbom dxlib <tag>` uploads dxlib-<version>.cdx.json -> publish
+  # with `gh release edit <tag> --draft=false`.
+  draft: true
+  # A draft made by hand for the tag before the workflow runs is reused, its
+  # notes and assets kept, rather than duplicated. replace_existing_draft would
+  # delete it instead.
+  use_existing_draft: true
   prerelease: auto
   # The tag message is written by hand and carries the consumer-facing warnings.
   # GoReleaser appends its changelog beneath it rather than replacing it.
