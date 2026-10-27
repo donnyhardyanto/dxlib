@@ -190,11 +190,11 @@ func escapeAttr(s string) string {
 
 func checkRGB(s string) error {
 	if len(s) != 6 {
-		return errors.Errorf("xlsx: fill colour %q is not six hex digits", s)
+		return errors.Errorf("%q is not six hex digits", s)
 	}
 	for i := 0; i < 6; i++ {
 		if !isHex(s[i]) {
-			return errors.Errorf("xlsx: fill colour %q is not six hex digits", s)
+			return errors.Errorf("%q is not six hex digits", s)
 		}
 	}
 	return nil

@@ -156,8 +156,10 @@ func (w *Writer) Close() error
 Everything written through `Writer` is text, as it is today. Several sheets,
 typed numbers, number formats, a style table, merged ranges, row heights and
 frozen panes came later (2026-10-27) through a second type, `Workbook`, beside
-this one (§10); `Writer` is now a thin layer over it and its output does not
-change.
+this one (§10); `Writer` is now a thin layer over it. Its files keep the same
+parts in the same order and read back the same; the only addition is the
+active-sheet view (`<bookViews>`, and `<sheetViews>` with `tabSelected="1"`,
+§10.5).
 
 Errors are values from `dxlib/errors`; the writer never panics on any input.
 After an error, every later call returns the same error.
@@ -570,7 +572,7 @@ call that writes.
 `Writer` is kept as it is and becomes a layer over `Workbook`: one sheet, the
 header style added as style 1, `WriteHeader` a row with `Style: 1` whose cells
 carry style 1, every value `Text`. Its files have the same parts, in the same
-order, as before.
+order, as before, plus the active-sheet view of §10.5.
 
 ### 10.3 Streaming and part order
 

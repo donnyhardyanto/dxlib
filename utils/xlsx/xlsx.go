@@ -1,12 +1,11 @@
-// Package xlsx writes a one-sheet .xlsx workbook of text cells, streaming the
-// rows into an io.Writer. It is a writer only: dxlib never reads a workbook,
-// so there is no parser here for a malformed file to reach. DESIGN.md has the
-// reasons and the rules.
+// Package xlsx writes .xlsx workbooks, streaming the rows into an io.Writer.
+// Writer writes one sheet of text cells; Workbook writes several sheets with
+// numbers, a style table, merged ranges, row heights and frozen panes. It is a
+// writer only: dxlib never reads a workbook, so there is no parser here for a
+// malformed file to reach. DESIGN.md has the reasons and the rules.
 package xlsx
 
 import (
-	"archive/zip"
-	"bufio"
 	"io"
 	"strconv"
 	"strings"
@@ -15,7 +14,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/errors"
 )
 
-// Style is the only cell formatting the writer knows.
+// Style is the header formatting Writer knows. Workbook takes a CellStyle.
 type Style struct {
 	Bold    bool
 	Center  bool   // horizontal alignment
@@ -28,17 +27,14 @@ type Options struct {
 	HeaderStyle  *Style    // applied to the row written with WriteHeader; nil for none
 }
 
-// Writer writes one workbook. It is not safe for concurrent use.
+// Writer writes a workbook of one sheet of text cells: a Workbook with the
+// header style as its only style. It is not safe for concurrent use.
 type Writer struct {
-	zw         *zip.Writer
-	sheet      *bufio.Writer
-	styled     bool
-	rows       int
-	header     bool
-	strings    map[string]int
-	stringList []string
-	refs       int
-	err        error
+	wb     *Workbook
+	header bool
+	rows   int
+	style  int
+	err    error
 }
 
 var (
@@ -61,65 +57,24 @@ const (
 // NewWriter starts a workbook with one sheet. It writes the fixed parts at once,
 // so an error from w can come back here, and then the rows as they arrive.
 func NewWriter(w io.Writer, opts Options) (*Writer, error) {
-	if err := checkSheetName(opts.SheetName); err != nil {
-		return nil, err
-	}
-	if len(opts.ColumnWidths) > MaxColumns {
-		return nil, errors.Errorf("xlsx: %d column widths, at most %d", len(opts.ColumnWidths), MaxColumns)
-	}
-	for i, cw := range opts.ColumnWidths {
-		if !(cw == 0 || cw > 0 && cw <= 255) {
-			return nil, errors.Errorf("xlsx: width %v of column %d is outside (0, 255]", cw, i+1)
-		}
-	}
-	if opts.HeaderStyle != nil && opts.HeaderStyle.FillRGB != "" {
-		if err := checkRGB(opts.HeaderStyle.FillRGB); err != nil {
-			return nil, err
-		}
-	}
-
-	x := &Writer{zw: zip.NewWriter(w), styled: opts.HeaderStyle != nil, strings: map[string]int{}}
-	parts := []struct{ name, body string }{
-		{"[Content_Types].xml", contentTypes},
-		{"_rels/.rels", rootRels},
-		{"xl/workbook.xml", xmlDecl + `<workbook xmlns="` + nsMain + `" xmlns:r="` + nsRel + `"><sheets><sheet name="` +
-			escapeAttr(opts.SheetName) + `" sheetId="1" r:id="rId1"/></sheets></workbook>`},
-		{"xl/_rels/workbook.xml.rels", workbookRels},
-		{"xl/styles.xml", stylesXML(opts.HeaderStyle)},
-	}
-	for _, p := range parts {
-		e, err := x.create(p.name)
-		if err != nil {
-			return nil, err
-		}
-		if _, err := io.WriteString(e, p.body); err != nil {
-			return nil, errors.Wrapf(err, "xlsx: writing %s", p.name)
-		}
-	}
-
-	e, err := x.create("xl/worksheets/sheet1.xml")
+	wb, err := NewWorkbook(w, WorkbookOptions{Sheets: []SheetOptions{{Name: opts.SheetName, ColumnWidths: opts.ColumnWidths}}})
 	if err != nil {
 		return nil, err
 	}
-	x.sheet = bufio.NewWriterSize(e, 64*1024)
-	x.sheet.WriteString(xmlDecl + `<worksheet xmlns="` + nsMain + `" xmlns:r="` + nsRel + `">`)
-	x.sheet.WriteString(colsXML(opts.ColumnWidths))
-	x.sheet.WriteString(`<sheetData>`)
-	if err := x.sheet.Flush(); err != nil {
-		return nil, errors.Wrap(err, "xlsx: writing the sheet")
+	x := &Writer{wb: wb}
+	if h := opts.HeaderStyle; h != nil {
+		s := CellStyle{Font: Font{Bold: h.Bold}, FillRGB: h.FillRGB}
+		if h.Center {
+			s.Horizontal = "center"
+		}
+		if x.style, err = wb.AddStyle(s); err != nil {
+			return nil, err
+		}
 	}
-	if err := x.zw.Flush(); err != nil {
-		return nil, errors.Wrap(err, "xlsx: writing the workbook")
+	if err := wb.start(); err != nil {
+		return nil, err
 	}
 	return x, nil
-}
-
-func (x *Writer) create(name string) (io.Writer, error) {
-	e, err := x.zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Deflate, Modified: entryTime})
-	if err != nil {
-		return nil, errors.Wrapf(err, "xlsx: starting %s", name)
-	}
-	return e, nil
 }
 
 // WriteHeader writes the first row, in the header style. At most once, before any WriteRow.
@@ -134,7 +89,7 @@ func (x *Writer) WriteHeader(cells []string) error {
 		x.err = errHeaderLate
 	default:
 		x.header = true
-		x.writeRow(cells, x.styled)
+		x.err = x.wb.WriteRow(textRow(cells, x.style))
 	}
 	return x.err
 }
@@ -144,62 +99,17 @@ func (x *Writer) WriteRow(cells []string) error {
 	if x.err != nil {
 		return x.err
 	}
-	x.writeRow(cells, false)
+	x.rows++
+	x.err = x.wb.WriteRow(textRow(cells, 0))
 	return x.err
 }
 
-func (x *Writer) writeRow(cells []string, styled bool) {
-	if x.rows >= MaxRows {
-		x.err = errTooManyRows
-		return
-	}
-	if len(cells) > MaxColumns {
-		x.err = errTooManyCells
-		return
-	}
-	x.rows++
-	r := strconv.Itoa(x.rows)
-	b := x.sheet
-	b.WriteString(`<row r="`)
-	b.WriteString(r)
-	if styled {
-		b.WriteString(`" s="1" customFormat="1`)
-	}
-	b.WriteString(`">`)
+func textRow(cells []string, style int) Row {
+	r := Row{Cells: make([]Cell, len(cells)), Style: style}
 	for i, c := range cells {
-		col, _ := columnName(i + 1)
-		b.WriteString(`<c r="`)
-		b.WriteString(col)
-		b.WriteString(r)
-		if styled {
-			b.WriteString(`" s="1`)
-		}
-		b.WriteString(`" t="s"><v>`)
-		b.WriteString(strconv.Itoa(x.sharedIndex(c)))
-		b.WriteString(`</v></c>`)
+		r.Cells[i] = Text(c, style)
 	}
-	if _, err := b.WriteString(`</row>`); err != nil {
-		x.err = errors.Wrap(err, "xlsx: writing the sheet")
-	}
-}
-
-// sharedIndex returns the shared-string index of a cell value, adding it to the
-// table the first time it is seen. The table holds the encoded <si>, so two
-// values that encode the same share one entry.
-func (x *Writer) sharedIndex(value string) int {
-	text, preserve := encodeCellText(value)
-	si := "<si><t>" + text + "</t></si>"
-	if preserve {
-		si = `<si><t xml:space="preserve">` + text + "</t></si>"
-	}
-	x.refs++
-	if i, ok := x.strings[si]; ok {
-		return i
-	}
-	i := len(x.stringList)
-	x.strings[si] = i
-	x.stringList = append(x.stringList, si)
-	return i
+	return r
 }
 
 // Close writes the remaining parts and the zip directory. It does not close the
@@ -208,40 +118,12 @@ func (x *Writer) Close() error {
 	if x.err != nil {
 		return x.err
 	}
-	x.err = x.close()
+	x.err = x.wb.Close()
 	if x.err == nil {
 		x.err = errClosed
 		return nil
 	}
 	return x.err
-}
-
-func (x *Writer) close() error {
-	x.sheet.WriteString(`</sheetData></worksheet>`)
-	if err := x.sheet.Flush(); err != nil {
-		return errors.Wrap(err, "xlsx: writing the sheet")
-	}
-	e, err := x.create("xl/sharedStrings.xml")
-	if err != nil {
-		return err
-	}
-	b := bufio.NewWriterSize(e, 64*1024)
-	b.WriteString(xmlDecl + `<sst xmlns="` + nsMain + `" count="`)
-	b.WriteString(strconv.Itoa(x.refs))
-	b.WriteString(`" uniqueCount="`)
-	b.WriteString(strconv.Itoa(len(x.stringList)))
-	b.WriteString(`">`)
-	for _, si := range x.stringList {
-		b.WriteString(si)
-	}
-	b.WriteString(`</sst>`)
-	if err := b.Flush(); err != nil {
-		return errors.Wrap(err, "xlsx: writing the shared strings")
-	}
-	if err := x.zw.Close(); err != nil {
-		return errors.Wrap(err, "xlsx: finishing the zip")
-	}
-	return nil
 }
 
 // colsXML gives the <cols> element for the widths, adjacent equal widths
@@ -271,66 +153,7 @@ func colsXML(widths []float64) string {
 	return "<cols>" + b.String() + "</cols>"
 }
 
-const contentTypes = xmlDecl +
-	`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
-	`<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
-	`<Default Extension="xml" ContentType="application/xml"/>` +
-	`<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
-	`<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
-	`<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
-	`<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>` +
-	`</Types>`
-
 const rootRels = xmlDecl +
 	`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
 	`<Relationship Id="rId1" Type="` + nsRel + `/officeDocument" Target="xl/workbook.xml"/>` +
 	`</Relationships>`
-
-const workbookRels = xmlDecl +
-	`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-	`<Relationship Id="rId1" Type="` + nsRel + `/worksheet" Target="worksheets/sheet1.xml"/>` +
-	`<Relationship Id="rId2" Type="` + nsRel + `/styles" Target="styles.xml"/>` +
-	`<Relationship Id="rId3" Type="` + nsRel + `/sharedStrings" Target="sharedStrings.xml"/>` +
-	`</Relationships>`
-
-// stylesXML gives the minimum style sheet Excel needs: a default font, the two
-// fills Excel expects at 0 and 1, one empty border, the Normal style, and cell
-// format 1 for the header when there is a header style.
-func stylesXML(h *Style) string {
-	const font = `<sz val="11"/><color rgb="FF000000"/><name val="Calibri"/><family val="2"/></font>`
-	fonts := []string{"<font>" + font}
-	fills := []string{`<fill><patternFill patternType="none"/></fill>`, `<fill><patternFill patternType="gray125"/></fill>`}
-	xfs := []string{`<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>`}
-	if h != nil {
-		fontID, fillID := 0, 0
-		attrs := ""
-		if h.Bold {
-			fonts = append(fonts, "<font><b/>"+font)
-			fontID = 1
-			attrs += ` applyFont="1"`
-		}
-		if h.FillRGB != "" {
-			fills = append(fills, `<fill><patternFill patternType="solid"><fgColor rgb="FF`+strings.ToUpper(h.FillRGB)+
-				`"/><bgColor indexed="64"/></patternFill></fill>`)
-			fillID = 2
-			attrs += ` applyFill="1"`
-		}
-		xf := `<xf numFmtId="0" fontId="` + strconv.Itoa(fontID) + `" fillId="` + strconv.Itoa(fillID) + `" borderId="0" xfId="0"` + attrs
-		if h.Center {
-			xf += ` applyAlignment="1"><alignment horizontal="center"/></xf>`
-		} else {
-			xf += `/>`
-		}
-		xfs = append(xfs, xf)
-	}
-	var b strings.Builder
-	b.WriteString(xmlDecl + `<styleSheet xmlns="` + nsMain + `">`)
-	b.WriteString(`<fonts count="` + strconv.Itoa(len(fonts)) + `">` + strings.Join(fonts, "") + `</fonts>`)
-	b.WriteString(`<fills count="` + strconv.Itoa(len(fills)) + `">` + strings.Join(fills, "") + `</fills>`)
-	b.WriteString(`<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>`)
-	b.WriteString(`<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>`)
-	b.WriteString(`<cellXfs count="` + strconv.Itoa(len(xfs)) + `">` + strings.Join(xfs, "") + `</cellXfs>`)
-	b.WriteString(`<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>`)
-	b.WriteString(`</styleSheet>`)
-	return b.String()
-}

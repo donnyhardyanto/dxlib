@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -74,4 +75,88 @@ func TestLibreOfficeReadsWhatWeWrite(t *testing.T) {
 			}
 		}
 	}
+}
+
+// convert runs LibreOffice on the file with a CSV filter and returns the CSV
+// of each sheet by name.
+func convert(t *testing.T, bin, dir string, data []byte, filter string, sheets []string) map[string][][]string {
+	t.Helper()
+	out := filepath.Join(dir, "out")
+	in := filepath.Join(dir, "book.xlsx")
+	if err := os.WriteFile(in, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, "-env:UserInstallation=file://"+filepath.Join(dir, "profile"), "--headless",
+		"--convert-to", "csv:Text - txt - csv (StarCalc):"+filter, "--outdir", out, in)
+	if b, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("soffice: %v\n%s", err, b)
+	}
+	got := map[string][][]string{}
+	for _, s := range sheets {
+		b, err := os.ReadFile(filepath.Join(out, "book-"+s+".csv"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := csv.NewReader(bytes.NewReader(b))
+		r.FieldsPerRecord = -1
+		if got[s], err = r.ReadAll(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return got
+}
+
+// LibreOffice opens a workbook of several sheets with numbers, styles and
+// merges, and shows every value as written. The 12th filter token, -1, writes
+// one CSV per sheet; the 9th says whether cells are written as shown.
+func TestLibreOfficeReadsAWorkbook(t *testing.T) {
+	bin := soffice(t)
+	data := writeBOM(t)
+	sheets := []string{"Ringkasan", "Item", "Kosong"}
+
+	raw := convert(t, bin, t.TempDir(), data, "44,34,76,1,,1033,false,true,false,false,false,-1", sheets)
+	want := map[string][][]string{
+		"Ringkasan": {{"Daftar Bahan"}, {"Total", "1234567"}, {"Catatan panjang yang dibungkus"}},
+		"Item": {
+			{"No", "Uraian", "Jumlah", "Harga"},
+			{"", "", "(unit)", "(Rp)"},
+			{"1", "Kabel NYY 4x16", "12.5", "185000"},
+			{"2", "-5", "", "-0.25"},
+		},
+	}
+	for _, s := range sheets {
+		if !reflect.DeepEqual(trimRows(raw[s]), want[s]) {
+			t.Errorf("sheet %s: LibreOffice shows %q, want %q", s, raw[s], want[s])
+		}
+	}
+
+	// As shown, in English (United States): the money format applies.
+	shown := convert(t, bin, t.TempDir(), data, "44,34,76,1,,1033,false,true,true,false,false,-1", sheets)
+	if got := shown["Ringkasan"][1][1]; got != "Rp1,234,567" {
+		t.Errorf("1234567 in \"Rp\"#,##0 shows as %q", got)
+	}
+	if got := shown["Item"][2][3]; got != "Rp185,000" {
+		t.Errorf("185000 in \"Rp\"#,##0 shows as %q", got)
+	}
+}
+
+// trimRows drops trailing empty cells and empty rows, which LibreOffice pads
+// to the used range.
+func trimRows(rows [][]string) [][]string {
+	var out [][]string
+	for _, r := range rows {
+		for len(r) > 0 && r[len(r)-1] == "" {
+			r = r[:len(r)-1]
+		}
+		out = append(out, r)
+	}
+	for len(out) > 0 && len(out[len(out)-1]) == 0 {
+		out = out[:len(out)-1]
+	}
+	if out == nil {
+		return nil
+	}
+	return out
 }

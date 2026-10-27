@@ -14,7 +14,7 @@ This document lists every exported identifier in dxlib — types, constants, var
 | `errors` | `github.com/donnyhardyanto/dxlib/errors` | Stack-traced error wrapping (drop-in for pkg/errors) |
 | `log` | `github.com/donnyhardyanto/dxlib/log` | Structured logging, file output, Telegram alerts |
 | `utils` | `github.com/donnyhardyanto/dxlib/utils` | JSON type, type conversions, collections, network utils |
-| `utils/xlsx` | `github.com/donnyhardyanto/dxlib/utils/xlsx` | Streaming one-sheet .xlsx writer of text cells (no reader) |
+| `utils/xlsx` | `github.com/donnyhardyanto/dxlib/utils/xlsx` | Streaming .xlsx writer: one sheet of text (`Writer`), or several sheets with numbers, styles, merges, row heights and frozen panes (`Workbook`); no reader |
 | `secure_memory` | `github.com/donnyhardyanto/dxlib/secure_memory` | Secure in-memory storage for secrets (memguard-backed) |
 | `configuration` | `github.com/donnyhardyanto/dxlib/configuration` | JSON/YAML config files, dot-path access, sensitive masking |
 | `base` | `github.com/donnyhardyanto/dxlib/base` | Database type enum shared by databases and tables packages |
@@ -281,16 +281,27 @@ General utility functions. The most important export is `JSON = map[string]any`,
 
 **Import:** `github.com/donnyhardyanto/dxlib/utils/xlsx`
 
-Writes a one-sheet `.xlsx` workbook of text cells, streaming rows into an `io.Writer`. A writer only: dxlib never reads a workbook. `utils/xlsx/DESIGN.md` has the design, the limits and the text encoding.
+Writes `.xlsx` workbooks, streaming rows into an `io.Writer`: `Writer` for one sheet of text cells with a header style, `Workbook` for several sheets with typed numbers, number formats, a cell style table, merged ranges, row heights and frozen panes. A writer only: dxlib never reads a workbook. No dependency outside the standard library. `utils/xlsx/DESIGN.md` has the design, the limits and the text encoding (§10 for `Workbook`).
 
 | Identifier | Kind | Description |
 |---|---|---|
-| `Style` | `struct` | `Bold`, `Center`, `FillRGB` (six hex digits): the only cell formatting known. |
+| `Style` | `struct` | `Bold`, `Center`, `FillRGB` (six hex digits): `Writer`'s header formatting. |
 | `Options` | `struct` | `SheetName` (required, Excel's rules), `ColumnWidths` (0 leaves the default), `HeaderStyle` (nil for none). |
 | `NewWriter(w io.Writer, opts Options) (*Writer, error)` | `func` | Checks the options and writes the fixed parts. |
 | `(*Writer) WriteHeader(cells []string) error` | method | The first row, in `HeaderStyle`; at most once, before any `WriteRow`. |
 | `(*Writer) WriteRow(cells []string) error` | method | The next row; every cell is text, never a formula. |
 | `(*Writer) Close() error` | method | Writes the shared strings and the zip directory; does not close `w`. |
+| `WorkbookOptions` | `struct` | `Sheets []SheetOptions`: at least one; the first is the active sheet. |
+| `SheetOptions` | `struct` | `Name` (Excel's rules, unique ignoring case), `ColumnWidths`, `FreezeRows` (rows kept above a frozen pane). |
+| `CellStyle` | `struct` | `Font` (`Name`, `Size`, `Bold`, `Italic`, `ColorRGB`), `FillRGB` (solid), `Border` (thin `Left`/`Right`/`Top`/`Bottom`, `ColorRGB`), `Horizontal` (`left`/`center`/`right`), `Vertical` (`top`/`center`/`bottom`), `Wrap`, `NumberFormat` (a format code such as `"Rp"#,##0`). |
+| `Text(s, style)`, `Number(v, style)`, `Blank(style)` | `func` | A `Cell`: text (never a number or formula), a finite number, or a styled cell with no value. The zero `Cell` is not written. |
+| `Row` | `struct` | `Cells` (from column A), `Height` (points, 0 default), `Style` (the row's own style). |
+| `NewWorkbook(w io.Writer, opts WorkbookOptions) (*Workbook, error)` | `func` | Checks the options; writes nothing until the first row. |
+| `(*Workbook) AddStyle(s CellStyle) (int, error)` | method | Adds a style and returns its index (0 is the default); only before the first `WriteRow`, `Merge`, `NextSheet` or `Close`. |
+| `(*Workbook) WriteRow(r Row) error` | method | The next row of the current sheet. |
+| `(*Workbook) Merge(firstRow, firstCol, lastRow, lastCol int) error` | method | Merges a range of the current sheet, 1-based, inclusive; more than one cell, no overlap. |
+| `(*Workbook) NextSheet() error` | method | Ends the current sheet and starts the next one in `Sheets`. |
+| `(*Workbook) Close() error` | method | Ends the sheets (those never reached are written empty), the shared strings and the zip; does not close `w`. |
 | `MaxRows`, `MaxColumns`, `MaxCellUnits`, `MaxSheetNameUnits` | `const` | Excel's limits: 1,048,576 rows, 16,384 columns (more is an error), 32,767 UTF-16 units per cell (longer values are cut), 31 units per sheet name. |
 
 Errors stick: after one, every later call returns it. Characters XML cannot hold are written as `_xHHHH_`, and a literal `_xHHHH_` in a value is escaped so Excel shows it as typed.
