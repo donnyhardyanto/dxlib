@@ -65,6 +65,16 @@ func rowsOf(data []byte, lim *ReaderLimits) ([][]string, error) {
 	return x.GetRows("S")
 }
 
+// rawRowsOf opens data and reads sheet S as stored.
+func rawRowsOf(data []byte, lim *ReaderLimits) ([][]string, error) {
+	x, err := OpenBytes(data, lim)
+	if err != nil {
+		return nil, err
+	}
+	defer x.Close()
+	return x.GetRowsRaw("S")
+}
+
 func TestReaderBasics(t *testing.T) {
 	data := pkg(t, `<row r="1"><c r="A1" t="s"><v>1</v></c><c r="C1" s="1"><v>2.5</v></c></row><row r="3"><c r="B3"><v>7</v></c></row>`, nil)
 	x, err := OpenBytes(data, nil)
@@ -82,14 +92,21 @@ func TestReaderBasics(t *testing.T) {
 	if !sameRows(rows, want) {
 		t.Fatalf("rows %q, want %q", rows, want)
 	}
-	if _, err := x.GetRows("T"); err == nil || !strings.Contains(err.Error(), `sheet "T" does not exist`) {
-		t.Fatalf("unknown sheet: %v", err)
+	if rows, err := x.GetRowsRaw("s"); err != nil || !sameRows(rows, [][]string{{"b", "", "2.5"}, nil, {"", "7"}}) {
+		t.Fatalf("raw rows %q, %v", rows, err)
+	}
+	for _, get := range []func(string) ([][]string, error){x.GetRows, x.GetRowsRaw} {
+		if _, err := get("T"); err == nil || !strings.Contains(err.Error(), `sheet "T" does not exist`) {
+			t.Fatalf("unknown sheet: %v", err)
+		}
 	}
 	if err := x.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := x.GetRows("S"); !errors.Is(err, errReaderClosed) {
-		t.Fatalf("after Close: %v", err)
+	for _, get := range []func(string) ([][]string, error){x.GetRows, x.GetRowsRaw} {
+		if _, err := get("S"); !errors.Is(err, errReaderClosed) {
+			t.Fatalf("after Close: %v", err)
+		}
 	}
 
 	// From a stream and from a file, as OpenReader and Open take them.
@@ -236,22 +253,57 @@ func TestReaderLimits(t *testing.T) {
 			return pkg(t, `<row><c><v>1</v></c></row>`, map[string]string{"xl/styles.xml": `<styleSheet><numFmts><numFmt numFmtId="164" formatCode="0"/><numFmt numFmtId="165" formatCode="0"/></numFmts></styleSheet>`})
 		}, ReaderLimits{MaxStyles: 1}, "number formats", 2},
 	}
+	// formattedOnly are the cases whose cell is long only once its number
+	// format is applied; GetRowsRaw gives the stored value and passes them.
+	formattedOnly := map[string]bool{"output bomb through a text format": true, "rendered cell": true, "rendered number": true}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lim := tt.lim
-			_, err := rowsOf(tt.data(t), &lim)
-			var le *LimitError
-			if !errors.As(err, &le) {
-				t.Fatalf("error %v, want a *LimitError", err)
-			}
-			if le.Limit != tt.limit || tt.seen >= 0 && le.Seen != tt.seen || le.Seen <= le.Max {
-				t.Fatalf("%+v, want limit %q seen %d", *le, tt.limit, tt.seen)
-			}
-			if !strings.Contains(err.Error(), tt.limit) || !strings.Contains(err.Error(), "ReaderLimits") {
-				t.Fatalf("message %q does not name the limit", err)
+			data := tt.data(t)
+			for _, read := range []struct {
+				name string
+				rows func([]byte, *ReaderLimits) ([][]string, error)
+			}{{"GetRows", rowsOf}, {"GetRowsRaw", rawRowsOf}} {
+				lim := tt.lim
+				_, err := read.rows(data, &lim)
+				if read.name == "GetRowsRaw" && formattedOnly[tt.name] {
+					if err != nil {
+						t.Fatalf("%s: %v, want the stored value", read.name, err)
+					}
+					continue
+				}
+				checkLimitError(t, read.name, err, tt.limit, tt.seen)
 			}
 		})
 	}
+}
+
+func checkLimitError(t *testing.T, read string, err error, limit string, seen int64) {
+	t.Helper()
+	var le *LimitError
+	if !errors.As(err, &le) {
+		t.Fatalf("%s: error %v, want a *LimitError", read, err)
+	}
+	if le.Limit != limit || seen >= 0 && le.Seen != seen || le.Seen <= le.Max {
+		t.Fatalf("%s: %+v, want limit %q seen %d", read, *le, limit, seen)
+	}
+	if !strings.Contains(err.Error(), limit) || !strings.Contains(err.Error(), "ReaderLimits") {
+		t.Fatalf("%s: message %q does not name the limit", read, err)
+	}
+}
+
+// A number is written with 15 significant digits once formatted, but as
+// stored when raw, so a long <v> passes GetRows and is too long for
+// GetRowsRaw: the raw value goes through the same cell length check.
+func TestReaderRawCellLength(t *testing.T) {
+	data := pkg(t, `<row><c><v>`+strings.Repeat("1", 30)+`</v></c></row>`, nil)
+	lim := ReaderLimits{MaxStringUnits: 25}
+	rows, err := rowsOf(data, &lim)
+	if err != nil || !sameRows(rows, [][]string{{"1.11111111111111E+29"}}) {
+		t.Fatalf("GetRows: %q, %v", rows, err)
+	}
+	lim = ReaderLimits{MaxStringUnits: 25}
+	_, err = rawRowsOf(data, &lim)
+	checkLimitError(t, "GetRowsRaw", err, "rendered cell length in UTF-16 units", 30)
 }
 
 // lyingZip zips parts as zipParts does, but writes part's directory entry

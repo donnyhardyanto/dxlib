@@ -26,8 +26,8 @@ var fuzzLimits = ReaderLimits{
 	MaxStyles:        200,
 }
 
-// readAll opens data and reads every sheet. It must never panic; an error is
-// an answer. What it returns must respect the limits.
+// readAll opens data and reads every sheet, formatted and raw. It must never
+// panic; an error is an answer. What it returns must respect the limits.
 func readAll(t *testing.T, data []byte) {
 	x, err := OpenBytes(data, &fuzzLimits)
 	if err != nil {
@@ -36,31 +36,38 @@ func readAll(t *testing.T, data []byte) {
 	defer x.Close()
 	for _, s := range x.GetSheetList() {
 		rows, err := x.GetRows(s)
-		if err != nil {
-			continue
+		if err == nil {
+			checkBounds(t, rows)
 		}
-		if len(rows) > fuzzLimits.MaxRows {
-			t.Fatalf("%d rows past MaxRows", len(rows))
+		if rows, err = x.GetRowsRaw(s); err == nil {
+			checkBounds(t, rows)
 		}
-		cells, n := int64(0), int64(0)
-		for _, r := range rows {
-			if len(r) > fuzzLimits.MaxColumns {
-				t.Fatalf("%d cells in a row past MaxColumns", len(r))
+	}
+}
+
+// checkBounds fails when rows go past fuzzLimits.
+func checkBounds(t *testing.T, rows [][]string) {
+	if len(rows) > fuzzLimits.MaxRows {
+		t.Fatalf("%d rows past MaxRows", len(rows))
+	}
+	cells, n := int64(0), int64(0)
+	for _, r := range rows {
+		if len(r) > fuzzLimits.MaxColumns {
+			t.Fatalf("%d cells in a row past MaxColumns", len(r))
+		}
+		cells += int64(max(len(r), 1))
+		for _, c := range r {
+			if u := utf16Len(c); u > fuzzLimits.MaxStringUnits {
+				t.Fatalf("a cell of %d UTF-16 units past MaxStringUnits", u)
 			}
-			cells += int64(max(len(r), 1))
-			for _, c := range r {
-				if u := utf16Len(c); u > fuzzLimits.MaxStringUnits {
-					t.Fatalf("a cell of %d UTF-16 units past MaxStringUnits", u)
-				}
-				n += int64(len(c))
-			}
+			n += int64(len(c))
 		}
-		if cells > fuzzLimits.MaxCells {
-			t.Fatalf("%d cells past MaxCells", cells)
-		}
-		if n > fuzzLimits.MaxSheetBytes {
-			t.Fatalf("%d bytes past MaxSheetBytes", n)
-		}
+	}
+	if cells > fuzzLimits.MaxCells {
+		t.Fatalf("%d cells past MaxCells", cells)
+	}
+	if n > fuzzLimits.MaxSheetBytes {
+		t.Fatalf("%d bytes past MaxSheetBytes", n)
 	}
 }
 

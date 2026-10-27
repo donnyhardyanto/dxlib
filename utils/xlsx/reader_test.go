@@ -8,16 +8,19 @@ import (
 	"testing"
 )
 
-// golden is what testdata/goldens/generate.go records from excelize.
+// golden is what testdata/goldens/generate.go records from excelize: GetRows,
+// and GetRows with RawCellValue.
 type golden struct {
 	Excelize string                `json:"excelize"`
 	Sheets   []string              `json:"sheets"`
 	Rows     map[string][][]string `json:"rows"`
+	Raw      map[string][][]string `json:"raw"`
 }
 
 // knownDifferences are the rows where the reader and excelize disagree on
 // purpose, by fixture, sheet and the row's first cell (DESIGN.md §11.4). The
 // reader gives the value as stored there; TestUnsupportedFormats checks it.
+// Raw values have none.
 var knownDifferences = map[string]string{
 	"excelize.xlsx/Formats/id 12": "fractions (# ?/?) are not supported",
 }
@@ -57,6 +60,17 @@ func TestReaderMatchesExcelize(t *testing.T) {
 					continue
 				}
 				compareRows(t, filepath.Base(fixture), sheet, rows, g.Rows[sheet])
+				want, ok := g.Raw[sheet]
+				if !ok {
+					t.Errorf("%s: no raw rows in %s; rerun run.sh", sheet, name)
+					continue
+				}
+				raw, err := x.GetRowsRaw(sheet)
+				if err != nil {
+					t.Errorf("%s, raw: %v", sheet, err)
+					continue
+				}
+				compareRows(t, "", sheet+" (raw)", raw, want)
 			}
 		})
 	}

@@ -66,5 +66,66 @@
     "-0"
    ]
   ]
+ },
+ "raw": {
+  "Absolute": [
+   [
+    "absolute target"
+   ]
+  ],
+  "Cells": [
+   [
+    "plain",
+    "rich text",
+    "漢字",
+    "head run",
+    "cr\rlf _x0041_ Ax0042_ ",
+    "",
+    "  spaced  ",
+    "second",
+    "a \u0026 b \u003cc\u003e ☺"
+   ],
+   [
+    "ab",
+    "#DIV/0!",
+    "2026-10-27T10:30:00Z",
+    "2026-10-27T10:30:00Z",
+    "not a date"
+   ],
+   null,
+   [
+    "inline",
+    "inline runs",
+    "1",
+    "0",
+    "2"
+   ],
+   [
+    "3.25",
+    "3.25",
+    "46322",
+    "plain",
+    "1234.5",
+    "",
+    "7",
+    ""
+   ],
+   null,
+   [
+    "",
+    "  12  ",
+    "",
+    "plain"
+   ]
+  ],
+  "Chart": [],
+  "Hidden": [
+   null,
+   [
+    "",
+    "",
+    "-0"
+   ]
+  ]
  }
 }

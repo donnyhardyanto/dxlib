@@ -117,6 +117,20 @@ func (st *readStyles) format(s int) *numFmt {
 // a formula gives its cached value, and is never evaluated. sheet is matched
 // without regard to case, as excelize does.
 func (x *Reader) GetRows(sheet string) ([][]string, error) {
+	return x.getRows(sheet, false)
+}
+
+// GetRowsRaw gives the rows of a sheet as GetRows does, with each value as
+// stored and no number format applied, as excelize's GetRows does with
+// Options{RawCellValue: true}: shared and inline strings resolved, numbers,
+// booleans ("1", "0") and ISO 8601 dates (t="d") as their <v> text, a
+// formula's cached value. Rows and cells are trimmed as in GetRows, but by
+// the raw value, and the same limits hold (DESIGN.md §11.7).
+func (x *Reader) GetRowsRaw(sheet string) ([][]string, error) {
+	return x.getRows(sheet, true)
+}
+
+func (x *Reader) getRows(sheet string, raw bool) ([][]string, error) {
 	if x.closed.Load() {
 		return nil, errReaderClosed
 	}
@@ -146,7 +160,7 @@ func (x *Reader) GetRows(sheet string) ([][]string, error) {
 		return nil, err
 	}
 	defer rc.Close()
-	sr := sheetReader{x: x, s: newXMLScanner(rc, ref.part, &x.lim), sst: sst, st: st, rows: [][]string{}}
+	sr := sheetReader{x: x, s: newXMLScanner(rc, ref.part, &x.lim), sst: sst, st: st, raw: raw, rows: [][]string{}}
 	if err := sr.read(); err != nil {
 		return nil, errors.Wrapf(err, "xlsx: sheet %q", ref.name)
 	}
@@ -158,6 +172,7 @@ type sheetReader struct {
 	s     *xmlScanner
 	sst   []string
 	st    *readStyles
+	raw   bool // values as stored, no number format (GetRowsRaw)
 	rows  [][]string
 	cells int64 // counted against MaxCells
 	bytes int64 // counted against MaxSheetBytes
@@ -312,9 +327,9 @@ func cellColumn(ref string) (int, error) {
 	return col, nil
 }
 
-// cell reads a <c> whose start was just returned and renders its value. keep
-// is false for a cell excelize's GetRows leaves out: one whose value renders
-// as "" and that has no formula.
+// cell reads a <c> whose start was just returned and renders its value (or
+// gives it as stored, for GetRowsRaw). keep is false for a cell excelize's
+// GetRows leaves out: one whose value comes out as "" and that has no formula.
 func (r *sheetReader) cell(e xml.StartElement) (string, bool, error) {
 	typ, _ := attr(e, "t")
 	style := 0
@@ -364,7 +379,7 @@ func (r *sheetReader) cell(e xml.StartElement) (string, bool, error) {
 	return out, out != "" || hasFormula, nil
 }
 
-// value renders a cell as excelize's getValueFrom does with raw off. What it
+// value renders a cell as excelize's getValueFrom does, raw or not. What it
 // gives is at most MaxStringUnits UTF-16 units: a format can repeat its value
 // (each @ writes it again), and a t="str" value is only capped in bytes.
 func (r *sheetReader) value(typ string, style int, v, inline string, hasInline bool) (string, error) {
@@ -381,6 +396,9 @@ func (r *sheetReader) value(typ string, style int, v, inline string, hasInline b
 }
 
 func (r *sheetReader) render(typ string, style int, v, inline string, hasInline bool) (string, error) {
+	if r.raw {
+		return r.stored(typ, v, inline, hasInline)
+	}
 	f := r.st.format(style)
 	render := func(v string, kind valueKind) (string, error) {
 		s, over := f.renderMax(v, kind, r.x.date1904, r.x.lim.MaxStringUnits)
@@ -425,6 +443,28 @@ func (r *sheetReader) render(typ string, style int, v, inline string, hasInline 
 		}
 	}
 	return render(v, kindNumber)
+}
+
+// stored gives a cell's value as excelize's getValueFrom does with raw on:
+// the text of <v> for every type but a shared string, which is resolved, and
+// an inline string, which is its <is>.
+func (r *sheetReader) stored(typ, v, inline string, hasInline bool) (string, error) {
+	switch typ {
+	case "s":
+		if v == "" {
+			return "", nil
+		}
+		i, err := strconv.Atoi(strings.TrimSpace(v))
+		if err != nil || i < 0 || i >= len(r.sst) {
+			return "", errors.Errorf("shared string index %q is outside the table of %d strings", clip(v, 20), len(r.sst))
+		}
+		return r.sst[i], nil
+	case "inlineStr":
+		if hasInline {
+			return inline, nil
+		}
+	}
+	return v, nil
 }
 
 // isoDateToSerial turns the ISO 8601 value of a t="d" cell into a date serial

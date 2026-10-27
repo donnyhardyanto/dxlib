@@ -1,7 +1,8 @@
 //go:build ignore
 
 // generate writes the excelize fixtures and, for every workbook in testdata,
-// the golden file holding excelize's GetSheetList and GetRows. It needs
+// the golden file holding excelize's GetSheetList and GetRows, formatted and
+// with RawCellValue. It needs
 // excelize, which dxlib does not require, so run.sh builds it in a module of
 // its own outside the repository. The reader's tests compare against the
 // golden files.
@@ -166,10 +167,82 @@ func fixture1904(path string) error {
 	return f.SaveAs(path)
 }
 
+// fixtureDates holds date serials under the date formats a caller reads raw,
+// custom and built-in, and cells whose format hides the value, so raw and
+// formatted rows differ in what they trim.
+func fixtureDates(path string) error {
+	f := excelize.NewFile()
+	defer f.Close()
+	if err := f.SetSheetName("Sheet1", "Dates"); err != nil {
+		return err
+	}
+	type col struct {
+		head string
+		id   int
+		code string
+	}
+	cols := []col{
+		{"serial", 0, ""},
+		{"mmm-yy", 0, "mmm-yy"},
+		{"mm-dd-yy", 0, "mm-dd-yy"},
+		{"yyyy-mm-dd", 0, "yyyy-mm-dd"},
+		{"id 14", 14, ""},
+		{"id 17", 17, ""},
+		{"id 22", 22, ""},
+		{";;;", 0, ";;;"},
+	}
+	dates := []any{
+		45717,
+		45717.0,
+		45658.75,
+		46322.5,
+		1.0,
+		time.Date(2026, 10, 27, 13, 45, 30, 0, time.UTC),
+		time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+		"2025-03-01",
+		true,
+	}
+	for j, c := range cols {
+		head, _ := excelize.CoordinatesToCellName(j+1, 1)
+		if err := f.SetCellValue("Dates", head, c.head); err != nil {
+			return err
+		}
+		st := &excelize.Style{NumFmt: c.id}
+		if c.code != "" {
+			code := c.code
+			st = &excelize.Style{CustomNumFmt: &code}
+		}
+		style, err := f.NewStyle(st)
+		if err != nil {
+			return fmt.Errorf("%s: %w", c.head, err)
+		}
+		for i, v := range dates {
+			cell, _ := excelize.CoordinatesToCellName(j+1, i+2)
+			if err := f.SetCellValue("Dates", cell, v); err != nil {
+				return err
+			}
+			if c.id != 0 || c.code != "" {
+				if err := f.SetCellStyle("Dates", cell, cell, style); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return f.SaveAs(path)
+}
+
 type golden struct {
 	Excelize string                `json:"excelize"`
 	Sheets   []string              `json:"sheets"`
 	Rows     map[string][][]string `json:"rows"`
+	Raw      map[string][][]string `json:"raw"`
+}
+
+func orEmpty(rows [][]string) [][]string {
+	if rows == nil {
+		return [][]string{}
+	}
+	return rows
 }
 
 func dump(path string) error {
@@ -178,16 +251,17 @@ func dump(path string) error {
 		return err
 	}
 	defer f.Close()
-	g := golden{Excelize: "v2.11.0", Sheets: f.GetSheetList(), Rows: map[string][][]string{}}
+	g := golden{Excelize: "v2.11.0", Sheets: f.GetSheetList(), Rows: map[string][][]string{}, Raw: map[string][][]string{}}
 	for _, s := range g.Sheets {
 		rows, err := f.GetRows(s)
 		if err != nil {
 			return fmt.Errorf("%s: %w", s, err)
 		}
-		if rows == nil {
-			rows = [][]string{}
+		raw, err := f.GetRows(s, excelize.Options{RawCellValue: true})
+		if err != nil {
+			return fmt.Errorf("%s, raw: %w", s, err)
 		}
-		g.Rows[s] = rows
+		g.Rows[s], g.Raw[s] = orEmpty(rows), orEmpty(raw)
 	}
 	b, err := json.MarshalIndent(g, "", " ")
 	if err != nil {
@@ -202,6 +276,9 @@ func main() {
 		panic(err)
 	}
 	if err := fixture1904(filepath.Join(dir, "excelize-1904.xlsx")); err != nil {
+		panic(err)
+	}
+	if err := fixtureDates(filepath.Join(dir, "excelize-dates.xlsx")); err != nil {
 		panic(err)
 	}
 	names, _ := filepath.Glob(filepath.Join(dir, "*.xlsx"))

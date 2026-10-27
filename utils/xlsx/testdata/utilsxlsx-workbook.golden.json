@@ -45,5 +45,46 @@
     "Catatan panjang yang dibungkus"
    ]
   ]
+ },
+ "raw": {
+  "Item": [
+   [
+    "No",
+    "Uraian",
+    "Jumlah",
+    "Harga"
+   ],
+   [
+    "",
+    "",
+    "(unit)",
+    "(Rp)"
+   ],
+   [
+    "1",
+    "Kabel NYY 4x16",
+    "12.5",
+    "185000"
+   ],
+   [
+    "2",
+    "-5",
+    "",
+    "-0.25"
+   ]
+  ],
+  "Kosong": [],
+  "Ringkasan": [
+   [
+    "Daftar Bahan"
+   ],
+   [
+    "Total",
+    "1234567"
+   ],
+   [
+    "Catatan panjang yang dibungkus"
+   ]
+  ]
  }
 }

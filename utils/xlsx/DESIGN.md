@@ -744,6 +744,7 @@ func Open(r io.ReaderAt, size int64, limits *ReaderLimits) (*Reader, error)
 
 func (x *Reader) GetSheetList() []string
 func (x *Reader) GetRows(sheet string) ([][]string, error)
+func (x *Reader) GetRowsRaw(sheet string) ([][]string, error) // values as stored (§11.7)
 func (x *Reader) Close() error
 ```
 
@@ -755,6 +756,7 @@ caller over is mechanical:
 | `excelize.OpenReader(r)` | `xlsx.OpenReader(r, nil)`, or `xlsx.Open(f, size, nil)` for a file |
 | `f.GetSheetList()` | `x.GetSheetList()` |
 | `f.GetRows(sheet)` | `x.GetRows(sheet)` |
+| `f.GetRows(sheet, excelize.Options{RawCellValue: true})` | `x.GetRowsRaw(sheet)` |
 | `f.Close()` | `x.Close()` |
 
 `Close` holds no file and frees nothing; it marks the reader closed, and
@@ -951,12 +953,18 @@ units.
 
 - **Golden files against excelize.** Each `testdata/*.xlsx` has a
   `*.golden.json` holding excelize v2.11.0's `GetSheetList` and every sheet's
-  `GetRows`. `TestReaderMatchesExcelize` compares the reader against them,
-  cell by cell. The fixtures, all made here:
+  `GetRows`, under `rows`, and `GetRows` with `RawCellValue: true`, under
+  `raw`. `TestReaderMatchesExcelize` compares `GetRows` and `GetRowsRaw`
+  against them, cell by cell; raw values have no known differences, and a
+  golden file without `raw` fails it. The fixtures, all made here:
   - `utilsxlsx-workbook.xlsx`: `Workbook`'s feature sample;
   - `utilsxlsx-writer.xlsx`: `Writer` with every encoding case of §5.2;
   - `excelize.xlsx` and `excelize-1904.xlsx`: written by excelize, with a
     sheet of 61 number formats against 11 values, and the 1904 date system;
+  - `excelize-dates.xlsx`: written by excelize, date serials (whole, with a
+    time, serial 1), times and a date string under `mmm-yy`, `mm-dd-yy`,
+    `yyyy-mm-dd` and built-in ids 14, 17 and 22, beside an unstyled column,
+    and a `;;;` column that hides every value once formatted;
   - `libreoffice.xlsx`: converted by LibreOffice from
     `testdata/libreoffice/source.fods`, with grouping, percent, `Rp`
     currency, dates, times, booleans, formulas with cached values, an error,
@@ -973,7 +981,10 @@ units.
   and no scan of this repository finds it. `testdata/libreoffice/convert.sh`
   remakes `libreoffice.xlsx`.
 - **Limits.** One test per limit (`TestReaderLimits`) triggers it, checks
-  the `*LimitError` fields and checks that the message names the limit. A
+  the `*LimitError` fields and checks that the message names the limit,
+  through `GetRows` and through `GetRowsRaw`. The three cases whose cell is
+  long only once formatted must pass `GetRowsRaw`; `TestReaderRawCellLength`
+  is the converse, a number short once formatted and too long as stored. A
   zip bomb is one of them: 4 MiB of spaces deflated about a thousand to one.
   Another is the same bomb with a zip directory claiming 1 MiB of compressed
   bytes, which a ratio taken from the header would pass. Two more bound the
@@ -993,8 +1004,8 @@ units.
   - `FuzzSharedStrings`: the shared strings and the styles;
   - `FuzzNumFmt`: format codes and values.
 
-  The property is that nothing panics, and that what comes back respects
-  the limits: rows, cells, each cell's UTF-16 length and a sheet's bytes in
+  The property is that nothing panics, and that what comes back, from
+  `GetRows` and from `GetRowsRaw`, respects the limits: rows, cells, each cell's UTF-16 length and a sheet's bytes in
   all. `FuzzNumFmt` checks that a capped text section is never built. The targets run with small limits, so limits are reached
   often. Run one as:
 
@@ -1011,3 +1022,51 @@ units.
   producers do not. A workbook saved from Excel or Numbers, with no
   third-party content, can be added to `testdata` at any time; `run.sh`
   then records excelize's reading of it.
+
+### 11.7 Raw values (2026-10-27)
+
+A caller that stores what a sheet holds, such as a date column, needs the
+value as stored: `GetRows` gives a date serial as the date format shows it
+(`Mar-25`), and that text cannot be turned back into the date. excelize
+gives the stored value with `GetRows(sheet, Options{RawCellValue: true})`.
+The reader gives it with `GetRowsRaw(sheet)`.
+
+The name is a method of its own, not an option to `GetRows`. The package's
+`Options` is already the writer's, and a variadic `GetRows` would change the
+type of a method that callers may hold as a value or name in an interface.
+
+What each cell gives, as excelize v2.11.0's `getValueFrom` with raw on:
+
+| Cell | `GetRows` | `GetRowsRaw` |
+|---|---|---|
+| shared string (`t="s"`) | the string, through its format | the string |
+| inline string (`t="inlineStr"`) | the `<is>` text, through its format | the `<is>` text (`<v>` when there is no `<is>`) |
+| number (no `t`, or `t="n"`) | 15 significant digits at most, then the format: `45717` under `mmm-yy` is `Mar-25` | the `<v>` text as written: `45717`, `12345678901234567000`, `  12  ` |
+| boolean (`t="b"`) | `TRUE`, `FALSE` | `1`, `0` (any other text as it is) |
+| ISO 8601 date (`t="d"`) | turned into a serial, then the format | the ISO text, such as `2026-10-27T10:30:00Z` |
+| error (`t="e"`) | the `<v>` text | the `<v>` text |
+| formula string (`t="str"`) | the `<v>` text | the `<v>` text |
+
+A formula cell gives its cached value either way, and is never evaluated.
+
+Shape and trimming are those of `GetRows` (§11.3), applied to the raw
+value. A cell is kept when its raw value is not `""` or it holds a formula.
+So the two methods can trim differently: a value hidden by a format such as
+`;;;` is `""` in `GetRows`, and is left out there unless a later cell keeps
+its place, while `GetRowsRaw` gives it.
+
+Every `ReaderLimits` limit holds, counted the same way: the raw value of a
+cell is checked against `MaxStringUnits`, and counts towards `MaxCells` and
+`MaxSheetBytes`. Shared-string indexes are checked, and the styles part is
+read and held to `MaxStyles`, though raw values need no format, so a file
+that one method refuses on its styles the other refuses too. The two
+methods differ only where the length depends on the format:
+
+- a format that lengthens a value (a run of `@`s, many `0`s) can take a
+  cell past `MaxStringUnits` in `GetRows`, but not in `GetRowsRaw`;
+- a number with more than 15 significant digits is shortened by `GetRows`,
+  so a long `<v>` can pass there and be too long for `GetRowsRaw`.
+
+`excelize-dates.xlsx` (§11.6) holds the date formats a caller reads raw,
+and every fixture's golden file records both readings.
+
