@@ -3,13 +3,17 @@
 package xlsx
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/csv"
+	"encoding/xml"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -159,4 +163,120 @@ func trimRows(rows [][]string) [][]string {
 		return nil
 	}
 	return out
+}
+
+// LibreOffice keeps a sheet's default row height: a single-line row of a
+// 15 pt sheet shows at 15 pt, and a row whose wrapped text needs more still
+// grows. Without the height it sizes the row from the font it has.
+func TestLibreOfficeKeepsTheDefaultRowHeight(t *testing.T) {
+	bin := soffice(t)
+	dir := t.TempDir()
+	var buf bytes.Buffer
+	b, err := NewWorkbook(&buf, WorkbookOptions{Sheets: []SheetOptions{{Name: "Set", DefaultRowHeight: 15}, {Name: "Unset"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrap, _ := b.AddStyle(CellStyle{Wrap: true})
+	rows := []Row{{Cells: []Cell{Text("one", 0)}}, {Cells: []Cell{Text("two\nlines", wrap)}}, {Cells: []Cell{Text("three", 0)}}}
+	for i := 0; i < 2; i++ {
+		for _, r := range rows {
+			if err := b.WriteRow(r); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if i == 0 {
+			if err := b.NextSheet(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := b.Close(); err != nil {
+		t.Fatal(err)
+	}
+	in := filepath.Join(dir, "book.xlsx")
+	if err := os.WriteFile(in, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, "-env:UserInstallation=file://"+filepath.Join(dir, "profile"), "--headless",
+		"--convert-to", "ods", "--outdir", dir, in)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("soffice: %v\n%s", err, out)
+	}
+	heights := odsRowHeights(t, filepath.Join(dir, "book.ods"))
+	set, unset := heights["Set"], heights["Unset"]
+	if len(set) < 3 || len(unset) < 3 {
+		t.Fatalf("row heights %v", heights)
+	}
+	t.Logf("single-line rows: %.2f pt with the default height, %.2f pt without", set[0], unset[0])
+	for _, i := range []int{0, 2} {
+		if math.Abs(set[i]-15) > 0.1 {
+			t.Errorf("row %d of Set is %.2f pt, want 15", i+1, set[i])
+		}
+	}
+	if set[1] <= 15 {
+		t.Errorf("the wrapped row of Set is %.2f pt, want it grown past 15", set[1])
+	}
+}
+
+// odsRowHeights reads each table's row heights, in points, from an ODS file's
+// content.xml.
+func odsRowHeights(t *testing.T, path string) map[string][]float64 {
+	t.Helper()
+	z, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer z.Close()
+	f, err := z.Open("content.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	var doc struct {
+		Styles []struct {
+			Name string `xml:"name,attr"`
+			Row  struct {
+				Height string `xml:"row-height,attr"`
+			} `xml:"table-row-properties"`
+		} `xml:"automatic-styles>style"`
+		Tables []struct {
+			Name string `xml:"name,attr"`
+			Rows []struct {
+				Style  string `xml:"style-name,attr"`
+				Repeat int    `xml:"number-rows-repeated,attr"`
+			} `xml:"table-row"`
+		} `xml:"body>spreadsheet>table"`
+	}
+	if err := xml.NewDecoder(f).Decode(&doc); err != nil {
+		t.Fatal(err)
+	}
+	style := map[string]float64{}
+	for _, s := range doc.Styles {
+		if s.Row.Height != "" {
+			style[s.Name] = points(t, s.Row.Height)
+		}
+	}
+	out := map[string][]float64{}
+	for _, tb := range doc.Tables {
+		for _, r := range tb.Rows {
+			out[tb.Name] = append(out[tb.Name], style[r.Style])
+		}
+	}
+	return out
+}
+
+func points(t *testing.T, length string) float64 {
+	for unit, per := range map[string]float64{"in": 72, "cm": 72 / 2.54, "mm": 72 / 25.4, "pt": 1} {
+		if v, ok := strings.CutSuffix(length, unit); ok {
+			f, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return f * per
+		}
+	}
+	t.Fatalf("length %q has no unit", length)
+	return 0
 }

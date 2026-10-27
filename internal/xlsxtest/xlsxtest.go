@@ -42,6 +42,10 @@ type Sheet struct {
 	Merges       []string // the ref of each <mergeCell>, in order
 	FreezeRows   int
 	Selected     bool
+	// DefaultRowHeight and CustomHeight are <sheetFormatPr>'s attributes; 0
+	// and false when it is absent.
+	DefaultRowHeight float64
+	CustomHeight     bool
 }
 
 // Kind of a cell as written.
@@ -214,6 +218,10 @@ func (wb *Workbook) readSheet(name string, strs []string) (Sheet, int, error) {
 				State       string `xml:"state,attr"`
 			} `xml:"pane"`
 		} `xml:"sheetViews>sheetView"`
+		Format *struct {
+			DefaultRowHeight float64 `xml:"defaultRowHeight,attr"`
+			CustomHeight     bool    `xml:"customHeight,attr"`
+		} `xml:"sheetFormatPr"`
 		Cols []struct {
 			Min   int     `xml:"min,attr"`
 			Max   int     `xml:"max,attr"`
@@ -257,6 +265,9 @@ func (wb *Workbook) readSheet(name string, strs []string) (Sheet, int, error) {
 			}
 			sh.FreezeRows = p.YSplit
 		}
+	}
+	if f := sheet.Format; f != nil {
+		sh.DefaultRowHeight, sh.CustomHeight = f.DefaultRowHeight, f.CustomHeight
 	}
 	for _, c := range sheet.Cols {
 		for len(sh.ColumnWidths) < c.Max {

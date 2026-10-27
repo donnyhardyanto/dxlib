@@ -227,7 +227,7 @@ reads the same everywhere the old one did.
 | `_rels/.rels` | officeDocument → `xl/workbook.xml` |
 | `xl/workbook.xml` | `<bookViews>` with `activeTab="0"`, then one `<sheet name="…" sheetId="N" r:id="rIdN"/>` per sheet, names XML-escaped |
 | `xl/_rels/workbook.xml.rels` | rId1…rIdN → worksheets, then styles and sharedStrings |
-| `xl/worksheets/sheetN.xml` | `<sheetViews>` (first sheet, or a frozen pane), `<cols>` (only when a width is set), `<sheetData>`, `<mergeCells>` (only when there are merges) |
+| `xl/worksheets/sheetN.xml` | `<sheetViews>` (first sheet, or a frozen pane), `<sheetFormatPr>` (only when a default row height is set), `<cols>` (only when a width is set), `<sheetData>`, `<mergeCells>` (only when there are merges) |
 | `xl/styles.xml` | see below |
 | `xl/sharedStrings.xml` | `<sst count uniqueCount>` with one `<si><t>` per string |
 
@@ -519,6 +519,8 @@ type SheetOptions struct {
 	Name         string    // Excel's rules for sheet names; unique in the workbook
 	ColumnWidths []float64 // as Options.ColumnWidths
 	FreezeRows   int       // rows kept in view above the pane; 0 for none
+	// points, for a row with no Height of its own; 0 leaves it to the reader
+	DefaultRowHeight float64
 }
 
 type WorkbookOptions struct {
@@ -628,6 +630,18 @@ its `SheetOptions` and go before `<sheetData>`; a row's height goes on its
   written at all, so a row may leave gaps.
 - **Row heights**: `ht="…" customHeight="1"` on `<row>`; a row style adds
   `s="…" customFormat="1"`, as the header row of `Writer` always had.
+- **Default row height** (2026-10-27): `DefaultRowHeight` writes
+  `<sheetFormatPr defaultRowHeight="…"/>` between `<sheetViews>` and `<cols>`,
+  the schema's order. Without it a reader sizes a single-line row from the
+  font it has: LibreOffice on a Mac without Calibri gives about 13.8 pt, where
+  a workbook from excelize (which always writes `defaultRowHeight="15"`) gets
+  15. Excel keeps a default height other than the one its default font gives
+  only with `customHeight="1"`; font 0 is always Calibri 11, whose height is
+  15, so 15 is written without it (byte for byte excelize's element) and any
+  other height with it. LibreOffice reads the height either way and still
+  grows a row whose wrapped text needs more; with `customHeight="1"` it also
+  fixes the empty rows below the data at that height. 0, the default, writes
+  no element, so files are unchanged. `Writer` has no such option.
 - **Merged ranges**: `<mergeCells count="…"><mergeCell ref="A1:C1"/>…`, after
   `<sheetData>`. Excel takes the value and style of the top-left cell and
   draws each border from the cells of the range, so a bordered merged range
@@ -640,6 +654,7 @@ its `SheetOptions` and go before `<sheetData>`; a row's height goes on its
 | sheets | at least one; each name as §5.1, and no two equal ignoring letter case (Excel's rule) |
 | `ColumnWidths` | as §5.1, per sheet |
 | `FreezeRows` | 0 to 1,048,575 |
+| `DefaultRowHeight` | 0, or in (0, 409] points |
 | style index | 0 to the last index `AddStyle` gave, on a cell and on a row |
 | `AddStyle` | before the first call that writes |
 | colours (`FillRGB`, `Font.ColorRGB`, `Border.ColorRGB`) | empty or six hex digits |
@@ -669,6 +684,11 @@ its `SheetOptions` and go before `<sheetData>`; a row's height goes on its
 - Merges: written after `<sheetData>`; single-cell, reversed, out-of-range and
   overlapping ranges refused; a bordered merge with `Blank` cells.
 - Row heights, row styles and frozen panes read back.
+- Default row height: none writes no `<sheetFormatPr>`; 15 is written without
+  `customHeight`, another height with it; the element sits between
+  `<sheetViews>` and `<cols>`; a sheet never reached carries it; out-of-range
+  and NaN heights refused. LibreOffice (the `libreoffice` tag) converts the
+  workbook to ODS and shows the single-line rows of a 15 pt sheet at 15 pt.
 - `Writer`'s tests run unchanged.
 - LibreOffice (§6.3): one workbook with every feature, converted sheet by
   sheet to CSV, the raw values compared.

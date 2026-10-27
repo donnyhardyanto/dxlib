@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -25,8 +26,8 @@ func writeBOM(t *testing.T) []byte {
 	var buf bytes.Buffer
 	b, err := NewWorkbook(&buf, WorkbookOptions{Sheets: []SheetOptions{
 		{Name: "Ringkasan", ColumnWidths: []float64{30, 18}},
-		{Name: "Item", ColumnWidths: []float64{6, 40, 10, 18}, FreezeRows: 2},
-		{Name: "Kosong"},
+		{Name: "Item", ColumnWidths: []float64{6, 40, 10, 18}, FreezeRows: 2, DefaultRowHeight: 15},
+		{Name: "Kosong", DefaultRowHeight: 20.25},
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -224,10 +225,10 @@ func TestWorkbookMergesHeightsPanes(t *testing.T) {
 		t.Errorf("frozen rows %d %d", sum.FreezeRows, items.FreezeRows)
 	}
 	sheet := string(wb.Raw["xl/worksheets/sheet2.xml"])
-	views, cols, data, merges := strings.Index(sheet, "<sheetViews>"), strings.Index(sheet, "<cols>"),
-		strings.Index(sheet, "<sheetData>"), strings.Index(sheet, "<mergeCells")
-	if !(0 < views && views < cols && cols < data && data < merges) {
-		t.Errorf("worksheet children out of the schema's order: %d %d %d %d", views, cols, data, merges)
+	views, format, cols, data, merges := strings.Index(sheet, "<sheetViews>"), strings.Index(sheet, "<sheetFormatPr"),
+		strings.Index(sheet, "<cols>"), strings.Index(sheet, "<sheetData>"), strings.Index(sheet, "<mergeCells")
+	if !(0 < views && views < format && format < cols && cols < data && data < merges) {
+		t.Errorf("worksheet children out of the schema's order: %d %d %d %d %d", views, format, cols, data, merges)
 	}
 	if !strings.Contains(sheet, `<pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/>`) {
 		t.Error("no frozen pane under row 2")
@@ -266,6 +267,34 @@ func TestMergesAreChecked(t *testing.T) {
 	}
 }
 
+// A default row height of 15 is written as excelize writes it; another needs
+// customHeight for Excel to keep it; none writes no <sheetFormatPr> at all.
+func TestWorkbookDefaultRowHeight(t *testing.T) {
+	wb := read(t, writeBOM(t))
+	for i, want := range []struct {
+		height float64
+		custom bool
+		xml    string
+	}{
+		{0, false, ""},
+		{15, false, `<sheetFormatPr defaultRowHeight="15"/>`},
+		{20.25, true, `<sheetFormatPr defaultRowHeight="20.25" customHeight="1"/>`},
+	} {
+		sh := wb.Sheets[i]
+		if sh.DefaultRowHeight != want.height || sh.CustomHeight != want.custom {
+			t.Errorf("sheet %s: default row height %v, custom %v", sh.Name, sh.DefaultRowHeight, sh.CustomHeight)
+		}
+		raw := string(wb.Raw["xl/worksheets/sheet"+strconv.Itoa(i+1)+".xml"])
+		if want.xml == "" && strings.Contains(raw, "<sheetFormatPr") || want.xml != "" && !strings.Contains(raw, want.xml) {
+			t.Errorf("sheet %s: want %q in %s", sh.Name, want.xml, raw)
+		}
+	}
+	// Writer's files stay as they were.
+	if bytes.Contains(read(t, write(t, Options{SheetName: "S"}, []string{"h"}, []string{"v"})).Raw["xl/worksheets/sheet1.xml"], []byte("<sheetFormatPr")) {
+		t.Error("Writer writes <sheetFormatPr>")
+	}
+}
+
 func TestWorkbookOptionsAreChecked(t *testing.T) {
 	for _, o := range []WorkbookOptions{
 		{},
@@ -274,6 +303,10 @@ func TestWorkbookOptionsAreChecked(t *testing.T) {
 		{Sheets: []SheetOptions{{Name: "A", ColumnWidths: []float64{256}}}},
 		{Sheets: []SheetOptions{{Name: "A", FreezeRows: -1}}},
 		{Sheets: []SheetOptions{{Name: "A", FreezeRows: MaxRows}}},
+		{Sheets: []SheetOptions{{Name: "A", DefaultRowHeight: -1}}},
+		{Sheets: []SheetOptions{{Name: "A", DefaultRowHeight: 409.5}}},
+		{Sheets: []SheetOptions{{Name: "A", DefaultRowHeight: math.NaN()}}},
+		{Sheets: []SheetOptions{{Name: "A", DefaultRowHeight: math.Inf(1)}}},
 	} {
 		if _, err := NewWorkbook(io.Discard, o); err == nil {
 			t.Errorf("options %+v were accepted", o)

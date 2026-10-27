@@ -16,6 +16,10 @@ type SheetOptions struct {
 	Name         string    // Excel's rules for sheet names; unique in the workbook, ignoring letter case
 	ColumnWidths []float64 // one per column, in character units; 0 leaves the default
 	FreezeRows   int       // rows kept in view above a frozen pane; 0 for none
+	// DefaultRowHeight is the height, in points, of a row with no Height of its
+	// own; 0 leaves it to the reader, which may size a single-line row below
+	// Excel's 15. DESIGN.md §10.5.
+	DefaultRowHeight float64
 }
 
 type WorkbookOptions struct {
@@ -103,6 +107,9 @@ func NewWorkbook(w io.Writer, opts WorkbookOptions) (*Workbook, error) {
 		if s.FreezeRows < 0 || s.FreezeRows >= MaxRows {
 			return nil, errors.Errorf("xlsx: sheet %q freezes %d rows, outside 0..%d", s.Name, s.FreezeRows, MaxRows-1)
 		}
+		if h := s.DefaultRowHeight; !(h == 0 || h > 0 && h <= 409) {
+			return nil, errors.Errorf("xlsx: sheet %q has default row height %v, outside (0, 409]", s.Name, h)
+		}
 	}
 	return &Workbook{w: w, sheets: append([]SheetOptions(nil), opts.Sheets...), strings: map[string]int{}}, nil
 }
@@ -184,6 +191,7 @@ func (b *Workbook) startSheet() error {
 	b.sheet = bufio.NewWriterSize(e, 64*1024)
 	b.sheet.WriteString(xmlDecl + `<worksheet xmlns="` + nsMain + `" xmlns:r="` + nsRel + `">`)
 	b.sheet.WriteString(sheetViewsXML(b.current == 0, s.FreezeRows))
+	b.sheet.WriteString(sheetFormatXML(s.DefaultRowHeight))
 	b.sheet.WriteString(colsXML(s.ColumnWidths))
 	b.sheet.WriteString(`<sheetData>`)
 	if err := b.sheet.Flush(); err != nil {
@@ -419,6 +427,23 @@ func (b *Workbook) close() error {
 		return errors.Wrap(err, "xlsx: finishing the zip")
 	}
 	return nil
+}
+
+// excelRowHeight is the row height Excel derives from font 0, Calibri 11.
+const excelRowHeight = 15
+
+// sheetFormatXML gives the <sheetFormatPr> for a default row height, or nothing
+// for 0. Excel keeps a height other than the one its default font gives only
+// with customHeight="1"; 15 is written without it, as excelize writes it.
+func sheetFormatXML(h float64) string {
+	if h == 0 {
+		return ""
+	}
+	x := `<sheetFormatPr defaultRowHeight="` + strconv.FormatFloat(h, 'f', -1, 64) + `"`
+	if h != excelRowHeight {
+		x += ` customHeight="1"`
+	}
+	return x + `/>`
 }
 
 // sheetViewsXML gives the first sheet its selected tab, and a sheet with frozen
