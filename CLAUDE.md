@@ -50,8 +50,11 @@ example):
 - Accepted finding: entry in `.dependency-allowlist.json`, a line in `.trivyignore` (id and `exp:` review
   date), since Trivy has no reachability filter, and an `[[IgnoredVulns]]` entry in `osv-scanner.toml` (id,
   `ignoreUntil`, reason), since OpenSSF Scorecard runs osv-scanner without Go call analysis. osv-scanner reads
-  that file per directory, so `sbom/<tag>/` holds a copy beside the SBOMs it scans. Never `--ignore-unfixed`:
-  it hides every unfixed finding.
+  that file per directory, so `sbom/<tag>/` holds a copy beside the SBOMs it scans. `sbom-record` and
+  `agentq sbom` write none: after each run, copy the root `osv-scanner.toml` into the new folder (plus the
+  release's own findings, named as that release's, when its scan had any; no `ignoreUntil`, since a record
+  does not change) and add the file to the folder's README, until the record step writes it itself. Never
+  `--ignore-unfixed`: it hides every unfixed finding.
 - Commit message: "SBOM scan clean (syft, grype, osv-scanner, govulncheck, trivy)", or what was found and how it
   was resolved.
 
