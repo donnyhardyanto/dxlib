@@ -47,8 +47,11 @@ example):
 - New library: adopted only when clean, it and everything it pulls in, at the chosen version. Otherwise take a
   fixed version or another library, or ask the owner.
 - Upgrade: must not add a finding. An existing finding with no fix yet may stay; name it.
-- Accepted finding: entry in `.dependency-allowlist.json` plus a line in `.trivyignore` (id and `exp:` review
-  date), since Trivy has no reachability filter. Never `--ignore-unfixed`: it hides every unfixed finding.
+- Accepted finding: entry in `.dependency-allowlist.json`, a line in `.trivyignore` (id and `exp:` review
+  date), since Trivy has no reachability filter, and an `[[IgnoredVulns]]` entry in `osv-scanner.toml` (id,
+  `ignoreUntil`, reason), since OpenSSF Scorecard runs osv-scanner without Go call analysis. osv-scanner reads
+  that file per directory, so `sbom/<tag>/` holds a copy beside the SBOMs it scans. Never `--ignore-unfixed`:
+  it hides every unfixed finding.
 - Commit message: "SBOM scan clean (syft, grype, osv-scanner, govulncheck, trivy)", or what was found and how it
   was resolved.
 

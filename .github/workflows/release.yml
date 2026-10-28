@@ -21,7 +21,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   GOWORK: "off"
@@ -30,6 +30,10 @@ jobs:
   goreleaser:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Only this job writes: GoReleaser makes the draft release and uploads the
+    # source archives and checksums with the job token.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
