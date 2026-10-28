@@ -7,7 +7,7 @@ import (
 	"github.com/donnyhardyanto/dxlib/utils"
 )
 
-// BUG-SEC-122: the decrypted dump must be OFF by default and reveal nothing when off.
+// The decrypted dump must be OFF by default and reveal nothing when off.
 func TestDecryptedDumpGate(t *testing.T) {
 	orig := logDecryptedBody
 	t.Cleanup(func() { SetLogDecryptedBody(orig) })

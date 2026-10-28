@@ -14,7 +14,7 @@ import (
 //
 // Scope, stated plainly: this covers the precondition, not the call site. The two
 // functions need a live database, and the module has no fake or sqlmock, so the
-// fixed call site is exercised by bpm7's four-engine e2e suite rather than here.
+// fixed call site is exercised by a downstream four-engine e2e suite rather than here.
 func TestGetInt64ErrorsOnEveryOracleRowIdShape(t *testing.T) {
 	// Both come from go-ora: a NUMBER row id arrives as a decimal string, and an
 	// empty string is what the driver leaves when RETURNING yielded no value.

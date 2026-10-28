@@ -200,7 +200,7 @@ func (hv *DXHashicorpVault) GetString(ctx context.Context, key string) (string, 
 // Config-source labels for the startup log. The Get*OrEnvOrDefault family reports WHICH TIER
 // supplied each value, because that is the only thing that makes a key-name mismatch visible.
 //
-// Why this exists: BUG-SEC-149. A reader looked up INNER_BOOTSTRAP_PQC_ENABLED while every setter
+// Why this exists: a reader looked up INNER_BOOTSTRAP_PQC_ENABLED while every setter
 // wrote INNER_BOOTSTRAP_PQC. Nothing set the name the code read, so the value silently came from the
 // compiled default — which happened to equal the intended value, so behaviour was correct and the
 // defect was invisible. A line saying "source=DEFAULT" while run.env plainly sets that key IS the
@@ -442,7 +442,7 @@ func (hv *DXHashicorpVault) VaultMapString(ctx context.Context, log *log.DXLog, 
 //     without a working Vault client.
 //   - the Vault API returns (nil, nil) for a path that DOES NOT EXIST - a
 //     missing secret is not an error there - so `secret.Data` dereferenced nil.
-//     This is what crashed service-configuration on the bank's OKD development
+//     This is what crashed a service on a Kubernetes development
 //     cluster: SIGSEGV at this line, with the whole process gone, because one
 //     Vault path had not been populated yet.
 func (hv *DXHashicorpVault) VaultGetData(ctx context.Context, log *log.DXLog) (r utils.JSON, err error) {

@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// BUG-SEC-118. Pins the PRECEDENCE ORDER of GetIPAddress, which is the whole
+// Pins the PRECEDENCE ORDER of GetIPAddress, which is the whole
 // substance of that fix: X-Proxy-Client-IP (proxy-resolved, and unspoofable on the
-// proxied path because api-proxy-v4 builds upstream headers under a default-deny
+// proxied path because the upstream proxy builds upstream headers under a default-deny
 // allowlist) must beat X-Forwarded-For, which is attacker-settable.
 //
 // Why a table test and not one case: the bug was an ORDERING bug. A test that only
@@ -114,7 +114,7 @@ func TestGetIPAddressWouldHaveFailedBeforeTheFix(t *testing.T) {
 	got := GetIPAddress(r)
 	if got == "198.51.100.1" {
 		t.Fatalf("GetIPAddress returned the X-Forwarded-For value %q - the "+
-			"pre-BUG-SEC-118 ordering is back, and audit logs are trusting an "+
+			"old ordering is back, and audit logs are trusting an "+
 			"attacker-settable header over the proxy-resolved one", got)
 	}
 	if got != "203.0.113.9" {

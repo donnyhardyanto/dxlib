@@ -909,7 +909,7 @@ still the place for anything that should never reach a handler.
 `DXAPIAuditLogEntry` gains `PeerIdentity`, filled at `OnAuditLogStart` and
 `OnAuditLogUserIdentified`. The comment above `GetIPAddress` states its
 limitation plainly: `X-Proxy-Client-IP` is trustworthy only for traffic that
-arrived through api-proxy-v4; a service reachable by some other ingress can be
+arrived through the upstream API proxy; a service reachable by some other ingress can be
 sent a forged one, as it could a forged `X-Forwarded-For`. Under direct mTLS
 between services there is no proxy setting any header, so `IPAddress` in the
 audit entry is whatever the caller wrote, and `PeerIdentity` is the field that

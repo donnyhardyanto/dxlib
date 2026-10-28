@@ -352,25 +352,24 @@ func (a *DXAPI) FindEndPoint(method, uri string) *DXAPIEndPoint {
 
 // GetIPAddress resolves the client IP for audit logging.
 //
-// BUG-SEC-118: X-Proxy-Client-IP is checked FIRST. api-proxy-v4 resolves the real
+// X-Proxy-Client-IP is checked FIRST. The upstream API proxy resolves the real
 // client IP against its configured trusted_proxies and sets that header on the
 // upstream request; before this, nothing downstream read it, so the proxy did the
 // work and the backend logged the proxy container's own address instead.
 //
 // Why preferring it is SAFER, not just more accurate: the proxy builds the upstream
-// request under a strict DEFAULT-DENY allowlist (setUpstreamHeaders in
-// s7-api-proxy/handlers.go - F-PXY-02/F-PXY-NEW-01). Nothing from the client's outer
+// request under a strict DEFAULT-DENY header allowlist. Nothing from the client's outer
 // headers or decrypted envelope propagates automatically, so a client-supplied
 // X-Proxy-Client-IP is DROPPED and cannot survive into the upstream request. The
 // header is therefore proxy-owned on any request that came through the proxy, while
 // X-Forwarded-For - what this used to trust first - is attacker-settable.
 //
 // LIMITATION, stated rather than implied: this makes the value trustworthy for
-// traffic that arrives THROUGH api-proxy-v4. A service reachable by some other
+// traffic that arrives THROUGH that proxy. A service reachable by some other
 // ingress could still be sent a forged X-Proxy-Client-IP directly, exactly as it
 // could be sent a forged X-Forwarded-For today - so this is an improvement in the
 // proxied path and no regression elsewhere, not a blanket guarantee. Closing that
-// properly means ensuring the proxy is the only ingress (BUG-SEC-121's territory).
+// properly means ensuring the proxy is the only ingress (see OnBeforePreProcessRequest).
 func GetIPAddress(r *http.Request) string {
 	ip := r.Header.Get("X-Proxy-Client-IP")
 	if ip == "" {
@@ -657,8 +656,8 @@ func (a *DXAPI) routeHandler(w http.ResponseWriter, r *http.Request, p *DXAPIEnd
 	preprocessStartTime := time.Now()
 	LogExecutionTrace(requestContext, "preprocess_start", aepr.Id, p.Uri, r.Method, preprocessStartTime, 0, "")
 
-	// Transport authentication BEFORE any preprocessing (F-BE-02 / BUG-SEC-121). If a host wired
-	// OnBeforePreProcessRequest (e.g. bms-common → proxy-JWT validation), it runs here — BEFORE
+	// Transport authentication BEFORE any preprocessing. If a host wired
+	// OnBeforePreProcessRequest (e.g. proxy-JWT validation), it runs here — BEFORE
 	// PreProcessRequest triggers the E2EE inner-decrypt / session-bootstrap / replay-check. A returned
 	// error rejects the request with 401 and PreProcessRequest is never called, so an unauthenticated
 	// caller can never reach the decrypt path. nil hook = no-op (backward compatible).

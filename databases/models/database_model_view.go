@@ -12,7 +12,7 @@ import (
 // DBViewRef represents a reference to a view or table by name (for use in FROM/JOIN)
 // Use this when you need to reference a view or table that is not defined as ModelDBTable
 type ModelDBViewRef struct {
-	Schema *ModelDBSchema // Schema pointer (e.g., PartnerManagementSchema)
+	Schema *ModelDBSchema // Schema pointer (e.g., UserManagementSchema)
 	Name   string         // View/table name (e.g., "v_field_executor")
 	Alias  string         // Optional alias for use in queries (e.g., "vfe")
 }

@@ -2,7 +2,7 @@ package utils
 
 import "testing"
 
-// BUG-SEC-122: PII partial-masking mechanism. Credentials stay FULL; PII partial (NIK 5+2, others
+// PII partial-masking mechanism. Credentials stay FULL; PII partial (NIK 5+2, others
 // 2+2); values of front+back+3 runes or fewer keep their first rune; strict mode forces full; unknown fields untouched.
 func TestMaskSensitiveValue_PII(t *testing.T) {
 	SetMaskRules(map[string]MaskRule{
@@ -35,10 +35,10 @@ func TestMaskSensitiveValue_PII(t *testing.T) {
 		}
 	}
 
-	// BUG-SEC-129: the deadline date-time is a non-secret; it must NOT be masked despite
+	// The deadline date-time is a non-secret; it must NOT be masked despite
 	// containing "key" (exception list), so its value stays visible in logs.
 	if IsSensitiveField("KEY_V1_INNER_DEADLINE_DATE_TIME") {
-		t.Error("KEY_V1_INNER_DEADLINE_DATE_TIME must be exempt from masking (BUG-SEC-129)")
+		t.Error("KEY_V1_INNER_DEADLINE_DATE_TIME must be exempt from masking")
 	}
 	// sanity: a genuine key-bearing field is still sensitive
 	if !IsSensitiveField("api_key") {

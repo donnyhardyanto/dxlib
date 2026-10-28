@@ -12,15 +12,15 @@ import (
 
 // VaultGetData must FAIL, never ABORT.
 //
-// Why this test exists. On 2026-08-03 service-configuration died at startup on the
-// bank's OKD development cluster with a bare SIGSEGV inside VaultGetData - no
+// Why this test exists. On 2026-08-03 a service died at startup on a
+// Kubernetes development cluster with a bare SIGSEGV inside VaultGetData - no
 // message, no path, no indication that Vault was even involved:
 //
 //	panic: runtime error: invalid memory address or nil pointer dereference
 //	[signal SIGSEGV: ... addr=0x30 ...]
 //	dxlib/vault.(*DXHashicorpVault).VaultGetData(...) vault/vault.go:440
 //	dxlib/vault.(*DXHashicorpVault).GetStringOrEnvOrDefault(...) vault/vault.go:314
-//	bms-common/infrastructure.DefineConfiguration() define_configuration.go:43
+//	<host service>.DefineConfiguration() define_configuration.go:43
 //
 // The caller is always one of the Get*OrEnvOrDefault helpers, whose entire contract
 // is "Vault -> env -> default". A returned error just moves to the next tier; a

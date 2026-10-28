@@ -8,8 +8,8 @@ import "testing"
 // downstream apps with nothing validating it.
 //
 // A nil therefore panicked, and because APIHandlerPrintSpec serves PrintSpec
-// over HTTP the panic took out the whole GET /spec document, not one entry. The
-// bpm7 product had to pass an empty set at 32 registration sites to avoid it.
+// over HTTP the panic took out the whole GET /spec document, not one entry. A
+// downstream consumer had to pass an empty set at 32 registration sites to avoid it.
 //
 // Both output formats are exercised, because the Postman deref sits about sixty
 // lines below the other four and guarding only the first block would leave it.

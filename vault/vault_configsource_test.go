@@ -4,7 +4,7 @@ import "testing"
 
 // Verifies the config-source labels reported by the Get*OrEnvOrDefault fallback helpers.
 //
-// Why this test exists (BUG-SEC-149): a config key was read under one name while every setter wrote
+// Why this test exists: a config key was read under one name while every setter wrote
 // another. Nothing set the name the reader looked for, so the value silently came from the compiled
 // default. Because that default happened to equal the intended value, behaviour was correct and the
 // defect was undetectable. The startup log now reports WHICH TIER supplied each value, so

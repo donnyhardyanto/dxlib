@@ -11,7 +11,7 @@ import (
 
 // LVLE is the little-endian variant of LV.
 // Wire format: [ uint32 little-endian length ][ value bytes ]
-// Compatible with Python's bytes_vTol32v / api-proxy-v4 L32V encoding.
+// Compatible with Python's bytes_vTol32v L32V encoding.
 type LVLE struct {
 	Length uint32
 	Value  []byte

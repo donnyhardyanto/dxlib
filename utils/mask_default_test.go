@@ -2,7 +2,7 @@ package utils
 
 import "testing"
 
-// BUG-SEC-220: what happens to a field that matches NO rule is now the host's choice, because
+// What happens to a field that matches NO rule is now the host's choice, because
 // neither answer is right everywhere. ALLOW keeps a developer's debug dump readable; DENY keeps a
 // field nobody remembered to name out of a log that leaves the machine.
 func TestMaskDefault_AllowIsTheDefault(t *testing.T) {

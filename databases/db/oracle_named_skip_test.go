@@ -21,8 +21,8 @@ import (
 //
 // Every unit test for that fix passed while the real Oracle path returned an
 // error. It took running against a container to see it, and nothing committed
-// would catch a revert -- dxlib's own suite does not reach QueryRows, and bpm7's
-// end-to-end suite deliberately sends colon-free expressions on Oracle.
+// would catch a revert -- dxlib's own suite does not reach QueryRows, and the
+// downstream end-to-end suite deliberately sends colon-free expressions on Oracle.
 //
 // No database is needed. sqlx.Open only parses the DSN, so the query gets as far
 // as dialling a dead port. What distinguishes the two versions is WHERE it

@@ -87,8 +87,8 @@ func TestOracleSafeBindNamesLeavesUnknownBinds(t *testing.T) {
 //
 //	call register type before use user defined type (UDT)
 //
-// which surfaced as a 500 on /collection/is_allowed_to_run and failed four
-// scheduler-gate tests in the bpm7 end-to-end suite.
+// which surfaced as a 500 on a downstream endpoint and failed four tests in a
+// downstream end-to-end suite.
 func TestExcludeSQLExpressionDropsExpressionsFromBindMap(t *testing.T) {
 	for _, driverName := range []string{"oracle", "postgres", "mariadb", "sqlserver"} {
 		r, err := DBDriverExcludeSQLExpressionFromWhereKeyValues(driverName, utils.JSON{

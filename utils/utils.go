@@ -1396,7 +1396,7 @@ func IsSensitiveField(fieldName string) bool {
 
 	exceptions := []string{
 		"filter_key_values",
-		// BUG-SEC-129: a non-secret retirement DATE that only matches the "key" heuristic by its
+		// A non-secret retirement DATE that only matches the "key" heuristic by its
 		// name. Exempt explicitly so its value is visible in logs (intentional, not heuristic accident).
 		"key_v1_inner_deadline_date_time",
 	}
@@ -1433,8 +1433,8 @@ func IsSensitiveField(fieldName string) bool {
 	return false
 }
 
-// ── PII partial-masking (BUG-SEC-122) ─────────────────────────────────────────
-// dxlib provides the MECHANISM (how to mask); the HOST (bms-common) injects the WHAT
+// ── PII partial-masking ───────────────────────────────────────────────────────
+// dxlib provides the MECHANISM (how to mask); the HOST (the service) injects the WHAT
 // (which fields, how many chars to reveal) via SetMaskRules, because PII field names are
 // domain-specific and dxlib must stay generic. Credentials (IsSensitiveField) are ALWAYS
 // fully masked and are NOT affected by these rules.
@@ -1487,7 +1487,7 @@ var (
 	// it. true = DENY: anything not explicitly named in logAllowedFields is masked.
 	//
 	// Neither setting is right everywhere, which is why this is a switch rather than a decision
-	// baked into the library (BUG-SEC-220). ALLOW suits a laptop or a dev VM, where the dump is
+	// baked into the library. ALLOW suits a laptop or a dev VM, where the dump is
 	// off by default and the only reader is the developer who turned it on. DENY suits any
 	// environment whose logs leave that machine — a shipped log pipeline, a bank's SIEM — where
 	// a field nobody remembered to name must not be the thing that leaks.
@@ -1615,7 +1615,7 @@ func maskLeaf(fieldName string, value any, inherited *MaskRule, showRaw bool) an
 		return applyMaskRule(value, *inherited)
 	}
 	// The field matched no rule. Under default-ALLOW it is logged; under default-DENY it is
-	// masked unless the host named it safe. BUG-SEC-220.
+	// masked unless the host named it safe.
 	if maskDefaultDeny && !logAllowedFields[strings.ToLower(fieldName)] {
 		return "********"
 	}
