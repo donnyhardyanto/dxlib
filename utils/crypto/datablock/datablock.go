@@ -17,6 +17,10 @@ import (
 
 var PayloadUnpackTTL = 5 * time.Minute
 
+// dataBlockElements is how many LVs AsLV writes and NewDataBlockFromLV
+// needs: Time, Nonce, PreKey, Data and DataHash.
+const dataBlockElements = 5
+
 type DataBlock struct {
 	Time     lv.LV
 	Nonce    lv.LV
@@ -48,10 +52,17 @@ func NewDataBlock(data []byte) (*DataBlock, error) {
 	return b, nil
 }
 
+// NewDataBlockFromLV reads a data block from the LV that AsLV wrote. An LV
+// that expands to fewer than the five elements of a data block is refused
+// with INVALID_DATA_BLOCK, since a decrypted block from the wrong key or a
+// peer that sent something else can expand to any count.
 func NewDataBlockFromLV(aLV *lv.LV) (*DataBlock, error) {
 	lvs, err := aLV.Expand()
 	if err != nil {
 		return nil, err
+	}
+	if len(lvs) < dataBlockElements {
+		return nil, errors.Errorf("INVALID_DATA_BLOCK: %d elements, a data block has %d (time, nonce, pre-key index, data, data hash)", len(lvs), dataBlockElements)
 	}
 	b := &DataBlock{
 		Time:     *lvs[0],

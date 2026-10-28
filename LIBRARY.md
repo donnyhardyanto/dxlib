@@ -345,7 +345,7 @@ An envelope for payloads between two peers that share an encryption key and each
 | Identifier | Kind | Description |
 |---|---|---|
 | `PayloadUnpackTTL` | `var time.Duration` | How old an envelope may be when unpacked (5 minutes). |
-| `DataBlock` | `struct` | `Time`, `Nonce`, `PreKey`, `Data`, `DataHash` as `lv.LV`; `NewDataBlock`, `NewDataBlockFromLV`, `AsLV`, `SetTimeNow`, `GenerateNonce`, `SetDataValue`, `GenerateDataHash`, `CheckDataHash`. |
+| `DataBlock` | `struct` | `Time`, `Nonce`, `PreKey`, `Data`, `DataHash` as `lv.LV`; `NewDataBlock`, `NewDataBlockFromLV` (`INVALID_DATA_BLOCK` for an LV of fewer than five elements), `AsLV`, `SetTimeNow`, `GenerateNonce`, `SetDataValue`, `GenerateDataHash`, `CheckDataHash`. |
 | `PackLVPayload(preKeyIndex string, edSelfPrivateKey, encryptKey []byte, payloads ...*lv.LV) (string, error)` | `func` | The envelope with the data block encrypted by `aes.EncryptAES`: the format every reader so far understands. |
 | `PackLVPayloadAESGCM(preKeyIndex string, edSelfPrivateKey, encryptKey []byte, payloads ...*lv.LV) (string, error)` | `func` | The same envelope with the data block encrypted by `aes.EncryptAESGCM` (32-byte key, no associated data); only `UnpackLVPayload` from dxlib v1.133.0 on opens it, so use it once every reading peer has moved. |
 | `UnpackLVPayload(preKeyIndex string, peerPublicKey, decryptKey []byte, dataAsHexString string) ([]*lv.LV, error)` | `func` | Verifies the signature (`INVALID_SIGNATURE`), decrypts the block in whichever format it was written (`INVALID_DATA` for a block that fits neither), then checks age (`TIME_EXPIRED`), pre-key index (`INVALID_PREKEY`) and hash (`INVALID_DATA_HASH`). |

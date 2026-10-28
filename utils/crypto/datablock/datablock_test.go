@@ -242,3 +242,68 @@ func TestUnpackRefuses(t *testing.T) {
 		t.Errorf("5-byte block: err = %v", err)
 	}
 }
+
+// A data block LV with fewer than five elements is an error, not a panic:
+// directly, and through UnpackLVPayload with a signed envelope whose
+// decrypted block is a three-element list.
+func TestNewDataBlockFromLVRefusesShortList(t *testing.T) {
+	for _, n := range []int{0, 1, 4} {
+		parts := make([]*lv.LV, n)
+		for i := range parts {
+			parts[i] = mustLV(t, "x")
+		}
+		combined, err := lv.CombineLVs(parts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		block, err := NewDataBlockFromLV(combined)
+		if err == nil || !strings.Contains(err.Error(), "INVALID_DATA_BLOCK") {
+			t.Errorf("%d elements: block %v, err = %v", n, block, err)
+		}
+	}
+	full, err := NewDataBlock([]byte("payload"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	asLV, err := full.AsLV()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewDataBlockFromLV(asLV); err != nil {
+		t.Errorf("five elements: %v", err)
+	}
+
+	sender := newPeer(t)
+	key := randomKey(t)
+	short, err := lv.CombineLV(mustLV(t, "a"), mustLV(t, "b"), mustLV(t, "c"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shortBytes, err := short.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sealed, err := aes.EncryptAESGCM(key, shortBytes, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lvSealed, err := lv.NewLV(sealed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lvSig, err := lv.NewLV(ed25519.Sign(sender.private, sealed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	outer, err := lv.CombineLV(lvSealed, lvSig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := outer.AsHexString()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := UnpackLVPayload("7", sender.public, key, envelope); err == nil || !strings.Contains(err.Error(), "INVALID_DATA_BLOCK") {
+		t.Errorf("three-element block: err = %v", err)
+	}
+}
