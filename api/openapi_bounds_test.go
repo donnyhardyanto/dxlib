@@ -27,6 +27,7 @@ components:
     N: {type: number, minimum: 1.5, exclusiveMinimum: 1, maximum: 9, exclusiveMaximum: 10, multipleOf: 0.5}
     S: {type: string, minLength: 2, maxLength: 8, pattern: '^[a-z]+$', const: abc}
     A: {type: array, minItems: 1, maxItems: 3, uniqueItems: true}
+    B: {type: array, maxItems: 9223372036854775807}
 `)
 	n, _ := doc.Components.Schemas.Get("N")
 	if *n.Minimum != 1.5 || *n.ExclusiveMinimum != 1 || *n.Maximum != 9 || *n.ExclusiveMaximum != 10 || *n.MultipleOf != 0.5 {
@@ -40,11 +41,17 @@ components:
 	if *a.MinItems != 1 || *a.MaxItems != 3 || !a.UniqueItems {
 		t.Errorf("A = %+v", a)
 	}
+	// The largest count an int64 carries is a valid bound on a 64-bit int.
+	b, _ := doc.Components.Schemas.Get("B")
+	if *b.MaxItems != math.MaxInt64 {
+		t.Errorf("B.MaxItems = %d, want %d", *b.MaxItems, int64(math.MaxInt64))
+	}
 
 	for name, c := range map[string]struct{ schema, want string }{
 		"negative maxLength":        {`{type: string, maxLength: -1}`, "OPENAPI_NEGATIVE_MAX_LENGTH:-1"},
 		"negative minItems":         {`{type: array, minItems: -2}`, "OPENAPI_NEGATIVE_MIN_ITEMS:-2"},
 		"fractional maxItems":       {`{type: array, maxItems: 1.5}`, "OPENAPI_BAD_INTEGER"},
+		"maxItems past int64":       {`{type: array, maxItems: 9223372036854775808}`, "OPENAPI_BAD_INTEGER"},
 		"zero multipleOf":           {`{type: number, multipleOf: 0}`, "OPENAPI_MULTIPLE_OF_NOT_POSITIVE"},
 		"boolean exclusiveMaximum":  {`{type: number, exclusiveMaximum: true}`, "OPENAPI_WRONG_TYPE"},
 		"pattern Go cannot compile": {`{type: string, pattern: '(?=a)'}`, "OPENAPI_PATTERN_NOT_GO_RE2"},

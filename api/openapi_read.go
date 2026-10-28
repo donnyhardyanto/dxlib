@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"regexp"
 	"sort"
@@ -462,13 +463,15 @@ func openAPICount(parent *openAPINode, pointer, field, negativeCode string) (*in
 	if err != nil || i == nil {
 		return nil, err
 	}
-	if *i < 0 {
-		return nil, errors.Errorf("%s:%d:%s", negativeCode, *i, openAPIAt(pointer+"/"+field, parent.field(field)))
+	n := *i
+	if n < 0 {
+		return nil, errors.Errorf("%s:%d:%s", negativeCode, n, openAPIAt(pointer+"/"+field, parent.field(field)))
 	}
-	if int64(int(*i)) != *i {
-		return nil, errors.Errorf("OPENAPI_BAD_INTEGER:%d:%s", *i, openAPIAt(pointer+"/"+field, parent.field(field)))
+	// A count has to fit an int; on a 32-bit platform an int64 may not.
+	if n > math.MaxInt {
+		return nil, errors.Errorf("OPENAPI_BAD_INTEGER:%d:%s", n, openAPIAt(pointer+"/"+field, parent.field(field)))
 	}
-	v := int(*i)
+	v := int(n)
 	return &v, nil
 }
 

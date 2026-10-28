@@ -479,6 +479,12 @@ func TestDecodeEscapes(t *testing.T) {
 		"_x00e9_":       "é",
 		"_x004":         "_x004",
 		"plain":         "plain",
+		// The edges of the four-digit range, and the surrogate range dropped.
+		"_x0000_": "\x00",
+		"_xFFFF_": "\uFFFF",
+		"_xD800_": "",
+		"_xDFFF_": "",
+		"_xE000_": "\uE000",
 	} {
 		if got := decodeEscapes(in); got != want {
 			t.Errorf("decodeEscapes(%q) = %q, want %q", in, got, want)

@@ -624,7 +624,9 @@ func decodeEscapes(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); {
 		if i+7 <= len(s) && s[i] == '_' && s[i+1] == 'x' && isHex(s[i+2]) && isHex(s[i+3]) && isHex(s[i+4]) && isHex(s[i+5]) && s[i+6] == '_' {
-			code, _ := strconv.ParseUint(s[i+2:i+6], 16, 32)
+			// Four hex digits fit 16 bits exactly, so the parse cannot fail and the
+			// value cannot exceed a rune.
+			code, _ := strconv.ParseUint(s[i+2:i+6], 16, 16)
 			if code < 0xD800 || code > 0xDFFF {
 				b.WriteRune(rune(code))
 			}
