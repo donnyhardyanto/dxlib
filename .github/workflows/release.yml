@@ -10,9 +10,12 @@
 # `mode: append` in .goreleaser.yaml puts the generated changelog beneath it.
 #
 # The release is left as a draft, not published: a published release is
-# immutable, so the SBOM could not be attached afterwards. After this workflow
-# finishes, run `agentq sbom dxlib <tag>` to upload dxlib-<version>.cdx.json,
-# then publish with `gh release edit <tag> --draft=false`.
+# immutable, so the SBOMs could not be attached afterwards (v1.129.0 to
+# v1.132.0 carry none for that reason, BUG-001). After this workflow finishes,
+# run `agentq sbom dxlib <tag>`: it scans the tag's tree, commits sbom/<tag>/
+# on main, uploads dxlib-<version>.cdx.json and dxlib-<version>.spdx.json to
+# the draft, writes the scan summary into its notes, publishes it and checks
+# both files are on it. Do not publish the draft by hand before that.
 
 name: Release
 

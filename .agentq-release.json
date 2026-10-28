@@ -1,0 +1,3 @@
+{
+  "sbom_scanners": ["trivy fs --scanners vuln --exit-code 1 ."]
+}
