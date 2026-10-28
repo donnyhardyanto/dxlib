@@ -18,6 +18,7 @@ SBOM: dxlib-1.133.0.cdx.json (CycloneDX, 182 components). Scan (syft 1.55.0, gry
 - `reports/scanner-0.stderr.txt`: what scanner-0 wrote to stderr
 - `tools.json`: the tools and their versions, each step's command and exit status
 - `allowlist-applied.json`: the .dependency-allowlist.json entries that applied, with their reasons
+- `osv-scanner.toml`: osv-scanner's ignore entries for the SBOMs in this folder when the whole repository is scanned (the root's accepted finding); the reports above were made without it
 
 ## Left out of the scan
 
