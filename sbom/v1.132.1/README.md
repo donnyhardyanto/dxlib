@@ -2,10 +2,10 @@
 
 - Tag: `v1.132.1`
 - Commit scanned: `905eafb272b479c2bc464c2e951d6033f75a3e30`
-- Date: 2026-10-28 03:06 UTC
+- Date: 2026-10-28 10:41 UTC
 - Result: clean
 
-SBOM: dxlib-1.132.1.cdx.json (CycloneDX, 124 components). Scan (syft 1.55.0, grype 0.121.0, osv-scanner 2.7.0, govulncheck v1.8.0): clean. Accepted: GO-2026-5932 in golang.org/x/crypto 0.58.0 (.dependency-allowlist.json).
+SBOM: dxlib-1.132.1.cdx.json (CycloneDX, 128 components). Scan (syft 1.55.0, grype 0.121.0, osv-scanner 2.7.0, govulncheck v1.8.0): clean. Accepted: GO-2026-5932 in golang.org/x/crypto 0.58.0 (./go.mod) (.dependency-allowlist.json).
 
 ## Files
 - `dxlib-1.132.1.cdx.json`: CycloneDX JSON, from syft
@@ -22,6 +22,7 @@ SBOM: dxlib-1.132.1.cdx.json (CycloneDX, 124 components). Scan (syft 1.55.0, gry
 - `.build`
 - `.worktrees`
 - `references`
+- `sbom` (the records of the earlier scans, #346)
 
 ## Run it again
 
