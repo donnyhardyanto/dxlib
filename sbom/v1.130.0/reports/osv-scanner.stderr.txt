@@ -1,0 +1,5 @@
+Scanning dir .
+Starting filesystem walk for root: /
+Scanned ./go.mod file and found 115 packages
+Scanned ./js/k6/libs/crypto-js-4.2.0 file and found 0 packages
+End status: 102 dirs visited, 514 inodes visited, 2 Extract calls, 322.569625ms elapsed, 322.572ms wall time
