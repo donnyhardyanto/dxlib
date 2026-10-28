@@ -83,6 +83,39 @@ Trivy has no reachability filter and does not read the allowlist, so an accepted
 listed in `.trivyignore` with its review date as the expiry (`GO-2026-5932 exp:2027-04-05`). When the
 entry expires Trivy reports the finding again, which is the prompt to review it.
 
+## Releasing
+
+A release is a tag, one draft release on GitHub, the SBOMs on that draft, and then the publish. GitHub makes a
+published release immutable, so nothing is published until both SBOMs are on the draft. The order:
+
+1. `git tag -a vX.Y.Z <commit>` on the reviewed commit. The tag message is the release's hand-written notes:
+   its first line is the headline, the body carries what consumers must know.
+2. `git push origin vX.Y.Z`. This starts the Release workflow (`.github/workflows/release.yml`), which runs the
+   build, vet and tests before it reaches GitHub, about two minutes.
+3. Straight after the push, before the workflow finishes:
+   `gh release create vX.Y.Z --verify-tag --draft --title vX.Y.Z --notes-from-tag`.
+   The title must be the tag itself, nothing more. GoReleaser (`use_existing_draft` in `.goreleaser.yaml`)
+   reuses a draft only when its title equals its `name_template`, which is the tag; it does not look at the
+   draft's tag. A draft titled anything else is passed over and GoReleaser makes a second draft beside it, as
+   happened on v1.133.0. GitHub's REST API cannot look up a draft by its tag, which is why GoReleaser matches on the
+   title. Put the headline in the tag message, not in the title.
+4. Wait for the workflow to finish (`gh run watch`). GoReleaser finds the draft, appends its changelog under the
+   notes (`mode: append`) and uploads the source archive and checksums. Check there is one draft for the tag:
+   `gh api repos/donnyhardyanto/dxlib/releases --jq '[.[] | select(.draft and .tag_name == "vX.Y.Z")] | length'`
+   must print `1`.
+5. `agentq sbom dxlib vX.Y.Z`: it scans the tag's tree, commits `sbom/<tag>/`, uploads both SBOMs to the draft,
+   adds the scan summary to its notes, publishes it and checks both files are on it.
+
+If step 3 came too late and the workflow has already made its own draft (titled with the tag), do not create
+another: change that one with `gh release edit vX.Y.Z --notes-file <file>`.
+
+Edit a draft only with `gh release edit`, never with a bare `PATCH` of `repos/.../releases/<id>`. GitHub drops a
+draft's tag when an update leaves out `tag_name`, and the draft becomes `untagged-<hash>`; `gh release edit`
+finds a draft by its tag and always sends `tag_name` back. A script that must use the API sends `tag_name` and
+`draft: true` with every update.
+
+Never publish a draft by hand: a release without its SBOMs claims what it does not carry.
+
 ## Compliance and Security
 
 Every release's software bill of materials is committed in `sbom/<tag>/` at the root of this repository, in two
