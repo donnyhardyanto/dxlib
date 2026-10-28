@@ -1,11 +1,35 @@
 # dxlib
 
-Newer version of dxlib.
+dxlib is a Go library for building backend services. It provides an HTTP API server with typed endpoint
+parameters, OpenAPI reading and writing and end-to-end encryption; connections to PostgreSQL, MySQL and
+MariaDB, Oracle and SQL Server behind one table abstraction; structured logging; configuration files with
+sensitive-value masking; Redis with rate limiting, sessions and single sign-on; a TLS policy for servers and
+clients; a streaming writer and a hardened reader of `.xlsx` files; OpenTelemetry metrics; object storage;
+and the small utilities those share. [LIBRARY.md](LIBRARY.md) lists every package and exported identifier,
+and <https://pkg.go.dev/github.com/donnyhardyanto/dxlib> renders the reference documentation. Consumers
+import it by module path and pin a release tag in their `go.mod`.
 
 Released under the MIT License; see [LICENSE](LICENSE). Third-party credits are in [NOTICE](NOTICE).
 
 []: # with the following snippet from README.md:
 []: # # dxlib
+
+## Reporting bugs and contributing
+
+GitHub issues and discussions are off on this repository, and pull requests from outside contributors are
+not accepted: public issues are used as a lead-in to malicious pull requests that claim to fix them, so bugs
+are tracked in files instead.
+
+- **Bug reports and enhancement requests**: email <hardyanto.donny@gmail.com> with `dxlib` in the subject,
+  the version tag, what you ran and what happened. Every report is acknowledged; a confirmed bug gets a
+  `BUG-NNN` entry in [BUG_OUTSTANDING.md](BUG_OUTSTANDING.md), moves to [BUG_HISTORY.md](BUG_HISTORY.md)
+  when fixed, and the fixing commit says `Fixes BUG-NNN`. Those two files and the git history are the public
+  archive of reports and their outcome.
+- **Security weaknesses**: never by email or in public; follow [SECURITY.md](SECURITY.md).
+- **Changes**: the maintainer makes them from the reports. Every change meets the same bar before it is
+  committed: `gofmt`, `go vet` and `go test -race ./...` clean (the CI workflow runs the same on every
+  push), a test for each new behaviour and for each bug fixed, and the dependency scan and licence check
+  below for any dependency change.
 
 ## Dependencies
 
