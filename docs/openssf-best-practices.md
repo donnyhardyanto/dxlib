@@ -11,11 +11,11 @@ description: "Go library for building backend services: HTTP API server with typ
 OpenAPI, multi-database access, logging, configuration, Redis, TLS policy, xlsx reading and writing,
 OpenTelemetry."
 
-Two criteria cannot be Met as things stand and are answered honestly below: `discussion` (issues and
-discussions are off; bug reports go by email) and `crypto_weaknesses` (one finding, tracked privately as
-`SECURITY.md` requires until its fix is released). `discussion` is a MUST, so the badge stays below
-passing until a public, URL-addressable discussion channel exists; everything else at passing level is
-Met or N/A.
+Three criteria cannot be Met as things stand and are answered honestly below: `discussion` (issues and
+discussions are off; bug reports go by email), `crypto_weaknesses` (one finding, tracked privately as
+`SECURITY.md` requires until its fix is released) and `test_most` (35% statement coverage). `discussion`
+is a MUST, so the badge stays below passing until a public, URL-addressable discussion channel exists;
+everything else at passing level is Met or N/A.
 
 ## Basics
 
@@ -97,7 +97,7 @@ Met or N/A.
 | crypto_random | Met | Every key, nonce, IV and salt comes from crypto/rand; math/rand is not used outside tests. |
 | delivery_mitm | Met | The module is fetched by the Go toolchain over HTTPS through the module proxy, and every download is checked against go.sum and the Go checksum database; releases are on GitHub over HTTPS. |
 | delivery_unsigned | Met | No hash is fetched over http; the Go checksum database signs the checksums the toolchain verifies. |
-| vulnerabilities_fixed_60_days | Met | None known in dxlib. Dependencies are scanned (syft, grype, osv-scanner, govulncheck, trivy) before every dependency change and at every release, with the records committed in sbom/<tag>/. The one open advisory, GO-2026-5932, concerns an unmaintained package (x/crypto/openpgp) that dxlib does not call; it is recorded as accepted with its review date. |
+| vulnerabilities_fixed_60_days | Met | None publicly known in dxlib. Dependencies are scanned (syft, grype, osv-scanner, govulncheck, trivy) before every dependency change and at every release, with the records committed in sbom/<tag>/. The one open advisory, GO-2026-5932, concerns an unmaintained package (x/crypto/openpgp) that dxlib does not call; it is recorded as accepted with its review date. |
 | vulnerabilities_critical_fixed | Met | None reported; the process in SECURITY.md fixes a confirmed weakness in a new tagged release. |
 | no_leaked_credentials | Met | GitHub secret scanning and push protection are on; no credential is in the repository (key files are gitignored). |
 
