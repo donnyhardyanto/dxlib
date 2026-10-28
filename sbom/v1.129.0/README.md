@@ -16,6 +16,7 @@ SBOM: dxlib-1.129.0.cdx.json (CycloneDX, 128 components). Scan (syft 1.55.0, gry
 - `reports/govulncheck-0.json`: govulncheck -format json ./... in .
 - `tools.json`: the tools and their versions, each step's command and exit status
 - `allowlist-applied.json`: the .dependency-allowlist.json entries that applied, with their reasons
+- `osv-scanner.toml`: osv-scanner's ignore entries for the SBOMs in this folder when the whole repository is scanned (the root's accepted finding, and this release's own findings, named as such); the reports above were made without it
 
 ## Left out of the scan
 

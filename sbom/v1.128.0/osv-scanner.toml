@@ -1,0 +1,22 @@
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+ignoreUntil = 2027-04-05
+reason = "golang.org/x/crypto/openpgp is unmaintained; the advisory covers every x/crypto release (no fixed version). dxlib imports only argon2 and bcrypt from the module and govulncheck ./... reports the vulnerable package is not called. Accepted by the owner on 2026-10-05; see GO-2026-5932 in .dependency-allowlist.json. Review by 2027-04-05."
+
+# The three entries below are the findings of the release v1.128.0 itself, recorded in this folder's SBOMs and
+# reports (README.md, Result: findings). They describe that past release, not the current tree, which has the
+# fixed versions since v1.132.1 (golang.org/x/net 0.62.0, go-jose/v4 4.1.6). osv-scanner reads this file for the
+# SBOMs in this folder alone, so a scan of the repository does not report a past release's findings as current.
+# No ignoreUntil: the record does not change.
+
+[[IgnoredVulns]]
+id = "GHSA-mgcc-cww5-fp2q"
+reason = "CVE-2026-116587 in github.com/go-jose/go-jose/v4 4.1.5, a dependency of the release v1.128.0 recorded here; fixed in 4.1.6, which dxlib uses since v1.132.1."
+
+[[IgnoredVulns]]
+id = "GO-2026-6860"
+reason = "CVE-2026-78661 in golang.org/x/net 0.61.0, a dependency of the release v1.128.0 recorded here; fixed in 0.62.0, which dxlib uses since v1.132.1."
+
+[[IgnoredVulns]]
+id = "GO-2026-6866"
+reason = "CVE-2026-97045 in golang.org/x/net 0.61.0, a dependency of the release v1.128.0 recorded here; fixed in 0.62.0, which dxlib uses since v1.132.1."

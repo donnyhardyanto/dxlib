@@ -91,11 +91,29 @@ formats from the same syft run: CycloneDX JSON (`<name>-<version>.cdx.json`) and
 on the SBOM, osv-scanner on the source, govulncheck for each Go module, and the repository's own scanners when
 it names any), `tools.json` with the scanners' versions and exit statuses, `allowlist-applied.json` with the
 accepted findings that applied, and a README.md naming the tag, the commit scanned, the date and the result.
-Where the repository's releases allow it, both SBOMs are also attached to the GitHub release.
+Both SBOMs are also attached to the GitHub release, uploaded while it is still a draft, and the release's notes
+carry the scan summary; a release is published only once both files are on it.
 
-To run the scan again for a tag: `sbom-record <tag>` from the repository's root. It scans the tag's tree,
-writes `sbom/<tag>/` and commits it.
+The records go back to v1.128.0. Four releases carry no asset: v1.129.0, v1.130.0, v1.131.0 and v1.132.0 were
+published by the release workflow within minutes of their tag push, GitHub makes a published release immutable,
+and the upload that followed was refused, although their notes claimed the file (BUG-001 in
+[BUG_HISTORY.md](BUG_HISTORY.md)). For those four, `sbom/<tag>/` is the SBOM; the records were made on
+2026-10-28 from each tag's tree, and the scan found what the tree had then (`golang.org/x/net` 0.61.0 and
+`go-jose/v4` 4.1.5, fixed in v1.132.1), so each README says `Result: findings`. The two files attached to
+v1.132.1 were scanned on 2026-10-28 03:06 UTC and name one component the scan picked up outside the tree; the
+committed `sbom/v1.132.1/` is a later scan of the same commit without it, and is the record to use.
+
+To verify a release against its record: the commit in `sbom/<tag>/README.md` must be the tag's
+(`git rev-parse <tag>^{commit}`), and where the release has the assets, `shasum -a 256` of the downloaded file
+and of the committed one must agree. To run the scan again for a tag: `sbom-record <tag>` from the repository's
+root scans the tag's tree, writes `sbom/<tag>/` and commits it. The scanners it runs are named in
+`.agentq-release.json`; since the commit that added that file, trivy runs beside the four above, and its report
+is `reports/scanner-0.txt`.
 
 Accepted findings and licences, each with its reason, are in `.dependency-allowlist.json` (`vulnerabilities`,
 `licences`, `licence_exceptions`); a scanner's own ignore file (`osv-scanner.toml`, `.grype.yaml`,
-`.trivyignore`) holds its entries where one exists.
+`.trivyignore`) holds its entries where one exists. Each `sbom/<tag>/` holds its own `osv-scanner.toml`,
+because osv-scanner reads the committed SBOMs as inputs when it scans the whole repository (OpenSSF Scorecard
+does so): the copy repeats the root's accepted finding and, for a record whose release had findings, names
+those findings as that release's, so a scan of the current tree does not report a past release's dependencies
+as the current ones. The record's own reports are untouched by it.
