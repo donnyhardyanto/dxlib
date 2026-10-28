@@ -15,6 +15,8 @@ This document lists every exported identifier in dxlib — types, constants, var
 | `log` | `github.com/donnyhardyanto/dxlib/log` | Structured logging, file output, Telegram alerts |
 | `utils` | `github.com/donnyhardyanto/dxlib/utils` | JSON type, type conversions, collections, network utils |
 | `utils/xlsx` | `github.com/donnyhardyanto/dxlib/utils/xlsx` | Streaming .xlsx writer: one sheet of text (`Writer`), or several sheets with numbers, styles, merges, row heights and frozen panes (`Workbook`); a hardened reader of untrusted workbooks (sheet list, rows as text, as excelize's `GetRows`, formatted or raw) |
+| `utils/crypto/aes` | `github.com/donnyhardyanto/dxlib/utils/crypto/aes` | Authenticated encryption (`EncryptAESGCM`, `DecryptAESGCM`, AES-256-GCM with a format byte) and the deprecated CBC helper kept for the data written with it |
+| `utils/crypto/datablock` | `github.com/donnyhardyanto/dxlib/utils/crypto/datablock` | Signed, encrypted, hex-encoded payload envelopes between peers (`PackLVPayload`, `PackLVPayloadAESGCM`, `UnpackLVPayload`) |
 | `secure_memory` | `github.com/donnyhardyanto/dxlib/secure_memory` | Secure in-memory storage for secrets (memguard-backed) |
 | `configuration` | `github.com/donnyhardyanto/dxlib/configuration` | JSON/YAML config files, dot-path access, sensitive masking |
 | `base` | `github.com/donnyhardyanto/dxlib/base` | Database type enum shared by databases and tables packages |
@@ -316,6 +318,37 @@ Writes `.xlsx` workbooks, streaming rows into an `io.Writer`: `Writer` for one s
 Errors stick: after one, every later call returns it. Characters XML cannot hold are written as `_xHHHH_`, and a literal `_xHHHH_` in a value is escaped so Excel shows it as typed.
 
 ---
+
+## `utils/crypto/aes`
+
+**Import:** `github.com/donnyhardyanto/dxlib/utils/crypto/aes`
+
+Symmetric encryption with the standard library's AES. New code uses the authenticated pair: `EncryptAESGCM` writes `FormatAESGCM` (one byte), a random 96-bit nonce, the AES-256-GCM ciphertext and its 16-byte tag, and `DecryptAESGCM` returns the plaintext only when all of it authenticates under the same key and associated data. The format byte lets a reader accept the output of both helpers while callers move over (`IsAESGCMFormat`). The CBC helper (`EncryptAES`, `DecryptAES`, `Pad`, `RemovePad`) is deprecated, unchanged in signature, behaviour and output, and stays until a major version for the peers and the stored data that use it.
+
+| Identifier | Kind | Description |
+|---|---|---|
+| `FormatAESGCM` | `const byte` | `1`: the first byte of every `EncryptAESGCM` output. |
+| `AESGCMKeySize`, `AESGCMNonceSize`, `AESGCMTagSize`, `AESGCMOverhead` | `const` | 32, 12, 16 and 29: the key, the nonce, the tag and the bytes added to a plaintext. |
+| `EncryptAESGCM(key, plaintext, additionalData []byte) ([]byte, error)` | `func` | AES-256-GCM under a 32-byte key with a fresh nonce from `crypto/rand`; `additionalData` (may be nil) is authenticated, not encrypted. One key for at most about 2^32 messages. |
+| `DecryptAESGCM(key, data, additionalData []byte) ([]byte, error)` | `func` | Opens `EncryptAESGCM`'s output; any change to the data, the key or the associated data is an error (`AES_GCM_AUTHENTICATION_FAILED`, `AES_GCM_INVALID_FORMAT`, `AES_GCM_INVALID_KEY_SIZE`), and no input length panics. |
+| `IsAESGCMFormat(data []byte) bool` | `func` | The format byte first and at least `AESGCMOverhead` bytes: a shape check for a reader of both formats, not a proof. |
+| `EncryptAES(key, data []byte) ([]byte, error)` | `func` | Deprecated: AES-CBC under a 16, 24 or 32-byte key; a random 16-byte IV then the PKCS#7-padded ciphertext. |
+| `DecryptAES(key, data []byte) ([]byte, error)` | `func` | Deprecated: the padded plaintext of `EncryptAES`'s output; `data` must be at least 16 bytes and a multiple of 16, which a reader of untrusted input checks first. |
+| `Pad(data []byte, blocksize int) []byte`, `RemovePad(data []byte) ([]byte, error)` | `func` | Deprecated: PKCS#7 padding on and off (`INVALID_PADDING` when the count exceeds the block or the data). |
+
+## `utils/crypto/datablock`
+
+**Import:** `github.com/donnyhardyanto/dxlib/utils/crypto/datablock`
+
+An envelope for payloads between two peers that share an encryption key and each other's Ed25519 public key: the data block (time, a 32-byte nonce, the pre-key index, the combined payloads and their SHA-512) is encrypted, the ciphertext signed, and the two combined as LVs and hex-encoded. `UnpackLVPayload` verifies the signature before decrypting, reads the block in either format of `utils/crypto/aes`, and refuses a block older than `PayloadUnpackTTL`, another pre-key index or a hash mismatch.
+
+| Identifier | Kind | Description |
+|---|---|---|
+| `PayloadUnpackTTL` | `var time.Duration` | How old an envelope may be when unpacked (5 minutes). |
+| `DataBlock` | `struct` | `Time`, `Nonce`, `PreKey`, `Data`, `DataHash` as `lv.LV`; `NewDataBlock`, `NewDataBlockFromLV`, `AsLV`, `SetTimeNow`, `GenerateNonce`, `SetDataValue`, `GenerateDataHash`, `CheckDataHash`. |
+| `PackLVPayload(preKeyIndex string, edSelfPrivateKey, encryptKey []byte, payloads ...*lv.LV) (string, error)` | `func` | The envelope with the data block encrypted by `aes.EncryptAES`: the format every reader so far understands. |
+| `PackLVPayloadAESGCM(preKeyIndex string, edSelfPrivateKey, encryptKey []byte, payloads ...*lv.LV) (string, error)` | `func` | The same envelope with the data block encrypted by `aes.EncryptAESGCM` (32-byte key, no associated data); only `UnpackLVPayload` from dxlib v1.133.0 on opens it, so use it once every reading peer has moved. |
+| `UnpackLVPayload(preKeyIndex string, peerPublicKey, decryptKey []byte, dataAsHexString string) ([]*lv.LV, error)` | `func` | Verifies the signature (`INVALID_SIGNATURE`), decrypts the block in whichever format it was written (`INVALID_DATA` for a block that fits neither), then checks age (`TIME_EXPIRED`), pre-key index (`INVALID_PREKEY`) and hash (`INVALID_DATA_HASH`). |
 
 ## `secure_memory`
 

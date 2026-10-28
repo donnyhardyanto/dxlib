@@ -2,6 +2,7 @@ package datablock
 
 import (
 	"bytes"
+	stdaes "crypto/aes"
 	"crypto/ed25519"
 	"crypto/sha512"
 	"encoding/hex"
@@ -117,7 +118,31 @@ func (db *DataBlock) AsLV() (r *lv.LV, err error) {
 	return r, nil
 }
 
+// PackLVPayload packs payloads into a signed, encrypted envelope: the data
+// block (time, nonce, pre-key index, the combined payloads and their SHA-512)
+// is encrypted with aes.EncryptAES under encryptKey, signed with
+// edSelfPrivateKey, and the two are combined as LVs and hex-encoded.
+//
+// The envelope is written in the format every reader so far understands,
+// so a mixed set of peers keeps working. PackLVPayloadAESGCM writes the
+// authenticated format; UnpackLVPayload reads both.
 func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byte, payloads ...*lv.LV) (r string, err error) {
+	return packLVPayload(preKeyIndex, edSelfPrivateKey, func(data []byte) ([]byte, error) {
+		return aes.EncryptAES(encryptKey, data)
+	}, payloads...)
+}
+
+// PackLVPayloadAESGCM is PackLVPayload with the data block encrypted by
+// aes.EncryptAESGCM (encryptKey is 32 bytes; no associated data). Only a
+// reader with UnpackLVPayload from this version on can open it, so use it
+// once every peer that reads the envelope has moved.
+func PackLVPayloadAESGCM(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byte, payloads ...*lv.LV) (r string, err error) {
+	return packLVPayload(preKeyIndex, edSelfPrivateKey, func(data []byte) ([]byte, error) {
+		return aes.EncryptAESGCM(encryptKey, data, nil)
+	}, payloads...)
+}
+
+func packLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encrypt func(data []byte) ([]byte, error), payloads ...*lv.LV) (r string, err error) {
 	lvPackedPayload, err := lv.CombineLV(payloads...)
 	if err != nil {
 		return "", err
@@ -146,7 +171,7 @@ func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byt
 		return "", err
 	}
 
-	encyptedLVDataBlockAsBytes, err := aes.EncryptAES(encryptKey, lvDataBlockAsBytes)
+	encyptedLVDataBlockAsBytes, err := encrypt(lvDataBlockAsBytes)
 	if err != nil {
 		return "", err
 	}
@@ -173,6 +198,10 @@ func PackLVPayload(preKeyIndex string, edSelfPrivateKey []byte, encryptKey []byt
 	return r, nil
 }
 
+// UnpackLVPayload opens an envelope from PackLVPayload or PackLVPayloadAESGCM:
+// it checks the Ed25519 signature with peerPublicKey, decrypts the data block
+// with decryptKey in whichever format it was written, and checks its age
+// (PayloadUnpackTTL), pre-key index and hash before returning the payloads.
 func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte, dataAsHexString string) (r []*lv.LV, err error) {
 	dataAsBytes, err := hex.DecodeString(dataAsHexString)
 	if err != nil {
@@ -206,7 +235,7 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 		return nil, errors.New("INVALID_SIGNATURE")
 	}
 
-	decryptedData, err := aes.DecryptAES(decryptKey, lvEncryptedData.Value)
+	decryptedData, err := decryptDataBlock(decryptKey, lvEncryptedData.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -254,4 +283,34 @@ func UnpackLVPayload(preKeyIndex string, peerPublicKey []byte, decryptKey []byte
 
 	return lvPtrDataPayload, nil
 
+}
+
+// decryptDataBlock reads the data block in either format. The signature
+// over the ciphertext has been checked by the caller, so the bytes are the
+// peer's own; what is decided here is only which helper wrote them. A block
+// with the shape aes.EncryptAESGCM writes is opened with aes.DecryptAESGCM;
+// when that fails and the block also has the shape aes.EncryptAES writes
+// (an IV and whole blocks), it is a CBC block whose random IV happens to
+// start with the format byte, and aes.DecryptAES reads it. A block with
+// neither shape is refused here, so no input length reaches the CBC helper.
+func decryptDataBlock(key, data []byte) ([]byte, error) {
+	if aes.IsAESGCMFormat(data) {
+		plaintext, err := aes.DecryptAESGCM(key, data, nil)
+		if err == nil {
+			return plaintext, nil
+		}
+		if !isCBCShaped(data) {
+			return nil, err
+		}
+	}
+	if !isCBCShaped(data) {
+		return nil, errors.Errorf("INVALID_DATA: the encrypted block is %d bytes, which fits neither format (the authenticated one needs %d bytes or more with the format byte first, the other an IV and whole blocks of %d bytes)", len(data), aes.AESGCMOverhead, stdaes.BlockSize)
+	}
+	return aes.DecryptAES(key, data)
+}
+
+// isCBCShaped reports whether data could be aes.EncryptAES output: a
+// 16-byte IV followed by at least one whole block.
+func isCBCShaped(data []byte) bool {
+	return len(data) >= 2*stdaes.BlockSize && len(data)%stdaes.BlockSize == 0
 }
