@@ -16,7 +16,9 @@ contributors are not accepted.
 ## Fixes and disclosure
 
 A confirmed weakness is fixed on `main` and shipped in a new tagged release;
-the advisory is published once that release is out. There are no maintenance
-branches: consumers pin dxlib by tag in their own `go.mod` and move the pin to
-take a fix. Every release carries its SBOM and scan results, described in
-`README.md` under Compliance and Security.
+the advisory is published once that release is out. There are no
+maintenance branches: consumers pin dxlib by tag in their own `go.mod` and
+move the pin to take a fix. Each release's SBOM and scan results are
+recorded in `sbom/<tag>/` and attached to the GitHub release while it is
+still a draft: the release workflow leaves every release a draft for that
+step, and `README.md` describes the records under Compliance and Security.
