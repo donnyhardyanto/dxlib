@@ -1,0 +1,9 @@
+[
+  {"paths": ["api/testdata/**"], "command": "go vet ./api && go test -race ./api"},
+  {"paths": ["databases/models/testdata/**"], "command": "go vet ./databases/models && go test -race ./databases/models"},
+  {"paths": ["utils/xlsx/testdata/**"], "command": "go vet ./utils/xlsx && go test -race ./utils/xlsx"},
+  {"paths": ["assets/**"], "command": "go vet ./assets ./captcha && go test -race ./assets ./captcha"},
+  {"paths": ["/go.mod", "/go.sum"], "command": "go build ./... && go vet ./... && go test -race ./..."},
+  {"paths": ["examples/dxlibv3-dart/**"], "command": "cd examples/dxlibv3-dart && fvm dart analyze"},
+  {"paths": ["*.go"], "command": "go vet {dirs} && go test -race {dirs}"}
+]
