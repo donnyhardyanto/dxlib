@@ -290,15 +290,25 @@ func (r *DXRedis) Connect() (err error) {
 			log.Log.Infof("Connecting to Redis %s via Sentinel master=%q sentinels=%v db=%d %s... start",
 				r.NameId, r.SentinelMasterName, r.SentinelAddresses, r.DatabaseIndex, r.tlsSummary())
 			connection = redis.NewFailoverClient(r.failoverOptions())
+			err = connection.Ping(r.Context).Err()
 		} else {
 			log.Log.Infof("Connecting to Redis %s at %s/%d %s... start", r.NameId, r.Address, r.DatabaseIndex, r.tlsSummary())
-			connection = redis.NewRing(r.ringOptions())
+			// A go-redis v8 Ring starts a heartbeat goroutine that Close does
+			// not stop, so the Ring is built only once a plain client with
+			// the same address, credentials and TLS has answered: a failed
+			// Connect then leaves nothing running (BUG-003).
+			err = r.probe()
+			if err == nil {
+				connection = redis.NewRing(r.ringOptions())
+				err = connection.Ping(r.Context).Err()
+			}
 		}
 		log.Log.Infof("Pool config for Redis %s: PoolSize=%d, MinIdleConns=%d, MaxConnAge=%dm, IdleTimeout=%dm",
 			r.NameId, r.PoolSize, r.MinIdleConns, r.MaxConnAgeMinutes, r.IdleTimeoutMinutes)
-		err = connection.Ping(r.Context).Err()
 		if err != nil {
-			_ = connection.Close()
+			if connection != nil {
+				_ = connection.Close()
+			}
 			if r.MustConnected {
 				log.Log.Fatalf("Cannot connect to Redis %s at %s/%d %s (%s)", r.NameId, r.Address, r.DatabaseIndex, r.tlsSummary(), err.Error())
 				return nil
@@ -401,6 +411,22 @@ func (r *DXRedis) ringOptions() *redis.RingOptions {
 		o.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
 	}
 	return o
+}
+
+// probe pings the single node on a one-connection client that is closed
+// before it returns, so nothing of it outlives the call.
+func (r *DXRedis) probe() error {
+	o := r.ringOptions()
+	c := redis.NewClient(&redis.Options{
+		Addr:      r.Address,
+		DB:        o.DB,
+		Username:  o.Username,
+		Password:  o.Password,
+		TLSConfig: o.TLSConfig,
+		PoolSize:  1,
+	})
+	defer func() { _ = c.Close() }()
+	return c.Ping(r.Context).Err()
 }
 
 func (r *DXRedis) failoverOptions() *redis.FailoverOptions {
