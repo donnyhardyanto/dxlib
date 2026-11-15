@@ -628,7 +628,7 @@ Pre-built response possibility sets for common CRUD endpoints:
 
 **Import:** `github.com/donnyhardyanto/dxlib/redis`
 
-Redis client wrapper using `go-redis/v8`. Supports ring topology, OTel instrumentation, and JSON-native get/set. Managed by `DXRedisManager`.
+Redis client wrapper using `go-redis/v8`. Supports a single node (ring), Sentinel failover, TLS, OTel instrumentation, and JSON-native get/set. Managed by `DXRedisManager`.
 
 ### Types
 
@@ -643,7 +643,9 @@ Redis client wrapper using `go-redis/v8`. Supports ring topology, OTel instrumen
 | `IsConnectAtStart` | `bool` | Auto-connect on startup |
 | `MustConnected` | `bool` | Fatal if connection fails |
 | `Connected` | `bool` | Current state |
-| `Connection` | `*redis.Ring` | Active client |
+| `Connection` | `redis.UniversalClient` | Active client: `*redis.Ring` (single node) or `*redis.Client` (Sentinel) |
+| `TLSConfig` | `*tls.Config` | TLS for the connection; `nil` = plain TCP. Set it directly on a struct built by hand (`IsConfigured=true`), or let the `tls` block fill it. Applied to the ring and, under Sentinel, to the sentinels and the data nodes; a `MinVersion` below TLS 1.2 is raised to TLS 1.2 |
+| `TLS` | `*utilsTLS.DXClientTLS` | The parsed `tls` block behind `TLSConfig`; `nil` when `TLSConfig` was set directly |
 
 | Method | Description |
 |---|---|
@@ -656,6 +658,24 @@ Redis client wrapper using `go-redis/v8`. Supports ring topology, OTel instrumen
 | `MustGet(ctx context.Context, key string) (utils.JSON, error)` | Like `Get` but logs fatal on miss. |
 | `Delete(ctx context.Context, key string) error` | Deletes key. |
 | `ApplyFromConfiguration() error` | Reads config from `configuration.Manager`. |
+| `SetTLSFromBlock(kv utils.JSON) error` | Parses a `tls` block (below), loads its files and sets `TLSConfig` and `TLS`. |
+
+**TLS.** An optional `tls` object inside a Redis configuration entry, in the same vocabulary as the API and HTTP client `tls` blocks (`utils/tls`). `tls-policy` and `ca-trust` are required in it; `intermediate` means TLS 1.2 and 1.3, `modern` TLS 1.3 only. Without the block, or with `enabled: false`, the connection is plain TCP. A malformed block stops configuration with an error naming `redis.<name>.tls`.
+
+```json
+"session": {
+  "address": "valkey.internal:6380", "database_index": 0,
+  "user_name": "session", "password": "...",
+  "tls": {
+    "tls-policy": "intermediate",
+    "ca-trust": "custom", "ca-files": ["/etc/valkey/ca.crt"],
+    "cert-file": "/etc/app/valkey-client.crt", "key-file": "/etc/app/valkey-client.key",
+    "server-name": "valkey.internal"
+  }
+}
+```
+
+`ca-trust` is `system`, `custom` (with `ca-files`) or `system-and-custom`; `cert-file`/`key-file` are needed only when the server requires a client certificate; `server-name` is needed when the certificate does not name the host in `address` (or, under Sentinel, the addresses the sentinels report). The connect log line and every connect error carry the TLS posture (`tls=off`, or `tls=on (...)`).
 
 **`DXRedisManager`** — Manages multiple Redis instances.
 | Method | Description |

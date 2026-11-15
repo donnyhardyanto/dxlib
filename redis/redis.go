@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	dxlibOtel "github.com/donnyhardyanto/dxlib/otel"
 	"github.com/donnyhardyanto/dxlib/utils"
 	json2 "github.com/donnyhardyanto/dxlib/utils/json"
+	utilsTLS "github.com/donnyhardyanto/dxlib/utils/tls"
 	"github.com/go-redis/redis/v8"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -51,6 +53,18 @@ type DXRedis struct {
 	SentinelAddresses  []string
 	SentinelPassword   string // AUTH to the sentinels themselves (optional)
 	HasSentinel        bool
+
+	// TLS. nil = plain TCP. Set directly when the struct is built by hand
+	// (IsConfigured=true skips the configuration), or filled from the "tls"
+	// block of the configuration, or from a block through SetTLSFromBlock.
+	// Connect() applies it to the single-node Ring and, under Sentinel, to the
+	// sentinels and the data nodes alike; a MinVersion below TLS 1.2 is raised
+	// to TLS 1.2. An empty ServerName is filled per dial from the address's
+	// host, so a certificate that names an IP needs that IP SAN or ServerName.
+	TLSConfig *tls.Config
+	// TLS is the parsed block behind TLSConfig when it came from a block; nil
+	// when TLSConfig was set directly. Kept for its Summary() in the log.
+	TLS *utilsTLS.DXClientTLS
 }
 
 type DXRedisManager struct {
@@ -241,6 +255,24 @@ func (r *DXRedis) ApplyFromConfiguration() (err error) {
 		r.SentinelPassword, _ = redisConfiguration["sentinel_password"].(string)
 		r.HasSentinel = r.SentinelMasterName != "" && len(r.SentinelAddresses) > 0
 
+		// TLS — optional block, the same keys as the API and HTTP client tls
+		// blocks (utils/tls): tls-policy and ca-trust are required inside it.
+		if tlsBlock, present := redisConfiguration["tls"]; present && tlsBlock != nil {
+			tlsKV, isObject := tlsBlock.(utils.JSON)
+			if !isObject {
+				if r.MustConnected {
+					return log.Log.PanicAndCreateErrorf("DXRedis/ApplyConfigurations", "TLS_CONFIG_ERROR:redis.%s.tls:WRONG_TYPE:%T:EXPECTED_OBJECT", r.NameId, tlsBlock)
+				}
+				return log.Log.WarnAndCreateErrorf("configuration is unusable, TLS_CONFIG_ERROR:redis.%s.tls:WRONG_TYPE:%T:EXPECTED_OBJECT", r.NameId, tlsBlock)
+			}
+			if err := r.SetTLSFromBlock(tlsKV); err != nil {
+				if r.MustConnected {
+					return log.Log.PanicAndCreateErrorf("DXRedis/ApplyConfigurations", "TLS_CONFIG_ERROR:redis.%s.tls/%v", r.NameId, err)
+				}
+				return log.Log.WarnAndCreateErrorf("configuration is unusable, TLS_CONFIG_ERROR:redis.%s.tls/%v", r.NameId, err)
+			}
+		}
+
 		r.IsConfigured = true
 		log.Log.Infof("Configuring to Redis %s... done", r.NameId)
 	}
@@ -255,71 +287,23 @@ func (r *DXRedis) Connect() (err error) {
 		}
 		var connection redis.UniversalClient
 		if r.HasSentinel {
-			log.Log.Infof("Connecting to Redis %s via Sentinel master=%q sentinels=%v db=%d... start",
-				r.NameId, r.SentinelMasterName, r.SentinelAddresses, r.DatabaseIndex)
-			fo := &redis.FailoverOptions{
-				MasterName:    r.SentinelMasterName,
-				SentinelAddrs: r.SentinelAddresses,
-				DB:            r.DatabaseIndex,
-			}
-			if r.HasUserName {
-				fo.Username = r.UserName
-			}
-			if r.HasPassword {
-				fo.Password = r.Password // AUTH to the data nodes (master/replicas)
-			}
-			if r.SentinelPassword != "" {
-				fo.SentinelPassword = r.SentinelPassword // AUTH to the sentinels
-			}
-			if r.PoolSize > 0 {
-				fo.PoolSize = r.PoolSize
-			}
-			if r.MinIdleConns > 0 {
-				fo.MinIdleConns = r.MinIdleConns
-			}
-			if r.MaxConnAgeMinutes > 0 {
-				fo.MaxConnAge = time.Duration(r.MaxConnAgeMinutes) * time.Minute
-			}
-			if r.IdleTimeoutMinutes > 0 {
-				fo.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
-			}
-			connection = redis.NewFailoverClient(fo)
+			log.Log.Infof("Connecting to Redis %s via Sentinel master=%q sentinels=%v db=%d %s... start",
+				r.NameId, r.SentinelMasterName, r.SentinelAddresses, r.DatabaseIndex, r.tlsSummary())
+			connection = redis.NewFailoverClient(r.failoverOptions())
 		} else {
-			log.Log.Infof("Connecting to Redis %s at %s/%d... start", r.NameId, r.Address, r.DatabaseIndex)
-			redisRingOptions := &redis.RingOptions{
-				Addrs: map[string]string{"shard1": r.Address},
-				DB:    r.DatabaseIndex,
-			}
-			if r.HasUserName {
-				redisRingOptions.Username = r.UserName
-			}
-			if r.HasPassword {
-				redisRingOptions.Password = r.Password
-			}
-			// Apply pool configuration
-			if r.PoolSize > 0 {
-				redisRingOptions.PoolSize = r.PoolSize
-			}
-			if r.MinIdleConns > 0 {
-				redisRingOptions.MinIdleConns = r.MinIdleConns
-			}
-			if r.MaxConnAgeMinutes > 0 {
-				redisRingOptions.MaxConnAge = time.Duration(r.MaxConnAgeMinutes) * time.Minute
-			}
-			if r.IdleTimeoutMinutes > 0 {
-				redisRingOptions.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
-			}
-			connection = redis.NewRing(redisRingOptions)
+			log.Log.Infof("Connecting to Redis %s at %s/%d %s... start", r.NameId, r.Address, r.DatabaseIndex, r.tlsSummary())
+			connection = redis.NewRing(r.ringOptions())
 		}
 		log.Log.Infof("Pool config for Redis %s: PoolSize=%d, MinIdleConns=%d, MaxConnAge=%dm, IdleTimeout=%dm",
 			r.NameId, r.PoolSize, r.MinIdleConns, r.MaxConnAgeMinutes, r.IdleTimeoutMinutes)
 		err = connection.Ping(r.Context).Err()
 		if err != nil {
+			_ = connection.Close()
 			if r.MustConnected {
-				log.Log.Fatalf("Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
+				log.Log.Fatalf("Cannot connect to Redis %s at %s/%d %s (%s)", r.NameId, r.Address, r.DatabaseIndex, r.tlsSummary(), err.Error())
 				return nil
 			} else {
-				return errors.Wrapf(err, "Cannot connect to Redis %s at %s/%d (%s)", r.NameId, r.Address, r.DatabaseIndex, err.Error())
+				return errors.Wrapf(err, "Cannot connect to Redis %s at %s/%d %s (%s)", r.NameId, r.Address, r.DatabaseIndex, r.tlsSummary(), err.Error())
 			}
 		}
 		r.Connection = connection
@@ -331,6 +315,123 @@ func (r *DXRedis) Connect() (err error) {
 		}
 	}
 	return nil
+}
+
+// SetTLSFromBlock parses a tls block (the utils/tls client vocabulary:
+// tls-policy, ca-trust, ca-files, cert-file, key-file, server-name, ...),
+// loads its files and sets TLSConfig and TLS. A block with enabled=false is
+// validated and leaves TLS off. For a struct built by hand as well as for the
+// configuration path.
+func (r *DXRedis) SetTLSFromBlock(kv utils.JSON) error {
+	c, err := utilsTLS.NewClientTLS(kv)
+	if err != nil {
+		return err
+	}
+	r.TLS = c
+	r.TLSConfig = c.Config // nil under enabled=false
+	return nil
+}
+
+// effectiveTLSConfig is TLSConfig with its floor raised to TLS 1.2. The
+// caller's config is cloned, never changed in place.
+func (r *DXRedis) effectiveTLSConfig() *tls.Config {
+	if r.TLSConfig == nil {
+		return nil
+	}
+	if r.TLSConfig.MinVersion >= tls.VersionTLS12 {
+		return r.TLSConfig
+	}
+	c := r.TLSConfig.Clone()
+	c.MinVersion = tls.VersionTLS12
+	if c.MaxVersion != 0 && c.MaxVersion < tls.VersionTLS12 {
+		c.MaxVersion = tls.VersionTLS12
+	}
+	return c
+}
+
+// tlsSummary is the TLS posture as it goes into the connect log lines.
+func (r *DXRedis) tlsSummary() string {
+	switch {
+	case r.TLSConfig == nil:
+		return "tls=off"
+	case r.TLS != nil:
+		return "tls=on (" + r.TLS.Summary() + ")"
+	default:
+		c := r.effectiveTLSConfig()
+		return "tls=on (tls.Config set directly, server-name=" + orURLHost(c.ServerName) + ", insecure-skip-verify=" + boolWord(c.InsecureSkipVerify) + ", min-version=" + tls.VersionName(c.MinVersion) + ")"
+	}
+}
+
+func orURLHost(s string) string {
+	if s == "" {
+		return "<host of the address>"
+	}
+	return s
+}
+
+func boolWord(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+func (r *DXRedis) ringOptions() *redis.RingOptions {
+	o := &redis.RingOptions{
+		Addrs:     map[string]string{"shard1": r.Address},
+		DB:        r.DatabaseIndex,
+		TLSConfig: r.effectiveTLSConfig(),
+	}
+	if r.HasUserName {
+		o.Username = r.UserName
+	}
+	if r.HasPassword {
+		o.Password = r.Password
+	}
+	if r.PoolSize > 0 {
+		o.PoolSize = r.PoolSize
+	}
+	if r.MinIdleConns > 0 {
+		o.MinIdleConns = r.MinIdleConns
+	}
+	if r.MaxConnAgeMinutes > 0 {
+		o.MaxConnAge = time.Duration(r.MaxConnAgeMinutes) * time.Minute
+	}
+	if r.IdleTimeoutMinutes > 0 {
+		o.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
+	}
+	return o
+}
+
+func (r *DXRedis) failoverOptions() *redis.FailoverOptions {
+	o := &redis.FailoverOptions{
+		MasterName:    r.SentinelMasterName,
+		SentinelAddrs: r.SentinelAddresses,
+		DB:            r.DatabaseIndex,
+		TLSConfig:     r.effectiveTLSConfig(), // go-redis uses it for the sentinels and the data nodes
+	}
+	if r.HasUserName {
+		o.Username = r.UserName
+	}
+	if r.HasPassword {
+		o.Password = r.Password // AUTH to the data nodes (master/replicas)
+	}
+	if r.SentinelPassword != "" {
+		o.SentinelPassword = r.SentinelPassword // AUTH to the sentinels
+	}
+	if r.PoolSize > 0 {
+		o.PoolSize = r.PoolSize
+	}
+	if r.MinIdleConns > 0 {
+		o.MinIdleConns = r.MinIdleConns
+	}
+	if r.MaxConnAgeMinutes > 0 {
+		o.MaxConnAge = time.Duration(r.MaxConnAgeMinutes) * time.Minute
+	}
+	if r.IdleTimeoutMinutes > 0 {
+		o.IdleTimeout = time.Duration(r.IdleTimeoutMinutes) * time.Minute
+	}
+	return o
 }
 
 func (r *DXRedis) redisOtelStart(ctx context.Context, opName string) (context.Context, func(err error)) {
