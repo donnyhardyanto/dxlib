@@ -1,0 +1,9 @@
+# gitleaks configuration: the default rules, plus the paths whose matches are known not to be secrets.
+# Run a full scan with: gitleaks git --redact .   (history)   or   gitleaks dir --redact .   (working tree)
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "SBOM scan records: govulncheck reports carry 40-hex commit hashes in advisory URLs, which the sourcegraph-access-token rule reads as tokens"
+paths = ['''^sbom/[^/]+/reports/''']

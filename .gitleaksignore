@@ -1,0 +1,19 @@
+# Findings checked by hand and found not to be secrets. One fingerprint per line: file:rule:line for the
+# working tree and staged changes, commit:file:rule:line for history. A fixture that moves to another line
+# needs its file:rule:line updated here.
+
+# Test fixture "tok-raw-0123456789": the request dump must mask it.
+api/request_dump_mask_test.go:generic-api-key:117
+7308fc8adfcf3e64ebb242b8aceb325b12edc73f:api/request_dump_mask_test.go:generic-api-key:117
+
+# Test fixture "9f8e7d6c5b4a": error text redaction must mask it.
+api/api_error_response_test.go:generic-api-key:83
+a559da79890e6348dc8a625f7def2c889e7f171b:api/api_error_response_test.go:generic-api-key:83
+
+# Test constant testSessionKey, a made-up session key for the store-down tests.
+login_system/login_system_errors_test.go:generic-api-key:22
+53d32d2ab4b5fba5c84e63f73ba8d3dda4e66722:login_system/login_system_errors_test.go:generic-api-key:22
+
+# EncryptionParameters map: the match is the key name of an entry whose value is a variable, not a key.
+api/api_endpoint_request.go:generic-api-key:1365
+b9cc1c4261acf26e0f0e1281784c7741bc4014a0:api/api_endpoint_request.go:generic-api-key:581
