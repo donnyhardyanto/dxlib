@@ -1,0 +1,7 @@
+# osv-scanner's ignores for sbom/v1.135.0/, written with the records: the root's osv-scanner.toml as it was at the
+# scan, then the findings of v1.135.0 as scanned, which describe that release, not the current tree.
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+ignoreUntil = 2027-04-05
+reason = "golang.org/x/crypto/openpgp is unmaintained; the advisory covers every x/crypto release (no fixed version). dxlib imports only argon2 and bcrypt from the module and govulncheck ./... reports the vulnerable package is not called. Accepted by the owner on 2026-10-05; see GO-2026-5932 in .dependency-allowlist.json. Review by 2027-04-05."
